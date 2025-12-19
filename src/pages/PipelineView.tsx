@@ -4,7 +4,7 @@ import DateRangeFilter from '../components/ui/DateRangeFilter'
 import Button from '../components/ui/Button'
 import FunnelChart from '../components/charts/FunnelChart'
 import EditableFunnelSpreadsheet from '../components/ui/EditableFunnelSpreadsheet'
-import LeadsModal from '../components/ui/LeadsModal'
+import InlineLeadsTable from '../components/ui/InlineLeadsTable'
 import { usePipelineData } from '../hooks/usePipelineData'
 import { getDateRange } from '../lib/supabase'
 
@@ -18,9 +18,8 @@ export default function PipelineView() {
   const [datePreset, setDatePreset] = useState('thisMonth')
   const [dateRange, setDateRange] = useState(() => getDateRange('thisMonth'))
 
-  // Modal state
+  // Inline table state
   const [selectedStage, setSelectedStage] = useState<string | null>(null)
-  const [isModalOpen, setIsModalOpen] = useState(false)
 
   // Fetch data
   const { funnelStages, spreadsheetData, loading, error, refetch } = usePipelineData({
@@ -42,15 +41,18 @@ export default function PipelineView() {
     setDateRange(getDateRange('thisMonth'))
   }
 
-  // Handle funnel stage click
+  // Handle funnel stage click - toggle selection
   const handleStageClick = (stageName: string, stageIndex: number) => {
-    setSelectedStage(stageName)
-    setIsModalOpen(true)
+    // If clicking the same stage, close it. Otherwise, open the new one.
+    if (selectedStage === stageName) {
+      setSelectedStage(null)
+    } else {
+      setSelectedStage(stageName)
+    }
   }
 
-  // Handle modal close
-  const handleModalClose = () => {
-    setIsModalOpen(false)
+  // Handle table close
+  const handleTableClose = () => {
     setSelectedStage(null)
   }
 
@@ -101,7 +103,19 @@ export default function PipelineView() {
             stages={funnelStages}
             onStageClick={handleStageClick}
             clickableFromIndex={2} // Clickable from "Real Replies" onwards
+            selectedStageName={selectedStage}
           />
+          
+          {/* Inline Leads Table - appears between funnel and spreadsheet */}
+          {selectedStage && (
+            <InlineLeadsTable
+              stageName={selectedStage}
+              startDate={dateRange.start}
+              endDate={dateRange.end}
+              client="Rillation Revenue"
+              onClose={handleTableClose}
+            />
+          )}
           
           {/* Editable Spreadsheet */}
           <EditableFunnelSpreadsheet 
@@ -112,15 +126,6 @@ export default function PipelineView() {
           />
         </>
       )}
-
-      {/* Leads Modal */}
-      <LeadsModal
-        isOpen={isModalOpen}
-        onClose={handleModalClose}
-        stageName={selectedStage || ''}
-        startDate={dateRange.start}
-        endDate={dateRange.end}
-      />
     </div>
   )
 }

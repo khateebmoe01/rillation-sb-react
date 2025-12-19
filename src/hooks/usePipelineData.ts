@@ -23,79 +23,127 @@ export function usePipelineData({ startDate, endDate, month, year }: UsePipeline
       const startStr = formatDateForQuery(startDate)
       const endStr = formatDateForQuery(endDate)
 
-      // Fetch campaign reporting data for funnel
+      // Fetch campaign reporting data for funnel - only Rillation Revenue
       const { data: campaignData, error: campaignError } = await supabase
         .from('campaign_reporting')
         .select('*')
         .gte('date', startStr)
         .lte('date', endStr)
+        .eq('client', 'Rillation Revenue')
 
       if (campaignError) throw campaignError
 
-      // Fetch replies data
+      // Fetch replies data - only Rillation Revenue
       const { data: repliesData, error: repliesError } = await supabase
         .from('replies')
         .select('*')
         .gte('date_received', startStr)
         .lte('date_received', endStr)
+        .eq('client', 'Rillation Revenue')
 
       if (repliesError) throw repliesError
 
-      // Fetch meetings booked
+      // Fetch meetings booked - only Rillation Revenue
       const { data: meetingsData, error: meetingsError } = await supabase
         .from('meetings_booked')
         .select('*')
         .gte('created_time', startStr)
         .lte('created_time', endStr)
+        .eq('client', 'Rillation Revenue')
 
       if (meetingsError) throw meetingsError
 
       // Calculate funnel stages from actual data
-      const totalSent = campaignData?.reduce((sum, row) => sum + (row.emails_sent || 0), 0) || 0
-      const uniqueContacts = campaignData?.reduce((sum, row) => sum + (row.total_leads_contacted || 0), 0) || 0
+      const campaignRows = (campaignData || []) as any[]
+      const replyRows = (repliesData || []) as any[]
+      
+      const totalSent = campaignRows.reduce((sum, row) => sum + (row.emails_sent || 0), 0)
+      const uniqueContacts = campaignRows.reduce((sum, row) => sum + (row.total_leads_contacted || 0), 0)
       
       // Real replies - exclude "Out Of Office" (case insensitive check)
-      const realReplies = repliesData?.filter((r) => {
+      const realReplies = replyRows.filter((r) => {
         const cat = (r.category || '').toLowerCase()
         return !cat.includes('out of office') && !cat.includes('ooo')
-      }).length || 0
+      }).length
       
       // Positive replies - "Interested" category
-      const positiveReplies = repliesData?.filter((r) => 
+      const positiveReplies = replyRows.filter((r) => 
         (r.category || '').toLowerCase() === 'interested'
-      ).length || 0
+      ).length
       
       // Sales handoff count (from engaged_leads or manual tracking)
       const salesHandoff = meetingsData?.length || 0
       const meetingsBooked = meetingsData?.length || 0
 
       // Fetch engaged_leads to get counts from boolean columns
+      // Filter by date_created within the selected date range
       const { data: engagedLeadsData, error: engagedLeadsError } = await supabase
         .from('engaged_leads')
         .select('*')
+        .gte('date_created', startStr)
+        .lte('date_created', endStr)
+        .eq('client', 'Rillation Revenue')
 
-      if (engagedLeadsError) throw engagedLeadsError
+      if (engagedLeadsError) {
+        console.error('Error fetching engaged_leads:', engagedLeadsError)
+        // Don't throw, just continue with zeros
+      }
+
+      console.log('Engaged leads data:', engagedLeadsData?.length, 'records')
+      if (engagedLeadsData && engagedLeadsData.length > 0) {
+        console.log('Sample engaged lead columns:', Object.keys(engagedLeadsData[0]))
+        // Log boolean column values from first few records
+        const sampleLeads = engagedLeadsData.slice(0, 5).map((l: any) => ({
+          showed_up_to_disco: l.showed_up_to_disco,
+          qualified: l.qualified,
+          demo_booked: l.demo_booked,
+          showed_up_to_demo: l.showed_up_to_demo,
+          proposal_sent: l.proposal_sent,
+          closed: l.closed,
+        }))
+        console.log('Sample boolean values:', JSON.stringify(sampleLeads))
+      }
 
       // Count leads by stage using boolean columns
-      let showedUpToDisco = engagedLeadsData?.filter((lead: any) => lead.showed_up_to_disco === true).length || 0
-      let qualified = engagedLeadsData?.filter((lead: any) => lead.qualified === true).length || 0
-      let demoBooked = engagedLeadsData?.filter((lead: any) => lead.demo_booked === true).length || 0
-      let showedUpToDemo = engagedLeadsData?.filter((lead: any) => lead.showed_up_to_demo === true).length || 0
-      let proposalSent = engagedLeadsData?.filter((lead: any) => lead.proposal_sent === true || lead.pilot_accepted === true).length || 0
-      let closed = engagedLeadsData?.filter((lead: any) => lead.closed === true).length || 0
+      // Check for any truthy value (true, 'true', 1, 'yes', 'Yes', etc.)
+      const isTruthy = (val: any): boolean => {
+        if (val === true || val === 1 || val === '1') return true
+        if (typeof val === 'string') {
+          const lower = val.toLowerCase()
+          return lower === 'true' || lower === 'yes' || lower === 'y'
+        }
+        return !!val && val !== null && val !== undefined && val !== ''
+      }
+      
+      let showedUpToDisco = engagedLeadsData?.filter((lead: any) => isTruthy(lead.showed_up_to_disco)).length || 0
+      let qualified = engagedLeadsData?.filter((lead: any) => isTruthy(lead.qualified)).length || 0
+      let demoBooked = engagedLeadsData?.filter((lead: any) => isTruthy(lead.demo_booked)).length || 0
+      let showedUpToDemo = engagedLeadsData?.filter((lead: any) => isTruthy(lead.showed_up_to_demo)).length || 0
+      let proposalSent = engagedLeadsData?.filter((lead: any) => 
+        isTruthy(lead.proposal_sent) || isTruthy(lead.pilot_accepted)
+      ).length || 0
+      let closed = engagedLeadsData?.filter((lead: any) => isTruthy(lead.closed)).length || 0
+      
+      console.log('Engaged leads counts:', { showedUpToDisco, qualified, demoBooked, showedUpToDemo, proposalSent, closed })
 
-      // Fetch funnel forecasts for manual overrides (optional)
-      const { data: forecastData, error: forecastError } = await supabase
+      // Fetch funnel forecasts for manual overrides (optional) - only Rillation Revenue
+      let forecastQuery = supabase
         .from('funnel_forecasts')
         .select('*')
         .eq('month', month)
         .eq('year', year)
+      
+      // Filter by client if client column exists
+      forecastQuery = forecastQuery.eq('client', 'Rillation Revenue')
+      
+      const { data: forecastData, error: forecastError } = await forecastQuery
 
       // Don't throw error if forecast table doesn't exist or is empty
-      if (!forecastError && forecastData) {
+      const forecastRows = (forecastData || []) as FunnelForecast[]
+      if (!forecastError && forecastRows.length > 0) {
         // Create forecast map
         const forecastMap = new Map<string, FunnelForecast>()
-        forecastData.forEach((f) => {
+        forecastRows.forEach((f) => {
           forecastMap.set(f.metric_key, f)
         })
 
@@ -132,8 +180,48 @@ export function usePipelineData({ startDate, endDate, month, year }: UsePipeline
       ]
 
       setFunnelStages(stages)
-      // Set spreadsheet data - use forecastData if available, otherwise empty array
-      setSpreadsheetData(forecastData && !forecastError ? forecastData : [])
+      
+      // Calculate actual values from tracked data
+      const actualValues: Record<string, number> = {
+        'total_messages_sent': totalSent,
+        'total_leads_contacted': uniqueContacts,
+        'response_rate': uniqueContacts > 0 ? (realReplies / uniqueContacts) * 100 : 0,
+        'total_responses': realReplies,
+        'positive_response_rate': realReplies > 0 ? (positiveReplies / realReplies) * 100 : 0,
+        'total_pos_response': positiveReplies,
+        'booked_rate': positiveReplies > 0 ? (meetingsBooked / positiveReplies) * 100 : 0,
+        'total_booked': meetingsBooked,
+        'meetings_passed': meetingsBooked,
+        'show_up_to_disco_rate': meetingsBooked > 0 ? (showedUpToDisco / meetingsBooked) * 100 : 0,
+        'total_show_up_to_disco': showedUpToDisco,
+        'qualified_rate': showedUpToDisco > 0 ? (qualified / showedUpToDisco) * 100 : 0,
+        'total_qualified': qualified,
+        'close_rate': qualified > 0 ? (closed / qualified) * 100 : 0,
+        'total_PILOT_accepted': proposalSent,
+        'LM_converted_to_close': proposalSent > 0 ? (closed / proposalSent) * 100 : 0,
+        'total_deals_closed': closed,
+      }
+      
+      // Merge actual values with forecast data
+      const mergedSpreadsheetData: FunnelForecast[] = forecastRows.length > 0
+        ? forecastRows.map((row: FunnelForecast) => ({
+            ...row,
+            actual: actualValues[row.metric_key] !== undefined ? actualValues[row.metric_key] : row.actual,
+          }))
+        : Object.keys(actualValues).map((key) => ({
+            metric_key: key,
+            month,
+            year,
+            estimate_low: 0,
+            estimate_avg: 0,
+            estimate_high: 0,
+            estimate_1: 0,
+            estimate_2: 0,
+            actual: actualValues[key],
+            projected: 0,
+          }))
+      
+      setSpreadsheetData(mergedSpreadsheetData)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch data')
     } finally {

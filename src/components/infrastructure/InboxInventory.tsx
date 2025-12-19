@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Package, Download, Edit } from 'lucide-react'
 import { useInboxes } from '../../hooks/useInboxes'
 import { useClients } from '../../hooks/useClients'
+import { normalizeProviderName } from '../../lib/supabase'
 import ClientFilter from '../ui/ClientFilter'
 import Button from '../ui/Button'
 
@@ -34,7 +35,8 @@ export default function InboxInventory() {
     setSelectedInboxes(newSet)
   }
 
-  const providers = Array.from(new Set(inboxes.map((i) => i.type).filter(Boolean)))
+  // Get unique normalized provider names
+  const providers = Array.from(new Set(inboxes.map((i) => normalizeProviderName(i.type)).filter((p) => p !== '-')))
 
   return (
     <div className="space-y-6">
@@ -167,7 +169,7 @@ export default function InboxInventory() {
                       {inbox.client || '-'}
                     </td>
                     <td className="px-4 py-3 text-sm text-rillation-text-muted">
-                      {inbox.type || '-'}
+                      {normalizeProviderName(inbox.type)}
                     </td>
                     <td className="px-4 py-3">
                       <span
@@ -200,4 +202,7 @@ export default function InboxInventory() {
     </div>
   )
 }
+
+
+
 

@@ -17,10 +17,14 @@ import CampaignFilter from '../components/ui/CampaignFilter'
 import Button from '../components/ui/Button'
 import TrendChart from '../components/charts/TrendChart'
 import ExpandableDataPanel from '../components/ui/ExpandableDataPanel'
+import CampaignsTable from '../components/ui/CampaignsTable'
+import CampaignDetailModal from '../components/ui/CampaignDetailModal'
 import { useClients } from '../hooks/useClients'
 import { useCampaigns } from '../hooks/useCampaigns'
 import { useQuickViewData } from '../hooks/useQuickViewData'
+import { useCampaignStats } from '../hooks/useCampaignStats'
 import { supabase, getDateRange, formatDateForQuery } from '../lib/supabase'
+import type { CampaignStat } from '../hooks/useCampaignStats'
 
 const PAGE_SIZE = 15
 
@@ -51,12 +55,29 @@ export default function QuickView() {
   const [selectedClient, setSelectedClient] = useState('')
   const [selectedCampaign, setSelectedCampaign] = useState('')
   
-  // Expandable panel state
-  const [activeMetric, setActiveMetric] = useState<'meetings' | 'replies' | 'totalReplies' | null>(null)
-  const [panelData, setPanelData] = useState<any[]>([])
-  const [panelTotalCount, setPanelTotalCount] = useState(0)
-  const [panelPage, setPanelPage] = useState(1)
-  const [panelLoading, setPanelLoading] = useState(false)
+  // Expandable panel state - support multiple open panels
+  const [activeMetrics, setActiveMetrics] = useState<Set<'meetings' | 'replies' | 'totalReplies'>>(new Set())
+  
+  // Separate state for each metric panel
+  const [meetingsData, setMeetingsData] = useState<any[]>([])
+  const [meetingsCount, setMeetingsCount] = useState(0)
+  const [meetingsPage, setMeetingsPage] = useState(1)
+  const [meetingsLoading, setMeetingsLoading] = useState(false)
+  
+  const [repliesData, setRepliesData] = useState<any[]>([])
+  const [repliesCount, setRepliesCount] = useState(0)
+  const [repliesPage, setRepliesPage] = useState(1)
+  const [repliesLoading, setRepliesLoading] = useState(false)
+  
+  const [totalRepliesData, setTotalRepliesData] = useState<any[]>([])
+  const [totalRepliesCount, setTotalRepliesCount] = useState(0)
+  const [totalRepliesPage, setTotalRepliesPage] = useState(1)
+  const [totalRepliesLoading, setTotalRepliesLoading] = useState(false)
+  
+  // Campaigns table state
+  const [campaignsPage, setCampaignsPage] = useState(1)
+  const [selectedCampaignForModal, setSelectedCampaignForModal] = useState<CampaignStat | null>(null)
+  const [isModalOpen, setIsModalOpen] = useState(false)
   
   // Fetch data
   const { clients } = useClients()
@@ -67,101 +88,174 @@ export default function QuickView() {
     client: selectedClient || undefined,
     campaign: selectedCampaign || undefined,
   })
+  
+  // Fetch campaign stats for table
+  const {
+    campaigns: campaignStats,
+    totalCount: campaignsTotalCount,
+    loading: campaignsLoading,
+    error: campaignsError,
+  } = useCampaignStats({
+    startDate: dateRange.start,
+    endDate: dateRange.end,
+    client: selectedClient || undefined,
+    page: campaignsPage,
+    pageSize: 10,
+  })
 
-  // Fetch panel data when metric is clicked
+  // Fetch meetings data when meetings panel is active
   useEffect(() => {
-    async function fetchPanelData() {
-      if (!activeMetric) {
-        setPanelData([])
-        setPanelTotalCount(0)
+    async function fetchMeetingsData() {
+      if (!activeMetrics.has('meetings')) {
+        setMeetingsData([])
+        setMeetingsCount(0)
         return
       }
 
-      setPanelLoading(true)
+      setMeetingsLoading(true)
       const startStr = formatDateForQuery(dateRange.start)
       const endStr = formatDateForQuery(dateRange.end)
-      const offset = (panelPage - 1) * PAGE_SIZE
+      const offset = (meetingsPage - 1) * PAGE_SIZE
 
       try {
-        if (activeMetric === 'meetings') {
-          // Fetch meetings
-          let query = supabase
-            .from('meetings_booked')
-            .select('*', { count: 'exact' })
-            .gte('created_time', startStr)
-            .lte('created_time', endStr)
-            .order('created_time', { ascending: false })
-            .range(offset, offset + PAGE_SIZE - 1)
+        let query = supabase
+          .from('meetings_booked')
+          .select('*', { count: 'exact' })
+          .gte('created_time', startStr)
+          .lte('created_time', endStr)
+          .order('created_time', { ascending: false })
+          .range(offset, offset + PAGE_SIZE - 1)
 
-          if (selectedClient) query = query.eq('client', selectedClient)
+        if (selectedClient) query = query.eq('client', selectedClient)
 
-          const { data, count, error } = await query
-          if (error) throw error
-          
-          setPanelData(data || [])
-          setPanelTotalCount(count || 0)
-        } else if (activeMetric === 'replies') {
-          // Fetch real replies (excluding Out Of Office - case insensitive)
-          let query = supabase
-            .from('replies')
-            .select('*', { count: 'exact' })
-            .gte('date_received', startStr)
-            .lte('date_received', endStr)
-            .not('category', 'ilike', '%out of office%')
-            .not('category', 'ilike', '%ooo%')
-            .order('date_received', { ascending: false })
-            .range(offset, offset + PAGE_SIZE - 1)
-
-          if (selectedClient) query = query.eq('client', selectedClient)
-
-          const { data, count, error } = await query
-          if (error) throw error
-          
-          setPanelData(data || [])
-          setPanelTotalCount(count || 0)
-        } else if (activeMetric === 'totalReplies') {
-          // Fetch ALL replies (including Out Of Office)
-          let query = supabase
-            .from('replies')
-            .select('*', { count: 'exact' })
-            .gte('date_received', startStr)
-            .lte('date_received', endStr)
-            .order('date_received', { ascending: false })
-            .range(offset, offset + PAGE_SIZE - 1)
-
-          if (selectedClient) query = query.eq('client', selectedClient)
-
-          const { data, count, error } = await query
-          if (error) throw error
-          
-          setPanelData(data || [])
-          setPanelTotalCount(count || 0)
-        }
+        const { data, count, error } = await query
+        if (error) throw error
+        
+        setMeetingsData(data || [])
+        setMeetingsCount(count || 0)
       } catch (err) {
-        console.error('Error fetching panel data:', err)
+        console.error('Error fetching meetings data:', err)
       } finally {
-        setPanelLoading(false)
+        setMeetingsLoading(false)
       }
     }
 
-    fetchPanelData()
-  }, [activeMetric, panelPage, dateRange, selectedClient])
+    fetchMeetingsData()
+  }, [activeMetrics, meetingsPage, dateRange, selectedClient])
 
-  // Handle metric click
-  const handleMetricClick = (metric: 'meetings' | 'replies' | 'totalReplies') => {
-    if (activeMetric === metric) {
-      setActiveMetric(null)
-    } else {
-      setActiveMetric(metric)
-      setPanelPage(1)
+  // Fetch real replies data when replies panel is active
+  useEffect(() => {
+    async function fetchRepliesData() {
+      if (!activeMetrics.has('replies')) {
+        setRepliesData([])
+        setRepliesCount(0)
+        return
+      }
+
+      setRepliesLoading(true)
+      const startStr = formatDateForQuery(dateRange.start)
+      const endStr = formatDateForQuery(dateRange.end)
+      const offset = (repliesPage - 1) * PAGE_SIZE
+
+      try {
+        let query = supabase
+          .from('replies')
+          .select('*', { count: 'exact' })
+          .gte('date_received', startStr)
+          .lte('date_received', endStr)
+          .not('category', 'ilike', '%out of office%')
+          .not('category', 'ilike', '%ooo%')
+          .order('date_received', { ascending: false })
+          .range(offset, offset + PAGE_SIZE - 1)
+
+        if (selectedClient) query = query.eq('client', selectedClient)
+
+        const { data, count, error } = await query
+        if (error) throw error
+        
+        setRepliesData(data || [])
+        setRepliesCount(count || 0)
+      } catch (err) {
+        console.error('Error fetching replies data:', err)
+      } finally {
+        setRepliesLoading(false)
+      }
     }
+
+    fetchRepliesData()
+  }, [activeMetrics, repliesPage, dateRange, selectedClient])
+
+  // Fetch total replies data when totalReplies panel is active
+  useEffect(() => {
+    async function fetchTotalRepliesData() {
+      if (!activeMetrics.has('totalReplies')) {
+        setTotalRepliesData([])
+        setTotalRepliesCount(0)
+        return
+      }
+
+      setTotalRepliesLoading(true)
+      const startStr = formatDateForQuery(dateRange.start)
+      const endStr = formatDateForQuery(dateRange.end)
+      const offset = (totalRepliesPage - 1) * PAGE_SIZE
+
+      try {
+        let query = supabase
+          .from('replies')
+          .select('*', { count: 'exact' })
+          .gte('date_received', startStr)
+          .lte('date_received', endStr)
+          .order('date_received', { ascending: false })
+          .range(offset, offset + PAGE_SIZE - 1)
+
+        if (selectedClient) query = query.eq('client', selectedClient)
+
+        const { data, count, error } = await query
+        if (error) throw error
+        
+        setTotalRepliesData(data || [])
+        setTotalRepliesCount(count || 0)
+      } catch (err) {
+        console.error('Error fetching total replies data:', err)
+      } finally {
+        setTotalRepliesLoading(false)
+      }
+    }
+
+    fetchTotalRepliesData()
+  }, [activeMetrics, totalRepliesPage, dateRange, selectedClient])
+
+  // Handle metric click - toggle metric in Set
+  const handleMetricClick = (metric: 'meetings' | 'replies' | 'totalReplies') => {
+    setActiveMetrics(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(metric)) {
+        newSet.delete(metric)
+      } else {
+        newSet.add(metric)
+        // Reset page when opening a panel
+        if (metric === 'meetings') setMeetingsPage(1)
+        if (metric === 'replies') setRepliesPage(1)
+        if (metric === 'totalReplies') setTotalRepliesPage(1)
+      }
+      return newSet
+    })
+  }
+  
+  // Handle closing a specific metric panel
+  const handleCloseMetric = (metric: 'meetings' | 'replies' | 'totalReplies') => {
+    setActiveMetrics(prev => {
+      const newSet = new Set(prev)
+      newSet.delete(metric)
+      return newSet
+    })
   }
 
   // Handle date preset change
   const handlePresetChange = (preset: string) => {
     setDatePreset(preset)
     setDateRange(getDateRange(preset))
-    setActiveMetric(null)
+    setActiveMetrics(new Set())
   }
 
   // Handle clear filters - ALSO resets date range
@@ -170,7 +264,23 @@ export default function QuickView() {
     setSelectedCampaign('')
     setDatePreset('thisMonth')
     setDateRange(getDateRange('thisMonth'))
-    setActiveMetric(null)
+    setActiveMetrics(new Set())
+    setCampaignsPage(1)
+    setMeetingsPage(1)
+    setRepliesPage(1)
+    setTotalRepliesPage(1)
+  }
+  
+  // Handle campaign row click
+  const handleCampaignRowClick = (campaign: CampaignStat) => {
+    setSelectedCampaignForModal(campaign)
+    setIsModalOpen(true)
+  }
+  
+  // Handle modal close
+  const handleModalClose = () => {
+    setIsModalOpen(false)
+    setSelectedCampaignForModal(null)
   }
 
   // Calculate percentages
@@ -273,7 +383,7 @@ export default function QuickView() {
               icon={<MessageSquare size={18} />}
               colorClass="text-rillation-cyan"
               isClickable={true}
-              isActive={activeMetric === 'totalReplies'}
+              isActive={activeMetrics.has('totalReplies')}
               onClick={() => handleMetricClick('totalReplies')}
             />
             {/* Clickable Real Replies */}
@@ -285,7 +395,7 @@ export default function QuickView() {
               icon={<MessageCircle size={18} />}
               colorClass="text-rillation-cyan"
               isClickable={true}
-              isActive={activeMetric === 'replies'}
+              isActive={activeMetrics.has('replies')}
               onClick={() => handleMetricClick('replies')}
             />
             <MetricCard
@@ -314,7 +424,7 @@ export default function QuickView() {
               icon={<Calendar size={18} />}
               colorClass="text-rillation-magenta"
               isClickable={true}
-              isActive={activeMetric === 'meetings'}
+              isActive={activeMetrics.has('meetings')}
               onClick={() => handleMetricClick('meetings')}
             />
           </div>
@@ -322,29 +432,105 @@ export default function QuickView() {
           {/* Trend Chart */}
           <TrendChart data={chartData} />
 
-          {/* Expandable Data Panel */}
-          <ExpandableDataPanel
-            title={
-              activeMetric === 'meetings' ? 'Meetings Booked' :
-              activeMetric === 'totalReplies' ? 'Total Replies' :
-              'Real Replies'
-            }
-            data={panelData}
-            columns={activeMetric === 'meetings' ? meetingsColumns : repliesColumns}
-            totalCount={panelTotalCount}
-            currentPage={panelPage}
-            pageSize={PAGE_SIZE}
-            onPageChange={setPanelPage}
-            onClose={() => setActiveMetric(null)}
-            isOpen={activeMetric !== null && !panelLoading}
-          />
-          
-          {/* Panel Loading */}
-          {activeMetric && panelLoading && (
-            <div className="bg-rillation-card rounded-xl border border-rillation-border p-8 flex items-center justify-center">
-              <div className="w-6 h-6 border-2 border-rillation-purple border-t-transparent rounded-full animate-spin" />
+          {/* Expandable Data Panels - ABOVE Campaign Table, side by side */}
+          {activeMetrics.size > 0 && (
+            <div className={`grid gap-4 ${
+              activeMetrics.size === 1 ? 'grid-cols-1' : 
+              activeMetrics.size === 2 ? 'grid-cols-1 lg:grid-cols-2' : 
+              'grid-cols-1 lg:grid-cols-3'
+            }`}>
+              {/* Meetings Panel */}
+              {activeMetrics.has('meetings') && (
+                meetingsLoading ? (
+                  <div className="bg-rillation-card rounded-xl border border-rillation-border p-8 flex items-center justify-center">
+                    <div className="w-6 h-6 border-2 border-rillation-purple border-t-transparent rounded-full animate-spin" />
+                  </div>
+                ) : (
+                  <ExpandableDataPanel
+                    title="Meetings Booked"
+                    data={meetingsData}
+                    columns={meetingsColumns}
+                    totalCount={meetingsCount}
+                    currentPage={meetingsPage}
+                    pageSize={PAGE_SIZE}
+                    onPageChange={setMeetingsPage}
+                    onClose={() => handleCloseMetric('meetings')}
+                    isOpen={true}
+                  />
+                )
+              )}
+              
+              {/* Real Replies Panel */}
+              {activeMetrics.has('replies') && (
+                repliesLoading ? (
+                  <div className="bg-rillation-card rounded-xl border border-rillation-border p-8 flex items-center justify-center">
+                    <div className="w-6 h-6 border-2 border-rillation-purple border-t-transparent rounded-full animate-spin" />
+                  </div>
+                ) : (
+                  <ExpandableDataPanel
+                    title="Real Replies"
+                    data={repliesData}
+                    columns={repliesColumns}
+                    totalCount={repliesCount}
+                    currentPage={repliesPage}
+                    pageSize={PAGE_SIZE}
+                    onPageChange={setRepliesPage}
+                    onClose={() => handleCloseMetric('replies')}
+                    isOpen={true}
+                  />
+                )
+              )}
+              
+              {/* Total Replies Panel */}
+              {activeMetrics.has('totalReplies') && (
+                totalRepliesLoading ? (
+                  <div className="bg-rillation-card rounded-xl border border-rillation-border p-8 flex items-center justify-center">
+                    <div className="w-6 h-6 border-2 border-rillation-purple border-t-transparent rounded-full animate-spin" />
+                  </div>
+                ) : (
+                  <ExpandableDataPanel
+                    title="Total Replies"
+                    data={totalRepliesData}
+                    columns={repliesColumns}
+                    totalCount={totalRepliesCount}
+                    currentPage={totalRepliesPage}
+                    pageSize={PAGE_SIZE}
+                    onPageChange={setTotalRepliesPage}
+                    onClose={() => handleCloseMetric('totalReplies')}
+                    isOpen={true}
+                  />
+                )
+              )}
             </div>
           )}
+
+          {/* Campaigns Table - BELOW the panels */}
+          {campaignsError && (
+            <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 text-red-400 text-sm">
+              Error loading campaigns: {campaignsError}
+            </div>
+          )}
+          <CampaignsTable
+            campaigns={campaignStats}
+            totalCount={campaignsTotalCount}
+            currentPage={campaignsPage}
+            pageSize={10}
+            loading={campaignsLoading}
+            selectedCampaign={selectedCampaignForModal?.campaign_name || null}
+            onPageChange={setCampaignsPage}
+            onRowClick={handleCampaignRowClick}
+          />
+
+          {/* Campaign Detail Modal */}
+          <CampaignDetailModal
+            isOpen={isModalOpen}
+            onClose={handleModalClose}
+            campaign={selectedCampaignForModal}
+            startDate={dateRange.start}
+            endDate={dateRange.end}
+            clientFilter={selectedClient || undefined}
+            campaignFilter={selectedCampaign || undefined}
+          />
         </>
       )}
     </div>

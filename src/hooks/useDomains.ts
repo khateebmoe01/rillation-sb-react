@@ -44,3 +44,6 @@ export function useDomains({ client, provider }: UseDomainsParams = {}) {
   return { domains, loading, error, refetch: fetchDomains }
 }
 
+
+
+

@@ -180,7 +180,7 @@ export default function ConfigureTargetsModal({
                         </label>
                         <input
                           type="number"
-                          value={data?.emails_per_day ?? ''}
+                          value={data?.emails_per_day || ''}
                           onChange={(e) => handleChange(client, 'emails_per_day', e.target.value)}
                           onFocus={handleFocus}
                           className="w-full px-3 py-2 bg-rillation-card border border-rillation-border rounded-lg text-sm text-rillation-text focus:outline-none focus:border-rillation-purple"
@@ -192,7 +192,7 @@ export default function ConfigureTargetsModal({
                         </label>
                         <input
                           type="number"
-                          value={data?.prospects_per_day ?? ''}
+                          value={data?.prospects_per_day || ''}
                           onChange={(e) => handleChange(client, 'prospects_per_day', e.target.value)}
                           onFocus={handleFocus}
                           className="w-full px-3 py-2 bg-rillation-card border border-rillation-border rounded-lg text-sm text-rillation-text focus:outline-none focus:border-rillation-purple"
@@ -204,7 +204,7 @@ export default function ConfigureTargetsModal({
                         </label>
                         <input
                           type="number"
-                          value={data?.replies_per_day ?? ''}
+                          value={data?.replies_per_day || ''}
                           onChange={(e) => handleChange(client, 'replies_per_day', e.target.value)}
                           onFocus={handleFocus}
                           className="w-full px-3 py-2 bg-rillation-card border border-rillation-border rounded-lg text-sm text-rillation-text focus:outline-none focus:border-rillation-purple"
@@ -216,7 +216,7 @@ export default function ConfigureTargetsModal({
                         </label>
                         <input
                           type="number"
-                          value={data?.meetings_per_day ?? ''}
+                          value={data?.meetings_per_day || ''}
                           onChange={(e) => handleChange(client, 'meetings_per_day', e.target.value)}
                           onFocus={handleFocus}
                           className="w-full px-3 py-2 bg-rillation-card border border-rillation-border rounded-lg text-sm text-rillation-text focus:outline-none focus:border-rillation-purple"

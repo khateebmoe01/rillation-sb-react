@@ -3,6 +3,7 @@ import { MessageSquare, Users, Calendar, Filter, TrendingUp, PieChart } from 'lu
 import DateRangeFilter from '../components/ui/DateRangeFilter'
 import ClientFilter from '../components/ui/ClientFilter'
 import Button from '../components/ui/Button'
+import ReplyDetailModal from '../components/ui/ReplyDetailModal'
 import { useClients } from '../hooks/useClients'
 import { supabase, getDateRange, formatDateForQuery, formatNumber } from '../lib/supabase'
 import type { Reply, MeetingBooked } from '../types/database'
@@ -54,6 +55,30 @@ export default function DeepView() {
   const [clientBreakdown, setClientBreakdown] = useState<any[]>([])
   const [dailyTrend, setDailyTrend] = useState<any[]>([])
   
+  // Summary stats for replies
+  const [summaryStats, setSummaryStats] = useState({
+    totalReplies: 0,
+    interested: 0,
+    notInterested: 0,
+    outOfOffice: 0,
+  })
+  
+  // Pagination state
+  const [repliesPage, setRepliesPage] = useState(1)
+  const [repliesTotalCount, setRepliesTotalCount] = useState(0)
+  const [engagedLeadsPage, setEngagedLeadsPage] = useState(1)
+  const [engagedLeadsTotalCount, setEngagedLeadsTotalCount] = useState(0)
+  const [meetingsPage, setMeetingsPage] = useState(1)
+  const [meetingsTotalCount, setMeetingsTotalCount] = useState(0)
+  
+  // Reply detail modal state
+  const [selectedReply, setSelectedReply] = useState<Reply | null>(null)
+  const [isReplyModalOpen, setIsReplyModalOpen] = useState(false)
+  
+  // Meetings filter state
+  const [selectedMeetingDate, setSelectedMeetingDate] = useState<string | null>(null)
+  const [selectedMeetingClient, setSelectedMeetingClient] = useState<string | null>(null)
+  
   // Fetch data
   const { clients } = useClients()
 
@@ -68,49 +93,114 @@ export default function DeepView() {
         const endStr = formatDateForQuery(dateRange.end)
 
         if (activeAnalysis === 'replies') {
-          // Fetch replies
+          // Fetch replies with count for pagination
+          const PAGE_SIZE = 15
+          const offset = (repliesPage - 1) * PAGE_SIZE
           let query = supabase
             .from('replies')
-            .select('*')
+            .select('*', { count: 'exact' })
             .gte('date_received', startStr)
             .lte('date_received', endStr)
             .order('date_received', { ascending: false })
-            .limit(100)
+            .range(offset, offset + PAGE_SIZE - 1)
 
           if (selectedClient) query = query.eq('client', selectedClient)
           if (selectedCategory) query = query.eq('category', selectedCategory)
 
-          const { data, error: queryError } = await query
+          const { data, count: totalRepliesCount, error: queryError } = await query
           if (queryError) throw queryError
           setReplies(data || [])
+          setRepliesTotalCount(totalRepliesCount || 0)
 
-          // Calculate category breakdown
+          // Fetch accurate counts for each category
+          const totalQuery = supabase
+            .from('replies')
+            .select('*', { count: 'exact', head: true })
+            .gte('date_received', startStr)
+            .lte('date_received', endStr)
+          
+          const interestedQuery = supabase
+            .from('replies')
+            .select('*', { count: 'exact', head: true })
+            .gte('date_received', startStr)
+            .lte('date_received', endStr)
+            .eq('category', 'Interested')
+          
+          const notInterestedQuery = supabase
+            .from('replies')
+            .select('*', { count: 'exact', head: true })
+            .gte('date_received', startStr)
+            .lte('date_received', endStr)
+            .eq('category', 'Not Interested')
+          
+          const oooQuery = supabase
+            .from('replies')
+            .select('*', { count: 'exact', head: true })
+            .gte('date_received', startStr)
+            .lte('date_received', endStr)
+            .or('category.ilike.%out of office%,category.ilike.%ooo%')
+
+          let totalQueryFinal = totalQuery
+          let interestedQueryFinal = interestedQuery
+          let notInterestedQueryFinal = notInterestedQuery
+          let oooQueryFinal = oooQuery
+
+          if (selectedClient) {
+            totalQueryFinal = totalQueryFinal.eq('client', selectedClient)
+            interestedQueryFinal = interestedQueryFinal.eq('client', selectedClient)
+            notInterestedQueryFinal = notInterestedQueryFinal.eq('client', selectedClient)
+            oooQueryFinal = oooQueryFinal.eq('client', selectedClient)
+          }
+
+          const [totalRes, interestedRes, notInterestedRes, oooRes] = await Promise.all([
+            totalQueryFinal,
+            interestedQueryFinal,
+            notInterestedQueryFinal,
+            oooQueryFinal,
+          ])
+
+          // Calculate category breakdown for chart (from all data, not just first page)
           const categories = new Map<string, number>()
-          data?.forEach((r) => {
-            const cat = r.category || 'Unknown'
-            categories.set(cat, (categories.get(cat) || 0) + 1)
-          })
+          categories.set('Total Replies', totalRes.count || 0)
+          categories.set('Interested', interestedRes.count || 0)
+          categories.set('Not Interested', notInterestedRes.count || 0)
+          categories.set('Out of Office', oooRes.count || 0)
+          
           setCategoryBreakdown(
-            Array.from(categories.entries()).map(([name, value]) => ({ name, value }))
+            Array.from(categories.entries())
+              .filter(([name]) => name !== 'Total Replies')
+              .map(([name, value]) => ({ name, value }))
           )
+          
+          // Store summary stats
+          setSummaryStats({
+            totalReplies: totalRes.count || 0,
+            interested: interestedRes.count || 0,
+            notInterested: notInterestedRes.count || 0,
+            outOfOffice: oooRes.count || 0,
+          })
 
         } else if (activeAnalysis === 'engaged_leads') {
-          // Fetch engaged leads
+          // Fetch engaged leads with pagination
+          const PAGE_SIZE = 15
+          const offset = (engagedLeadsPage - 1) * PAGE_SIZE
           let query = supabase
             .from('engaged_leads')
-            .select('*')
+            .select('*', { count: 'exact' })
             .order('created_at', { ascending: false })
-            .limit(100)
+            .range(offset, offset + PAGE_SIZE - 1)
 
           if (selectedClient) query = query.eq('client', selectedClient)
 
-          const { data, error: queryError } = await query
+          const { data, count: totalCount, error: queryError } = await query
           if (queryError) throw queryError
-          setEngagedLeads(data || [])
+          const engagedRows = (data || []) as any[]
+          setEngagedLeads(engagedRows)
+          setEngagedLeadsTotalCount(totalCount || 0)
 
           // Calculate client breakdown
           const clientCounts = new Map<string, number>()
-          data?.forEach((l) => {
+          engagedRows.forEach((l) => {
             const client = l.client || 'Unknown'
             clientCounts.set(client, (clientCounts.get(client) || 0) + 1)
           })
@@ -119,38 +209,73 @@ export default function DeepView() {
           )
 
         } else if (activeAnalysis === 'meetings') {
-          // Fetch meetings
+          // Fetch meetings with pagination
+          const PAGE_SIZE = 15
+          const offset = (meetingsPage - 1) * PAGE_SIZE
           let query = supabase
+            .from('meetings_booked')
+            .select('*', { count: 'exact' })
+            .gte('created_time', startStr)
+            .lte('created_time', endStr)
+            .order('created_time', { ascending: false })
+            .range(offset, offset + PAGE_SIZE - 1)
+
+          if (selectedClient) query = query.eq('client', selectedClient)
+          
+          // Apply chart filter if selected
+          if (selectedMeetingDate) {
+            const dateStr = selectedMeetingDate.split('T')[0]
+            query = query.gte('created_time', `${dateStr}T00:00:00`)
+            query = query.lte('created_time', `${dateStr}T23:59:59`)
+          }
+          if (selectedMeetingClient) {
+            query = query.eq('client', selectedMeetingClient)
+          }
+
+          const { data, count: totalCount, error: queryError } = await query
+          if (queryError) throw queryError
+          setMeetings(data || [])
+          setMeetingsTotalCount(totalCount || 0)
+
+          // Fetch all meetings for charts (not filtered by pagination or chart filters)
+          let allMeetingsQuery = supabase
             .from('meetings_booked')
             .select('*')
             .gte('created_time', startStr)
             .lte('created_time', endStr)
-            .order('created_time', { ascending: false })
 
-          if (selectedClient) query = query.eq('client', selectedClient)
+          if (selectedClient) allMeetingsQuery = allMeetingsQuery.eq('client', selectedClient)
 
-          const { data, error: queryError } = await query
-          if (queryError) throw queryError
-          setMeetings(data || [])
+          const { data: allMeetingsData } = await allMeetingsQuery
+          const allMeetingsRows = (allMeetingsData || []) as any[]
 
-          // Calculate daily trend
+          // Calculate daily trend from all meetings
           const dailyCounts = new Map<string, number>()
-          data?.forEach((m) => {
+          allMeetingsRows.forEach((m) => {
             const date = m.created_time?.split('T')[0] || ''
             dailyCounts.set(date, (dailyCounts.get(date) || 0) + 1)
           })
+          
+          // Helper to format date string to display without timezone issues
+          const formatDateDisplay = (dateStr: string) => {
+            const [year, month, day] = dateStr.split('-').map(Number)
+            const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+            return `${monthNames[month - 1]} ${day}`
+          }
+          
           setDailyTrend(
             Array.from(dailyCounts.entries())
               .sort((a, b) => a[0].localeCompare(b[0]))
               .map(([date, count]) => ({
-                date: new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+                date: formatDateDisplay(date),
+                dateKey: date, // Store original date for filtering
                 meetings: count,
               }))
           )
 
-          // Calculate client breakdown for meetings
+          // Calculate client breakdown for meetings from all meetings
           const meetingsByClient = new Map<string, number>()
-          data?.forEach((m) => {
+          allMeetingsRows.forEach((m) => {
             const client = m.client || 'Unknown'
             meetingsByClient.set(client, (meetingsByClient.get(client) || 0) + 1)
           })
@@ -166,12 +291,18 @@ export default function DeepView() {
     }
 
     fetchData()
-  }, [activeAnalysis, dateRange, selectedClient, selectedCategory])
+  }, [activeAnalysis, dateRange, selectedClient, selectedCategory, repliesPage, engagedLeadsPage, meetingsPage, selectedMeetingDate, selectedMeetingClient])
 
   // Handle date preset change
   const handlePresetChange = (preset: string) => {
     setDatePreset(preset)
     setDateRange(getDateRange(preset))
+    // Reset pagination when filters change
+    setRepliesPage(1)
+    setEngagedLeadsPage(1)
+    setMeetingsPage(1)
+    setSelectedMeetingDate(null)
+    setSelectedMeetingClient(null)
   }
 
   // Category colors
@@ -222,7 +353,15 @@ export default function DeepView() {
             <ClientFilter
               clients={clients}
               selectedClient={selectedClient}
-              onChange={setSelectedClient}
+              onChange={(client) => {
+                setSelectedClient(client)
+                // Reset pagination when client filter changes
+                setRepliesPage(1)
+                setEngagedLeadsPage(1)
+                setMeetingsPage(1)
+                setSelectedMeetingDate(null)
+                setSelectedMeetingClient(null)
+              }}
             />
             {activeAnalysis === 'replies' && (
               <div className="flex items-center gap-2">
@@ -304,24 +443,24 @@ export default function DeepView() {
                 <h3 className="text-lg font-semibold text-rillation-text mb-4">Summary Stats</h3>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="bg-rillation-bg rounded-lg p-4">
-                    <p className="text-2xl font-bold text-rillation-text">{replies.length}</p>
+                    <p className="text-2xl font-bold text-rillation-text">{summaryStats.totalReplies}</p>
                     <p className="text-xs text-rillation-text-muted">Total Replies</p>
                   </div>
                   <div className="bg-rillation-bg rounded-lg p-4">
                     <p className="text-2xl font-bold text-rillation-green">
-                      {replies.filter((r) => r.category === 'Interested').length}
+                      {summaryStats.interested}
                     </p>
                     <p className="text-xs text-rillation-text-muted">Interested</p>
                   </div>
                   <div className="bg-rillation-bg rounded-lg p-4">
                     <p className="text-2xl font-bold text-rillation-red">
-                      {replies.filter((r) => r.category === 'Not Interested').length}
+                      {summaryStats.notInterested}
                     </p>
                     <p className="text-xs text-rillation-text-muted">Not Interested</p>
                   </div>
                   <div className="bg-rillation-bg rounded-lg p-4">
                     <p className="text-2xl font-bold text-rillation-orange">
-                      {replies.filter((r) => r.category === 'Out of Office').length}
+                      {summaryStats.outOfOffice}
                     </p>
                     <p className="text-xs text-rillation-text-muted">Out of Office</p>
                   </div>
@@ -338,14 +477,18 @@ export default function DeepView() {
                 Recent Replies
               </h3>
               <span className="text-sm text-rillation-text-muted">
-                Showing {replies.length} replies
+                Showing {((repliesPage - 1) * 15) + 1} - {Math.min(repliesPage * 15, repliesTotalCount)} of {repliesTotalCount} replies
               </span>
             </div>
-            <div className="divide-y divide-rillation-border/30 max-h-[400px] overflow-auto">
+            <div className="divide-y divide-rillation-border/30">
               {replies.map((reply) => (
                 <div
                   key={reply.reply_id}
-                  className="p-4 hover:bg-rillation-card-hover transition-colors"
+                  className="p-4 hover:bg-rillation-card-hover transition-colors cursor-pointer"
+                  onClick={() => {
+                    setSelectedReply(reply)
+                    setIsReplyModalOpen(true)
+                  }}
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1 min-w-0">
@@ -375,6 +518,28 @@ export default function DeepView() {
                 </div>
               ))}
             </div>
+            {/* Pagination */}
+            {repliesTotalCount > 15 && (
+              <div className="p-4 border-t border-rillation-border flex items-center justify-between">
+                <button
+                  onClick={() => setRepliesPage((p) => Math.max(1, p - 1))}
+                  disabled={repliesPage === 1}
+                  className="px-4 py-2 bg-rillation-card-hover border border-rillation-border rounded-lg text-sm text-rillation-text disabled:opacity-50 disabled:cursor-not-allowed hover:bg-rillation-bg transition-colors"
+                >
+                  Previous
+                </button>
+                <span className="text-sm text-rillation-text-muted">
+                  Page {repliesPage} of {Math.ceil(repliesTotalCount / 15)}
+                </span>
+                <button
+                  onClick={() => setRepliesPage((p) => Math.min(Math.ceil(repliesTotalCount / 15), p + 1))}
+                  disabled={repliesPage >= Math.ceil(repliesTotalCount / 15)}
+                  className="px-4 py-2 bg-rillation-card-hover border border-rillation-border rounded-lg text-sm text-rillation-text disabled:opacity-50 disabled:cursor-not-allowed hover:bg-rillation-bg transition-colors"
+                >
+                  Next
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -385,7 +550,7 @@ export default function DeepView() {
           {/* Summary Cards */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="bg-rillation-card rounded-xl p-6 border border-rillation-border">
-              <p className="text-3xl font-bold text-rillation-text">{formatNumber(engagedLeads.length)}</p>
+              <p className="text-3xl font-bold text-rillation-text">{formatNumber(engagedLeadsTotalCount)}</p>
               <p className="text-sm text-rillation-text-muted mt-1">Total Engaged Leads</p>
             </div>
             <div className="bg-rillation-card rounded-xl p-6 border border-rillation-border">
@@ -394,7 +559,7 @@ export default function DeepView() {
             </div>
             <div className="bg-rillation-card rounded-xl p-6 border border-rillation-border">
               <p className="text-3xl font-bold text-rillation-cyan">
-                {engagedLeads.length > 0 ? Math.round(engagedLeads.length / clientBreakdown.length) : 0}
+                {engagedLeadsTotalCount > 0 && clientBreakdown.length > 0 ? Math.round(engagedLeadsTotalCount / clientBreakdown.length) : 0}
               </p>
               <p className="text-sm text-rillation-text-muted mt-1">Avg per Client</p>
             </div>
@@ -433,8 +598,11 @@ export default function DeepView() {
 
           {/* Leads Table */}
           <div className="bg-rillation-card rounded-xl border border-rillation-border overflow-hidden">
-            <div className="p-4 border-b border-rillation-border">
+            <div className="p-4 border-b border-rillation-border flex items-center justify-between">
               <h3 className="text-lg font-semibold text-rillation-text">Engaged Leads</h3>
+              <span className="text-sm text-rillation-text-muted">
+                Showing {((engagedLeadsPage - 1) * 15) + 1} - {Math.min(engagedLeadsPage * 15, engagedLeadsTotalCount)} of {engagedLeadsTotalCount} leads
+              </span>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full">
@@ -447,23 +615,49 @@ export default function DeepView() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-rillation-border/30">
-                  {engagedLeads.slice(0, 20).map((lead, index) => (
-                    <tr key={index} className="hover:bg-rillation-card-hover">
+                  {engagedLeads.map((lead, index) => (
+                    <tr key={lead.id || index} className="hover:bg-rillation-card-hover">
                       <td className="px-4 py-3 text-sm text-rillation-text">{lead.email || '-'}</td>
                       <td className="px-4 py-3 text-sm text-rillation-text">{lead.client || '-'}</td>
                       <td className="px-4 py-3 text-sm">
                         <span className="px-2 py-1 bg-rillation-purple/20 text-rillation-purple rounded text-xs">
-                          {lead.status || 'Engaged'}
+                          {lead.status || lead.current_stage || 'Engaged'}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-sm text-rillation-text-muted">
-                        {lead.created_at ? new Date(lead.created_at).toLocaleDateString() : '-'}
+                        {lead.date_created 
+                          ? new Date(lead.date_created).toLocaleDateString() 
+                          : lead.created_at 
+                            ? new Date(lead.created_at).toLocaleDateString() 
+                            : '-'}
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
+            {/* Pagination */}
+            {engagedLeadsTotalCount > 15 && (
+              <div className="p-4 border-t border-rillation-border flex items-center justify-between">
+                <button
+                  onClick={() => setEngagedLeadsPage((p) => Math.max(1, p - 1))}
+                  disabled={engagedLeadsPage === 1}
+                  className="px-4 py-2 bg-rillation-card-hover border border-rillation-border rounded-lg text-sm text-rillation-text disabled:opacity-50 disabled:cursor-not-allowed hover:bg-rillation-bg transition-colors"
+                >
+                  Previous
+                </button>
+                <span className="text-sm text-rillation-text-muted">
+                  Page {engagedLeadsPage} of {Math.ceil(engagedLeadsTotalCount / 15)}
+                </span>
+                <button
+                  onClick={() => setEngagedLeadsPage((p) => Math.min(Math.ceil(engagedLeadsTotalCount / 15), p + 1))}
+                  disabled={engagedLeadsPage >= Math.ceil(engagedLeadsTotalCount / 15)}
+                  className="px-4 py-2 bg-rillation-card-hover border border-rillation-border rounded-lg text-sm text-rillation-text disabled:opacity-50 disabled:cursor-not-allowed hover:bg-rillation-bg transition-colors"
+                >
+                  Next
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -474,7 +668,7 @@ export default function DeepView() {
           {/* Summary Cards */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="bg-rillation-card rounded-xl p-6 border border-rillation-border">
-              <p className="text-3xl font-bold text-rillation-text">{formatNumber(meetings.length)}</p>
+              <p className="text-3xl font-bold text-rillation-text">{formatNumber(meetingsTotalCount)}</p>
               <p className="text-sm text-rillation-text-muted mt-1">Total Meetings</p>
             </div>
             <div className="bg-rillation-card rounded-xl p-6 border border-rillation-border">
@@ -502,10 +696,23 @@ export default function DeepView() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Daily Trend */}
             <div className="bg-rillation-card rounded-xl p-6 border border-rillation-border">
-              <h3 className="text-lg font-semibold text-rillation-text mb-4 flex items-center gap-2">
-                <TrendingUp size={20} className="text-rillation-purple" />
-                Daily Trend
-              </h3>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-rillation-text flex items-center gap-2">
+                  <TrendingUp size={20} className="text-rillation-purple" />
+                  Daily Trend
+                </h3>
+                {selectedMeetingDate && (
+                  <button
+                    onClick={() => {
+                      setSelectedMeetingDate(null)
+                      setMeetingsPage(1)
+                    }}
+                    className="text-xs text-rillation-purple hover:text-rillation-magenta"
+                  >
+                    Clear Date Filter
+                  </button>
+                )}
+              </div>
               <ResponsiveContainer width="100%" height={250}>
                 <BarChart data={dailyTrend}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#2a2a3a" />
@@ -518,17 +725,48 @@ export default function DeepView() {
                       borderRadius: '8px',
                     }}
                   />
-                  <Bar dataKey="meetings" fill="#d946ef" radius={[4, 4, 0, 0]} />
+                  <Bar 
+                    dataKey="meetings" 
+                    fill="#d946ef" 
+                    radius={[4, 4, 0, 0]}
+                    onClick={(data: any) => {
+                      if (data && data.activePayload && data.activePayload[0]) {
+                        const dateKey = data.activePayload[0].payload.dateKey
+                        setSelectedMeetingDate(dateKey)
+                        setSelectedMeetingClient(null) // Clear client filter when date is selected
+                        setMeetingsPage(1)
+                      }
+                    }}
+                    style={{ cursor: 'pointer' }}
+                  />
                 </BarChart>
               </ResponsiveContainer>
+              {selectedMeetingDate && (
+                <p className="text-xs text-rillation-text-muted mt-2">
+                  Filtered by: {new Date(selectedMeetingDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                </p>
+              )}
             </div>
 
             {/* By Client */}
             <div className="bg-rillation-card rounded-xl p-6 border border-rillation-border">
-              <h3 className="text-lg font-semibold text-rillation-text mb-4 flex items-center gap-2">
-                <PieChart size={20} className="text-rillation-purple" />
-                By Client
-              </h3>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-rillation-text flex items-center gap-2">
+                  <PieChart size={20} className="text-rillation-purple" />
+                  By Client
+                </h3>
+                {selectedMeetingClient && (
+                  <button
+                    onClick={() => {
+                      setSelectedMeetingClient(null)
+                      setMeetingsPage(1)
+                    }}
+                    className="text-xs text-rillation-purple hover:text-rillation-magenta"
+                  >
+                    Clear Client Filter
+                  </button>
+                )}
+              </div>
               <ResponsiveContainer width="100%" height={250}>
                 <RechartsPieChart>
                   <Pie
@@ -538,22 +776,42 @@ export default function DeepView() {
                     innerRadius={50}
                     outerRadius={90}
                     dataKey="value"
+                    onClick={(data: any) => {
+                      if (data && data.name) {
+                        setSelectedMeetingClient(data.name)
+                        setSelectedMeetingDate(null) // Clear date filter when client is selected
+                        setMeetingsPage(1)
+                      }
+                    }}
+                    style={{ cursor: 'pointer' }}
                   >
-                    {clientBreakdown.map((_, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    {clientBreakdown.map((item, index) => (
+                      <Cell 
+                        key={`cell-${index}`} 
+                        fill={selectedMeetingClient === item.name ? '#d946ef' : COLORS[index % COLORS.length]}
+                        opacity={selectedMeetingClient && selectedMeetingClient !== item.name ? 0.3 : 1}
+                      />
                     ))}
                   </Pie>
                   <Tooltip />
                   <Legend />
                 </RechartsPieChart>
               </ResponsiveContainer>
+              {selectedMeetingClient && (
+                <p className="text-xs text-rillation-text-muted mt-2">
+                  Filtered by: {selectedMeetingClient}
+                </p>
+              )}
             </div>
           </div>
 
           {/* Meetings Table */}
           <div className="bg-rillation-card rounded-xl border border-rillation-border overflow-hidden">
-            <div className="p-4 border-b border-rillation-border">
+            <div className="p-4 border-b border-rillation-border flex items-center justify-between">
               <h3 className="text-lg font-semibold text-rillation-text">Recent Meetings</h3>
+              <span className="text-sm text-rillation-text-muted">
+                Showing {((meetingsPage - 1) * 15) + 1} - {Math.min(meetingsPage * 15, meetingsTotalCount)} of {meetingsTotalCount} meetings
+              </span>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full">
@@ -567,8 +825,8 @@ export default function DeepView() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-rillation-border/30">
-                  {meetings.slice(0, 20).map((meeting, index) => (
-                    <tr key={index} className="hover:bg-rillation-card-hover">
+                  {meetings.map((meeting, index) => (
+                    <tr key={meeting.id || index} className="hover:bg-rillation-card-hover">
                       <td className="px-4 py-3 text-sm text-rillation-text">{meeting.full_name || '-'}</td>
                       <td className="px-4 py-3 text-sm text-rillation-text">{meeting.company || '-'}</td>
                       <td className="px-4 py-3 text-sm text-rillation-text">{meeting.email || '-'}</td>
@@ -588,6 +846,28 @@ export default function DeepView() {
                 </tbody>
               </table>
             </div>
+            {/* Pagination */}
+            {meetingsTotalCount > 15 && (
+              <div className="p-4 border-t border-rillation-border flex items-center justify-between">
+                <button
+                  onClick={() => setMeetingsPage((p) => Math.max(1, p - 1))}
+                  disabled={meetingsPage === 1}
+                  className="px-4 py-2 bg-rillation-card-hover border border-rillation-border rounded-lg text-sm text-rillation-text disabled:opacity-50 disabled:cursor-not-allowed hover:bg-rillation-bg transition-colors"
+                >
+                  Previous
+                </button>
+                <span className="text-sm text-rillation-text-muted">
+                  Page {meetingsPage} of {Math.ceil(meetingsTotalCount / 15)}
+                </span>
+                <button
+                  onClick={() => setMeetingsPage((p) => Math.min(Math.ceil(meetingsTotalCount / 15), p + 1))}
+                  disabled={meetingsPage >= Math.ceil(meetingsTotalCount / 15)}
+                  className="px-4 py-2 bg-rillation-card-hover border border-rillation-border rounded-lg text-sm text-rillation-text disabled:opacity-50 disabled:cursor-not-allowed hover:bg-rillation-bg transition-colors"
+                >
+                  Next
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -601,6 +881,16 @@ export default function DeepView() {
           No data found for the selected filters.
         </div>
       )}
+
+      {/* Reply Detail Modal */}
+      <ReplyDetailModal
+        isOpen={isReplyModalOpen}
+        onClose={() => {
+          setIsReplyModalOpen(false)
+          setSelectedReply(null)
+        }}
+        reply={selectedReply}
+      />
     </div>
   )
 }

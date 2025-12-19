@@ -8,6 +8,7 @@ interface LeadsModalProps {
   stageName: string
   startDate: Date
   endDate: Date
+  client?: string // Optional client filter
 }
 
 interface Lead {
@@ -32,6 +33,7 @@ export default function LeadsModal({
   stageName,
   startDate,
   endDate,
+  client,
 }: LeadsModalProps) {
   const [leads, setLeads] = useState<Lead[]>([])
   const [totalCount, setTotalCount] = useState(0)
@@ -58,6 +60,9 @@ export default function LeadsModal({
             .lte('date_received', endStr)
             .order('date_received', { ascending: false })
             .range(offset, offset + PAGE_SIZE - 1)
+
+          // Filter by client if provided
+          if (client) query = query.eq('client', client)
 
           // For Real Replies, exclude Out Of Office
           if (stageName === 'Real Replies') {
@@ -104,13 +109,18 @@ export default function LeadsModal({
         
         if (!booleanColumn) {
           // For stages before "Meetings Booked", use meetings_booked
-          const { data, count, error } = await supabase
+          let query = supabase
             .from('meetings_booked')
             .select('*', { count: 'exact' })
             .gte('created_time', startStr)
             .lte('created_time', endStr)
             .order('created_time', { ascending: false })
             .range(offset, offset + PAGE_SIZE - 1)
+          
+          // Filter by client if provided
+          if (client) query = query.eq('client', client)
+          
+          const { data, count, error } = await query
 
           if (error) throw error
 
@@ -130,6 +140,9 @@ export default function LeadsModal({
             .eq(booleanColumn, true)
             .order('created_at', { ascending: false })
             .range(offset, offset + PAGE_SIZE - 1)
+          
+          // Filter by client if provided
+          if (client) query = query.eq('client', client)
 
           const { data, count, error } = await query
 

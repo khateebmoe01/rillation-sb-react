@@ -6,12 +6,14 @@ interface FunnelChartProps {
   stages: FunnelStage[]
   onStageClick?: (stageName: string, stageIndex: number) => void
   clickableFromIndex?: number
+  selectedStageName?: string | null
 }
 
 export default function FunnelChart({ 
   stages, 
   onStageClick,
-  clickableFromIndex = 4
+  clickableFromIndex = 4,
+  selectedStageName
 }: FunnelChartProps) {
   const [hoveredStage, setHoveredStage] = useState<number | null>(null)
   
@@ -47,6 +49,7 @@ export default function FunnelChart({
           const isAfterHandoff = salesHandoffIndex > 0 && index >= salesHandoffIndex
           const isClickable = onStageClick && index >= clickableFromIndex
           const isHovered = hoveredStage === index
+          const isSelected = selectedStageName === stage.name
           
           return (
             <div 
@@ -69,15 +72,16 @@ export default function FunnelChart({
               {/* Funnel Bar - Trapezoid shape */}
               <div className="relative w-full flex items-center">
                 <div 
-                  className={`
-                    relative h-16 flex items-center justify-center transition-all duration-300
-                    ${isAfterHandoff 
-                      ? 'bg-gradient-to-r from-green-600 to-green-500' 
-                      : 'bg-gradient-to-r from-rillation-purple-dark to-rillation-purple'
-                    }
-                    ${isClickable ? 'cursor-pointer' : ''}
-                    ${isHovered ? 'brightness-110 scale-[1.02]' : ''}
-                  `}
+                className={`
+                  relative h-16 flex items-center justify-center transition-all duration-300
+                  ${isAfterHandoff 
+                    ? 'bg-gradient-to-r from-green-600 to-green-500' 
+                    : 'bg-gradient-to-r from-rillation-purple-dark to-rillation-purple'
+                  }
+                  ${isClickable ? 'cursor-pointer' : ''}
+                  ${isHovered ? 'brightness-110 scale-[1.02]' : ''}
+                  ${isSelected ? 'ring-2 ring-rillation-magenta ring-offset-2 ring-offset-rillation-bg' : ''}
+                `}
                   style={{ 
                     width: `${widthPercent}%`,
                     marginLeft: `${(100 - widthPercent) / 2}%`,

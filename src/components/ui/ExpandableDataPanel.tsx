@@ -41,13 +41,24 @@ export default function ExpandableDataPanel({
     if (value === null || value === undefined) return '-'
     
     switch (format) {
-      case 'date':
-        return new Date(value).toLocaleDateString('en-US', {
-          month: 'short',
-          day: 'numeric',
-          year: 'numeric',
-        })
-      case 'datetime':
+      case 'date': {
+        // Parse date string without timezone conversion
+        const dateStr = typeof value === 'string' ? value.split('T')[0] : value
+        const [year, month, day] = dateStr.split('-').map(Number)
+        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+        return `${monthNames[month - 1]} ${day}, ${year}`
+      }
+      case 'datetime': {
+        // For datetime, create Date in local timezone
+        const dateStr = typeof value === 'string' ? value : value.toString()
+        if (dateStr.includes('T')) {
+          const [datePart, timePart] = dateStr.split('T')
+          const [year, month, day] = datePart.split('-').map(Number)
+          const date = new Date(year, month - 1, day)
+          const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+          const time = timePart.split('.')[0] // Remove milliseconds
+          return `${monthNames[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}, ${time}`
+        }
         return new Date(value).toLocaleString('en-US', {
           month: 'short',
           day: 'numeric',
@@ -55,6 +66,7 @@ export default function ExpandableDataPanel({
           hour: '2-digit',
           minute: '2-digit',
         })
+      }
       case 'number':
         return formatNumber(value)
       default:
@@ -63,7 +75,7 @@ export default function ExpandableDataPanel({
   }
 
   return (
-    <div className="bg-rillation-card rounded-xl border border-rillation-border mt-4 overflow-hidden fade-in">
+    <div className="bg-rillation-card rounded-xl border border-rillation-border overflow-hidden fade-in">
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-rillation-border">
         <div className="flex items-center gap-3">

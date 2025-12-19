@@ -257,7 +257,7 @@ export default function ClientDetailModal({
                     </label>
                     <input
                       type="number"
-                      value={emailsPerDay}
+                      value={emailsPerDay || ''}
                       onChange={(e) => setEmailsPerDay(parseInt(e.target.value) || 0)}
                       onFocus={handleFocus}
                       className="w-full px-3 py-2 bg-rillation-bg border border-rillation-border rounded-lg text-sm text-rillation-text focus:outline-none focus:border-rillation-purple"
@@ -269,7 +269,7 @@ export default function ClientDetailModal({
                     </label>
                     <input
                       type="number"
-                      value={prospectsPerDay}
+                      value={prospectsPerDay || ''}
                       onChange={(e) => setProspectsPerDay(parseInt(e.target.value) || 0)}
                       onFocus={handleFocus}
                       className="w-full px-3 py-2 bg-rillation-bg border border-rillation-border rounded-lg text-sm text-rillation-text focus:outline-none focus:border-rillation-purple"
@@ -281,7 +281,7 @@ export default function ClientDetailModal({
                     </label>
                     <input
                       type="number"
-                      value={repliesPerDay}
+                      value={repliesPerDay || ''}
                       onChange={(e) => setRepliesPerDay(parseInt(e.target.value) || 0)}
                       onFocus={handleFocus}
                       className="w-full px-3 py-2 bg-rillation-bg border border-rillation-border rounded-lg text-sm text-rillation-text focus:outline-none focus:border-rillation-purple"
@@ -293,7 +293,7 @@ export default function ClientDetailModal({
                     </label>
                     <input
                       type="number"
-                      value={meetingsPerDay}
+                      value={meetingsPerDay || ''}
                       onChange={(e) => setMeetingsPerDay(parseInt(e.target.value) || 0)}
                       onFocus={handleFocus}
                       className="w-full px-3 py-2 bg-rillation-bg border border-rillation-border rounded-lg text-sm text-rillation-text focus:outline-none focus:border-rillation-purple"

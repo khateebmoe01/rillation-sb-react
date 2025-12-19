@@ -79,7 +79,10 @@ export function getDateRange(preset: string): { start: Date; end: Date } {
 }
 
 export function formatDateForQuery(date: Date): string {
-  return date.toISOString().split('T')[0]
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
 }
 
 export function formatDateForDisplay(date: Date): string {
@@ -88,5 +91,30 @@ export function formatDateForDisplay(date: Date): string {
     day: '2-digit',
     year: 'numeric'
   })
+}
+
+// Normalize provider names for display
+export function normalizeProviderName(provider: string | null | undefined): string {
+  if (!provider) return '-'
+  
+  const normalized = provider.toLowerCase().trim()
+  
+  // Google variants
+  if (normalized.includes('google') || normalized === 'google_workplace_auth' || normalized === 'google_workspace' || normalized === 'gmail') {
+    return 'Google'
+  }
+  
+  // Microsoft/Outlook variants
+  if (normalized === 'microsoft' || normalized.includes('outlook') || normalized === 'microsoft_oauth') {
+    return 'Outlook'
+  }
+  
+  // Custom/SMTP variants
+  if (normalized === 'custom' || normalized === 'smtp' || normalized === 'custom_smtp') {
+    return 'SMTP'
+  }
+  
+  // Return original with first letter capitalized if no match
+  return provider.charAt(0).toUpperCase() + provider.slice(1).replace(/_/g, ' ')
 }
 
