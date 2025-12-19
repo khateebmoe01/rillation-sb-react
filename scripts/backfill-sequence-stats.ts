@@ -263,9 +263,33 @@ async function backfillSequenceStats() {
   // Cache sequence steps by campaign_id (they don't change per date)
   const sequenceStepsCache = new Map<string, any[]>()
 
+  // Track start time for progress updates
+  const startTime = Date.now()
+  const progressUpdateInterval = 100 // Show summary every 100 rows
+
   // Process in batches to show progress
   const batchSize = 50
   const totalBatches = Math.ceil(rows.length / batchSize)
+
+  // Helper function to show progress summary
+  const showProgressSummary = () => {
+    const elapsed = ((Date.now() - startTime) / 1000).toFixed(0)
+    const rate = processed > 0 ? (processed / (Date.now() - startTime) * 1000 * 60).toFixed(1) : '0'
+    const remaining = processed > 0 ? Math.ceil((rows.length - processed) / (processed / ((Date.now() - startTime) / 1000))) : 0
+    const remainingMinutes = Math.floor(remaining / 60)
+    const remainingSeconds = remaining % 60
+    
+    console.log('\n' + '='.repeat(70))
+    console.log(`PROGRESS UPDATE - ${new Date().toLocaleTimeString()}`)
+    console.log('='.repeat(70))
+    console.log(`Processed: ${processed}/${rows.length} (${((processed / rows.length) * 100).toFixed(1)}%)`)
+    console.log(`Updated: ${updated} | Skipped: ${skipped} | Errors: ${errors}`)
+    console.log(`Elapsed: ${elapsed}s | Rate: ~${rate} rows/min`)
+    if (remaining > 0) {
+      console.log(`Estimated remaining: ~${remainingMinutes}m ${remainingSeconds}s`)
+    }
+    console.log('='.repeat(70) + '\n')
+  }
 
   for (let batchIndex = 0; batchIndex < totalBatches; batchIndex++) {
     const batchStart = batchIndex * batchSize
@@ -358,6 +382,16 @@ async function backfillSequenceStats() {
         // Add delay even on error
         await new Promise(resolve => setTimeout(resolve, 300))
       }
+
+      // Show periodic progress summary
+      if (processed % progressUpdateInterval === 0) {
+        showProgressSummary()
+      }
+    }
+
+    // Show summary after each batch
+    if ((batchIndex + 1) % 2 === 0 || batchIndex === totalBatches - 1) {
+      showProgressSummary()
     }
 
     // Add delay between batches
