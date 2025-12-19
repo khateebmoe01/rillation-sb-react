@@ -70,23 +70,37 @@ export function usePerformanceData({ startDate, endDate, campaign }: UsePerforma
 
       if (targetsError) throw targetsError
 
+      type ClientRow = { Business: string | null }
+      type CampaignRow = {
+        client: string | null
+        emails_sent: number | null
+        total_leads_contacted: number | null
+      }
+      type ReplyRow = {
+        client: string | null
+        category: string | null
+      }
+      type MeetingRow = {
+        client: string | null
+      }
+
       // Create targets map
       const targetsMap = new Map<string, ClientTarget>()
-      targetsData?.forEach((target) => {
+      ;(targetsData as ClientTarget[] | null)?.forEach((target) => {
         targetsMap.set(target.client, target)
       })
 
       // Aggregate data by client
-      const clientNames = clientsData?.map((c) => c.Business).filter(Boolean) || []
+      const clientNames = (clientsData as ClientRow[] | null)?.map((c) => c.Business).filter((name): name is string => Boolean(name)) || []
       
-      const aggregatedData: ClientBubbleData[] = clientNames.map((clientName) => {
+      const aggregatedData = clientNames.map((clientName) => {
         // Campaign metrics for this client
-        const clientCampaigns = campaignData?.filter((c) => c.client === clientName) || []
+        const clientCampaigns = (campaignData as CampaignRow[] | null)?.filter((c) => c.client === clientName) || []
         const emailsSent = clientCampaigns.reduce((sum, row) => sum + (row.emails_sent || 0), 0)
         const uniqueProspects = clientCampaigns.reduce((sum, row) => sum + (row.total_leads_contacted || 0), 0)
         
         // Replies for this client (excluding Out Of Office - case insensitive)
-        const clientReplies = repliesData?.filter((r) => {
+        const clientReplies = (repliesData as (ReplyRow & { client: string | null })[] | null)?.filter((r) => {
           if (r.client !== clientName) return false
           const cat = (r.category || '').toLowerCase()
           return !cat.includes('out of office') && !cat.includes('ooo')
@@ -94,7 +108,7 @@ export function usePerformanceData({ startDate, endDate, campaign }: UsePerforma
         const realReplies = clientReplies.length
         
         // Meetings for this client
-        const clientMeetings = meetingsData?.filter((m) => m.client === clientName) || []
+        const clientMeetings = (meetingsData as MeetingRow[] | null)?.filter((m) => m.client === clientName) || []
         const meetings = clientMeetings.length
         
         // Get targets (multiply daily targets by number of days)
@@ -117,7 +131,7 @@ export function usePerformanceData({ startDate, endDate, campaign }: UsePerforma
         }
       })
 
-      setClientData(aggregatedData)
+      setClientData(aggregatedData as ClientBubbleData[])
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch data')
     } finally {

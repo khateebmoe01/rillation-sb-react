@@ -2,8 +2,6 @@
 
 import { supabase } from './supabase'
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL
-
 export async function syncDomainsPorkbun() {
   const { data, error } = await supabase.functions.invoke('sync-domains-porkbun')
   if (error) throw error

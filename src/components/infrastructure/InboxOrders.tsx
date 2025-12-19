@@ -13,7 +13,7 @@ const MIN_QUANTITY = 100
 export default function InboxOrders() {
   const { clients } = useClients()
   const { domains } = useDomains()
-  const { orders, loading, error, refetch } = useInboxOrders()
+  const { orders, loading, refetch } = useInboxOrders()
 
   const [provider, setProvider] = useState('')
   const [quantity, setQuantity] = useState('')

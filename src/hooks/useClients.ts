@@ -17,7 +17,9 @@ export function useClients() {
 
         if (error) throw error
 
-        const clientNames = data?.map((c) => c.Business).filter(Boolean) || []
+        type ClientRow = { Business: string | null }
+
+        const clientNames = (data as ClientRow[] | null)?.map((c) => c.Business).filter((name): name is string => Boolean(name)) || []
         setClients(clientNames)
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to fetch clients')

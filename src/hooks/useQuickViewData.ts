@@ -37,6 +37,14 @@ export function useQuickViewData({ startDate, endDate, client, campaign }: UseQu
 
       if (campaignError) throw campaignError
 
+      type CampaignRow = { 
+        date: string
+        emails_sent: number | null
+        total_leads_contacted: number | null
+        bounced: number | null
+        interested: number | null
+      }
+
       // Fetch ALL replies data from replies table with count
       let allRepliesQuery = supabase
         .from('replies')
@@ -64,22 +72,27 @@ export function useQuickViewData({ startDate, endDate, client, campaign }: UseQu
       if (meetingsError) throw meetingsError
 
       // Calculate metrics
-      const totalEmailsSent = campaignData?.reduce((sum, row) => sum + (row.emails_sent || 0), 0) || 0
-      const uniqueProspects = campaignData?.reduce((sum, row) => sum + (row.total_leads_contacted || 0), 0) || 0
-      const bounces = campaignData?.reduce((sum, row) => sum + (row.bounced || 0), 0) || 0
+      const totalEmailsSent = (campaignData as CampaignRow[] | null)?.reduce((sum, row) => sum + (row.emails_sent || 0), 0) || 0
+      const uniqueProspects = (campaignData as CampaignRow[] | null)?.reduce((sum, row) => sum + (row.total_leads_contacted || 0), 0) || 0
+      const bounces = (campaignData as CampaignRow[] | null)?.reduce((sum, row) => sum + (row.bounced || 0), 0) || 0
 
       // Total replies = use count from query response (not length which caps at 1000)
       const totalReplies = totalRepliesCount || 0
 
+      type ReplyRow = {
+        category: string | null
+        date_received: string | null
+      }
+
       // Real replies = all replies EXCLUDING "Out Of Office" (capital O, Of, O)
       // Check for various possible formats
-      const realReplies = allRepliesData?.filter((r) => {
+      const realReplies = (allRepliesData as ReplyRow[] | null)?.filter((r) => {
         const cat = (r.category || '').toLowerCase()
         return !cat.includes('out of office') && !cat.includes('ooo') && cat !== 'out of office'
       }).length || 0
       
       // Positive replies = aggregated from campaign_reporting.interested (source of truth)
-      const positiveReplies = campaignData?.reduce((sum, row) => sum + (row.interested || 0), 0) || 0
+      const positiveReplies = (campaignData as CampaignRow[] | null)?.reduce((sum, row) => sum + (row.interested || 0), 0) || 0
 
       const meetingsBooked = meetingsData?.length || 0
 
@@ -98,12 +111,12 @@ export function useQuickViewData({ startDate, endDate, client, campaign }: UseQu
 
       // Helper to format date string to display without timezone issues
       const formatDateDisplay = (dateStr: string) => {
-        const [year, month, day] = dateStr.split('-').map(Number)
+        const [_year, month, day] = dateStr.split('-').map(Number)
         const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
         return `${monthNames[month - 1]} ${day}`
       }
 
-      campaignData?.forEach((row) => {
+      ;(campaignData as CampaignRow[] | null)?.forEach((row) => {
         const date = row.date
         if (!dateMap.has(date)) {
           dateMap.set(date, {
@@ -120,7 +133,7 @@ export function useQuickViewData({ startDate, endDate, client, campaign }: UseQu
       })
 
       // Add replies data to chart from replies table
-      allRepliesData?.forEach((reply) => {
+      ;(allRepliesData as ReplyRow[] | null)?.forEach((reply) => {
         const dateStr = reply.date_received?.split('T')[0]
         if (dateStr) {
           if (!dateMap.has(dateStr)) {

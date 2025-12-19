@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react'
 import { X, Save, Loader2 } from 'lucide-react'
 import { supabase, formatNumber, formatPercentage, formatDateForDisplay } from '../../lib/supabase'
 import Button from './Button'
-import type { ClientTarget } from '../../types/database'
 
 interface ClientDetailModalProps {
   isOpen: boolean
@@ -29,7 +28,6 @@ export default function ClientDetailModal({
   actualData,
   onTargetsSaved,
 }: ClientDetailModalProps) {
-  const [targets, setTargets] = useState<ClientTarget | null>(null)
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
   
@@ -69,12 +67,21 @@ export default function ClientDetailModal({
 
         if (error && error.code !== 'PGRST116') throw error
 
-        if (data) {
-          setTargets(data)
-          setEmailsPerDay(data.emails_per_day || 0)
-          setProspectsPerDay(data.prospects_per_day || 0)
-          setRepliesPerDay(data.replies_per_day || 0)
-          setMeetingsPerDay(data.meetings_per_day || 0)
+        type TargetRow = {
+          client: string
+          emails_per_day: number | null
+          prospects_per_day: number | null
+          replies_per_day: number | null
+          meetings_per_day: number | null
+        }
+
+        const targetData = data as TargetRow | null
+
+        if (targetData) {
+          setEmailsPerDay(targetData.emails_per_day || 0)
+          setProspectsPerDay(targetData.prospects_per_day || 0)
+          setRepliesPerDay(targetData.replies_per_day || 0)
+          setMeetingsPerDay(targetData.meetings_per_day || 0)
         } else {
           // Reset to 0 if no targets found
           setEmailsPerDay(0)
@@ -109,7 +116,7 @@ export default function ClientDetailModal({
           prospects_per_day: prospectsPerDay,
           replies_per_day: repliesPerDay,
           meetings_per_day: meetingsPerDay,
-        }, {
+        } as any, {
           onConflict: 'client'
         })
 

@@ -258,7 +258,7 @@ export default function DeepView() {
           
           // Helper to format date string to display without timezone issues
           const formatDateDisplay = (dateStr: string) => {
-            const [year, month, day] = dateStr.split('-').map(Number)
+            const [_year, month, day] = dateStr.split('-').map(Number)
             const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
             return `${monthNames[month - 1]} ${day}`
           }

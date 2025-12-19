@@ -1,5 +1,3 @@
-import { formatDateForDisplay } from '../../lib/supabase'
-
 interface DateRangeFilterProps {
   startDate: Date
   endDate: Date

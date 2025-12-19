@@ -49,9 +49,18 @@ export function useCampaignStats({ startDate, endDate, client, page, pageSize }:
       const { data: campaignRows, error: campaignError } = await campaignQuery
       if (campaignError) throw campaignError
 
+      type CampaignRow = {
+        campaign_id: string | null
+        campaign_name: string | null
+        client: string | null
+        emails_sent: number | null
+        total_leads_contacted: number | null
+        bounced: number | null
+      }
+
       // Get unique campaigns
       const uniqueCampaigns = new Map<string, { campaign_id: string; campaign_name: string; client: string }>()
-      campaignRows?.forEach((row) => {
+      ;(campaignRows as CampaignRow[] | null)?.forEach((row) => {
         if (row.campaign_name && !uniqueCampaigns.has(row.campaign_name)) {
           uniqueCampaigns.set(row.campaign_name, {
             campaign_id: row.campaign_id || '',
@@ -65,7 +74,7 @@ export function useCampaignStats({ startDate, endDate, client, page, pageSize }:
       const campaignStatsMap = new Map<string, CampaignStat>()
 
       // Aggregate from campaign_reporting
-      campaignRows?.forEach((row) => {
+      ;(campaignRows as CampaignRow[] | null)?.forEach((row) => {
         if (!row.campaign_name) return
         
         const key = row.campaign_name
@@ -103,6 +112,11 @@ export function useCampaignStats({ startDate, endDate, client, page, pageSize }:
       const { data: repliesData, error: repliesError } = await repliesQuery
       if (repliesError) throw repliesError
 
+      type ReplyRow = {
+        campaign_id: string | null
+        category: string | null
+      }
+
       // Fetch meetings booked
       let meetingsQuery = supabase
         .from('meetings_booked')
@@ -115,8 +129,12 @@ export function useCampaignStats({ startDate, endDate, client, page, pageSize }:
       const { data: meetingsData, error: meetingsError } = await meetingsQuery
       if (meetingsError) throw meetingsError
 
+      type MeetingRow = {
+        campaign_name: string | null
+      }
+
       // Count meetings per campaign
-      meetingsData?.forEach((meeting) => {
+      ;(meetingsData as MeetingRow[] | null)?.forEach((meeting) => {
         const campaignName = meeting.campaign_name || ''
         if (campaignName && campaignStatsMap.has(campaignName)) {
           campaignStatsMap.get(campaignName)!.meetingsBooked += 1
@@ -125,14 +143,14 @@ export function useCampaignStats({ startDate, endDate, client, page, pageSize }:
 
       // Map campaign_id to campaign_name for matching replies
       const campaignIdToName = new Map<string, string>()
-      campaignRows?.forEach((row) => {
+      ;(campaignRows as CampaignRow[] | null)?.forEach((row) => {
         if (row.campaign_id && row.campaign_name) {
           campaignIdToName.set(row.campaign_id, row.campaign_name)
         }
       })
 
       // Count replies by campaign (matching by campaign_id)
-      repliesData?.forEach((reply) => {
+      ;(repliesData as ReplyRow[] | null)?.forEach((reply) => {
         const campaignName = campaignIdToName.get(reply.campaign_id || '')
         if (!campaignName || !campaignStatsMap.has(campaignName)) return
 

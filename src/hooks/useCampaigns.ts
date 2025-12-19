@@ -23,8 +23,10 @@ export function useCampaigns(client?: string) {
 
         if (error) throw error
 
+        type CampaignRow = { campaign_name: string | null }
+
         // Get unique campaign names
-        const uniqueCampaigns = [...new Set(data?.map((c) => c.campaign_name).filter(Boolean))]
+        const uniqueCampaigns = [...new Set((data as CampaignRow[] | null)?.map((c) => c.campaign_name).filter((name): name is string => Boolean(name)))]
         setCampaigns(uniqueCampaigns.sort())
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to fetch campaigns')

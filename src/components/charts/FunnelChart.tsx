@@ -17,9 +17,6 @@ export default function FunnelChart({
 }: FunnelChartProps) {
   const [hoveredStage, setHoveredStage] = useState<number | null>(null)
   
-  // Find max value for scaling
-  const maxValue = Math.max(...stages.map((s) => s.value), 1)
-  
   // Sales Hand-Off index
   const salesHandoffIndex = stages.findIndex((s) => 
     s.name === 'Showed Up to Disco' || s.name === 'Showed Up to Discovery'

@@ -124,13 +124,18 @@ export default function LeadsModal({
 
           if (error) throw error
 
-          const transformedLeads = (data || []).map((lead) => ({
+          type MeetingRow = {
+            created_time: string | null
+            [key: string]: any
+          }
+
+          const transformedLeads = ((data as MeetingRow[] | null) || []).map((lead) => ({
             ...lead,
             current_stage: stageName,
-            last_activity: lead.created_time,
+            last_activity: lead.created_time || undefined,
           }))
 
-          setLeads(transformedLeads)
+          setLeads(transformedLeads as any)
           setTotalCount(count || 0)
         } else {
           // Fetch from engaged_leads table filtering by the stage's boolean

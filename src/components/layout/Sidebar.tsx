@@ -23,7 +23,6 @@ export default function Sidebar() {
     <aside className="w-16 bg-rillation-card border-r border-rillation-border flex flex-col items-center py-4 gap-2">
       {sections.map((section) => {
         const Icon = section.icon
-        const isReporting = section.id === 'reporting'
         // Reporting is active if we're on any reporting page (not infrastructure)
         const isActive = section.id === 'infrastructure'
           ? location.pathname === '/infrastructure'

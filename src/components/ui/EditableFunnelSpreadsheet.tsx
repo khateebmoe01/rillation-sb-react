@@ -112,14 +112,22 @@ export default function EditableFunnelSpreadsheet({
     setSaving(true)
     try {
       const upsertData = Array.from(editedData.values()).map((row) => ({
-        ...row,
+        id: row.id,
         month,
         year,
+        metric_key: row.metric_key,
+        estimate_low: row.estimate_low,
+        estimate_avg: row.estimate_avg,
+        estimate_high: row.estimate_high,
+        estimate_1: row.estimate_1,
+        estimate_2: row.estimate_2,
+        actual: row.actual,
+        projected: row.projected,
       }))
 
       const { error } = await supabase
         .from('funnel_forecasts')
-        .upsert(upsertData, { 
+        .upsert(upsertData as any, { 
           onConflict: 'metric_key,month,year',
           ignoreDuplicates: false 
         })

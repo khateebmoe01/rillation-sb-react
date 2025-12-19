@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { ChevronLeft, ChevronRight, X } from 'lucide-react'
 import { formatNumber } from '../../lib/supabase'
 

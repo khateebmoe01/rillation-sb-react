@@ -11,8 +11,8 @@ import { getDateRange } from '../lib/supabase'
 export default function PipelineView() {
   // Get current month/year
   const now = new Date()
-  const [selectedMonth] = useState(now.getMonth() + 1)
-  const [selectedYear] = useState(now.getFullYear())
+  const selectedMonth = now.getMonth() + 1
+  const selectedYear = now.getFullYear()
   
   // Date state
   const [datePreset, setDatePreset] = useState('thisMonth')
@@ -42,7 +42,7 @@ export default function PipelineView() {
   }
 
   // Handle funnel stage click - toggle selection
-  const handleStageClick = (stageName: string, stageIndex: number) => {
+  const handleStageClick = (stageName: string, _stageIndex: number) => {
     // If clicking the same stage, close it. Otherwise, open the new one.
     if (selectedStage === stageName) {
       setSelectedStage(null)

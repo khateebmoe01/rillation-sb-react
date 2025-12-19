@@ -60,6 +60,8 @@ export default function CampaignDetailModal({
     }
 
     async function fetchCampaignDetail() {
+      if (!campaign) return
+      
       setLoading(true)
       try {
         const startStr = formatDateForQuery(startDate)
@@ -125,14 +127,32 @@ export default function CampaignDetailModal({
         )
 
         setDetail({
-          ...campaign,
+          campaign_name: campaign.campaign_name,
+          campaign_id: campaign.campaign_id,
+          client: campaign.client,
+          totalSent: campaign.totalSent,
+          uniqueProspects: campaign.uniqueProspects,
+          totalReplies: campaign.totalReplies,
+          realReplies: campaign.realReplies,
+          positiveReplies: campaign.positiveReplies,
+          bounces: campaign.bounces,
+          meetingsBooked: campaign.meetingsBooked,
           sequenceSteps,
         })
       } catch (err) {
         console.error('Error fetching campaign detail:', err)
         // Set detail with campaign data even if sequence fetch fails
         setDetail({
-          ...campaign,
+          campaign_name: campaign.campaign_name,
+          campaign_id: campaign.campaign_id,
+          client: campaign.client,
+          totalSent: campaign.totalSent,
+          uniqueProspects: campaign.uniqueProspects,
+          totalReplies: campaign.totalReplies,
+          realReplies: campaign.realReplies,
+          positiveReplies: campaign.positiveReplies,
+          bounces: campaign.bounces,
+          meetingsBooked: campaign.meetingsBooked,
           sequenceSteps: [],
         })
       } finally {
@@ -145,7 +165,10 @@ export default function CampaignDetailModal({
 
   if (!isOpen || !campaign) return null
 
-  const displayDetail = detail || campaign
+  const displayDetail = detail || {
+    ...campaign,
+    sequenceSteps: [] as SequenceStep[]
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
@@ -272,7 +295,7 @@ export default function CampaignDetailModal({
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-rillation-border/30">
-                          {displayDetail.sequenceSteps.map((step, index) => {
+                          {displayDetail.sequenceSteps && displayDetail.sequenceSteps.map((step: SequenceStep, index: number) => {
                             const openRate =
                               step.leads_contacted && step.leads_contacted > 0
                                 ? ((step.unique_opens_per_contact || 0) / step.leads_contacted) * 100

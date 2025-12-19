@@ -8,7 +8,8 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "split-fc-inboxes": "npx tsx scripts/split-fc-inboxes.ts",
-    "backfill-sequence-stats": "npx tsx scripts/backfill-sequence-stats.ts"
+    "backfill-sequence-stats": "npx tsx scripts/backfill-sequence-stats.ts",
+    "check-backfill": "tail -100 /Users/mokhateeb/.cursor/projects/Users-mokhateeb-rillation-sb-react/terminals/527540.txt | grep -E '(PROGRESS UPDATE|Processing batch|BACKFILL SUMMARY|Found.*rows)' | tail -20 || echo 'Backfill not running or file not found'"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.39.0",

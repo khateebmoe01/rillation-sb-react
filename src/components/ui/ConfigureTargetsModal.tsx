@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react'
 import { X, Save, Loader2, ChevronLeft, ChevronRight } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import Button from './Button'
-import type { ClientTarget } from '../../types/database'
 
 interface ConfigureTargetsModalProps {
   isOpen: boolean
@@ -64,8 +63,16 @@ export default function ConfigureTargetsModal({
           })
         })
 
+        type TargetRow = {
+          client: string
+          emails_per_day: number | null
+          prospects_per_day: number | null
+          replies_per_day: number | null
+          meetings_per_day: number | null
+        }
+
         // Override with actual data
-        data?.forEach((target) => {
+        ;(data as TargetRow[] | null)?.forEach((target) => {
           if (targetMap.has(target.client)) {
             targetMap.set(target.client, {
               client: target.client,
@@ -114,7 +121,7 @@ export default function ConfigureTargetsModal({
 
       const { error } = await supabase
         .from('client_targets')
-        .upsert(upsertData, { onConflict: 'client' })
+        .upsert(upsertData as any, { onConflict: 'client' })
 
       if (error) throw error
 
