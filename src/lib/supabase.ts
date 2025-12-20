@@ -85,6 +85,16 @@ export function formatDateForQuery(date: Date): string {
   return `${year}-${month}-${day}`
 }
 
+// For timestamp fields, format the END of day to include the entire day
+export function formatDateForQueryEndOfDay(date: Date): string {
+  const nextDay = new Date(date)
+  nextDay.setDate(nextDay.getDate() + 1)
+  const year = nextDay.getFullYear()
+  const month = String(nextDay.getMonth() + 1).padStart(2, '0')
+  const day = String(nextDay.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
 export function formatDateForDisplay(date: Date): string {
   return date.toLocaleDateString('en-US', {
     month: '2-digit',

@@ -12,3 +12,4 @@ if [ -f "$TERMINAL_FILE" ]; then
 else
   echo "Backfill script output file not found. The script may have completed or not started yet."
 fi
+

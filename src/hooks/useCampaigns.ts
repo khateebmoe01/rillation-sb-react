@@ -14,6 +14,7 @@ export function useCampaigns(client?: string) {
         let query = supabase
           .from('campaign_reporting')
           .select('campaign_name')
+          .limit(100000) // Avoid 1000-row default limit to get all unique campaigns
         
         if (client) {
           query = query.eq('client', client)

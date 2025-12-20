@@ -10,7 +10,6 @@ interface CampaignDetailModalProps {
   startDate: Date
   endDate: Date
   clientFilter?: string
-  campaignFilter?: string
 }
 
 interface SequenceStep {
@@ -48,7 +47,6 @@ export default function CampaignDetailModal({
   startDate,
   endDate,
   clientFilter,
-  campaignFilter,
 }: CampaignDetailModalProps) {
   const [detail, setDetail] = useState<CampaignDetail | null>(null)
   const [loading, setLoading] = useState(false)
@@ -75,6 +73,7 @@ export default function CampaignDetailModal({
           .gte('date', startStr)
           .lte('date', endStr)
           .order('date', { ascending: false })
+          .limit(100000) // Avoid 1000-row default limit
 
         // Apply client filter if active
         if (clientFilter) {
@@ -161,7 +160,7 @@ export default function CampaignDetailModal({
     }
 
     fetchCampaignDetail()
-  }, [isOpen, campaign, startDate, endDate, clientFilter, campaignFilter])
+  }, [isOpen, campaign, startDate, endDate, clientFilter])
 
   if (!isOpen || !campaign) return null
 
@@ -360,5 +359,6 @@ export default function CampaignDetailModal({
     </div>
   )
 }
+
 
 

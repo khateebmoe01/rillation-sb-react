@@ -111,3 +111,4 @@ To add a custom domain:
 **Build Command:** `npm run build`  
 **Output Directory:** `dist`  
 **Framework:** Vite + React + TypeScript
+

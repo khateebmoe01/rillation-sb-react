@@ -1,6 +1,10 @@
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { useState, useMemo } from 'react'
+import { ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react'
 import { formatNumber } from '../../lib/supabase'
 import type { CampaignStat } from '../../hooks/useCampaignStats'
+
+type SortField = 'campaign_name' | 'totalSent' | 'uniqueProspects' | 'totalReplies' | 'realReplies' | 'positiveReplies' | 'bounces' | 'meetingsBooked'
+type SortDirection = 'asc' | 'desc' | null
 
 interface CampaignsTableProps {
   campaigns: CampaignStat[]
@@ -23,6 +27,57 @@ export default function CampaignsTable({
   onPageChange,
   onRowClick,
 }: CampaignsTableProps) {
+  const [sortField, setSortField] = useState<SortField>('totalSent')
+  const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
+
+  // Handle column header click for sorting
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      // Toggle direction: desc -> asc -> null -> desc
+      if (sortDirection === 'desc') {
+        setSortDirection('asc')
+      } else if (sortDirection === 'asc') {
+        setSortDirection(null)
+        setSortField('totalSent') // Reset to default
+      }
+    } else {
+      setSortField(field)
+      setSortDirection('desc')
+    }
+  }
+
+  // Sort campaigns based on current sort settings
+  const sortedCampaigns = useMemo(() => {
+    if (!sortDirection) return campaigns
+
+    return [...campaigns].sort((a, b) => {
+      let aVal: number | string = a[sortField]
+      let bVal: number | string = b[sortField]
+
+      // Handle string comparison for campaign names
+      if (sortField === 'campaign_name') {
+        const comparison = String(aVal).localeCompare(String(bVal))
+        return sortDirection === 'asc' ? comparison : -comparison
+      }
+
+      // Handle numeric comparison
+      const numA = Number(aVal) || 0
+      const numB = Number(bVal) || 0
+      return sortDirection === 'asc' ? numA - numB : numB - numA
+    })
+  }, [campaigns, sortField, sortDirection])
+
+  // Render sort icon
+  const SortIcon = ({ field }: { field: SortField }) => {
+    if (sortField !== field) {
+      return <ArrowUpDown size={14} className="ml-1 text-rillation-text-muted opacity-0 group-hover:opacity-100 transition-opacity" />
+    }
+    if (sortDirection === 'asc') {
+      return <ArrowUp size={14} className="ml-1 text-rillation-purple" />
+    }
+    return <ArrowDown size={14} className="ml-1 text-rillation-purple" />
+  }
+
   const totalPages = Math.ceil(totalCount / pageSize)
   const startItem = (currentPage - 1) * pageSize + 1
   const endItem = Math.min(currentPage * pageSize, totalCount)
@@ -57,34 +112,82 @@ export default function CampaignsTable({
                   onChange={() => {}}
                 />
               </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-rillation-text-muted uppercase tracking-wider">
-                Campaign Name
+              <th 
+                className="px-4 py-3 text-left text-xs font-medium text-rillation-text-muted uppercase tracking-wider cursor-pointer hover:text-rillation-text group"
+                onClick={() => handleSort('campaign_name')}
+              >
+                <div className="flex items-center">
+                  Campaign Name
+                  <SortIcon field="campaign_name" />
+                </div>
               </th>
-              <th className="px-4 py-3 text-right text-xs font-medium text-rillation-text-muted uppercase tracking-wider">
-                Total Sent
+              <th 
+                className="px-4 py-3 text-right text-xs font-medium text-rillation-text-muted uppercase tracking-wider cursor-pointer hover:text-rillation-text group"
+                onClick={() => handleSort('totalSent')}
+              >
+                <div className="flex items-center justify-end">
+                  Total Sent
+                  <SortIcon field="totalSent" />
+                </div>
               </th>
-              <th className="px-4 py-3 text-right text-xs font-medium text-rillation-text-muted uppercase tracking-wider">
-                Unique Prospects
+              <th 
+                className="px-4 py-3 text-right text-xs font-medium text-rillation-text-muted uppercase tracking-wider cursor-pointer hover:text-rillation-text group"
+                onClick={() => handleSort('uniqueProspects')}
+              >
+                <div className="flex items-center justify-end">
+                  Unique Prospects
+                  <SortIcon field="uniqueProspects" />
+                </div>
               </th>
-              <th className="px-4 py-3 text-right text-xs font-medium text-rillation-text-muted uppercase tracking-wider">
-                Total Replies
+              <th 
+                className="px-4 py-3 text-right text-xs font-medium text-rillation-text-muted uppercase tracking-wider cursor-pointer hover:text-rillation-text group"
+                onClick={() => handleSort('totalReplies')}
+              >
+                <div className="flex items-center justify-end">
+                  Total Replies
+                  <SortIcon field="totalReplies" />
+                </div>
               </th>
-              <th className="px-4 py-3 text-right text-xs font-medium text-rillation-text-muted uppercase tracking-wider">
-                Real Replies
+              <th 
+                className="px-4 py-3 text-right text-xs font-medium text-rillation-text-muted uppercase tracking-wider cursor-pointer hover:text-rillation-text group"
+                onClick={() => handleSort('realReplies')}
+              >
+                <div className="flex items-center justify-end">
+                  Real Replies
+                  <SortIcon field="realReplies" />
+                </div>
               </th>
-              <th className="px-4 py-3 text-right text-xs font-medium text-rillation-text-muted uppercase tracking-wider">
-                Positive Replies
+              <th 
+                className="px-4 py-3 text-right text-xs font-medium text-rillation-text-muted uppercase tracking-wider cursor-pointer hover:text-rillation-text group"
+                onClick={() => handleSort('positiveReplies')}
+              >
+                <div className="flex items-center justify-end">
+                  Positive Replies
+                  <SortIcon field="positiveReplies" />
+                </div>
               </th>
-              <th className="px-4 py-3 text-right text-xs font-medium text-rillation-text-muted uppercase tracking-wider">
-                Bounces
+              <th 
+                className="px-4 py-3 text-right text-xs font-medium text-rillation-text-muted uppercase tracking-wider cursor-pointer hover:text-rillation-text group"
+                onClick={() => handleSort('bounces')}
+              >
+                <div className="flex items-center justify-end">
+                  Bounces
+                  <SortIcon field="bounces" />
+                </div>
               </th>
-              <th className="px-4 py-3 text-right text-xs font-medium text-rillation-text-muted uppercase tracking-wider">
-                Meetings Booked
+              <th 
+                className="px-4 py-3 text-right text-xs font-medium text-rillation-text-muted uppercase tracking-wider cursor-pointer hover:text-rillation-text group"
+                onClick={() => handleSort('meetingsBooked')}
+              >
+                <div className="flex items-center justify-end">
+                  Meetings Booked
+                  <SortIcon field="meetingsBooked" />
+                </div>
               </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-rillation-border/30">
-            {campaigns.map((campaign, index) => {
+            {sortedCampaigns.map((campaign, index) => {
               const isSelected = selectedCampaign === campaign.campaign_name
               return (
                 <tr
@@ -196,5 +299,6 @@ export default function CampaignsTable({
     </div>
   )
 }
+
 
 

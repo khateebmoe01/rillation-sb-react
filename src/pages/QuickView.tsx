@@ -13,17 +13,15 @@ import MetricCard from '../components/ui/MetricCard'
 import ClickableMetricCard from '../components/ui/ClickableMetricCard'
 import DateRangeFilter from '../components/ui/DateRangeFilter'
 import ClientFilter from '../components/ui/ClientFilter'
-import CampaignFilter from '../components/ui/CampaignFilter'
 import Button from '../components/ui/Button'
 import TrendChart from '../components/charts/TrendChart'
 import ExpandableDataPanel from '../components/ui/ExpandableDataPanel'
 import CampaignsTable from '../components/ui/CampaignsTable'
 import CampaignDetailModal from '../components/ui/CampaignDetailModal'
 import { useClients } from '../hooks/useClients'
-import { useCampaigns } from '../hooks/useCampaigns'
 import { useQuickViewData } from '../hooks/useQuickViewData'
 import { useCampaignStats } from '../hooks/useCampaignStats'
-import { supabase, getDateRange, formatDateForQuery } from '../lib/supabase'
+import { supabase, getDateRange, formatDateForQuery, formatDateForQueryEndOfDay } from '../lib/supabase'
 import type { CampaignStat } from '../hooks/useCampaignStats'
 
 const PAGE_SIZE = 15
@@ -53,7 +51,6 @@ export default function QuickView() {
   
   // Filter state
   const [selectedClient, setSelectedClient] = useState('')
-  const [selectedCampaign, setSelectedCampaign] = useState('')
   
   // Expandable panel state - support multiple open panels
   const [activeMetrics, setActiveMetrics] = useState<Set<'meetings' | 'replies' | 'totalReplies'>>(new Set())
@@ -81,12 +78,10 @@ export default function QuickView() {
   
   // Fetch data
   const { clients } = useClients()
-  const { campaigns } = useCampaigns(selectedClient)
   const { metrics, chartData, loading, error } = useQuickViewData({
     startDate: dateRange.start,
     endDate: dateRange.end,
     client: selectedClient || undefined,
-    campaign: selectedCampaign || undefined,
   })
   
   // Fetch campaign stats for table
@@ -114,15 +109,16 @@ export default function QuickView() {
 
       setMeetingsLoading(true)
       const startStr = formatDateForQuery(dateRange.start)
-      const endStr = formatDateForQuery(dateRange.end)
+      const endStrNextDay = formatDateForQueryEndOfDay(dateRange.end)
       const offset = (meetingsPage - 1) * PAGE_SIZE
 
       try {
+        // created_time is TIMESTAMPTZ, use lt() with next day to include entire end date
         let query = supabase
           .from('meetings_booked')
           .select('*', { count: 'exact' })
           .gte('created_time', startStr)
-          .lte('created_time', endStr)
+          .lt('created_time', endStrNextDay)
           .order('created_time', { ascending: false })
           .range(offset, offset + PAGE_SIZE - 1)
 
@@ -154,15 +150,16 @@ export default function QuickView() {
 
       setRepliesLoading(true)
       const startStr = formatDateForQuery(dateRange.start)
-      const endStr = formatDateForQuery(dateRange.end)
+      const endStrNextDay = formatDateForQueryEndOfDay(dateRange.end)
       const offset = (repliesPage - 1) * PAGE_SIZE
 
       try {
+        // date_received is TIMESTAMPTZ, use lt() with next day to include entire end date
         let query = supabase
           .from('replies')
           .select('*', { count: 'exact' })
           .gte('date_received', startStr)
-          .lte('date_received', endStr)
+          .lt('date_received', endStrNextDay)
           .not('category', 'ilike', '%out of office%')
           .not('category', 'ilike', '%ooo%')
           .order('date_received', { ascending: false })
@@ -196,15 +193,16 @@ export default function QuickView() {
 
       setTotalRepliesLoading(true)
       const startStr = formatDateForQuery(dateRange.start)
-      const endStr = formatDateForQuery(dateRange.end)
+      const endStrNextDay = formatDateForQueryEndOfDay(dateRange.end)
       const offset = (totalRepliesPage - 1) * PAGE_SIZE
 
       try {
+        // date_received is TIMESTAMPTZ, use lt() with next day to include entire end date
         let query = supabase
           .from('replies')
           .select('*', { count: 'exact' })
           .gte('date_received', startStr)
-          .lte('date_received', endStr)
+          .lt('date_received', endStrNextDay)
           .order('date_received', { ascending: false })
           .range(offset, offset + PAGE_SIZE - 1)
 
@@ -258,12 +256,16 @@ export default function QuickView() {
     setActiveMetrics(new Set())
   }
 
-  // Handle clear filters - ALSO resets date range
+  // Handle clear filters - resets to show ALL historical data
   const handleClear = () => {
     setSelectedClient('')
-    setSelectedCampaign('')
-    setDatePreset('thisMonth')
-    setDateRange(getDateRange('thisMonth'))
+    setDatePreset('allTime')
+    // Set a very wide date range to show all historical data (from 2000 to today)
+    const allTimeRange = {
+      start: new Date(2000, 0, 1), // January 1, 2000 (go back 25 years)
+      end: new Date() // Today
+    }
+    setDateRange(allTimeRange)
     setActiveMetrics(new Set())
     setCampaignsPage(1)
     setMeetingsPage(1)
@@ -314,11 +316,6 @@ export default function QuickView() {
               clients={clients}
               selectedClient={selectedClient}
               onChange={setSelectedClient}
-            />
-            <CampaignFilter
-              campaigns={campaigns}
-              selectedCampaign={selectedCampaign}
-              onChange={setSelectedCampaign}
             />
             <DateRangeFilter
               startDate={dateRange.start}
@@ -529,7 +526,6 @@ export default function QuickView() {
             startDate={dateRange.start}
             endDate={dateRange.end}
             clientFilter={selectedClient || undefined}
-            campaignFilter={selectedCampaign || undefined}
           />
         </>
       )}
