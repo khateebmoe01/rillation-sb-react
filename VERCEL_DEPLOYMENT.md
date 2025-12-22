@@ -112,3 +112,6 @@ To add a custom domain:
 **Output Directory:** `dist`  
 **Framework:** Vite + React + TypeScript
 
+
+
+
