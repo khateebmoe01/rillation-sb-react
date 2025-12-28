@@ -57,7 +57,7 @@ export function useQuickViewData({ startDate, endDate, client }: UseQuickViewDat
 
         let campaignQuery = supabase
           .from('campaign_reporting')
-          .select('date,emails_sent,total_leads_contacted,bounced,interested')
+          .select('date,campaign_name,emails_sent,total_leads_contacted,bounced,interested')
           .gte('date', startStr)
           .lte('date', endStr)
           .range(offset, offset + pageSize - 1)
@@ -92,6 +92,7 @@ export function useQuickViewData({ startDate, endDate, client }: UseQuickViewDat
 
       type CampaignRow = { 
         date: string
+        campaign_name: string | null
         emails_sent: number | null
         total_leads_contacted: number | null
         bounced: number | null
@@ -129,10 +130,12 @@ export function useQuickViewData({ startDate, endDate, client }: UseQuickViewDat
       // ========== DEBUG END ==========
 
       // Calculate metrics from all fetched rows
-      const totalEmailsSent = (campaignData as CampaignRow[] | null)?.reduce((sum, row) => sum + (row.emails_sent || 0), 0) || 0
-      const uniqueProspects = (campaignData as CampaignRow[] | null)?.reduce((sum, row) => sum + (row.total_leads_contacted || 0), 0) || 0
-      const bounces = (campaignData as CampaignRow[] | null)?.reduce((sum, row) => sum + (row.bounced || 0), 0) || 0
-      const positiveReplies = (campaignData as CampaignRow[] | null)?.reduce((sum, row) => sum + (row.interested || 0), 0) || 0
+      // Filter out rows with null/empty campaign_name to match useCampaignStats behavior
+      const validRows = (campaignData as CampaignRow[] | null)?.filter(row => row.campaign_name) || []
+      const totalEmailsSent = validRows.reduce((sum, row) => sum + (row.emails_sent || 0), 0) || 0
+      const uniqueProspects = validRows.reduce((sum, row) => sum + (row.total_leads_contacted || 0), 0) || 0
+      const bounces = validRows.reduce((sum, row) => sum + (row.bounced || 0), 0) || 0
+      const positiveReplies = validRows.reduce((sum, row) => sum + (row.interested || 0), 0) || 0
 
       console.log('💰 CALCULATED METRICS:')
       console.log('  - totalEmailsSent:', totalEmailsSent)
@@ -262,7 +265,8 @@ export function useQuickViewData({ startDate, endDate, client }: UseQuickViewDat
         return `${monthNames[month - 1]} ${day}`
       }
 
-      ;(campaignData as CampaignRow[] | null)?.forEach((row) => {
+      // Use validRows (same filtering as metrics calculation) for chart data
+      validRows.forEach((row) => {
         const date = row.date
         if (!dateMap.has(date)) {
           dateMap.set(date, {
@@ -276,6 +280,7 @@ export function useQuickViewData({ startDate, endDate, client }: UseQuickViewDat
         const point = dateMap.get(date)!
         point.sent += row.emails_sent || 0
         point.prospects += row.total_leads_contacted || 0
+        point.positiveReplies += row.interested || 0
       })
 
       // Add replies data to chart from replies table
@@ -297,9 +302,8 @@ export function useQuickViewData({ startDate, endDate, client }: UseQuickViewDat
           if (!cat.includes('out of office') && !cat.includes('ooo')) {
             point.replied += 1
           }
-          if (cat === 'interested') {
-            point.positiveReplies += 1
-          }
+          // Note: positiveReplies (Interested) is now calculated from campaign_reporting.interested
+          // in the campaign data loop above, not from replies table
         }
       })
 

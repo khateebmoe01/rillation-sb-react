@@ -66,10 +66,8 @@ export function usePipelineData({ startDate, endDate, month, year }: UsePipeline
         return !cat.includes('out of office') && !cat.includes('ooo')
       }).length
       
-      // Positive replies - "Interested" category
-      const positiveReplies = replyRows.filter((r) => 
-        (r.category || '').toLowerCase() === 'interested'
-      ).length
+      // Positive replies (Interested) - sum from campaign_reporting.interested
+      const positiveReplies = campaignRows.reduce((sum, row) => sum + (row.interested || 0), 0)
       
       // Sales handoff count (from engaged_leads or manual tracking)
       const salesHandoff = meetingsData?.length || 0
@@ -169,7 +167,7 @@ export function usePipelineData({ startDate, endDate, month, year }: UsePipeline
         { name: 'Total Sent', value: totalSent },
         { name: 'Unique Contacts', value: uniqueContacts, percentage: totalSent > 0 ? (uniqueContacts / totalSent) * 100 : 0 },
         { name: 'Real Replies', value: realReplies, percentage: uniqueContacts > 0 ? (realReplies / uniqueContacts) * 100 : 0 },
-        { name: 'Positive Replies', value: positiveReplies, percentage: realReplies > 0 ? (positiveReplies / realReplies) * 100 : 0 },
+        { name: 'Interested', value: positiveReplies, percentage: realReplies > 0 ? (positiveReplies / realReplies) * 100 : 0 },
         { name: 'Meetings Booked', value: salesHandoff, percentage: positiveReplies > 0 ? (salesHandoff / positiveReplies) * 100 : 0 },
         { name: 'Showed Up to Disco', value: showedUpToDisco, percentage: salesHandoff > 0 ? (showedUpToDisco / salesHandoff) * 100 : 0 },
         { name: 'Qualified', value: qualified, percentage: showedUpToDisco > 0 ? (qualified / showedUpToDisco) * 100 : 0 },

@@ -50,6 +50,16 @@ export async function syncInboxProviders() {
   return data
 }
 
+export async function syncMeetingsBooked() {
+  const { data, error } = await supabase.functions.invoke('sync-meetings-booked')
+  if (error) throw error
+  return data
+}
+
+
+
+
+
 
 
 

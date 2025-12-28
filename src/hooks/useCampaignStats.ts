@@ -46,7 +46,7 @@ export function useCampaignStats({ startDate, endDate, client, page, pageSize }:
       while (hasMoreCampaigns) {
         let campaignQuery = supabase
           .from('campaign_reporting')
-          .select('campaign_id, campaign_name, client, emails_sent, total_leads_contacted, bounced')
+          .select('campaign_id, campaign_name, client, emails_sent, total_leads_contacted, bounced, interested')
           .gte('date', startStr)
           .lte('date', endStr)
           .order('campaign_name')
@@ -75,28 +75,32 @@ export function useCampaignStats({ startDate, endDate, client, page, pageSize }:
         emails_sent: number | null
         total_leads_contacted: number | null
         bounced: number | null
+        interested: number | null
       }
 
-      // Get unique campaigns
+      // Get unique campaigns - keyed by campaign_id||client to handle duplicate campaign names
       const uniqueCampaigns = new Map<string, { campaign_id: string; campaign_name: string; client: string }>()
       ;(campaignRows as CampaignRow[] | null)?.forEach((row) => {
-        if (row.campaign_name && !uniqueCampaigns.has(row.campaign_name)) {
-          uniqueCampaigns.set(row.campaign_name, {
-            campaign_id: row.campaign_id || '',
-            campaign_name: row.campaign_name,
-            client: row.client || '',
-          })
+        if (row.campaign_id && row.campaign_name && row.client) {
+          const key = `${String(row.campaign_id)}||${row.client}`
+          if (!uniqueCampaigns.has(key)) {
+            uniqueCampaigns.set(key, {
+              campaign_id: row.campaign_id,
+              campaign_name: row.campaign_name,
+              client: row.client,
+            })
+          }
         }
       })
 
-      // Calculate totals per campaign
+      // Calculate totals per campaign - keyed by campaign_id||client to handle duplicate campaign names
       const campaignStatsMap = new Map<string, CampaignStat>()
 
       // Aggregate from campaign_reporting
       ;(campaignRows as CampaignRow[] | null)?.forEach((row) => {
-        if (!row.campaign_name) return
+        if (!row.campaign_id || !row.campaign_name || !row.client) return
         
-        const key = row.campaign_name
+        const key = `${String(row.campaign_id)}||${row.client}`
         if (!campaignStatsMap.has(key)) {
           const campaignInfo = uniqueCampaigns.get(key)!
           campaignStatsMap.set(key, {
@@ -117,6 +121,7 @@ export function useCampaignStats({ startDate, endDate, client, page, pageSize }:
         stat.totalSent += row.emails_sent || 0
         stat.uniqueProspects += row.total_leads_contacted || 0
         stat.bounces += row.bounced || 0
+        stat.positiveReplies += row.interested || 0
       })
 
       // Fetch ALL replies data using pagination
@@ -125,10 +130,16 @@ export function useCampaignStats({ startDate, endDate, client, page, pageSize }:
       let repliesOffset = 0
       let hasMoreReplies = true
 
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/9428b436-58ef-4c72-b9f2-dfdc5784cfa8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'useCampaignStats.ts:130',message:'Replies query params',data:{startStr,endStrNextDay,client:client||'none',batchSize},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+      // #endregion
+      
       while (hasMoreReplies) {
+        // Try to select campaign_name, but handle if it doesn't exist in the table
+        // If campaign_name column doesn't exist, we'll use campaign_id for matching
         let repliesQuery = supabase
           .from('replies')
-          .select('campaign_id, category')
+          .select('campaign_id, client, category, date_received')
           .gte('date_received', startStr)
           .lt('date_received', endStrNextDay)
           .range(repliesOffset, repliesOffset + batchSize - 1)
@@ -151,7 +162,9 @@ export function useCampaignStats({ startDate, endDate, client, page, pageSize }:
 
       type ReplyRow = {
         campaign_id: string | null
+        client: string | null
         category: string | null
+        date_received: string | null
       }
 
       // Fetch ALL meetings booked using pagination
@@ -190,72 +203,105 @@ export function useCampaignStats({ startDate, endDate, client, page, pageSize }:
         client: string | null
       }
 
-      // Create a map of campaign_id to campaign_name for matching
-      const campaignIdToInfo = new Map<string, { name: string; client: string }>()
-      Array.from(campaignStatsMap.values()).forEach(campaign => {
-        if (campaign.campaign_id) {
-          campaignIdToInfo.set(campaign.campaign_id, {
-            name: campaign.campaign_name,
-            client: campaign.client
-          })
-        }
-      })
-
-      // Count meetings per campaign - match by campaign_id AND client
+      // Count meetings per campaign - match by campaign_id AND client using the new key structure
       ;(meetingsData as MeetingRow[] | null)?.forEach((meeting) => {
         const meetingCampaignId = meeting.campaign_id || ''
         const meetingClient = meeting.client || ''
-        const meetingCampaignName = meeting.campaign_name || ''
         
-        // Try to match by campaign_id first (most reliable)
-        if (meetingCampaignId && campaignIdToInfo.has(meetingCampaignId)) {
-          const campaignInfo = campaignIdToInfo.get(meetingCampaignId)!
-          // Verify client matches
-          if (campaignInfo.client === meetingClient) {
-            if (campaignStatsMap.has(campaignInfo.name)) {
-              campaignStatsMap.get(campaignInfo.name)!.meetingsBooked += 1
-            }
-          }
-        } 
-        // Fallback: match by campaign_name if campaign_id is not available
-        else if (meetingCampaignName && campaignStatsMap.has(meetingCampaignName)) {
-          const campaign = campaignStatsMap.get(meetingCampaignName)!
-          // Verify client matches
-          if (campaign.client === meetingClient) {
-            campaign.meetingsBooked += 1
+        // Match by campaign_id||client (the key used in campaignStatsMap)
+        if (meetingCampaignId && meetingClient) {
+          const key = `${String(meetingCampaignId)}||${meetingClient}`
+          if (campaignStatsMap.has(key)) {
+            campaignStatsMap.get(key)!.meetingsBooked += 1
           }
         }
       })
 
-      // Map campaign_id to campaign_name for matching replies
-      const campaignIdToName = new Map<string, string>()
+      // Map campaign_id + client to campaign_name for matching replies
+      // Build this map from campaign_reporting first (authoritative source)
+      // IMPORTANT: Must use campaign_id + client combination because campaign_id alone is not unique
+      const campaignIdClientToName = new Map<string, string>()
+      const targetCampaignName = 'sbp_Storeleads United States - Copy Version 2'
       ;(campaignRows as CampaignRow[] | null)?.forEach((row) => {
-        if (row.campaign_id && row.campaign_name) {
-          campaignIdToName.set(row.campaign_id, row.campaign_name)
+        if (row.campaign_id && row.campaign_name && row.client) {
+          // Use campaign_id + client as unique key
+          const key = `${String(row.campaign_id)}||${row.client}`
+          
+          // #region agent log
+          if (row.campaign_name === targetCampaignName) {
+            fetch('http://127.0.0.1:7242/ingest/9428b436-58ef-4c72-b9f2-dfdc5784cfa8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'useCampaignStats.ts:245',message:'Target campaign in campaign_reporting',data:{campaign_id:row.campaign_id,client:row.client,campaign_name:row.campaign_name,emails_sent:row.emails_sent},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'B'})}).catch(()=>{});
+          }
+          // #endregion
+          
+          campaignIdClientToName.set(key, row.campaign_name)
         }
       })
 
-      // Count replies by campaign (matching by campaign_id)
+      // Count replies by campaign and create campaign entries for replies-only campaigns
+      // Use campaign_id||client as the key directly to match campaignStatsMap structure
+      const targetCampaignClient = client || 'Sb P' // Use filtered client or default
+      let targetCampaignReplies: any[] = []
+      
       ;(repliesData as ReplyRow[] | null)?.forEach((reply) => {
-        const campaignName = campaignIdToName.get(reply.campaign_id || '')
-        if (!campaignName || !campaignStatsMap.has(campaignName)) return
+        if (!reply.campaign_id || !reply.client) return
+        
+        // Use campaign_id||client as the key (matches campaignStatsMap structure)
+        const key = `${String(reply.campaign_id)}||${reply.client}`
+        
+        // Get campaign_name from the mapping for logging/debugging purposes
+        const campaignName = campaignIdClientToName.get(key) || reply.campaign_id
+        
+        // #region agent log
+        if (campaignName === targetCampaignName && reply.client === targetCampaignClient) {
+          fetch('http://127.0.0.1:7242/ingest/9428b436-58ef-4c72-b9f2-dfdc5784cfa8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'useCampaignStats.ts:277',message:'Matching reply to target campaign',data:{campaign_id:reply.campaign_id,campaign_name_matched:campaignName,client:reply.client,date_received:reply.date_received,category:reply.category},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'B'})}).catch(()=>{});
+          targetCampaignReplies.push(reply)
+        }
+        // #endregion
+        
+        // Ensure campaign exists in campaignStatsMap (create if it doesn't exist)
+        if (!campaignStatsMap.has(key)) {
+          // Get campaign_name from the mapping, or use campaign_id as fallback
+          const mappedCampaignName = campaignIdClientToName.get(key) || reply.campaign_id
+          campaignStatsMap.set(key, {
+            campaign_name: mappedCampaignName,
+            campaign_id: reply.campaign_id,
+            client: reply.client,
+            totalSent: 0,
+            uniqueProspects: 0,
+            totalReplies: 0,
+            realReplies: 0,
+            positiveReplies: 0,
+            bounces: 0,
+            meetingsBooked: 0,
+          })
+        }
 
-        const stat = campaignStatsMap.get(campaignName)!
+        const stat = campaignStatsMap.get(key)!
+        // Count ALL replies (including OOO) for totalReplies
+        // No need to check client match since key already includes client
         stat.totalReplies += 1
 
         const cat = (reply.category || '').toLowerCase()
         const isOOO = cat.includes('out of office') || cat.includes('ooo')
+        // Exclude OOO for realReplies
         if (!isOOO) {
           stat.realReplies += 1
         }
-        if (cat === 'interested') {
-          stat.positiveReplies += 1
-        }
       })
+      
+      // #region agent log
+      // Find target campaign by name since campaignStatsMap is now keyed by campaign_id||client
+      const targetCampaign = Array.from(campaignStatsMap.values()).find(
+        c => c.campaign_name === targetCampaignName && c.client === targetCampaignClient
+      )
+      if (targetCampaign) {
+        fetch('http://127.0.0.1:7242/ingest/9428b436-58ef-4c72-b9f2-dfdc5784cfa8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'useCampaignStats.ts:290',message:'Final campaign stats',data:{campaign_name:targetCampaignName,campaign_id:targetCampaign.campaign_id,totalReplies:targetCampaign.totalReplies,realReplies:targetCampaign.realReplies,client:targetCampaign.client,target_replies_count:targetCampaignReplies.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'E'})}).catch(()=>{});
+      }
+      // #endregion
 
-      // Convert to array, filter out campaigns with 0 sent, and sort
+      // Convert to array and sort
+      // Don't filter out campaigns with 0 sent - include all to match scorecard totals
       const allCampaigns = Array.from(campaignStatsMap.values())
-        .filter(c => c.totalSent > 0) // Only show campaigns with actual sends
         .sort((a, b) => b.totalSent - a.totalSent)
 
       setTotalCount(allCampaigns.length)
@@ -277,6 +323,10 @@ export function useCampaignStats({ startDate, endDate, client, page, pageSize }:
 
   return { campaigns, totalCount, loading, error, refetch: fetchData }
 }
+
+
+
+
 
 
 

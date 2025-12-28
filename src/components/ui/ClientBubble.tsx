@@ -116,7 +116,7 @@ export default function ClientBubble({ data, onClick }: ClientBubbleProps) {
         </p>
         <RatioRow label="Emails → Meeting" value={emailsToMeetingRatio} />
         <RatioRow label="Lead → Reply" value={leadToReplyRatio} />
-        <RatioRow label="Reply → Positive" value={replyToPositiveRatio} />
+        <RatioRow label="Reply → Interested" value={replyToPositiveRatio} />
         <RatioRow label="Positive → Meeting" value={positiveToMeetingRatio} />
       </div>
       

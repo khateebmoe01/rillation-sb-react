@@ -162,7 +162,7 @@ export default function CampaignsTable({
                 onClick={() => handleSort('positiveReplies')}
               >
                 <div className="flex items-center justify-end">
-                  Positive Replies
+                  Interested
                   <SortIcon field="positiveReplies" />
                 </div>
               </th>
@@ -299,6 +299,11 @@ export default function CampaignsTable({
     </div>
   )
 }
+
+
+
+
+
 
 
 

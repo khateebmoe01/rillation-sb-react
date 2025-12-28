@@ -396,7 +396,7 @@ export default function QuickView() {
               onClick={() => handleMetricClick('replies')}
             />
             <MetricCard
-              title="Positive Replies"
+              title="Interested"
               value={metrics.positiveReplies}
               percentage={positiveRate}
               icon={<CheckCircle size={18} />}

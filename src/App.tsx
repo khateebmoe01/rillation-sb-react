@@ -5,6 +5,7 @@ import PerformanceOverview from './pages/PerformanceOverview'
 import GTMScoreboard from './pages/DeepView' // Renamed from DeepView
 import PipelineView from './pages/PipelineView'
 import Infrastructure from './pages/Infrastructure'
+import DebugView from './pages/DebugView'
 
 function App() {
   return (
@@ -16,6 +17,7 @@ function App() {
         <Route path="/gtm-scoreboard" element={<GTMScoreboard />} />
         <Route path="/pipeline" element={<PipelineView />} />
         <Route path="/infrastructure" element={<Infrastructure />} />
+        <Route path="/debug" element={<DebugView />} />
       </Routes>
     </Layout>
   )

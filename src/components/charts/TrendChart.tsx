@@ -96,7 +96,7 @@ export default function TrendChart({ data }: TrendChartProps) {
             yAxisId="right"
             type="monotone"
             dataKey="positiveReplies"
-            name="Positive Replies"
+            name="Interested"
             stroke="#22c55e"
             strokeWidth={2}
             dot={false}

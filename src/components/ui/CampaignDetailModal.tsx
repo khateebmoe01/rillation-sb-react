@@ -84,6 +84,12 @@ export default function CampaignDetailModal({
 
         if (campaignError) throw campaignError
 
+        // Recalculate metrics from fetched data to ensure consistency
+        const recalculatedTotalSent = (campaignData || []).reduce((sum: number, row: any) => sum + (row.emails_sent || 0), 0)
+        const recalculatedUniqueProspects = (campaignData || []).reduce((sum: number, row: any) => sum + (row.total_leads_contacted || 0), 0)
+        const recalculatedBounces = (campaignData || []).reduce((sum: number, row: any) => sum + (row.bounced || 0), 0)
+        const recalculatedInterested = (campaignData || []).reduce((sum: number, row: any) => sum + (row.interested || 0), 0)
+
         // Aggregate sequence steps from all dates
         const sequenceStepsMap = new Map<number, SequenceStep>()
 
@@ -129,18 +135,18 @@ export default function CampaignDetailModal({
           campaign_name: campaign.campaign_name,
           campaign_id: campaign.campaign_id,
           client: campaign.client,
-          totalSent: campaign.totalSent,
-          uniqueProspects: campaign.uniqueProspects,
+          totalSent: recalculatedTotalSent,
+          uniqueProspects: recalculatedUniqueProspects,
           totalReplies: campaign.totalReplies,
           realReplies: campaign.realReplies,
-          positiveReplies: campaign.positiveReplies,
-          bounces: campaign.bounces,
+          positiveReplies: recalculatedInterested,
+          bounces: recalculatedBounces,
           meetingsBooked: campaign.meetingsBooked,
           sequenceSteps,
         })
       } catch (err) {
         console.error('Error fetching campaign detail:', err)
-        // Set detail with campaign data even if sequence fetch fails
+        // Set detail with campaign prop values if fetch fails
         setDetail({
           campaign_name: campaign.campaign_name,
           campaign_id: campaign.campaign_id,
@@ -236,7 +242,7 @@ export default function CampaignDetailModal({
                     </div>
                   </div>
                   <div className="bg-rillation-card-hover rounded-lg p-4 border border-rillation-border">
-                    <div className="text-xs text-rillation-text-muted mb-1">Positive</div>
+                    <div className="text-xs text-rillation-text-muted mb-1">Interested</div>
                     <div className="text-lg font-semibold text-rillation-text">
                       {formatNumber(displayDetail.positiveReplies)}
                     </div>
@@ -359,6 +365,10 @@ export default function CampaignDetailModal({
     </div>
   )
 }
+
+
+
+
 
 
 

@@ -433,6 +433,22 @@ async function processCampaigns() {
 
           }
 
+          // Skip rows where emails_sent + unique_replies_per_contact + interested is 0
+          const emailsSent = stats.emails_sent || 0;
+          const uniqueReplies = stats.unique_replies_per_contact || 0;
+          const interested = stats.interested || 0;
+          
+          if (emailsSent + uniqueReplies + interested === 0) {
+            console.log(`  Skipping ${d} - emails_sent + unique_replies_per_contact + interested is 0`);
+            results.push({
+              campaign_id: c.campaign_id,
+              skipped: true,
+              reason: "emails_sent + unique_replies_per_contact + interested is 0",
+              date: d
+            });
+            continue;
+          }
+
           await storeSummary(c, stats, d);
 
           results.push({
