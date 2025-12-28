@@ -4,11 +4,29 @@ import type { Database } from '../types/database'
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('Missing Supabase environment variables. Please check your .env file.')
+// Create a client even if env vars are missing (will fail gracefully in components)
+export const supabase = supabaseUrl && supabaseAnonKey
+  ? createClient<Database>(supabaseUrl, supabaseAnonKey)
+  : createClient<Database>('', '') // Empty client that will fail gracefully
+
+// Export a function to check if env vars are configured
+export function isSupabaseConfigured(): boolean {
+  return !!(supabaseUrl && supabaseAnonKey)
 }
 
-export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey)
+// Export env check function for error display
+export function getSupabaseConfigError(): string | null {
+  if (!supabaseUrl && !supabaseAnonKey) {
+    return 'Missing VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY environment variables'
+  }
+  if (!supabaseUrl) {
+    return 'Missing VITE_SUPABASE_URL environment variable'
+  }
+  if (!supabaseAnonKey) {
+    return 'Missing VITE_SUPABASE_ANON_KEY environment variable'
+  }
+  return null
+}
 
 // Helper function to format numbers with commas
 export function formatNumber(num: number): string {
