@@ -3,7 +3,7 @@ import { NavLink, useLocation } from 'react-router-dom'
 const tabs = [
   { path: '/quick-view', label: 'Quick View' },
   { path: '/performance', label: 'Performance Overview' },
-  { path: '/gtm-scoreboard', label: 'GTM Scoreboard' },
+  { path: '/gtm-scoreboard', label: 'Scorecards' },
   { path: '/pipeline', label: 'Pipeline View' },
 ]
 

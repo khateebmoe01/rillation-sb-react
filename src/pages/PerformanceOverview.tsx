@@ -1,28 +1,24 @@
 import { useState } from 'react'
 import { Settings } from 'lucide-react'
-import DateRangeFilter from '../components/ui/DateRangeFilter'
+import { useNavigate } from 'react-router-dom'
+import { motion } from 'framer-motion'
 import CampaignFilter from '../components/ui/CampaignFilter'
 import Button from '../components/ui/Button'
 import ClientBubble from '../components/ui/ClientBubble'
-import ClientDetailModal from '../components/ui/ClientDetailModal'
 import ConfigureTargetsModal from '../components/ui/ConfigureTargetsModal'
 import { useClients } from '../hooks/useClients'
 import { useCampaigns } from '../hooks/useCampaigns'
 import { usePerformanceData } from '../hooks/usePerformanceData'
-import { getDateRange } from '../lib/supabase'
+import { useFilters } from '../contexts/FilterContext'
 import type { ClientBubbleData } from '../types/database'
 
 export default function PerformanceOverview() {
-  // Date state
-  const [datePreset, setDatePreset] = useState('thisMonth')
-  const [dateRange, setDateRange] = useState(() => getDateRange('thisMonth'))
+  // Use global filters
+  const { dateRange } = useFilters()
+  const navigate = useNavigate()
   
   // Filter state
   const [selectedCampaign, setSelectedCampaign] = useState('')
-  
-  // Modal state
-  const [selectedClient, setSelectedClient] = useState<ClientBubbleData | null>(null)
-  const [isClientModalOpen, setIsClientModalOpen] = useState(false)
   const [isConfigureModalOpen, setIsConfigureModalOpen] = useState(false)
   
   // Fetch data
@@ -34,29 +30,16 @@ export default function PerformanceOverview() {
     campaign: selectedCampaign || undefined,
   })
 
-  // Handle date preset change
-  const handlePresetChange = (preset: string) => {
-    setDatePreset(preset)
-    setDateRange(getDateRange(preset))
-  }
-
-  // Handle clear filters
+  // Handle clear campaign filter (client and date filters are global)
   const handleClear = () => {
     setSelectedCampaign('')
-    setDatePreset('thisMonth')
-    setDateRange(getDateRange('thisMonth'))
   }
 
-  // Handle client click
+  // Handle client click - navigate to client detail view
   const handleClientClick = (client: ClientBubbleData) => {
-    setSelectedClient(client)
-    setIsClientModalOpen(true)
-  }
-
-  // Handle client modal close
-  const handleClientModalClose = () => {
-    setIsClientModalOpen(false)
-    setSelectedClient(null)
+    // Encode client name for URL (handle special characters)
+    const encodedClientName = encodeURIComponent(client.client)
+    navigate(`/client-detail/${encodedClientName}`)
   }
 
   // Handle configure targets click
@@ -71,18 +54,10 @@ export default function PerformanceOverview() {
 
   return (
     <div className="space-y-6 fade-in">
-      {/* Filters Bar */}
+      {/* Campaign Filter Bar (only campaign filter is local to this page) */}
       <div className="bg-rillation-card rounded-xl p-4 border border-rillation-border">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex flex-wrap items-center gap-4">
-            <DateRangeFilter
-              startDate={dateRange.start}
-              endDate={dateRange.end}
-              onStartDateChange={(date) => setDateRange({ ...dateRange, start: date })}
-              onEndDateChange={(date) => setDateRange({ ...dateRange, end: date })}
-              onPresetChange={handlePresetChange}
-              activePreset={datePreset}
-            />
             <div className="flex items-center gap-2">
               <span className="text-xs text-rillation-text-muted">CAMPAIGN</span>
               <CampaignFilter
@@ -94,7 +69,7 @@ export default function PerformanceOverview() {
           </div>
           <div className="flex items-center gap-2">
             <Button variant="secondary" size="sm" onClick={handleClear}>
-              Clear Filters
+              Clear Campaign Filter
             </Button>
             <Button variant="primary" size="sm" onClick={handleConfigureTargetsClick}>
               <Settings size={14} />
@@ -118,17 +93,28 @@ export default function PerformanceOverview() {
         </div>
       )}
 
-      {/* Client Bubbles Grid - 3 per row for bigger cards */}
+      {/* Client Bubbles with Framer Motion Animation */}
       {!loading && clientData.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 stagger-children">
+        <motion.div
+          key="grid"
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+        >
           {clientData.map((client) => (
-            <ClientBubble 
-              key={client.client} 
-              data={client}
-              onClick={() => handleClientClick(client)}
-            />
+            <motion.div
+              key={client.client}
+              layoutId={`card-${client.client}`}
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              transition={{ duration: 0.2 }}
+            >
+              <ClientBubble 
+                data={client}
+                onClick={() => handleClientClick(client)}
+              />
+            </motion.div>
           ))}
-        </div>
+        </motion.div>
       )}
 
       {/* Empty State */}
@@ -136,24 +122,6 @@ export default function PerformanceOverview() {
         <div className="text-center py-12 text-rillation-text-muted">
           No client data found for the selected filters.
         </div>
-      )}
-
-      {/* Client Detail Modal */}
-      {selectedClient && (
-        <ClientDetailModal
-          isOpen={isClientModalOpen}
-          onClose={handleClientModalClose}
-          clientName={selectedClient.client}
-          startDate={dateRange.start}
-          endDate={dateRange.end}
-          actualData={{
-            emailsSent: selectedClient.emailsSent,
-            uniqueProspects: selectedClient.uniqueProspects,
-            realReplies: selectedClient.realReplies,
-            meetings: selectedClient.meetings,
-          }}
-          onTargetsSaved={handleTargetsSaved}
-        />
       )}
 
       {/* Configure Targets Modal */}

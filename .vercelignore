@@ -1,0 +1,23 @@
+# SQL files
+*.sql
+
+# Scripts (not needed in production)
+scripts/
+
+# Supabase migrations (not needed in frontend deployment)
+supabase/migrations/
+supabase/functions/
+
+# Documentation
+*.md
+!README.md
+
+# Development files
+tsconfig.*.tsbuildinfo
+*.tsbuildinfo
+
+# Local environment files
+.env.local
+.env.development.local
+.env.test.local
+

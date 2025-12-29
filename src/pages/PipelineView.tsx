@@ -1,12 +1,14 @@
 import { useState } from 'react'
 import { Settings } from 'lucide-react'
-import DateRangeFilter from '../components/ui/DateRangeFilter'
 import Button from '../components/ui/Button'
 import FunnelChart from '../components/charts/FunnelChart'
+import OpportunityPipeline from '../components/charts/OpportunityPipeline'
 import EditableFunnelSpreadsheet from '../components/ui/EditableFunnelSpreadsheet'
 import InlineLeadsTable from '../components/ui/InlineLeadsTable'
+import ConfigureTargetsModal from '../components/ui/ConfigureTargetsModal'
 import { usePipelineData } from '../hooks/usePipelineData'
-import { getDateRange } from '../lib/supabase'
+import { useClients } from '../hooks/useClients'
+import { useFilters } from '../contexts/FilterContext'
 
 export default function PipelineView() {
   // Get current month/year
@@ -14,32 +16,25 @@ export default function PipelineView() {
   const selectedMonth = now.getMonth() + 1
   const selectedYear = now.getFullYear()
   
-  // Date state
-  const [datePreset, setDatePreset] = useState('thisMonth')
-  const [dateRange, setDateRange] = useState(() => getDateRange('thisMonth'))
+  // Use global filter state
+  const { dateRange } = useFilters()
 
   // Inline table state
   const [selectedStage, setSelectedStage] = useState<string | null>(null)
+  
+  // Configure targets modal state
+  const [isConfigureModalOpen, setIsConfigureModalOpen] = useState(false)
+  
+  // Fetch clients for modal
+  const { clients } = useClients()
 
-  // Fetch data
+  // Fetch data using global date range
   const { funnelStages, spreadsheetData, loading, error, refetch } = usePipelineData({
     startDate: dateRange.start,
     endDate: dateRange.end,
     month: selectedMonth,
     year: selectedYear,
   })
-
-  // Handle date preset change
-  const handlePresetChange = (preset: string) => {
-    setDatePreset(preset)
-    setDateRange(getDateRange(preset))
-  }
-
-  // Handle clear
-  const handleClear = () => {
-    setDatePreset('thisMonth')
-    setDateRange(getDateRange('thisMonth'))
-  }
 
   // Handle funnel stage click - toggle selection
   const handleStageClick = (stageName: string, _stageIndex: number) => {
@@ -57,28 +52,14 @@ export default function PipelineView() {
   }
 
   return (
-    <div className="space-y-6 fade-in">
-      {/* Filters Bar */}
-      <div className="bg-rillation-card rounded-xl p-4 border border-rillation-border">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <DateRangeFilter
-            startDate={dateRange.start}
-            endDate={dateRange.end}
-            onStartDateChange={(date) => setDateRange({ ...dateRange, start: date })}
-            onEndDateChange={(date) => setDateRange({ ...dateRange, end: date })}
-            onPresetChange={handlePresetChange}
-            activePreset={datePreset}
-          />
-          <div className="flex items-center gap-2">
-            <Button variant="secondary" size="sm" onClick={handleClear}>
-              Clear
-            </Button>
-            <Button variant="primary" size="sm">
-              <Settings size={14} />
-              Configure Targets
-            </Button>
-          </div>
-        </div>
+    <div className="space-y-4 sm:space-y-6 fade-in">
+      {/* Set Estimated Value Button - inline with page content */}
+      <div className="flex justify-end px-2 sm:px-0">
+        <Button variant="primary" size="sm" onClick={() => setIsConfigureModalOpen(true)}>
+          <Settings size={14} />
+          <span className="hidden sm:inline">Set Estimated Value</span>
+          <span className="sm:hidden">Set Value</span>
+        </Button>
       </div>
 
       {/* Error State */}
@@ -98,13 +79,23 @@ export default function PipelineView() {
       {/* Content */}
       {!loading && (
         <>
-          {/* Funnel Chart */}
-          <FunnelChart 
-            stages={funnelStages}
-            onStageClick={handleStageClick}
-            clickableFromIndex={2} // Clickable from "Real Replies" onwards
-            selectedStageName={selectedStage}
-          />
+          {/* Dual Funnel System - Lead Funnel and Opportunity Pipeline */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Lead Count Funnel */}
+            <div className="lg:col-span-1">
+              <FunnelChart 
+                stages={funnelStages}
+                onStageClick={handleStageClick}
+                clickableFromIndex={2} // Clickable from "Real Replies" onwards
+                selectedStageName={selectedStage}
+              />
+            </div>
+            
+            {/* Dollar-based Opportunity Pipeline - Takes 2/3 of space */}
+            <div className="lg:col-span-2">
+              <OpportunityPipeline client="Rillation Revenue" />
+            </div>
+          </div>
           
           {/* Inline Leads Table - appears between funnel and spreadsheet */}
           {selectedStage && (
@@ -126,6 +117,17 @@ export default function PipelineView() {
           />
         </>
       )}
+      
+      {/* Set Estimated Value Modal */}
+      <ConfigureTargetsModal
+        isOpen={isConfigureModalOpen}
+        onClose={() => setIsConfigureModalOpen(false)}
+        client="Rillation Revenue"
+        startDate={dateRange.start}
+        endDate={dateRange.end}
+        onSave={refetch}
+        mode="pipeline"
+      />
     </div>
   )
 }

@@ -28,6 +28,11 @@ export interface Database {
         Insert: Partial<ClientTarget>
         Update: Partial<ClientTarget>
       }
+      client_opportunities: {
+        Row: ClientOpportunity
+        Insert: Partial<ClientOpportunity>
+        Update: Partial<ClientOpportunity>
+      }
       funnel_forecasts: {
         Row: FunnelForecast
         Insert: Partial<FunnelForecast>
@@ -105,6 +110,13 @@ export interface MeetingBooked {
   created_time: string
   campaign_id: string
   email: string
+  // Firmographic fields
+  annual_revenue?: string
+  industry?: string
+  company_hq_state?: string
+  company_hq_city?: string
+  company_hq_country?: string
+  year_founded?: string
 }
 
 export interface Client {
@@ -123,6 +135,21 @@ export interface ClientTarget {
   replies_per_day: number
   bounces_per_day: number
   meetings_per_day: number
+  monthly_contract_value?: number
+  created_at?: string
+  updated_at?: string
+}
+
+export interface ClientOpportunity {
+  id?: number
+  client: string
+  opportunity_name: string
+  stage: string
+  value: number
+  expected_close_date?: string
+  contact_name?: string
+  contact_email?: string
+  notes?: string
   created_at?: string
   updated_at?: string
 }

@@ -1,11 +1,9 @@
 import { useState, useEffect } from 'react'
 import { MessageSquare, Users, Calendar, Filter, TrendingUp, PieChart } from 'lucide-react'
-import DateRangeFilter from '../components/ui/DateRangeFilter'
-import ClientFilter from '../components/ui/ClientFilter'
 import Button from '../components/ui/Button'
 import ReplyDetailModal from '../components/ui/ReplyDetailModal'
-import { useClients } from '../hooks/useClients'
-import { supabase, getDateRange, formatDateForQuery, formatNumber } from '../lib/supabase'
+import { useFilters } from '../contexts/FilterContext'
+import { supabase, formatDateForQuery, formatNumber } from '../lib/supabase'
 import type { Reply, MeetingBooked } from '../types/database'
 import {
   BarChart,
@@ -35,12 +33,8 @@ export default function DeepView() {
   // Analysis type state
   const [activeAnalysis, setActiveAnalysis] = useState<AnalysisType>('replies')
   
-  // Date state
-  const [datePreset, setDatePreset] = useState('thisMonth')
-  const [dateRange, setDateRange] = useState(() => getDateRange('thisMonth'))
-  
-  // Filter state
-  const [selectedClient, setSelectedClient] = useState('')
+  // Use global filters
+  const { selectedClient, dateRange } = useFilters()
   const [selectedCategory, setSelectedCategory] = useState('')
   
   // Data state
@@ -78,9 +72,6 @@ export default function DeepView() {
   // Meetings filter state
   const [selectedMeetingDate, setSelectedMeetingDate] = useState<string | null>(null)
   const [selectedMeetingClient, setSelectedMeetingClient] = useState<string | null>(null)
-  
-  // Fetch data
-  const { clients } = useClients()
 
   // Fetch data based on active analysis
   useEffect(() => {
@@ -293,17 +284,14 @@ export default function DeepView() {
     fetchData()
   }, [activeAnalysis, dateRange, selectedClient, selectedCategory, repliesPage, engagedLeadsPage, meetingsPage, selectedMeetingDate, selectedMeetingClient])
 
-  // Handle date preset change
-  const handlePresetChange = (preset: string) => {
-    setDatePreset(preset)
-    setDateRange(getDateRange(preset))
-    // Reset pagination when filters change
+  // Reset pagination when filters change
+  useEffect(() => {
     setRepliesPage(1)
     setEngagedLeadsPage(1)
     setMeetingsPage(1)
     setSelectedMeetingDate(null)
     setSelectedMeetingClient(null)
-  }
+  }, [selectedClient, dateRange])
 
   // Category colors
   const getCategoryColor = (category: string) => {
@@ -346,53 +334,26 @@ export default function DeepView() {
         })}
       </div>
 
-      {/* Filters Bar */}
-      <div className="bg-rillation-card rounded-xl p-4 border border-rillation-border">
-        <div className="flex flex-wrap items-center justify-between gap-4">
+      {/* Category Filter Bar (only category filter is local to this page) */}
+      {activeAnalysis === 'replies' && (
+        <div className="bg-rillation-card rounded-xl p-4 border border-rillation-border">
           <div className="flex flex-wrap items-center gap-4">
-            <ClientFilter
-              clients={clients}
-              selectedClient={selectedClient}
-              onChange={(client) => {
-                setSelectedClient(client)
-                // Reset pagination when client filter changes
-                setRepliesPage(1)
-                setEngagedLeadsPage(1)
-                setMeetingsPage(1)
-                setSelectedMeetingDate(null)
-                setSelectedMeetingClient(null)
-              }}
-            />
-            {activeAnalysis === 'replies' && (
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-rillation-text-muted">Category:</span>
-                <select
-                  value={selectedCategory}
-                  onChange={(e) => setSelectedCategory(e.target.value)}
-                  className="appearance-none px-3 py-1.5 text-xs bg-rillation-card border border-rillation-border rounded-lg text-rillation-text focus:outline-none focus:border-rillation-purple cursor-pointer"
-                >
-                  <option value="">All Categories</option>
-                  <option value="Interested">Interested</option>
-                  <option value="Not Interested">Not Interested</option>
-                  <option value="Out of Office">Out of Office</option>
-                </select>
-              </div>
-            )}
-            <DateRangeFilter
-              startDate={dateRange.start}
-              endDate={dateRange.end}
-              onStartDateChange={(date) => setDateRange({ ...dateRange, start: date })}
-              onEndDateChange={(date) => setDateRange({ ...dateRange, end: date })}
-              onPresetChange={handlePresetChange}
-              activePreset={datePreset}
-            />
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-rillation-text-muted">Category:</span>
+              <select
+                value={selectedCategory}
+                onChange={(e) => setSelectedCategory(e.target.value)}
+                className="appearance-none px-3 py-1.5 text-xs bg-rillation-card border border-rillation-border rounded-lg text-rillation-text focus:outline-none focus:border-rillation-purple cursor-pointer"
+              >
+                <option value="">All Categories</option>
+                <option value="Interested">Interested</option>
+                <option value="Not Interested">Not Interested</option>
+                <option value="Out of Office">Out of Office</option>
+              </select>
+            </div>
           </div>
-          <Button variant="secondary" size="sm">
-            <Filter size={14} />
-            More Filters
-          </Button>
         </div>
-      </div>
+      )}
 
       {/* Error State */}
       {error && (

@@ -6,22 +6,18 @@ import {
   MessageCircle, 
   CheckCircle, 
   XCircle, 
-  Calendar,
-  Download
+  Calendar
 } from 'lucide-react'
 import MetricCard from '../components/ui/MetricCard'
 import ClickableMetricCard from '../components/ui/ClickableMetricCard'
-import DateRangeFilter from '../components/ui/DateRangeFilter'
-import ClientFilter from '../components/ui/ClientFilter'
-import Button from '../components/ui/Button'
 import TrendChart from '../components/charts/TrendChart'
 import ExpandableDataPanel from '../components/ui/ExpandableDataPanel'
-import CampaignsTable from '../components/ui/CampaignsTable'
+import TopCampaignsChart from '../components/charts/TopCampaignsChart'
 import CampaignDetailModal from '../components/ui/CampaignDetailModal'
-import { useClients } from '../hooks/useClients'
 import { useQuickViewData } from '../hooks/useQuickViewData'
 import { useCampaignStats } from '../hooks/useCampaignStats'
-import { supabase, getDateRange, formatDateForQuery, formatDateForQueryEndOfDay } from '../lib/supabase'
+import { useFilters } from '../contexts/FilterContext'
+import { supabase, formatDateForQuery, formatDateForQueryEndOfDay } from '../lib/supabase'
 import type { CampaignStat } from '../hooks/useCampaignStats'
 
 const PAGE_SIZE = 15
@@ -45,12 +41,8 @@ const repliesColumns = [
 ]
 
 export default function QuickView() {
-  // Date state
-  const [datePreset, setDatePreset] = useState('thisMonth')
-  const [dateRange, setDateRange] = useState(() => getDateRange('thisMonth'))
-  
-  // Filter state
-  const [selectedClient, setSelectedClient] = useState('')
+  // Use global filters
+  const { selectedClient, dateRange } = useFilters()
   
   // Expandable panel state - support multiple open panels
   const [activeMetrics, setActiveMetrics] = useState<Set<'meetings' | 'replies' | 'totalReplies'>>(new Set())
@@ -71,31 +63,28 @@ export default function QuickView() {
   const [totalRepliesPage, setTotalRepliesPage] = useState(1)
   const [totalRepliesLoading, setTotalRepliesLoading] = useState(false)
   
-  // Campaigns table state
-  const [campaignsPage, setCampaignsPage] = useState(1)
+  // Campaign modal state
   const [selectedCampaignForModal, setSelectedCampaignForModal] = useState<CampaignStat | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   
   // Fetch data
-  const { clients } = useClients()
   const { metrics, chartData, loading, error } = useQuickViewData({
     startDate: dateRange.start,
     endDate: dateRange.end,
     client: selectedClient || undefined,
   })
   
-  // Fetch campaign stats for table
+  // Fetch campaign stats for top campaigns chart (no pagination needed)
   const {
     campaigns: campaignStats,
-    totalCount: campaignsTotalCount,
     loading: campaignsLoading,
     error: campaignsError,
   } = useCampaignStats({
     startDate: dateRange.start,
     endDate: dateRange.end,
     client: selectedClient || undefined,
-    page: campaignsPage,
-    pageSize: 10,
+    page: 1,
+    pageSize: 100, // Get more campaigns for the chart
   })
 
   // Fetch meetings data when meetings panel is active
@@ -249,35 +238,13 @@ export default function QuickView() {
     })
   }
 
-  // Handle date preset change
-  const handlePresetChange = (preset: string) => {
-    setDatePreset(preset)
-    setDateRange(getDateRange(preset))
+  // Reset active metrics when filters change
+  useEffect(() => {
     setActiveMetrics(new Set())
-  }
-
-  // Handle clear filters - resets to show ALL historical data
-  const handleClear = () => {
-    setSelectedClient('')
-    setDatePreset('allTime')
-    // Set a very wide date range to show all historical data (from 2000 to today)
-    const allTimeRange = {
-      start: new Date(2000, 0, 1), // January 1, 2000 (go back 25 years)
-      end: new Date() // Today
-    }
-    setDateRange(allTimeRange)
-    setActiveMetrics(new Set())
-    setCampaignsPage(1)
     setMeetingsPage(1)
     setRepliesPage(1)
     setTotalRepliesPage(1)
-  }
-  
-  // Handle campaign row click
-  const handleCampaignRowClick = (campaign: CampaignStat) => {
-    setSelectedCampaignForModal(campaign)
-    setIsModalOpen(true)
-  }
+  }, [selectedClient, dateRange])
   
   // Handle modal close
   const handleModalClose = () => {
@@ -308,36 +275,6 @@ export default function QuickView() {
 
   return (
     <div className="space-y-6 fade-in">
-      {/* Filters Bar */}
-      <div className="bg-rillation-card rounded-xl p-4 border border-rillation-border">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="flex flex-wrap items-center gap-4">
-            <ClientFilter
-              clients={clients}
-              selectedClient={selectedClient}
-              onChange={setSelectedClient}
-            />
-            <DateRangeFilter
-              startDate={dateRange.start}
-              endDate={dateRange.end}
-              onStartDateChange={(date) => setDateRange({ ...dateRange, start: date })}
-              onEndDateChange={(date) => setDateRange({ ...dateRange, end: date })}
-              onPresetChange={handlePresetChange}
-              activePreset={datePreset}
-            />
-          </div>
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" onClick={handleClear}>
-              Clear
-            </Button>
-            <Button variant="primary" size="sm">
-              <Download size={14} />
-              Save Report
-            </Button>
-          </div>
-        </div>
-      </div>
-
       {/* Error State */}
       {error && (
         <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 text-red-400">
@@ -355,7 +292,7 @@ export default function QuickView() {
       {/* Metrics Grid */}
       {!loading && metrics && (
         <>
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4 stagger-children">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-3 md:gap-4 stagger-children">
             <MetricCard
               title="Total Email Sent"
               value={metrics.totalEmailsSent}
@@ -501,22 +438,15 @@ export default function QuickView() {
             </div>
           )}
 
-          {/* Campaigns Table - BELOW the panels */}
+          {/* Top Campaigns Chart - BELOW the panels */}
           {campaignsError && (
             <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 text-red-400 text-sm">
               Error loading campaigns: {campaignsError}
             </div>
           )}
-          <CampaignsTable
-            campaigns={campaignStats}
-            totalCount={campaignsTotalCount}
-            currentPage={campaignsPage}
-            pageSize={10}
-            loading={campaignsLoading}
-            selectedCampaign={selectedCampaignForModal?.campaign_name || null}
-            onPageChange={setCampaignsPage}
-            onRowClick={handleCampaignRowClick}
-          />
+          {!campaignsLoading && campaignStats.length > 0 && (
+            <TopCampaignsChart campaigns={campaignStats} maxItems={5} />
+          )}
 
           {/* Campaign Detail Modal */}
           <CampaignDetailModal

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { formatNumber, formatPercentage } from '../../lib/supabase'
 import type { FunnelStage } from '../../types/database'
 
@@ -22,26 +23,60 @@ export default function FunnelChart({
     s.name === 'Showed Up to Disco' || s.name === 'Showed Up to Discovery'
   )
 
+  // Container animation
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.06,
+        delayChildren: 0.1
+      }
+    }
+  }
+
+  // Stage animation variants
+  const stageVariants = {
+    hidden: { opacity: 0, scaleX: 0 },
+    visible: { 
+      opacity: 1, 
+      scaleX: 1,
+      transition: {
+        scaleX: { type: "spring", stiffness: 100, damping: 15 },
+        opacity: { duration: 0.3 }
+      }
+    }
+  }
+
   return (
-    <div className="bg-rillation-card rounded-xl p-6 border border-rillation-border card-glow">
-      <h3 className="text-lg font-semibold text-rillation-text mb-6">Pipeline Funnel</h3>
+    <motion.div 
+      className="bg-rillation-card rounded-xl p-4 md:p-6 border border-rillation-border card-glow"
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4 }}
+    >
+      <h3 className="text-base md:text-lg font-semibold text-rillation-text mb-6">Pipeline Funnel</h3>
       
-      {/* Funnel Visualization - Descending width style */}
-      <div className="relative flex flex-col items-center gap-0 py-4">
+      {/* Funnel Visualization - True Funnel Shape */}
+      <motion.div 
+        className="flex flex-col items-center gap-0"
+        variants={containerVariants}
+        initial="hidden"
+        animate="visible"
+      >
         {stages.map((stage, index) => {
-          // Calculate width - starts at 100% and decreases more dramatically
-          // First stage is 100%, last stage is ~25%, with smooth decrease
-          const progress = index / (stages.length - 1)
-          const widthPercent = Math.max(100 - (progress * 75), 25)
+          // Calculate width - funnel shape: starts at 100% and decreases
+          const totalStages = stages.length
+          const widthPercent = Math.max(100 - (index * (70 / totalStages)), 30)
           
-          // Calculate next stage width for trapezoid effect
-          const nextProgress = (index + 1) / (stages.length - 1)
-          const nextWidthPercent = index < stages.length - 1 
-            ? Math.max(100 - (nextProgress * 75), 25)
+          // Calculate trapezoid clip path for funnel effect
+          const nextWidthPercent = index < totalStages - 1 
+            ? Math.max(100 - ((index + 1) * (70 / totalStages)), 30)
             : widthPercent
           
-          // Determine if stage is too narrow to show text inside
-          const isNarrow = widthPercent < 35
+          const widthDiff = (widthPercent - nextWidthPercent) / 2
+          const clipLeft = (widthDiff / widthPercent) * 100
+          const clipRight = 100 - clipLeft
           
           const isAfterHandoff = salesHandoffIndex > 0 && index >= salesHandoffIndex
           const isClickable = onStageClick && index >= clickableFromIndex
@@ -49,107 +84,91 @@ export default function FunnelChart({
           const isSelected = selectedStageName === stage.name
           
           return (
-            <div 
+            <motion.div 
               key={stage.name} 
-              className="relative flex flex-col items-center w-full"
-              onMouseEnter={() => setHoveredStage(index)}
-              onMouseLeave={() => setHoveredStage(null)}
+              className="w-full flex flex-col items-center"
+              variants={stageVariants}
             >
               {/* Sales Hand-Off divider */}
-              {index === salesHandoffIndex && (
-                <div className="w-full flex items-center justify-center my-2">
-                  <div className="flex-1 border-t border-dashed border-rillation-orange/50" />
-                  <span className="px-3 text-xs text-rillation-orange whitespace-nowrap">
-                    Sales Hand-Off
-                  </span>
-                  <div className="flex-1 border-t border-dashed border-rillation-orange/50" />
-                </div>
-              )}
+              <AnimatePresence>
+                {index === salesHandoffIndex && (
+                  <motion.div 
+                    className="w-full flex items-center justify-center my-2"
+                    initial={{ opacity: 0, scaleX: 0 }}
+                    animate={{ opacity: 1, scaleX: 1 }}
+                    transition={{ duration: 0.4 }}
+                  >
+                    <div className="flex-1 border-t border-dashed border-rillation-orange/50" />
+                    <span className="px-3 text-xs text-rillation-orange whitespace-nowrap font-medium">
+                      Sales Hand-Off
+                    </span>
+                    <div className="flex-1 border-t border-dashed border-rillation-orange/50" />
+                  </motion.div>
+                )}
+              </AnimatePresence>
               
-              {/* Funnel Bar - Trapezoid shape */}
-              <div className="relative w-full flex items-center">
-                <div 
+              {/* Funnel Stage - Trapezoid shape */}
+              <motion.div
                 className={`
-                  relative h-16 flex items-center justify-center transition-all duration-300
+                  relative h-10 flex items-center justify-center px-4 transition-all duration-200
                   ${isAfterHandoff 
                     ? 'bg-gradient-to-r from-green-600 to-green-500' 
                     : 'bg-gradient-to-r from-rillation-purple-dark to-rillation-purple'
                   }
                   ${isClickable ? 'cursor-pointer' : ''}
-                  ${isHovered ? 'brightness-110 scale-[1.02]' : ''}
-                  ${isSelected ? 'ring-2 ring-rillation-magenta ring-offset-2 ring-offset-rillation-bg' : ''}
+                  ${isSelected ? 'ring-2 ring-rillation-magenta ring-offset-2 ring-offset-rillation-card' : ''}
                 `}
-                  style={{ 
-                    width: `${widthPercent}%`,
-                    marginLeft: `${(100 - widthPercent) / 2}%`,
-                    clipPath: index < stages.length - 1 
-                      ? `polygon(${(100 - widthPercent) / 2}% 0%, ${(100 + widthPercent) / 2}% 0%, ${(100 + nextWidthPercent) / 2}% 100%, ${(100 - nextWidthPercent) / 2}% 100%)`
-                      : `polygon(${(100 - widthPercent) / 2}% 0%, ${(100 + widthPercent) / 2}% 0%, ${(100 + widthPercent) / 2}% 100%, ${(100 - widthPercent) / 2}% 100%)`,
-                  }}
-                  onClick={() => isClickable && onStageClick?.(stage.name, index)}
-                >
-                  {/* Stage name and value - only show if not narrow */}
-                  {!isNarrow && (
-                    <div className="flex items-center gap-4 px-4 min-w-0">
-                      <span className="text-white text-sm font-medium truncate flex-shrink-0" style={{ maxWidth: '180px' }}>
-                        {stage.name}
-                      </span>
-                      <span className="text-white text-lg font-bold flex-shrink-0">
-                        {formatNumber(stage.value)}
-                      </span>
-                      {stage.percentage !== undefined && index > 0 && (
-                        <span className="text-white/70 text-xs flex-shrink-0">
-                          {formatPercentage(stage.percentage)}
-                        </span>
-                      )}
-                    </div>
-                  )}
-                  
-                  {/* Show only value if narrow */}
-                  {isNarrow && (
-                    <div className="flex items-center justify-center px-2">
-                      <span className="text-white text-lg font-bold">
-                        {formatNumber(stage.value)}
-                      </span>
-                    </div>
-                  )}
-                  
-                  {/* Hover tooltip */}
+                style={{ 
+                  width: `${widthPercent}%`,
+                  clipPath: index < totalStages - 1 
+                    ? `polygon(0% 0%, 100% 0%, ${clipRight}% 100%, ${clipLeft}% 100%)`
+                    : `polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%)`,
+                }}
+                onMouseEnter={() => setHoveredStage(index)}
+                onMouseLeave={() => setHoveredStage(null)}
+                whileHover={isClickable ? { 
+                  filter: "brightness(1.2)",
+                  scale: 1.02,
+                  transition: { duration: 0.2 }
+                } : {
+                  filter: "brightness(1.1)",
+                  transition: { duration: 0.2 }
+                }}
+                whileTap={isClickable ? { scale: 0.98 } : {}}
+                onClick={() => isClickable && onStageClick?.(stage.name, index)}
+              >
+                {/* Shimmer effect on hover */}
+                <AnimatePresence>
                   {isHovered && (
-                    <div className="absolute -right-4 top-1/2 -translate-y-1/2 translate-x-full bg-rillation-bg border border-rillation-border rounded-lg px-3 py-2 shadow-xl z-20 whitespace-nowrap">
-                      <p className="text-xs font-medium text-rillation-text">{stage.name}</p>
-                      <p className="text-xs text-rillation-text-muted">
-                        Count: {formatNumber(stage.value)}
-                        {stage.percentage !== undefined && ` | Conv: ${formatPercentage(stage.percentage)}`}
-                      </p>
-                      {isClickable && (
-                        <p className="text-xs text-rillation-purple mt-1">Click to view leads</p>
-                      )}
-                    </div>
+                    <motion.div
+                      className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent"
+                      initial={{ x: "-100%" }}
+                      animate={{ x: "200%" }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.6, ease: "easeInOut" }}
+                    />
+                  )}
+                </AnimatePresence>
+                
+                {/* Stage content */}
+                <div className="relative z-10 flex items-center gap-3 text-white">
+                  <span className="text-xs md:text-sm font-medium truncate max-w-[120px]">
+                    {stage.name}
+                  </span>
+                  <span className="text-sm md:text-base font-bold">
+                    {formatNumber(stage.value)}
+                  </span>
+                  {stage.percentage !== undefined && index > 0 && (
+                    <span className="text-xs text-white/70">
+                      {formatPercentage(stage.percentage)}
+                    </span>
                   )}
                 </div>
-                
-                {/* Side label with arrow for narrow stages */}
-                {isNarrow && (
-                  <div className="absolute left-0 top-1/2 -translate-y-1/2 flex items-center gap-2 z-10">
-                    <div className="flex items-center gap-1">
-                      <span className="text-rillation-text-muted text-xs font-medium">
-                        {stage.name}
-                      </span>
-                      <span className="text-rillation-purple">→</span>
-                    </div>
-                    {stage.percentage !== undefined && index > 0 && (
-                      <span className="text-rillation-text-muted text-xs">
-                        {formatPercentage(stage.percentage)}
-                      </span>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
+              </motion.div>
+            </motion.div>
           )
         })}
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   )
 }
