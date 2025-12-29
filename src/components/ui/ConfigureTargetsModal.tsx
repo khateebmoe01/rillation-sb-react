@@ -214,8 +214,8 @@ export default function ConfigureTargetsModal({
         for (const opp of upsertData) {
           if (opp.id) {
             // Update existing
-            const { error } = await supabase
-              .from('client_opportunities')
+            const { error } = await (supabase
+              .from('client_opportunities') as any)
               .update({
                 value: opp.value,
                 stage: opp.stage,
@@ -227,8 +227,8 @@ export default function ConfigureTargetsModal({
             if (error) throw error
           } else {
             // Insert new
-            const { error } = await supabase
-              .from('client_opportunities')
+            const { error } = await (supabase
+              .from('client_opportunities') as any)
               .insert({
                 client: opp.client,
                 opportunity_name: opp.opportunity_name,

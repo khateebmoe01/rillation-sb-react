@@ -236,31 +236,28 @@ export default function InlineLeadsTable({
       // Save to database
       if (lead.opportunityId) {
         // Update existing opportunity (even if value is 0)
-        const { error } = await supabase
-          .from('client_opportunities')
+        const { error } = await (supabase
+          .from('client_opportunities') as any)
           .update({
             value: numValue,
             stage: stageName,
-          } as any)
+          })
           .eq('id', lead.opportunityId)
 
         if (error) throw error
       } else if (numValue > 0) {
         // Create new opportunity if value is set
-        const insertData: any = {
+        const insertData = {
           client: client || '',
           opportunity_name: lead.full_name || lead.company || lead.email || 'Unknown',
           stage: stageName,
           value: numValue,
           contact_name: lead.full_name || `${lead.first_name || ''} ${lead.last_name || ''}`.trim(),
-        }
-        
-        if (lead.email) {
-          insertData.contact_email = lead.email
+          contact_email: lead.email || undefined,
         }
 
-        const { error } = await supabase
-          .from('client_opportunities')
+        const { error } = await (supabase
+          .from('client_opportunities') as any)
           .insert(insertData)
 
         if (error) throw error
@@ -275,10 +272,10 @@ export default function InlineLeadsTable({
             .eq('stage', stageName)
             .single()
 
-          if (newOpp && newOpp.id) {
+          if (newOpp && (newOpp as any).id) {
             setLeads((prev) => {
               const updated = [...prev]
-              updated[leadIndex] = { ...updated[leadIndex], opportunityId: newOpp.id }
+              updated[leadIndex] = { ...updated[leadIndex], opportunityId: (newOpp as any).id }
               return updated
             })
           }

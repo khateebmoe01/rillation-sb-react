@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Save, Loader2, Settings, ChevronDown } from 'lucide-react'
+import { Save, Loader2, ChevronDown } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import Button from './Button'
 

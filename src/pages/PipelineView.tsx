@@ -10,7 +10,6 @@ import OpportunityStageModal from '../components/ui/OpportunityStageModal'
 import SalesMetricCards from '../components/ui/SalesMetricCards'
 import SalesMetricsChart from '../components/charts/SalesMetricsChart'
 import { usePipelineData } from '../hooks/usePipelineData'
-import { useClients } from '../hooks/useClients'
 import { useFilters } from '../contexts/FilterContext'
 import { useSalesMetrics } from '../hooks/useSalesMetrics'
 import { useOpportunities } from '../hooks/useOpportunities'
@@ -33,9 +32,6 @@ export default function PipelineView() {
   // Opportunity stage modal state
   const [selectedOpportunityStage, setSelectedOpportunityStage] = useState<string | null>(null)
   
-  // Fetch clients for modal
-  const { clients } = useClients()
-
   // Fetch data using global date range
   const { funnelStages, spreadsheetData, loading, error, refetch } = usePipelineData({
     startDate: dateRange.start,

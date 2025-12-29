@@ -215,33 +215,30 @@ export default function OpportunityStageModal({
         for (const opp of upsertData) {
           if (opp.id) {
             // Update existing
-            const { error } = await supabase
-              .from('client_opportunities')
+            const { error } = await (supabase
+              .from('client_opportunities') as any)
               .update({
                 value: opp.value,
                 stage: opp.stage,
                 opportunity_name: opp.opportunity_name,
                 contact_name: opp.contact_name,
-              } as any)
+              })
               .eq('id', opp.id)
 
             if (error) throw error
           } else {
             // Insert new
-            const insertData: any = {
+            const insertData = {
               client: opp.client,
               opportunity_name: opp.opportunity_name,
               stage: opp.stage,
               value: opp.value,
               contact_name: opp.contact_name,
-            }
-            
-            if (opp.contact_email) {
-              insertData.contact_email = opp.contact_email
+              contact_email: opp.contact_email || undefined,
             }
 
-            const { error } = await supabase
-              .from('client_opportunities')
+            const { error } = await (supabase
+              .from('client_opportunities') as any)
               .insert(insertData)
 
             if (error) throw error

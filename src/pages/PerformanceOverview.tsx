@@ -176,8 +176,11 @@ export default function PerformanceOverview() {
       <ConfigureTargetsModal
         isOpen={isConfigureModalOpen}
         onClose={() => setIsConfigureModalOpen(false)}
-        clients={clients}
+        client={clients?.[0] || 'Rillation Revenue'}
+        startDate={dateRange.start}
+        endDate={dateRange.end}
         onSave={handleTargetsSaved}
+        mode="targets"
       />
     </div>
   )

@@ -179,7 +179,7 @@ export default function SalesMetricsChart({ data, type, title }: SalesMetricsCha
       <h3 className="text-sm font-semibold text-rillation-text mb-3">{title}</h3>
       <div className="bg-rillation-bg/40 rounded-lg p-2 border border-rillation-border/50">
         <ResponsiveContainer width="100%" height={200}>
-          {renderChart()}
+          {renderChart() || <></>}
         </ResponsiveContainer>
       </div>
     </div>

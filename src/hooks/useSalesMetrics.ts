@@ -156,7 +156,7 @@ export function useSalesMetrics({ startDate, endDate, client }: UseSalesMetricsP
         const winRate = dealCount > 0 ? (dayData.closedWonCount / dealCount) * 100 : 0
 
         // Format date for display (e.g., "Jan 15")
-        const [year, month, day] = dateStr.split('-').map(Number)
+        const [, month, day] = dateStr.split('-').map(Number)
         const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
         const displayDate = `${monthNames[month - 1]} ${day}`
 
