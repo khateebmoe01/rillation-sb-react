@@ -59,21 +59,21 @@ export default function SalesMetricsChart({ data, type, title }: SalesMetricsCha
           <AreaChart data={data} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
             <defs>
               <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#a855f7" stopOpacity={0.3} />
-                <stop offset="95%" stopColor="#a855f7" stopOpacity={0} />
+                <stop offset="5%" stopColor="#ffffff" stopOpacity={0.2} />
+                <stop offset="95%" stopColor="#ffffff" stopOpacity={0} />
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="#2a2a3a" />
+            <CartesianGrid strokeDasharray="3 3" stroke="#222222" />
             <XAxis
               dataKey="date"
-              stroke="#94a3b8"
+              stroke="#888888"
               tick={{ fontSize: 10 }}
-              tickLine={{ stroke: '#2a2a3a' }}
+              tickLine={{ stroke: '#222222' }}
             />
             <YAxis
-              stroke="#94a3b8"
+              stroke="#888888"
               tick={{ fontSize: 10 }}
-              tickLine={{ stroke: '#2a2a3a' }}
+              tickLine={{ stroke: '#222222' }}
               tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
             />
             <Tooltip content={<CustomTooltip />} />
@@ -81,7 +81,7 @@ export default function SalesMetricsChart({ data, type, title }: SalesMetricsCha
               type="monotone"
               dataKey="revenue"
               name="Revenue"
-              stroke="#a855f7"
+              stroke="#ffffff"
               fillOpacity={1}
               fill="url(#colorRevenue)"
               strokeWidth={2}
@@ -92,38 +92,38 @@ export default function SalesMetricsChart({ data, type, title }: SalesMetricsCha
       case 'dealCount':
         return (
           <BarChart data={data} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#2a2a3a" />
+            <CartesianGrid strokeDasharray="3 3" stroke="#222222" />
             <XAxis
               dataKey="date"
-              stroke="#94a3b8"
+              stroke="#888888"
               tick={{ fontSize: 10 }}
-              tickLine={{ stroke: '#2a2a3a' }}
+              tickLine={{ stroke: '#222222' }}
             />
             <YAxis
-              stroke="#94a3b8"
+              stroke="#888888"
               tick={{ fontSize: 10 }}
-              tickLine={{ stroke: '#2a2a3a' }}
+              tickLine={{ stroke: '#222222' }}
               allowDecimals={false}
             />
             <Tooltip content={<CustomTooltip />} />
-            <Bar dataKey="dealCount" name="Deals" fill="#f97316" radius={[4, 4, 0, 0]} />
+            <Bar dataKey="dealCount" name="Deals" fill="#888888" radius={[4, 4, 0, 0]} />
           </BarChart>
         )
 
       case 'avgValue':
         return (
           <LineChart data={data} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#2a2a3a" />
+            <CartesianGrid strokeDasharray="3 3" stroke="#222222" />
             <XAxis
               dataKey="date"
-              stroke="#94a3b8"
+              stroke="#888888"
               tick={{ fontSize: 10 }}
-              tickLine={{ stroke: '#2a2a3a' }}
+              tickLine={{ stroke: '#222222' }}
             />
             <YAxis
-              stroke="#94a3b8"
+              stroke="#888888"
               tick={{ fontSize: 10 }}
-              tickLine={{ stroke: '#2a2a3a' }}
+              tickLine={{ stroke: '#222222' }}
               tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
             />
             <Tooltip content={<CustomTooltip />} />
@@ -131,10 +131,10 @@ export default function SalesMetricsChart({ data, type, title }: SalesMetricsCha
               type="monotone"
               dataKey="avgValue"
               name="Avg Deal Value"
-              stroke="#22d3ee"
+              stroke="#ffffff"
               strokeWidth={2}
               dot={false}
-              activeDot={{ r: 4, fill: '#22d3ee' }}
+              activeDot={{ r: 4, fill: '#ffffff' }}
             />
           </LineChart>
         )
@@ -142,17 +142,17 @@ export default function SalesMetricsChart({ data, type, title }: SalesMetricsCha
       case 'winRate':
         return (
           <LineChart data={data} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#2a2a3a" />
+            <CartesianGrid strokeDasharray="3 3" stroke="#222222" />
             <XAxis
               dataKey="date"
-              stroke="#94a3b8"
+              stroke="#888888"
               tick={{ fontSize: 10 }}
-              tickLine={{ stroke: '#2a2a3a' }}
+              tickLine={{ stroke: '#222222' }}
             />
             <YAxis
-              stroke="#94a3b8"
+              stroke="#888888"
               tick={{ fontSize: 10 }}
-              tickLine={{ stroke: '#2a2a3a' }}
+              tickLine={{ stroke: '#222222' }}
               tickFormatter={(value) => `${value}%`}
               domain={[0, 100]}
             />
@@ -175,7 +175,7 @@ export default function SalesMetricsChart({ data, type, title }: SalesMetricsCha
   }
 
   return (
-    <div className="bg-rillation-card rounded-xl p-4 border border-rillation-border shadow-lg hover:shadow-xl hover:border-rillation-purple/20 transition-all">
+    <div className="bg-rillation-card rounded-xl p-4 border border-rillation-border shadow-lg hover:shadow-xl hover:border-rillation-text transition-all">
       <h3 className="text-sm font-semibold text-rillation-text mb-3">{title}</h3>
       <div className="bg-rillation-bg/40 rounded-lg p-2 border border-rillation-border/50">
         <ResponsiveContainer width="100%" height={200}>

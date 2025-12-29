@@ -72,14 +72,14 @@ export default function DateRangeFilter({
           type="date"
           value={formatDateForInput(startDate)}
           onChange={(e) => handleDateChange('start', e.target.value)}
-          className="px-3 py-1.5 text-xs bg-rillation-card border border-rillation-border rounded-lg text-rillation-text focus:outline-none focus:border-rillation-purple"
+          className="px-3 py-1.5 text-xs bg-rillation-card border border-rillation-border rounded-lg text-rillation-text focus:outline-none focus:border-rillation-text"
         />
         <span className="text-rillation-text-muted text-xs">to</span>
         <input
           type="date"
           value={formatDateForInput(endDate)}
           onChange={(e) => handleDateChange('end', e.target.value)}
-          className="px-3 py-1.5 text-xs bg-rillation-card border border-rillation-border rounded-lg text-rillation-text focus:outline-none focus:border-rillation-purple"
+          className="px-3 py-1.5 text-xs bg-rillation-card border border-rillation-border rounded-lg text-rillation-text focus:outline-none focus:border-rillation-text"
         />
       </div>
     </div>

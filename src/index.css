@@ -15,9 +15,9 @@ html {
 
 body {
   font-family: 'Sora', system-ui, sans-serif;
-  background: linear-gradient(135deg, #0a0a0f 0%, #0d0d14 50%, #0a0a0f 100%);
+  background: #000000;
   min-height: 100vh;
-  color: #f1f5f9;
+  color: #ffffff;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -29,40 +29,26 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background: #12121a;
+  background: #141414;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #2a2a3a;
+  background: #222222;
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #3a3a4a;
+  background: #333333;
 }
 
-/* Gradient text utility */
+/* Gradient text utility - removed purple gradient */
 .gradient-text {
-  background: linear-gradient(135deg, #a855f7 0%, #d946ef 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: #ffffff;
 }
 
-/* Card glow effect */
+/* Card glow effect - removed purple gradient */
 .card-glow {
   position: relative;
-}
-
-.card-glow::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 1px;
-  background: linear-gradient(90deg, transparent 0%, #a855f7 50%, transparent 100%);
-  opacity: 0.5;
 }
 
 /* Metric card hover effect */
@@ -72,9 +58,9 @@ body {
 }
 
 .metric-card:hover {
-  border-color: rgba(168, 85, 247, 0.3);
+  border-color: #333333;
   transform: translateY(-2px);
-  box-shadow: 0 8px 32px rgba(168, 85, 247, 0.1);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
 }
 
 /* Tab active indicator */
@@ -89,21 +75,21 @@ body {
   left: 0;
   right: 0;
   height: 2px;
-  background: linear-gradient(90deg, #a855f7 0%, #d946ef 100%);
+  background: #ffffff;
 }
 
-/* Funnel gradient */
+/* Funnel gradient - removed purple gradient */
 .funnel-bar {
-  background: linear-gradient(180deg, #a855f7 0%, #7c3aed 100%);
+  background: #222222;
 }
 
-/* Pulse animation for live data */
+/* Pulse animation for live data - removed purple glow */
 @keyframes pulse-glow {
   0%, 100% {
-    box-shadow: 0 0 0 0 rgba(168, 85, 247, 0.4);
+    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.2);
   }
   50% {
-    box-shadow: 0 0 0 8px rgba(168, 85, 247, 0);
+    box-shadow: 0 0 0 8px rgba(255, 255, 255, 0);
   }
 }
 
@@ -143,8 +129,8 @@ body {
 
 /* Chart container */
 .chart-container {
-  background: linear-gradient(180deg, rgba(18, 18, 26, 0.8) 0%, rgba(18, 18, 26, 1) 100%);
+  background: #141414;
   border-radius: 12px;
-  border: 1px solid #2a2a3a;
+  border: 1px solid #222222;
 }
 

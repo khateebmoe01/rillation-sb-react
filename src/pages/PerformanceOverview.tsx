@@ -1,16 +1,68 @@
 import { useState } from 'react'
-import { Settings } from 'lucide-react'
+import { Settings, Search } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import CampaignFilter from '../components/ui/CampaignFilter'
 import Button from '../components/ui/Button'
-import ClientBubble from '../components/ui/ClientBubble'
+import MiniScorecard from '../components/ui/MiniScorecard'
 import ConfigureTargetsModal from '../components/ui/ConfigureTargetsModal'
 import { useClients } from '../hooks/useClients'
 import { useCampaigns } from '../hooks/useCampaigns'
 import { usePerformanceData } from '../hooks/usePerformanceData'
+import { useQuickViewData } from '../hooks/useQuickViewData'
 import { useFilters } from '../contexts/FilterContext'
 import type { ClientBubbleData } from '../types/database'
+
+// Component to fetch and display individual client scorecard
+function ClientScorecard({ 
+  client, 
+  dateRange, 
+  onClick 
+}: { 
+  client: ClientBubbleData
+  dateRange: { start: Date; end: Date }
+  onClick: () => void 
+}) {
+  const { metrics, chartData, loading } = useQuickViewData({
+    startDate: dateRange.start,
+    endDate: dateRange.end,
+    client: client.client,
+  })
+
+  if (loading || !metrics) {
+    return (
+      <motion.div
+        className="bg-rillation-card rounded-xl p-4 border border-rillation-border"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+      >
+        <div className="flex items-center justify-center py-8">
+          <motion.div
+            className="w-6 h-6 border-2 border-rillation-text border-t-transparent rounded-full"
+            animate={{ rotate: 360 }}
+            transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+          />
+        </div>
+      </motion.div>
+    )
+  }
+
+  return (
+    <MiniScorecard
+      clientName={client.client}
+      metrics={metrics}
+      chartData={chartData}
+      targets={{
+        emailsTarget: client.emailsTarget,
+        prospectsTarget: client.prospectsTarget,
+        repliesTarget: client.repliesTarget,
+        meetingsTarget: client.meetingsTarget,
+      }}
+      dateRange={dateRange}
+      onClick={onClick}
+    />
+  )
+}
 
 export default function PerformanceOverview() {
   // Use global filters
@@ -19,6 +71,7 @@ export default function PerformanceOverview() {
   
   // Filter state
   const [selectedCampaign, setSelectedCampaign] = useState('')
+  const [clientSearchQuery, setClientSearchQuery] = useState('')
   const [isConfigureModalOpen, setIsConfigureModalOpen] = useState(false)
   
   // Fetch data
@@ -30,6 +83,11 @@ export default function PerformanceOverview() {
     campaign: selectedCampaign || undefined,
   })
 
+  // Filter client data based on search query
+  const filteredClientData = clientData.filter(client => 
+    client.client.toLowerCase().includes(clientSearchQuery.toLowerCase())
+  )
+
   // Handle clear campaign filter (client and date filters are global)
   const handleClear = () => {
     setSelectedCampaign('')
@@ -39,7 +97,7 @@ export default function PerformanceOverview() {
   const handleClientClick = (client: ClientBubbleData) => {
     // Encode client name for URL (handle special characters)
     const encodedClientName = encodeURIComponent(client.client)
-    navigate(`/client-detail/${encodedClientName}`)
+    navigate(`/performance/${encodedClientName}`)
   }
 
   // Handle configure targets click
@@ -54,7 +112,7 @@ export default function PerformanceOverview() {
 
   return (
     <div className="space-y-6 fade-in">
-      {/* Campaign Filter Bar (only campaign filter is local to this page) */}
+      {/* Filter Bar */}
       <div className="bg-rillation-card rounded-xl p-4 border border-rillation-border">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex flex-wrap items-center gap-4">
@@ -64,6 +122,16 @@ export default function PerformanceOverview() {
                 campaigns={campaigns}
                 selectedCampaign={selectedCampaign}
                 onChange={setSelectedCampaign}
+              />
+            </div>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-rillation-text-muted" size={16} />
+              <input
+                type="text"
+                placeholder="Search clients..."
+                value={clientSearchQuery}
+                onChange={(e) => setClientSearchQuery(e.target.value)}
+                className="pl-10 pr-4 py-1.5 text-xs bg-rillation-card border border-rillation-border rounded-lg text-rillation-text focus:outline-none focus:border-rillation-text w-48"
               />
             </div>
           </div>
@@ -96,7 +164,7 @@ export default function PerformanceOverview() {
             className="flex items-center justify-center py-12"
           >
             <motion.div
-              className="w-8 h-8 border-2 border-rillation-purple border-t-transparent rounded-full"
+              className="w-8 h-8 border-2 border-rillation-text border-t-transparent rounded-full"
               animate={{ rotate: 360 }}
               transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
             />
@@ -104,13 +172,12 @@ export default function PerformanceOverview() {
         )}
       </AnimatePresence>
 
-      {/* Client Bubbles with Framer Motion Animation */}
+      {/* Mini Scorecards with Framer Motion Animation */}
       <AnimatePresence mode="wait">
         {!loading && clientData.length > 0 && (
           <motion.div
             key="grid"
-            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
-            style={{ perspective: '1000px' }}
+            className="grid grid-cols-1 md:grid-cols-2 gap-6"
             variants={{
               hidden: { opacity: 0 },
               show: {
@@ -125,41 +192,13 @@ export default function PerformanceOverview() {
             animate="show"
             exit="hidden"
           >
-            {clientData.map((client) => (
-              <motion.div
+            {filteredClientData.map((client) => (
+              <ClientScorecard 
                 key={client.client}
-                layoutId={`card-${client.client}`}
-                variants={{
-                  hidden: { 
-                    opacity: 0, 
-                    scale: 0.8,
-                    y: 20,
-                  },
-                  show: { 
-                    opacity: 1, 
-                    scale: 1,
-                    y: 0,
-                    transition: {
-                      type: 'spring',
-                      stiffness: 300,
-                      damping: 25,
-                    },
-                  },
-                  exit: {
-                    opacity: 0,
-                    scale: 0.8,
-                    y: -20,
-                    transition: {
-                      duration: 0.2,
-                    },
-                  },
-                }}
-              >
-                <ClientBubble 
-                  data={client}
-                  onClick={() => handleClientClick(client)}
-                />
-              </motion.div>
+                client={client}
+                dateRange={dateRange}
+                onClick={() => handleClientClick(client)}
+              />
             ))}
           </motion.div>
         )}
@@ -171,12 +210,16 @@ export default function PerformanceOverview() {
           No client data found for the selected filters.
         </div>
       )}
+      {!loading && clientData.length > 0 && filteredClientData.length === 0 && (
+        <div className="text-center py-12 text-rillation-text-muted">
+          No clients match your search query.
+        </div>
+      )}
 
       {/* Configure Targets Modal */}
       <ConfigureTargetsModal
         isOpen={isConfigureModalOpen}
         onClose={() => setIsConfigureModalOpen(false)}
-        client={clients?.[0] || 'Rillation Revenue'}
         startDate={dateRange.start}
         endDate={dateRange.end}
         onSave={handleTargetsSaved}

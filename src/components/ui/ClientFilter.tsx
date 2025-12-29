@@ -20,7 +20,7 @@ export default function ClientFilter({
         <select
           value={selectedClient}
           onChange={(e) => onChange(e.target.value)}
-          className="appearance-none px-3 py-1.5 pr-8 text-xs bg-rillation-card border border-rillation-border rounded-lg text-rillation-text focus:outline-none focus:border-rillation-purple cursor-pointer"
+          className="appearance-none px-3 py-1.5 pr-8 text-xs bg-rillation-card border border-rillation-border rounded-lg text-rillation-text focus:outline-none focus:border-rillation-text cursor-pointer"
         >
           <option value="">All Clients</option>
           {clients.map((client) => (

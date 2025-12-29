@@ -10,21 +10,22 @@ export default {
         'xs': '480px',
       },
       colors: {
-        // Custom dark theme colors matching your current design
+        // Black and white theme with purposeful color usage
         'rillation': {
-          'bg': '#0a0a0f',
-          'card': '#12121a',
-          'card-hover': '#1a1a25',
-          'border': '#2a2a3a',
-          'purple': '#a855f7',
+          'bg': '#000000',
+          'card': '#141414',
+          'card-hover': '#1a1a1a',
+          'border': '#222222',
+          'purple': '#a855f7', // Keep for backward compatibility, but avoid using
           'purple-dark': '#7c3aed',
-          'magenta': '#d946ef',
-          'cyan': '#22d3ee',
-          'orange': '#f97316',
-          'green': '#22c55e',
-          'red': '#ef4444',
-          'text': '#f1f5f9',
-          'text-muted': '#ffffff',
+          'magenta': '#d946ef', // Keep for backward compatibility, but avoid using
+          'cyan': '#22d3ee', // Keep for backward compatibility, but avoid using
+          'orange': '#f97316', // Keep for backward compatibility, but avoid using
+          'green': '#22c55e', // Use for positive trends, targets met
+          'red': '#ef4444', // Use for negative trends, targets missed
+          'yellow': '#eab308', // Use for neutral/caution states
+          'text': '#ffffff',
+          'text-muted': '#888888',
         }
       },
       fontFamily: {

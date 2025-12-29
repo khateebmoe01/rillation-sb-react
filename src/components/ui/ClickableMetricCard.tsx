@@ -24,7 +24,7 @@ export default function ClickableMetricCard({
   icon,
   trend,
   trendValue,
-  colorClass = 'text-rillation-purple',
+  colorClass = 'text-rillation-text-muted',
   isClickable = false,
   isActive = false,
   onClick,
@@ -32,9 +32,9 @@ export default function ClickableMetricCard({
   return (
     <div 
       className={`
-        metric-card bg-rillation-card rounded-xl p-5 card-glow
-        ${isClickable ? 'cursor-pointer hover:border-rillation-purple/50' : ''}
-        ${isActive ? 'ring-2 ring-rillation-purple border-rillation-purple' : ''}
+        metric-card bg-rillation-card rounded-xl p-5 card-glow border border-rillation-border
+        ${isClickable ? 'cursor-pointer hover:border-rillation-text' : ''}
+        ${isActive ? 'ring-2 ring-white border-white' : ''}
       `}
       onClick={isClickable ? onClick : undefined}
     >
@@ -45,7 +45,7 @@ export default function ClickableMetricCard({
           {title}
         </span>
         {isClickable && (
-          <span className="ml-auto text-xs text-rillation-purple opacity-0 group-hover:opacity-100 transition-opacity">
+          <span className="ml-auto text-xs text-rillation-text-muted opacity-0 group-hover:opacity-100 transition-opacity">
             Click to view
           </span>
         )}

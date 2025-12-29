@@ -52,7 +52,7 @@ function RatioRow({ label, value }: RatioRowProps) {
   return (
     <div className="flex items-center justify-between py-1.5">
       <span className="text-xs text-rillation-text-muted">{label}</span>
-      <span className="text-xs font-medium text-rillation-cyan">
+      <span className="text-xs font-medium text-rillation-text">
         {formatPercentage(value)}
       </span>
     </div>
@@ -93,10 +93,10 @@ export default function ClientBubble({ data, onClick }: ClientBubbleProps) {
   const moveX = useTransform(xSpring, [-0.5, 0.5], [-12, 12])
   const moveY = useTransform(ySpring, [-0.5, 0.5], [-12, 12])
   
-  // Glow position
+  // Glow position - removed purple/cyan gradient
   const glowX = useTransform(xSpring, [-0.5, 0.5], ['20%', '80%'])
   const glowY = useTransform(ySpring, [-0.5, 0.5], ['20%', '80%'])
-  const glowBackground = useMotionTemplate`radial-gradient(circle 200px at ${glowX} ${glowY}, rgba(139, 92, 246, 0.15), rgba(6, 182, 212, 0.1), transparent 70%)`
+  const glowBackground = useMotionTemplate`radial-gradient(circle 200px at ${glowX} ${glowY}, rgba(255, 255, 255, 0.05), transparent 70%)`
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!cardRef.current) return
@@ -137,7 +137,7 @@ export default function ClientBubble({ data, onClick }: ClientBubbleProps) {
       }}
       whileHover={{
         scale: 1.02,
-        borderColor: 'rgba(139, 92, 246, 0.3)',
+        borderColor: 'rgba(255, 255, 255, 0.2)',
         transition: { duration: 0.2 }
       }}
       whileTap={{
@@ -158,7 +158,7 @@ export default function ClientBubble({ data, onClick }: ClientBubbleProps) {
       {/* Content */}
       <div className="relative z-10">
       {/* Client Name */}
-      <h3 className="text-lg font-semibold text-rillation-text mb-4 group-hover:text-rillation-purple transition-colors">
+      <h3 className="text-lg font-semibold text-rillation-text mb-4 transition-colors">
         {data.client}
       </h3>
       
@@ -198,7 +198,7 @@ export default function ClientBubble({ data, onClick }: ClientBubbleProps) {
       </div>
       
       {/* Click hint */}
-      <p className="text-xs text-rillation-purple opacity-0 group-hover:opacity-100 transition-opacity mt-4 text-center">
+      <p className="text-xs text-rillation-text-muted opacity-0 group-hover:opacity-100 transition-opacity mt-4 text-center">
         Click to edit targets
       </p>
       </div>

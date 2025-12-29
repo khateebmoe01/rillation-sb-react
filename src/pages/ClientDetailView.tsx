@@ -73,7 +73,7 @@ export default function ClientDetailView() {
           event.target.tagName !== 'INPUT' && 
           event.target.tagName !== 'TEXTAREA') {
         event.preventDefault()
-        navigate('/gtm-scoreboard')
+        navigate('/performance')
       }
     }
 
@@ -299,18 +299,18 @@ export default function ClientDetailView() {
       >
         <div className="flex items-center gap-4">
           <motion.button
-            onClick={() => navigate('/gtm-scoreboard')}
+            onClick={() => navigate('/performance')}
             className="flex items-center gap-2 px-4 py-2 bg-rillation-card border border-rillation-border rounded-lg text-sm text-rillation-text hover:bg-rillation-card-hover transition-colors"
             whileHover={{ scale: 1.05, x: -2 }}
             whileTap={{ scale: 0.95 }}
           >
             <ArrowLeft size={16} />
-            Back to Scorecards
+            Back to Performance
           </motion.button>
         </div>
         <div className="flex items-center justify-center py-12">
           <motion.div
-            className="w-8 h-8 border-2 border-rillation-purple border-t-transparent rounded-full"
+            className="w-8 h-8 border-2 border-rillation-text border-t-transparent rounded-full"
             animate={{ rotate: 360 }}
             transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
           />
@@ -398,7 +398,7 @@ export default function ClientDetailView() {
           transition={{ type: 'spring', stiffness: 400, damping: 17 }}
         >
           <ArrowLeft size={16} />
-          Back to Scorecards
+          Back to Performance
         </motion.button>
         <motion.h1 
           className="text-2xl font-bold text-rillation-text"
@@ -424,7 +424,7 @@ export default function ClientDetailView() {
           exit={{ opacity: 0 }}
         >
           <motion.div
-            className="w-8 h-8 border-2 border-rillation-purple border-t-transparent rounded-full"
+            className="w-8 h-8 border-2 border-rillation-text border-t-transparent rounded-full"
             animate={{ rotate: 360 }}
             transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
           />
@@ -458,7 +458,7 @@ export default function ClientDetailView() {
                 icon={<Users size={18} />}
                 trend="up"
                 trendValue="-"
-                colorClass="text-rillation-orange"
+                colorClass="text-rillation-text-muted"
               />
             </motion.div>
             <motion.div variants={itemVariants}>
@@ -468,7 +468,7 @@ export default function ClientDetailView() {
                 percentage={replyRate}
                 percentageLabel="incl. OOO"
                 icon={<MessageSquare size={18} />}
-                colorClass="text-rillation-cyan"
+                colorClass="text-rillation-text-muted"
                 isClickable={true}
                 isActive={activeMetrics.has('totalReplies')}
                 onClick={() => handleMetricClick('totalReplies')}
@@ -481,7 +481,7 @@ export default function ClientDetailView() {
                 percentage={realReplyRate}
                 percentageLabel="excl. OOO"
                 icon={<MessageCircle size={18} />}
-                colorClass="text-rillation-cyan"
+                colorClass="text-rillation-text-muted"
                 isClickable={true}
                 isActive={activeMetrics.has('replies')}
                 onClick={() => handleMetricClick('replies')}
@@ -515,7 +515,7 @@ export default function ClientDetailView() {
                 value={metrics.meetingsBooked}
                 percentage={meetingRate}
                 icon={<Calendar size={18} />}
-                colorClass="text-rillation-magenta"
+                colorClass="text-rillation-text-muted"
                 isClickable={true}
                 isActive={activeMetrics.has('meetings')}
                 onClick={() => handleMetricClick('meetings')}
@@ -538,7 +538,7 @@ export default function ClientDetailView() {
               {activeMetrics.has('meetings') && (
                 meetingsLoading ? (
                   <div className="bg-rillation-card rounded-xl border border-rillation-border p-8 flex items-center justify-center">
-                    <div className="w-6 h-6 border-2 border-rillation-purple border-t-transparent rounded-full animate-spin" />
+                    <div className="w-6 h-6 border-2 border-rillation-text border-t-transparent rounded-full animate-spin" />
                   </div>
                 ) : (
                   <ExpandableDataPanel
@@ -558,7 +558,7 @@ export default function ClientDetailView() {
               {activeMetrics.has('replies') && (
                 repliesLoading ? (
                   <div className="bg-rillation-card rounded-xl border border-rillation-border p-8 flex items-center justify-center">
-                    <div className="w-6 h-6 border-2 border-rillation-purple border-t-transparent rounded-full animate-spin" />
+                    <div className="w-6 h-6 border-2 border-rillation-text border-t-transparent rounded-full animate-spin" />
                   </div>
                 ) : (
                   <ExpandableDataPanel
@@ -578,7 +578,7 @@ export default function ClientDetailView() {
               {activeMetrics.has('totalReplies') && (
                 totalRepliesLoading ? (
                   <div className="bg-rillation-card rounded-xl border border-rillation-border p-8 flex items-center justify-center">
-                    <div className="w-6 h-6 border-2 border-rillation-purple border-t-transparent rounded-full animate-spin" />
+                    <div className="w-6 h-6 border-2 border-rillation-text border-t-transparent rounded-full animate-spin" />
                   </div>
                 ) : (
                   <ExpandableDataPanel

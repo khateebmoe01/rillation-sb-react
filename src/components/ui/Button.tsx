@@ -20,7 +20,7 @@ export default function Button({
   const baseStyles = 'font-medium rounded-lg transition-all duration-200 flex items-center justify-center gap-2'
   
   const variants = {
-    primary: 'bg-gradient-to-r from-rillation-purple to-rillation-magenta text-white hover:opacity-90 disabled:opacity-50',
+    primary: 'bg-rillation-text text-rillation-bg hover:bg-rillation-text-muted disabled:opacity-50',
     secondary: 'bg-rillation-card border border-rillation-border text-rillation-text hover:bg-rillation-card-hover disabled:opacity-50',
     ghost: 'text-rillation-text-muted hover:text-rillation-text hover:bg-rillation-card-hover disabled:opacity-50',
   }

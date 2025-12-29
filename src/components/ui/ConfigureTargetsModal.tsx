@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import { X, Save, Loader2, ChevronDown, ChevronUp } from 'lucide-react'
+import { useState, useEffect, useMemo } from 'react'
+import { X, Save, Loader2, ChevronDown, ChevronUp, Search } from 'lucide-react'
 import { supabase, formatDateForQuery, formatCurrency } from '../../lib/supabase'
 import Button from './Button'
 import ModalPortal from './ModalPortal'
@@ -7,7 +7,7 @@ import ModalPortal from './ModalPortal'
 interface ConfigureTargetsModalProps {
   isOpen: boolean
   onClose: () => void
-  client: string
+  client?: string // Optional for targets mode
   startDate: Date
   endDate: Date
   onSave?: () => void
@@ -63,9 +63,102 @@ export default function ConfigureTargetsModal({
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
 
-  // Fetch leads and opportunities
+  // State for targets mode
+  const [selectedClientForTargets, setSelectedClientForTargets] = useState<string>('')
+  const [clientSearchQuery, setClientSearchQuery] = useState('')
+  const [allClients, setAllClients] = useState<string[]>([])
+  const [emailsPerDay, setEmailsPerDay] = useState(0)
+  const [prospectsPerDay, setProspectsPerDay] = useState(0)
+  const [repliesPerDay, setRepliesPerDay] = useState(0)
+  const [interestedPerDay, setInterestedPerDay] = useState(0)
+  const [meetingsPerDay, setMeetingsPerDay] = useState(0)
+
+  // Fetch all clients for targets mode
   useEffect(() => {
-    if (!isOpen) return
+    if (!isOpen || mode !== 'targets') return
+
+    async function fetchClients() {
+      try {
+        const { data, error } = await supabase
+          .from('Clients')
+          .select('Business')
+          .order('Business')
+
+        if (error) throw error
+
+        const clientNames = (data || [])
+          .map((c: any) => c.Business)
+          .filter((name): name is string => Boolean(name))
+        
+        setAllClients(clientNames)
+      } catch (err) {
+        console.error('Error fetching clients:', err)
+      }
+    }
+
+    fetchClients()
+  }, [isOpen, mode])
+
+  // Fetch targets for selected client
+  useEffect(() => {
+    if (!isOpen || mode !== 'targets' || !selectedClientForTargets) return
+
+    async function fetchTargets() {
+      setLoading(true)
+      try {
+        const { data, error } = await supabase
+          .from('client_targets')
+          .select('*')
+          .eq('client', selectedClientForTargets)
+          .single()
+
+        if (error && error.code !== 'PGRST116') throw error
+
+        type TargetRow = {
+          client: string
+          emails_per_day: number | null
+          prospects_per_day: number | null
+          replies_per_day: number | null
+          interested_per_day?: number | null
+          meetings_per_day: number | null
+        }
+
+        const targetData = data as TargetRow | null
+
+        if (targetData) {
+          setEmailsPerDay(targetData.emails_per_day || 0)
+          setProspectsPerDay(targetData.prospects_per_day || 0)
+          setRepliesPerDay(targetData.replies_per_day || 0)
+          setInterestedPerDay(targetData.interested_per_day || 0)
+          setMeetingsPerDay(targetData.meetings_per_day || 0)
+        } else {
+          // Reset to 0 if no targets found
+          setEmailsPerDay(0)
+          setProspectsPerDay(0)
+          setRepliesPerDay(0)
+          setInterestedPerDay(0)
+          setMeetingsPerDay(0)
+        }
+      } catch (err) {
+        console.error('Error fetching targets:', err)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchTargets()
+  }, [isOpen, selectedClientForTargets, mode])
+
+  // Filter clients based on search query
+  const filteredClients = useMemo(() => {
+    if (!clientSearchQuery) return allClients
+    const query = clientSearchQuery.toLowerCase()
+    return allClients.filter(client => client.toLowerCase().includes(query))
+  }, [allClients, clientSearchQuery])
+
+  // Fetch leads and opportunities for pipeline mode
+  useEffect(() => {
+    if (!isOpen || mode !== 'pipeline') return
 
     async function fetchData() {
       setLoading(true)
@@ -185,7 +278,54 @@ export default function ConfigureTargetsModal({
     e.target.select()
   }
 
-  // Save all opportunities
+  // Save targets for targets mode
+  const handleSaveTargets = async () => {
+    if (!selectedClientForTargets) return
+    
+    setSaving(true)
+    try {
+      const { error } = await supabase
+        .from('client_targets')
+        .upsert({
+          client: selectedClientForTargets,
+          emails_per_day: emailsPerDay,
+          prospects_per_day: prospectsPerDay,
+          replies_per_day: repliesPerDay,
+          interested_per_day: interestedPerDay,
+          meetings_per_day: meetingsPerDay,
+        } as any, {
+          onConflict: 'client'
+        })
+
+      if (error) throw error
+
+      onSave?.()
+      // Don't close, allow configuring more clients
+      setSelectedClientForTargets('')
+      setClientSearchQuery('')
+    } catch (err) {
+      console.error('Error saving targets:', err)
+      alert('Failed to save targets')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  // Handle client selection
+  const handleClientSelect = (clientName: string) => {
+    setSelectedClientForTargets(clientName)
+    setClientSearchQuery('')
+  }
+
+  // Reset when modal closes
+  useEffect(() => {
+    if (!isOpen) {
+      setSelectedClientForTargets('')
+      setClientSearchQuery('')
+    }
+  }, [isOpen])
+
+  // Save all opportunities for pipeline mode
   const handleSave = async () => {
     setSaving(true)
     try {
@@ -255,12 +395,17 @@ export default function ConfigureTargetsModal({
 
   if (!isOpen) return null
 
-  const totalLeads = stageGroups.reduce((sum, group) => sum + group.leads.length, 0)
-  const totalValue = stageGroups.reduce(
-    (sum, group) =>
-      sum + group.leads.reduce((leadSum, lead) => leadSum + (lead.estimatedValue || 0), 0),
-    0
-  )
+  // Calculate totals only for pipeline mode
+  const totalLeads = mode === 'pipeline' 
+    ? stageGroups.reduce((sum, group) => sum + group.leads.length, 0)
+    : 0
+  const totalValue = mode === 'pipeline'
+    ? stageGroups.reduce(
+        (sum, group) =>
+          sum + group.leads.reduce((leadSum, lead) => leadSum + (lead.estimatedValue || 0), 0),
+        0
+      )
+    : 0
 
   return (
     <ModalPortal isOpen={isOpen}>
@@ -276,12 +421,12 @@ export default function ConfigureTargetsModal({
         <div className="flex items-center justify-between p-4 border-b border-rillation-border">
           <div>
             <h2 className="text-xl font-semibold text-rillation-text">
-              {mode === 'pipeline' ? 'Set Estimated Value' : 'Configure Pipeline Values'}
+              {mode === 'pipeline' ? 'Set Estimated Value' : 'Configure Performance Targets'}
             </h2>
             <p className="text-sm text-rillation-text-muted mt-1">
               {mode === 'pipeline' 
                 ? 'Set estimated values (potential MRR) for leads in the pipeline'
-                : 'Set estimated values for leads in the pipeline'}
+                : 'Configure daily performance targets for this client'}
             </p>
           </div>
           <button
@@ -292,150 +437,323 @@ export default function ConfigureTargetsModal({
           </button>
         </div>
 
-        {/* Summary Stats */}
-        <div className="px-6 py-4 border-b border-rillation-border bg-rillation-bg">
-          <div className="flex items-center gap-6 text-sm">
-            <div>
-              <span className="text-rillation-text-muted">Total Leads: </span>
-              <span className="font-semibold text-rillation-text">{totalLeads}</span>
-            </div>
-            <div>
-              <span className="text-rillation-text-muted">Total Pipeline Value: </span>
-              <span className="font-semibold text-rillation-purple">{formatCurrency(totalValue)}</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Content */}
-        <div className="p-4 md:p-6 overflow-y-auto flex-1">
-          {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <div className="w-8 h-8 border-2 border-rillation-purple border-t-transparent rounded-full animate-spin" />
-            </div>
-          ) : stageGroups.length === 0 ? (
-            <div className="text-center py-12 text-rillation-text-muted">
-              No leads found in pipeline stages
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {stageGroups.map((group) => (
-                <div
-                  key={group.stage}
-                  className="bg-rillation-bg rounded-xl border border-rillation-border overflow-hidden"
-                >
-                  {/* Stage Header */}
-                  <button
-                    onClick={() => toggleCollapse(group.stage)}
-                    className="w-full flex items-center justify-between p-4 hover:bg-rillation-card-hover transition-colors"
-                  >
-                    <div className="flex items-center gap-3">
-                      <span className="text-lg font-semibold text-rillation-text">
-                        {group.stage}
-                      </span>
-                      <span className="text-sm text-rillation-text-muted">
-                        ({group.leads.length} leads)
-                      </span>
-                      <span className="text-sm font-semibold text-rillation-purple">
-                        {formatCurrency(
-                          group.leads.reduce(
-                            (sum, lead) => sum + (lead.estimatedValue || 0),
-                            0
-                          )
-                        )}
-                      </span>
-                    </div>
-                    {group.collapsed ? (
-                      <ChevronDown size={20} className="text-rillation-text-muted" />
+        {mode === 'targets' ? (
+          /* Targets Mode Content */
+          <div className="p-4 md:p-6 overflow-y-auto flex-1">
+            {!selectedClientForTargets ? (
+              /* Client Selection View */
+              <div className="max-w-xl mx-auto space-y-4">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-rillation-text-muted" size={18} />
+                  <input
+                    type="text"
+                    placeholder="Type to search for a client..."
+                    value={clientSearchQuery}
+                    onChange={(e) => setClientSearchQuery(e.target.value)}
+                    onFocus={(e) => e.target.select()}
+                    className="w-full pl-10 pr-4 py-4 bg-rillation-card border border-rillation-border rounded-lg text-rillation-text focus:outline-none focus:border-rillation-text text-base"
+                    autoFocus
+                  />
+                </div>
+                
+                {clientSearchQuery && (
+                  <div className="bg-rillation-bg rounded-xl border border-rillation-border overflow-hidden shadow-lg">
+                    {filteredClients.length === 0 ? (
+                      <div className="p-6 text-center text-rillation-text-muted">
+                        No clients found matching "{clientSearchQuery}"
+                      </div>
                     ) : (
-                      <ChevronUp size={20} className="text-rillation-text-muted" />
+                      <div className="max-h-64 overflow-y-auto">
+                        {filteredClients.slice(0, 10).map((clientName) => (
+                          <button
+                            key={clientName}
+                            onClick={() => handleClientSelect(clientName)}
+                            className="w-full px-4 py-3 text-left hover:bg-rillation-card-hover transition-colors text-rillation-text border-b border-rillation-border/30 last:border-b-0"
+                          >
+                            {clientName}
+                          </button>
+                        ))}
+                        {filteredClients.length > 10 && (
+                          <div className="p-3 text-center text-xs text-rillation-text-muted border-t border-rillation-border/30">
+                            Showing first 10 results. Type more to refine search.
+                          </div>
+                        )}
+                      </div>
                     )}
+                  </div>
+                )}
+                
+                {!clientSearchQuery && (
+                  <div className="text-center py-12">
+                    <Search className="mx-auto mb-4 text-rillation-text-muted" size={32} />
+                    <p className="text-rillation-text-muted">
+                      Type in the search box above to find a client
+                    </p>
+                  </div>
+                )}
+              </div>
+            ) : loading ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="w-8 h-8 border-2 border-rillation-text border-t-transparent rounded-full animate-spin" />
+              </div>
+            ) : (
+              /* Targets Form View */
+              <div className="max-w-2xl mx-auto space-y-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold text-rillation-text">
+                    Configure Targets: {selectedClientForTargets}
+                  </h3>
+                  <button
+                    onClick={() => setSelectedClientForTargets('')}
+                    className="text-sm text-rillation-text-muted hover:text-rillation-text"
+                  >
+                    ← Back to Client List
                   </button>
+                </div>
+                
+                <div className="bg-rillation-bg rounded-xl border border-rillation-border p-6 space-y-6">
+                  <div>
+                    <label className="block text-sm font-medium text-rillation-text mb-2">
+                      Emails per Day
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="1"
+                      value={emailsPerDay || ''}
+                      onChange={(e) => setEmailsPerDay(parseFloat(e.target.value) || 0)}
+                      onFocus={handleFocus}
+                      className="w-full px-4 py-2 bg-rillation-card border border-rillation-border rounded-lg text-rillation-text focus:outline-none focus:border-rillation-text"
+                    />
+                  </div>
 
-                  {/* Stage Leads */}
-                  {!group.collapsed && (
-                    <div className="border-t border-rillation-border">
-                      {group.leads.length === 0 ? (
-                        <div className="p-4 text-center text-sm text-rillation-text-muted">
-                          No leads at this stage
+                  <div>
+                    <label className="block text-sm font-medium text-rillation-text mb-2">
+                      Prospects per Day
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="1"
+                      value={prospectsPerDay || ''}
+                      onChange={(e) => setProspectsPerDay(parseFloat(e.target.value) || 0)}
+                      onFocus={handleFocus}
+                      className="w-full px-4 py-2 bg-rillation-card border border-rillation-border rounded-lg text-rillation-text focus:outline-none focus:border-rillation-text"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-rillation-text mb-2">
+                      Replies per Day
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="1"
+                      value={repliesPerDay || ''}
+                      onChange={(e) => setRepliesPerDay(parseFloat(e.target.value) || 0)}
+                      onFocus={handleFocus}
+                      className="w-full px-4 py-2 bg-rillation-card border border-rillation-border rounded-lg text-rillation-text focus:outline-none focus:border-rillation-text"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-rillation-text mb-2">
+                      Interested Replies per Day
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="1"
+                      value={interestedPerDay || ''}
+                      onChange={(e) => setInterestedPerDay(parseFloat(e.target.value) || 0)}
+                      onFocus={handleFocus}
+                      className="w-full px-4 py-2 bg-rillation-card border border-rillation-border rounded-lg text-rillation-text focus:outline-none focus:border-rillation-text"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-rillation-text mb-2">
+                      Meetings per Day
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="1"
+                      value={meetingsPerDay || ''}
+                      onChange={(e) => setMeetingsPerDay(parseFloat(e.target.value) || 0)}
+                      onFocus={handleFocus}
+                      className="w-full px-4 py-2 bg-rillation-card border border-rillation-border rounded-lg text-rillation-text focus:outline-none focus:border-rillation-text"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        ) : (
+          <>
+            {/* Summary Stats for Pipeline Mode */}
+            <div className="px-6 py-4 border-b border-rillation-border bg-rillation-bg">
+              <div className="flex items-center gap-6 text-sm">
+                <div>
+                  <span className="text-rillation-text-muted">Total Leads: </span>
+                  <span className="font-semibold text-rillation-text">{totalLeads}</span>
+                </div>
+                <div>
+                  <span className="text-rillation-text-muted">Total Pipeline Value: </span>
+                  <span className="font-semibold text-rillation-purple">{formatCurrency(totalValue)}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Pipeline Mode Content */}
+            <div className="p-4 md:p-6 overflow-y-auto flex-1">
+              {loading ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="w-8 h-8 border-2 border-rillation-purple border-t-transparent rounded-full animate-spin" />
+                </div>
+              ) : stageGroups.length === 0 ? (
+                <div className="text-center py-12 text-rillation-text-muted">
+                  No leads found in pipeline stages
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {stageGroups.map((group) => (
+                    <div
+                      key={group.stage}
+                      className="bg-rillation-bg rounded-xl border border-rillation-border overflow-hidden"
+                    >
+                      {/* Stage Header */}
+                      <button
+                        onClick={() => toggleCollapse(group.stage)}
+                        className="w-full flex items-center justify-between p-4 hover:bg-rillation-card-hover transition-colors"
+                      >
+                        <div className="flex items-center gap-3">
+                          <span className="text-lg font-semibold text-rillation-text">
+                            {group.stage}
+                          </span>
+                          <span className="text-sm text-rillation-text-muted">
+                            ({group.leads.length} leads)
+                          </span>
+                          <span className="text-sm font-semibold text-rillation-purple">
+                            {formatCurrency(
+                              group.leads.reduce(
+                                (sum, lead) => sum + (lead.estimatedValue || 0),
+                                0
+                              )
+                            )}
+                          </span>
                         </div>
-                      ) : (
-                        <div className="overflow-x-auto -mx-4 sm:mx-0">
-                          <table className="w-full min-w-[600px]">
-                            <thead className="bg-rillation-card-hover">
-                              <tr>
-                                <th className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-rillation-text-muted uppercase">
-                                  Name
-                                </th>
-                                <th className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-rillation-text-muted uppercase hidden md:table-cell">
-                                  Company
-                                </th>
-                                <th className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-rillation-text-muted uppercase hidden lg:table-cell">
-                                  Email
-                                </th>
-                                <th className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-rillation-text-muted uppercase">
-                                  Estimated Value
-                                </th>
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-rillation-border/30">
-                              {group.leads.map((lead, index) => (
-                                <tr
-                                  key={lead.id || lead.email || index}
-                                  className="hover:bg-rillation-card-hover transition-colors"
-                                >
-                                  <td className="px-2 sm:px-4 py-3 text-sm text-rillation-text">
-                                    <div>
-                                      {lead.full_name || '-'}
-                                      <div className="md:hidden text-xs text-rillation-text-muted mt-1">
-                                        {lead.company || lead.email || ''}
-                                      </div>
-                                    </div>
-                                  </td>
-                                  <td className="px-2 sm:px-4 py-3 text-sm text-rillation-text-muted hidden md:table-cell">
-                                    {lead.company || '-'}
-                                  </td>
-                                  <td className="px-2 sm:px-4 py-3 text-sm text-rillation-text-muted hidden lg:table-cell">
-                                    {lead.email || '-'}
-                                  </td>
-                                  <td className="px-2 sm:px-4 py-3">
-                                    <div className="flex items-center gap-1 sm:gap-2">
-                                      <span className="text-rillation-text-muted text-xs sm:text-sm">$</span>
-                                      <input
-                                        type="number"
-                                        step="0.01"
-                                        value={lead.estimatedValue || ''}
-                                        onChange={(e) =>
-                                          handleValueChange(group.stage, index, e.target.value)
-                                        }
-                                        onFocus={handleFocus}
-                                        placeholder="0"
-                                        className="w-28 sm:w-36 md:w-40 px-2 sm:px-3 py-1.5 sm:py-2 bg-rillation-card border border-rillation-border rounded-lg text-xs sm:text-sm text-rillation-text focus:outline-none focus:border-rillation-purple"
-                                      />
-                                    </div>
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
+                        {group.collapsed ? (
+                          <ChevronDown size={20} className="text-rillation-text-muted" />
+                        ) : (
+                          <ChevronUp size={20} className="text-rillation-text-muted" />
+                        )}
+                      </button>
+
+                      {/* Stage Leads */}
+                      {!group.collapsed && (
+                        <div className="border-t border-rillation-border">
+                          {group.leads.length === 0 ? (
+                            <div className="p-4 text-center text-sm text-rillation-text-muted">
+                              No leads at this stage
+                            </div>
+                          ) : (
+                            <div className="overflow-x-auto -mx-4 sm:mx-0">
+                              <table className="w-full min-w-[600px]">
+                                <thead className="bg-rillation-card-hover">
+                                  <tr>
+                                    <th className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-rillation-text-muted uppercase">
+                                      Name
+                                    </th>
+                                    <th className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-rillation-text-muted uppercase hidden md:table-cell">
+                                      Company
+                                    </th>
+                                    <th className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-rillation-text-muted uppercase hidden lg:table-cell">
+                                      Email
+                                    </th>
+                                    <th className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-rillation-text-muted uppercase">
+                                      Estimated Value
+                                    </th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-rillation-border/30">
+                                  {group.leads.map((lead, index) => (
+                                    <tr
+                                      key={lead.id || lead.email || index}
+                                      className="hover:bg-rillation-card-hover transition-colors"
+                                    >
+                                      <td className="px-2 sm:px-4 py-3 text-sm text-rillation-text">
+                                        <div>
+                                          {lead.full_name || '-'}
+                                          <div className="md:hidden text-xs text-rillation-text-muted mt-1">
+                                            {lead.company || lead.email || ''}
+                                          </div>
+                                        </div>
+                                      </td>
+                                      <td className="px-2 sm:px-4 py-3 text-sm text-rillation-text-muted hidden md:table-cell">
+                                        {lead.company || '-'}
+                                      </td>
+                                      <td className="px-2 sm:px-4 py-3 text-sm text-rillation-text-muted hidden lg:table-cell">
+                                        {lead.email || '-'}
+                                      </td>
+                                      <td className="px-2 sm:px-4 py-3">
+                                        <div className="flex items-center gap-1 sm:gap-2">
+                                          <span className="text-rillation-text-muted text-xs sm:text-sm">$</span>
+                                          <input
+                                            type="number"
+                                            step="0.01"
+                                            value={lead.estimatedValue || ''}
+                                            onChange={(e) =>
+                                              handleValueChange(group.stage, index, e.target.value)
+                                            }
+                                            onFocus={handleFocus}
+                                            placeholder="0"
+                                            className="w-28 sm:w-36 md:w-40 px-2 sm:px-3 py-1.5 sm:py-2 bg-rillation-card border border-rillation-border rounded-lg text-xs sm:text-sm text-rillation-text focus:outline-none focus:border-rillation-purple"
+                                          />
+                                        </div>
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>
-                  )}
+                  ))}
                 </div>
-              ))}
+              )}
             </div>
-          )}
-        </div>
+          </>
+        )}
 
         {/* Footer */}
         <div className="flex items-center justify-end p-4 border-t border-rillation-border gap-3">
           <Button variant="secondary" onClick={onClose}>
-            Cancel
+            {mode === 'targets' && selectedClientForTargets ? 'Cancel' : 'Close'}
           </Button>
-          <Button variant="primary" onClick={handleSave} disabled={saving}>
-            {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
-            {mode === 'pipeline' ? 'Save Estimated Values' : 'Save All Values'}
-          </Button>
+          {mode === 'targets' && selectedClientForTargets && (
+            <Button 
+              variant="primary" 
+              onClick={handleSaveTargets} 
+              disabled={saving}
+            >
+              {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+              Save Targets
+            </Button>
+          )}
+          {mode === 'pipeline' && (
+            <Button 
+              variant="primary" 
+              onClick={handleSave} 
+              disabled={saving}
+            >
+              {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+              Save Estimated Values
+            </Button>
+          )}
         </div>
       </div>
     </ModalPortal>

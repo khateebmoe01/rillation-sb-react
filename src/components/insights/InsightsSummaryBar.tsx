@@ -59,7 +59,7 @@ export default function InsightsSummaryBar({
       value: totalReplies,
       label: 'Total Replies',
       icon: <MessageSquare size={16} />,
-      colorClass: 'text-rillation-cyan',
+      colorClass: 'text-rillation-text-muted',
       subLabel: `${realReplies.toLocaleString()} excl. OOO`,
     },
     {
@@ -83,7 +83,7 @@ export default function InsightsSummaryBar({
       value: outOfOffice,
       label: 'Out of Office',
       icon: <Clock size={16} />,
-      colorClass: 'text-rillation-orange',
+      colorClass: 'text-rillation-text-muted',
       subLabel: 'Auto-replies',
     },
     {
@@ -91,7 +91,7 @@ export default function InsightsSummaryBar({
       value: engagedLeads,
       label: 'Engaged Leads',
       icon: <Users size={16} />,
-      colorClass: 'text-rillation-purple',
+      colorClass: 'text-rillation-text-muted',
       subLabel: 'Active prospects',
     },
     {
@@ -99,7 +99,7 @@ export default function InsightsSummaryBar({
       value: meetingsBooked,
       label: 'Meetings Booked',
       icon: <Calendar size={16} />,
-      colorClass: 'text-rillation-magenta',
+      colorClass: 'text-rillation-text-muted',
       subLabel: interested > 0 ? `${((meetingsBooked / interested) * 100).toFixed(0)}% conversion` : '-',
     },
   ]
@@ -111,23 +111,8 @@ export default function InsightsSummaryBar({
       initial="hidden"
       animate="show"
     >
-      {/* Glassmorphism container */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-rillation-card/80 to-rillation-bg/50 backdrop-blur-xl border border-rillation-border/50 p-4">
-        {/* Animated gradient background */}
-        <motion.div
-          className="absolute inset-0 opacity-30"
-          style={{
-            background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.1) 0%, rgba(217, 70, 239, 0.05) 50%, rgba(34, 211, 238, 0.1) 100%)',
-          }}
-          animate={{
-            backgroundPosition: ['0% 0%', '100% 100%', '0% 0%'],
-          }}
-          transition={{
-            duration: 15,
-            repeat: Infinity,
-            ease: 'linear',
-          }}
-        />
+      {/* Container */}
+      <div className="relative overflow-hidden rounded-2xl bg-rillation-card border border-rillation-border p-4">
 
         {/* Metrics grid */}
         <div className="relative z-10 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">

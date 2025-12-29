@@ -103,7 +103,7 @@ export default function PipelineView() {
       {/* Loading State */}
       {loading && (
         <div className="flex items-center justify-center py-12">
-          <div className="w-8 h-8 border-2 border-rillation-purple border-t-transparent rounded-full animate-spin" />
+          <div className="w-8 h-8 border-2 border-rillation-text border-t-transparent rounded-full animate-spin" />
         </div>
       )}
 
@@ -112,26 +112,26 @@ export default function PipelineView() {
         <>
           {/* Sales Analytics Section */}
           {!salesLoading && !salesError && (
-            <div className="space-y-4">
+            <div className="space-y-6">
               {/* Sales Summary Cards */}
               <SalesMetricCards summary={summary} />
 
               {/* Sales Charts Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <SalesMetricsChart
                   data={dailyMetrics}
                   type="revenue"
-                  title="Daily Revenue"
+                  title="Revenue Trend"
                 />
                 <SalesMetricsChart
                   data={dailyMetrics}
                   type="dealCount"
-                  title="Daily Deal Count"
+                  title="Deal Count"
                 />
               </div>
               
               {/* Average Deal Value and Win Rate - Same Row */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <SalesMetricsChart
                   data={dailyMetrics}
                   type="avgValue"
@@ -147,7 +147,7 @@ export default function PipelineView() {
           )}
 
           {/* Dual Funnel System - Lead Funnel and Opportunity Pipeline */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
             {/* Lead Count Funnel */}
             <FunnelChart 
               stages={funnelStages}

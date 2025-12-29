@@ -21,7 +21,7 @@ export default function MetricCard({
   icon,
   trend,
   trendValue,
-  colorClass = 'text-rillation-purple',
+  colorClass = 'text-rillation-text-muted',
 }: MetricCardProps) {
   return (
     <div className="metric-card bg-rillation-card rounded-xl p-5 card-glow">
