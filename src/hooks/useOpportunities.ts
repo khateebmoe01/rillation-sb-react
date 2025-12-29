@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 
 export interface OpportunityStage {
@@ -16,8 +16,7 @@ export function useOpportunities({ client }: UseOpportunitiesParams = {}) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    async function fetchOpportunities() {
+  const fetchOpportunities = useCallback(async () => {
       try {
         setLoading(true)
         setError(null)
@@ -71,11 +70,12 @@ export function useOpportunities({ client }: UseOpportunitiesParams = {}) {
       } finally {
         setLoading(false)
       }
-    }
+    }, [client])
 
+  useEffect(() => {
     fetchOpportunities()
-  }, [client])
+  }, [fetchOpportunities])
 
-  return { stages, loading, error }
+  return { stages, loading, error, refetch: fetchOpportunities }
 }
 

@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate } from 'react-router-dom'
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import Layout from './components/layout/Layout'
 import ConfigError from './components/ui/ConfigError'
 import QuickView from './pages/QuickView'
@@ -12,6 +12,7 @@ import { getSupabaseConfigError } from './lib/supabase'
 
 function App() {
   const configError = getSupabaseConfigError()
+  const location = useLocation()
   
   if (configError) {
     return <ConfigError />
@@ -19,7 +20,7 @@ function App() {
   
   return (
     <Layout>
-      <Routes>
+      <Routes location={location} key={location.pathname}>
         <Route path="/" element={<Navigate to="/quick-view" replace />} />
         <Route path="/quick-view" element={<QuickView />} />
         <Route path="/performance" element={<GTMScoreboard />} />

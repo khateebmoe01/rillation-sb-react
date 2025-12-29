@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { X, ChevronLeft, ChevronRight } from 'lucide-react'
 import { supabase, formatDateForQuery } from '../../lib/supabase'
+import ModalPortal from './ModalPortal'
 
 interface LeadsModalProps {
   isOpen: boolean
@@ -187,7 +188,7 @@ export default function LeadsModal({
   const endItem = Math.min(currentPage * PAGE_SIZE, totalCount)
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <ModalPortal isOpen={isOpen}>
       {/* Backdrop */}
       <div 
         className="absolute inset-0 bg-black/70 backdrop-blur-sm"
@@ -195,7 +196,7 @@ export default function LeadsModal({
       />
       
       {/* Modal */}
-      <div className="relative bg-rillation-card border border-rillation-border rounded-xl w-full max-w-5xl max-h-[80vh] overflow-hidden shadow-2xl mx-4">
+      <div className="relative bg-rillation-card border border-rillation-border rounded-xl w-full max-w-5xl max-h-[80vh] overflow-hidden shadow-2xl">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-rillation-border">
           <div>
@@ -336,7 +337,7 @@ export default function LeadsModal({
           </div>
         )}
       </div>
-    </div>
+    </ModalPortal>
   )
 }
 

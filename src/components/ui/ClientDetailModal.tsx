@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { X, Save, Loader2 } from 'lucide-react'
 import { supabase, formatNumber, formatPercentage, formatDateForDisplay } from '../../lib/supabase'
 import Button from './Button'
+import ModalPortal from './ModalPortal'
 
 interface ClientDetailModalProps {
   isOpen: boolean
@@ -141,7 +142,7 @@ export default function ClientDetailModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <ModalPortal isOpen={isOpen}>
       {/* Backdrop */}
       <div 
         className="absolute inset-0 bg-black/70 backdrop-blur-sm"
@@ -149,7 +150,7 @@ export default function ClientDetailModal({
       />
       
       {/* Modal */}
-      <div className="relative bg-rillation-card border border-rillation-border rounded-xl w-full max-w-lg mx-4 shadow-2xl">
+      <div className="relative bg-rillation-card border border-rillation-border rounded-xl w-full max-w-lg shadow-2xl">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-rillation-border">
           <h2 className="text-xl font-semibold text-rillation-text">{clientName}</h2>
@@ -323,6 +324,6 @@ export default function ClientDetailModal({
           </Button>
         </div>
       </div>
-    </div>
+    </ModalPortal>
   )
 }

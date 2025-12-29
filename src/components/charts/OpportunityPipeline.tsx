@@ -1,17 +1,19 @@
 import { motion } from 'framer-motion'
 import { formatNumber } from '../../lib/supabase'
-import { useOpportunities, type OpportunityStage } from '../../hooks/useOpportunities'
+import type { OpportunityStage } from '../../hooks/useOpportunities'
 
 interface OpportunityPipelineProps {
-  client?: string
+  stages: OpportunityStage[]
+  loading?: boolean
+  error?: string | null
+  onStageClick?: (stageName: string, stageIndex: number) => void
 }
 
-export default function OpportunityPipeline({ client }: OpportunityPipelineProps) {
-  const { stages, loading, error } = useOpportunities({ client })
+export default function OpportunityPipeline({ stages, loading, error, onStageClick }: OpportunityPipelineProps) {
 
   if (loading) {
     return (
-      <div className="bg-rillation-card rounded-xl p-6 border border-rillation-border max-w-2xl mx-auto">
+      <div className="bg-rillation-card rounded-xl p-6 border border-rillation-border w-full">
         <h3 className="text-lg font-semibold text-rillation-text mb-6">Estimated Pipeline Value</h3>
         <div className="flex items-center justify-center py-8">
           <div className="w-6 h-6 border-2 border-rillation-purple border-t-transparent rounded-full animate-spin" />
@@ -22,18 +24,15 @@ export default function OpportunityPipeline({ client }: OpportunityPipelineProps
 
   if (error) {
     return (
-      <div className="bg-rillation-card rounded-xl p-6 border border-rillation-border max-w-2xl mx-auto">
+      <div className="bg-rillation-card rounded-xl p-6 border border-rillation-border w-full">
         <h3 className="text-lg font-semibold text-rillation-text mb-6">Estimated Pipeline Value</h3>
         <div className="text-sm text-red-400">{error}</div>
       </div>
     )
   }
 
-  // Calculate max value for sizing bars
+  // Calculate max value for progress bars
   const maxValue = Math.max(...stages.map((s) => s.value), 1)
-
-  // Dark purple color - darker variant
-  const darkPurple = 'bg-[#5b21b6]' // purple-800
 
   // Container animation
   const containerVariants = {
@@ -47,135 +46,132 @@ export default function OpportunityPipeline({ client }: OpportunityPipelineProps
     }
   }
 
-  // Stage animation variants
-  const stageVariants = {
-    hidden: { opacity: 0, scaleX: 0 },
+  // Card animation variants with 3D flip effect
+  const cardVariants = {
+    hidden: { 
+      opacity: 0, 
+      y: 30,
+      scale: 0.9,
+      rotateX: -20,
+      z: -50
+    },
     visible: { 
       opacity: 1, 
-      scaleX: 1,
+      y: 0,
+      scale: 1,
+      rotateX: 0,
+      z: 0,
       transition: {
-        scaleX: { type: "spring", stiffness: 200, damping: 20 },
-        opacity: { duration: 0.3 }
+        type: "spring",
+        stiffness: 200,
+        damping: 20,
+        mass: 0.5
       }
     }
   }
 
-  // Card animation variants
-  const cardVariants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: { 
-      opacity: 1, 
-      y: 0,
+  // Shimmer animation for progress bars
+  const shimmerVariants = {
+    initial: { x: '-100%' },
+    animate: {
+      x: '200%',
       transition: {
-        type: "spring",
-        stiffness: 100,
-        damping: 15
+        repeat: Infinity,
+        repeatDelay: 2,
+        duration: 1.5,
+        ease: 'easeInOut'
       }
     }
   }
 
   return (
-    <div className="bg-rillation-card rounded-xl p-6 border border-rillation-border max-w-2xl mx-auto w-full">
-      <h3 className="text-lg font-semibold text-rillation-text mb-6">Estimated Pipeline Value</h3>
+    <div className="bg-rillation-card rounded-xl p-4 sm:p-6 border border-rillation-border w-full h-full flex flex-col">
+      <h3 className="text-lg font-semibold text-rillation-text mb-4 flex-shrink-0">Estimated Pipeline Value</h3>
       
-      {/* Compact Triangle Funnel */}
+      {/* Unified Enhanced Cards with 3D Perspective */}
       <motion.div
-        className="relative flex flex-col items-center gap-0 mb-8"
+        className="flex flex-col gap-1.5 flex-1 justify-evenly"
+        style={{ perspective: '1000px' }}
         variants={containerVariants}
         initial="hidden"
         animate="visible"
       >
         {stages.map((stage, index) => {
-          // Calculate width for triangle effect - more compact
-          const progress = index / (stages.length - 1)
-          const widthPercent = Math.max(100 - (progress * 60), 25)
-          
-          // Calculate next stage width for smooth trapezoid
-          const nextProgress = (index + 1) / (stages.length - 1)
-          const nextWidthPercent = index < stages.length - 1 
-            ? Math.max(100 - (nextProgress * 60), 25)
-            : widthPercent
-          
-          // Value-based width scaling (if needed)
-          const valueWidth = maxValue > 0 ? (stage.value / maxValue) * 100 : 0
+          // Calculate progress percentage for progress bar
+          const progressPercent = maxValue > 0 ? (stage.value / maxValue) * 100 : 0
 
           return (
             <motion.div
               key={stage.stage}
-              className="relative flex flex-col items-center w-full mb-1"
-              variants={stageVariants}
+              variants={cardVariants}
+              style={{ transformStyle: 'preserve-3d' }}
+              className={`rounded-lg px-4 py-3.5 border-l-4 bg-rillation-bg border-l-[#EB1A1A] transition-all duration-200 ${
+                onStageClick ? 'cursor-pointer' : ''
+              }`}
+              onClick={() => onStageClick?.(stage.stage, index)}
+              whileHover={onStageClick ? { 
+                rotateX: -8,
+                y: -8,
+                scale: 1.05,
+                z: 40,
+                boxShadow: '0 20px 40px rgba(235, 26, 26, 0.4), 0 0 0 2px rgba(235, 26, 26, 0.2)',
+                transition: { 
+                  type: "spring",
+                  stiffness: 1200,
+                  damping: 35,
+                  duration: 0.05
+                } 
+              } : {}}
+              whileTap={onStageClick ? { 
+                scale: 0.98,
+                rotateX: 0,
+                transition: { duration: 0.1 }
+              } : {}}
             >
-              {/* Stage Row */}
-              <div className="relative w-full flex items-center gap-3">
-                {/* Stage name on left */}
-                <div className="flex-shrink-0 w-32 text-right pr-3">
-                  <span className="text-sm text-rillation-text-muted font-medium">
-                    {stage.stage}
-                  </span>
-                </div>
-                
-                {/* Triangle funnel bar */}
-                <div className="flex-1 flex items-center">
-                  <motion.div
-                    className={`relative ${darkPurple} flex items-center justify-end px-4 rounded-sm`}
-                    style={{
-                      width: `${widthPercent}%`,
-                      height: '40px',
-                      clipPath: index < stages.length - 1 
-                        ? `polygon(0% 0%, 100% 0%, ${100 - ((widthPercent - nextWidthPercent) / widthPercent * 100)}% 100%, 0% 100%)`
-                        : `polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%)`,
-                    }}
-                  >
-                    {/* Value inside bar */}
-                    <div className="flex items-center gap-2">
-                      <span className="text-white text-sm font-bold">
-                        ${formatNumber(stage.value)}
-                      </span>
-                      <span className="text-white/70 text-xs">
-                        ({stage.count})
-                      </span>
-                    </div>
-                  </motion.div>
-                </div>
+              {/* Card Content */}
+              <div className="flex items-center justify-between mb-2">
+                <h4 className="text-sm font-semibold text-white truncate flex-1 min-w-0">
+                  {stage.stage}
+                </h4>
+                <p className="text-xl font-bold text-white ml-4 flex-shrink-0">
+                  ${formatNumber(stage.value)}
+                </p>
               </div>
+
+              {/* Progress Bar with Shimmer Effect - Always show red line */}
+              <div className="mb-2 relative overflow-hidden rounded-full h-1.5 bg-[#EB1A1A]/20">
+                {/* Filled portion based on value */}
+                <motion.div
+                  className="h-full bg-[#EB1A1A] rounded-full relative"
+                  initial={{ width: 0 }}
+                  animate={{ width: `${Math.max(progressPercent, 2)}%` }}
+                  transition={{ 
+                    duration: 0.8, 
+                    delay: index * 0.08 + 0.1,
+                    type: "spring",
+                    stiffness: 100,
+                    damping: 20
+                  }}
+                >
+                  {/* Shimmer effect only when there's actual value */}
+                  {progressPercent > 0 && (
+                    <motion.div
+                      className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent"
+                      variants={shimmerVariants}
+                      initial="initial"
+                      animate="animate"
+                    />
+                  )}
+                </motion.div>
+              </div>
+
+              {/* Opportunity Count */}
+              <p className="text-xs text-white/60 font-medium">
+                {stage.count} {stage.count === 1 ? 'opportunity' : 'opportunities'}
+              </p>
             </motion.div>
           )
         })}
-      </motion.div>
-
-      {/* Scorecard Cards Grid */}
-      <motion.div
-        className="grid grid-cols-1 md:grid-cols-2 gap-3"
-        variants={containerVariants}
-        initial="hidden"
-        animate="visible"
-      >
-        {stages.map((stage, index) => (
-          <motion.div
-            key={`card-${stage.stage}`}
-            variants={cardVariants}
-            className="bg-rillation-bg rounded-lg p-4 border border-rillation-border hover:border-rillation-purple/30 transition-all duration-200"
-            whileHover={{ y: -2, transition: { duration: 0.2 } }}
-          >
-            {/* Card header with purple accent */}
-            <div className="flex items-start gap-3">
-              <div className="w-1 h-10 bg-gradient-to-b from-rillation-purple to-rillation-purple-dark rounded-full flex-shrink-0" />
-              <div className="flex-1 min-w-0">
-                <h4 className="text-xs font-medium text-rillation-text-muted mb-2 truncate">
-                  {stage.stage}
-                </h4>
-                <div className="space-y-0.5">
-                  <p className="text-lg font-bold text-rillation-text">
-                    ${formatNumber(stage.value)}
-                  </p>
-                  <p className="text-xs text-rillation-text-muted">
-                    {stage.count} {stage.count === 1 ? 'opportunity' : 'opportunities'}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </motion.div>
-        ))}
       </motion.div>
     </div>
   )

@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import { motion } from 'framer-motion'
 import { ArrowLeft, Mail, Users, MessageSquare, MessageCircle, CheckCircle, XCircle, Calendar } from 'lucide-react'
 import MetricCard from '../components/ui/MetricCard'
 import ClickableMetricCard from '../components/ui/ClickableMetricCard'
@@ -290,36 +291,122 @@ export default function ClientDetailView() {
   // Show loading state if client name is not yet decoded
   if (!decodedClientName || !clientName) {
     return (
-      <div className="space-y-6 fade-in">
+      <motion.div
+        className="space-y-6"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.3 }}
+      >
         <div className="flex items-center gap-4">
-          <button
+          <motion.button
             onClick={() => navigate('/gtm-scoreboard')}
             className="flex items-center gap-2 px-4 py-2 bg-rillation-card border border-rillation-border rounded-lg text-sm text-rillation-text hover:bg-rillation-card-hover transition-colors"
+            whileHover={{ scale: 1.05, x: -2 }}
+            whileTap={{ scale: 0.95 }}
           >
             <ArrowLeft size={16} />
             Back to Scorecards
-          </button>
+          </motion.button>
         </div>
         <div className="flex items-center justify-center py-12">
-          <div className="w-8 h-8 border-2 border-rillation-purple border-t-transparent rounded-full animate-spin" />
+          <motion.div
+            className="w-8 h-8 border-2 border-rillation-purple border-t-transparent rounded-full"
+            animate={{ rotate: 360 }}
+            transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+          />
         </div>
-      </div>
+      </motion.div>
     )
   }
 
+  // Animation variants
+  const pageVariants = {
+    initial: {
+      opacity: 0,
+      x: 50,
+      scale: 0.95,
+    },
+    animate: {
+      opacity: 1,
+      x: 0,
+      scale: 1,
+      transition: {
+        type: 'spring',
+        stiffness: 300,
+        damping: 30,
+        duration: 0.4,
+      },
+    },
+    exit: {
+      opacity: 0,
+      x: -50,
+      scale: 0.95,
+      transition: {
+        duration: 0.3,
+      },
+    },
+  }
+
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    show: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.08,
+        delayChildren: 0.1,
+      },
+    },
+  }
+
+  const itemVariants = {
+    hidden: { 
+      opacity: 0, 
+      y: 20,
+      scale: 0.95,
+    },
+    show: { 
+      opacity: 1, 
+      y: 0,
+      scale: 1,
+      transition: {
+        type: 'spring',
+        stiffness: 300,
+        damping: 25,
+      },
+    },
+  }
+
   return (
-    <div className="space-y-6 fade-in">
+    <motion.div
+      className="space-y-6"
+      variants={pageVariants}
+      initial="initial"
+      animate="animate"
+      exit="exit"
+      layoutId={`page-${decodedClientName}`}
+    >
       {/* Header with Back Button */}
-      <div className="flex items-center gap-4">
-        <button
+      <motion.div 
+        className="flex items-center gap-4"
+        variants={itemVariants}
+      >
+        <motion.button
           onClick={() => navigate('/gtm-scoreboard')}
           className="flex items-center gap-2 px-4 py-2 bg-rillation-card border border-rillation-border rounded-lg text-sm text-rillation-text hover:bg-rillation-card-hover transition-colors"
+          whileHover={{ scale: 1.05, x: -2 }}
+          whileTap={{ scale: 0.95 }}
+          transition={{ type: 'spring', stiffness: 400, damping: 17 }}
         >
           <ArrowLeft size={16} />
           Back to Scorecards
-        </button>
-        <h1 className="text-2xl font-bold text-rillation-text">{decodedClientName}</h1>
-      </div>
+        </motion.button>
+        <motion.h1 
+          className="text-2xl font-bold text-rillation-text"
+          variants={itemVariants}
+        >
+          {decodedClientName}
+        </motion.h1>
+      </motion.div>
 
       {/* Error State */}
       {error && (
@@ -330,84 +417,116 @@ export default function ClientDetailView() {
 
       {/* Loading State */}
       {loading && (
-        <div className="flex items-center justify-center py-12">
-          <div className="w-8 h-8 border-2 border-rillation-purple border-t-transparent rounded-full animate-spin" />
-        </div>
+        <motion.div
+          className="flex items-center justify-center py-12"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+        >
+          <motion.div
+            className="w-8 h-8 border-2 border-rillation-purple border-t-transparent rounded-full"
+            animate={{ rotate: 360 }}
+            transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+          />
+        </motion.div>
       )}
 
       {/* Metrics Grid */}
       {!loading && metrics && (
-        <>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-3 md:gap-4 stagger-children">
-            <MetricCard
-              title="Total Email Sent"
-              value={metrics.totalEmailsSent}
-              icon={<Mail size={18} />}
-              trend="up"
-              trendValue="-"
-            />
-            <MetricCard
-              title="Unique Prospects"
-              value={metrics.uniqueProspects}
-              icon={<Users size={18} />}
-              trend="up"
-              trendValue="-"
-              colorClass="text-rillation-orange"
-            />
-            <ClickableMetricCard
-              title="Total Replies"
-              value={metrics.totalReplies}
-              percentage={replyRate}
-              percentageLabel="incl. OOO"
-              icon={<MessageSquare size={18} />}
-              colorClass="text-rillation-cyan"
-              isClickable={true}
-              isActive={activeMetrics.has('totalReplies')}
-              onClick={() => handleMetricClick('totalReplies')}
-            />
-            <ClickableMetricCard
-              title="Real Replies"
-              value={metrics.realReplies}
-              percentage={realReplyRate}
-              percentageLabel="excl. OOO"
-              icon={<MessageCircle size={18} />}
-              colorClass="text-rillation-cyan"
-              isClickable={true}
-              isActive={activeMetrics.has('replies')}
-              onClick={() => handleMetricClick('replies')}
-            />
-            <MetricCard
-              title="Interested"
-              value={metrics.positiveReplies}
-              percentage={positiveRate}
-              icon={<CheckCircle size={18} />}
-              trend="up"
-              trendValue="-"
-              colorClass="text-rillation-green"
-            />
-            <MetricCard
-              title="Bounces"
-              value={metrics.bounces}
-              percentage={bounceRate}
-              icon={<XCircle size={18} />}
-              trend="down"
-              trendValue="-"
-              colorClass="text-rillation-red"
-            />
-            <ClickableMetricCard
-              title="Meetings Booked"
-              value={metrics.meetingsBooked}
-              percentage={meetingRate}
-              icon={<Calendar size={18} />}
-              colorClass="text-rillation-magenta"
-              isClickable={true}
-              isActive={activeMetrics.has('meetings')}
-              onClick={() => handleMetricClick('meetings')}
-            />
-          </div>
+        <motion.div
+          variants={containerVariants}
+          initial="hidden"
+          animate="show"
+        >
+          <motion.div 
+            className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-3 md:gap-4"
+            variants={containerVariants}
+          >
+            <motion.div variants={itemVariants}>
+              <MetricCard
+                title="Total Email Sent"
+                value={metrics.totalEmailsSent}
+                icon={<Mail size={18} />}
+                trend="up"
+                trendValue="-"
+              />
+            </motion.div>
+            <motion.div variants={itemVariants}>
+              <MetricCard
+                title="Unique Prospects"
+                value={metrics.uniqueProspects}
+                icon={<Users size={18} />}
+                trend="up"
+                trendValue="-"
+                colorClass="text-rillation-orange"
+              />
+            </motion.div>
+            <motion.div variants={itemVariants}>
+              <ClickableMetricCard
+                title="Total Replies"
+                value={metrics.totalReplies}
+                percentage={replyRate}
+                percentageLabel="incl. OOO"
+                icon={<MessageSquare size={18} />}
+                colorClass="text-rillation-cyan"
+                isClickable={true}
+                isActive={activeMetrics.has('totalReplies')}
+                onClick={() => handleMetricClick('totalReplies')}
+              />
+            </motion.div>
+            <motion.div variants={itemVariants}>
+              <ClickableMetricCard
+                title="Real Replies"
+                value={metrics.realReplies}
+                percentage={realReplyRate}
+                percentageLabel="excl. OOO"
+                icon={<MessageCircle size={18} />}
+                colorClass="text-rillation-cyan"
+                isClickable={true}
+                isActive={activeMetrics.has('replies')}
+                onClick={() => handleMetricClick('replies')}
+              />
+            </motion.div>
+            <motion.div variants={itemVariants}>
+              <MetricCard
+                title="Interested"
+                value={metrics.positiveReplies}
+                percentage={positiveRate}
+                icon={<CheckCircle size={18} />}
+                trend="up"
+                trendValue="-"
+                colorClass="text-rillation-green"
+              />
+            </motion.div>
+            <motion.div variants={itemVariants}>
+              <MetricCard
+                title="Bounces"
+                value={metrics.bounces}
+                percentage={bounceRate}
+                icon={<XCircle size={18} />}
+                trend="down"
+                trendValue="-"
+                colorClass="text-rillation-red"
+              />
+            </motion.div>
+            <motion.div variants={itemVariants}>
+              <ClickableMetricCard
+                title="Meetings Booked"
+                value={metrics.meetingsBooked}
+                percentage={meetingRate}
+                icon={<Calendar size={18} />}
+                colorClass="text-rillation-magenta"
+                isClickable={true}
+                isActive={activeMetrics.has('meetings')}
+                onClick={() => handleMetricClick('meetings')}
+              />
+            </motion.div>
+          </motion.div>
 
           {/* Trend Chart */}
-          <TrendChart data={chartData} />
+          <motion.div variants={itemVariants}>
+            <TrendChart data={chartData} />
+          </motion.div>
 
           {/* Expandable Data Panels */}
           {activeMetrics.size > 0 && (
@@ -480,27 +599,29 @@ export default function ClientDetailView() {
 
           {/* Campaign Performance */}
           {!campaignsLoading && campaignStats.length > 0 && (
-            <div>
+            <motion.div variants={itemVariants}>
               <h2 className="text-xl font-semibold text-rillation-text mb-4">Campaign Performance</h2>
               <TopCampaignsChart campaigns={campaignStats} maxItems={10} />
-            </div>
+            </motion.div>
           )}
 
           {/* Breakdown by Campaign Table */}
-          <CampaignBreakdownTable client={decodedClientName} />
+          <motion.div variants={itemVariants}>
+            <CampaignBreakdownTable client={decodedClientName} />
+          </motion.div>
 
           {/* Meetings Booked with Firmographic Data */}
-          <div>
+          <motion.div variants={itemVariants}>
             <h2 className="text-xl font-semibold text-rillation-text mb-4">Meetings Booked Details</h2>
             <MeetingsBookedTable 
               client={decodedClientName}
               startDate={dateRange.start}
               endDate={dateRange.end}
             />
-          </div>
-        </>
+          </motion.div>
+        </motion.div>
       )}
-    </div>
+    </motion.div>
   )
 }
 

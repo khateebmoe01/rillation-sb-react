@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { X, Save, Loader2, ChevronDown, ChevronUp } from 'lucide-react'
 import { supabase, formatDateForQuery, formatCurrency } from '../../lib/supabase'
 import Button from './Button'
+import ModalPortal from './ModalPortal'
 
 interface ConfigureTargetsModalProps {
   isOpen: boolean
@@ -262,7 +263,7 @@ export default function ConfigureTargetsModal({
   )
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <ModalPortal isOpen={isOpen}>
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/70 backdrop-blur-sm"
@@ -437,6 +438,6 @@ export default function ConfigureTargetsModal({
           </Button>
         </div>
       </div>
-    </div>
+    </ModalPortal>
   )
 }

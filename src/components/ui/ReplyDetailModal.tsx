@@ -1,6 +1,7 @@
 import { X } from 'lucide-react'
 import type { Reply } from '../../types/database'
 import { formatDateForDisplay } from '../../lib/supabase'
+import ModalPortal from './ModalPortal'
 
 interface ReplyDetailModalProps {
   isOpen: boolean
@@ -12,7 +13,7 @@ export default function ReplyDetailModal({ isOpen, onClose, reply }: ReplyDetail
   if (!isOpen || !reply) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <ModalPortal isOpen={isOpen}>
       {/* Backdrop */}
       <div 
         className="absolute inset-0 bg-black/70 backdrop-blur-sm"
@@ -20,7 +21,7 @@ export default function ReplyDetailModal({ isOpen, onClose, reply }: ReplyDetail
       />
       
       {/* Modal */}
-      <div className="relative bg-rillation-card border border-rillation-border rounded-xl w-full max-w-3xl max-h-[80vh] overflow-hidden shadow-2xl mx-4">
+      <div className="relative bg-rillation-card border border-rillation-border rounded-xl w-full max-w-3xl max-h-[80vh] overflow-hidden shadow-2xl">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-rillation-border">
           <h2 className="text-lg font-semibold text-rillation-text">Reply Details</h2>
@@ -75,7 +76,7 @@ export default function ReplyDetailModal({ isOpen, onClose, reply }: ReplyDetail
           </div>
         </div>
       </div>
-    </div>
+    </ModalPortal>
   )
 }
 

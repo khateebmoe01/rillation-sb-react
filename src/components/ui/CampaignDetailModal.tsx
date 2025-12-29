@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { X } from 'lucide-react'
 import { supabase, formatDateForQuery, formatNumber, formatPercentage } from '../../lib/supabase'
 import type { CampaignStat } from '../../hooks/useCampaignStats'
+import ModalPortal from './ModalPortal'
 
 interface CampaignDetailModalProps {
   isOpen: boolean
@@ -176,7 +177,7 @@ export default function CampaignDetailModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <ModalPortal isOpen={isOpen}>
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/70 backdrop-blur-sm"
@@ -184,7 +185,7 @@ export default function CampaignDetailModal({
       />
 
       {/* Modal */}
-      <div className="relative bg-rillation-card border border-rillation-border rounded-xl w-full max-w-6xl max-h-[90vh] overflow-hidden shadow-2xl mx-4 flex flex-col">
+      <div className="relative bg-rillation-card border border-rillation-border rounded-xl w-full max-w-6xl max-h-[90vh] overflow-hidden shadow-2xl flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-rillation-border">
           <div>
@@ -362,7 +363,7 @@ export default function CampaignDetailModal({
           )}
         </div>
       </div>
-    </div>
+    </ModalPortal>
   )
 }
 

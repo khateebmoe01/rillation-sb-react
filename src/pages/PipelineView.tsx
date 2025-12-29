@@ -6,9 +6,14 @@ import OpportunityPipeline from '../components/charts/OpportunityPipeline'
 import EditableFunnelSpreadsheet from '../components/ui/EditableFunnelSpreadsheet'
 import InlineLeadsTable from '../components/ui/InlineLeadsTable'
 import ConfigureTargetsModal from '../components/ui/ConfigureTargetsModal'
+import OpportunityStageModal from '../components/ui/OpportunityStageModal'
+import SalesMetricCards from '../components/ui/SalesMetricCards'
+import SalesMetricsChart from '../components/charts/SalesMetricsChart'
 import { usePipelineData } from '../hooks/usePipelineData'
 import { useClients } from '../hooks/useClients'
 import { useFilters } from '../contexts/FilterContext'
+import { useSalesMetrics } from '../hooks/useSalesMetrics'
+import { useOpportunities } from '../hooks/useOpportunities'
 
 export default function PipelineView() {
   // Get current month/year
@@ -17,13 +22,16 @@ export default function PipelineView() {
   const selectedYear = now.getFullYear()
   
   // Use global filter state
-  const { dateRange } = useFilters()
+  const { dateRange, selectedClient } = useFilters()
 
   // Inline table state
   const [selectedStage, setSelectedStage] = useState<string | null>(null)
   
   // Configure targets modal state
   const [isConfigureModalOpen, setIsConfigureModalOpen] = useState(false)
+  
+  // Opportunity stage modal state
+  const [selectedOpportunityStage, setSelectedOpportunityStage] = useState<string | null>(null)
   
   // Fetch clients for modal
   const { clients } = useClients()
@@ -34,6 +42,16 @@ export default function PipelineView() {
     endDate: dateRange.end,
     month: selectedMonth,
     year: selectedYear,
+  })
+
+  // Fetch opportunities with refetch capability
+  const { stages: opportunityStages, loading: opportunitiesLoading, error: opportunitiesError, refetch: refetchOpportunities } = useOpportunities({ client: 'Rillation Revenue' })
+
+  // Fetch sales metrics
+  const { dailyMetrics, summary, loading: salesLoading, error: salesError } = useSalesMetrics({
+    startDate: dateRange.start,
+    endDate: dateRange.end,
+    client: selectedClient || undefined,
   })
 
   // Handle funnel stage click - toggle selection
@@ -51,6 +69,23 @@ export default function PipelineView() {
     setSelectedStage(null)
   }
 
+  // Handle opportunity stage click
+  const handleOpportunityStageClick = (stageName: string, _stageIndex: number) => {
+    setSelectedOpportunityStage(stageName)
+  }
+
+  // Handle opportunity modal close
+  const handleOpportunityModalClose = () => {
+    setSelectedOpportunityStage(null)
+  }
+
+  // Handle opportunity modal save - refetch opportunities
+  const handleOpportunityModalSave = () => {
+    setSelectedOpportunityStage(null)
+    // Refetch opportunities to show updated values
+    refetchOpportunities()
+  }
+
   return (
     <div className="space-y-4 sm:space-y-6 fade-in">
       {/* Set Estimated Value Button - inline with page content */}
@@ -63,9 +98,9 @@ export default function PipelineView() {
       </div>
 
       {/* Error State */}
-      {error && (
+      {(error || salesError) && (
         <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 text-red-400">
-          {error}
+          {error || salesError}
         </div>
       )}
 
@@ -79,22 +114,59 @@ export default function PipelineView() {
       {/* Content */}
       {!loading && (
         <>
+          {/* Sales Analytics Section */}
+          {!salesLoading && !salesError && (
+            <div className="space-y-4">
+              {/* Sales Summary Cards */}
+              <SalesMetricCards summary={summary} />
+
+              {/* Sales Charts Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <SalesMetricsChart
+                  data={dailyMetrics}
+                  type="revenue"
+                  title="Daily Revenue"
+                />
+                <SalesMetricsChart
+                  data={dailyMetrics}
+                  type="dealCount"
+                  title="Daily Deal Count"
+                />
+              </div>
+              
+              {/* Average Deal Value and Win Rate - Same Row */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <SalesMetricsChart
+                  data={dailyMetrics}
+                  type="avgValue"
+                  title="Average Deal Value"
+                />
+                <SalesMetricsChart
+                  data={dailyMetrics}
+                  type="winRate"
+                  title="Win Rate Over Time"
+                />
+              </div>
+            </div>
+          )}
+
           {/* Dual Funnel System - Lead Funnel and Opportunity Pipeline */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch">
             {/* Lead Count Funnel */}
-            <div className="lg:col-span-1">
-              <FunnelChart 
-                stages={funnelStages}
-                onStageClick={handleStageClick}
-                clickableFromIndex={2} // Clickable from "Real Replies" onwards
-                selectedStageName={selectedStage}
-              />
-            </div>
+            <FunnelChart 
+              stages={funnelStages}
+              onStageClick={handleStageClick}
+              clickableFromIndex={2} // Clickable from "Real Replies" onwards
+              selectedStageName={selectedStage}
+            />
             
-            {/* Dollar-based Opportunity Pipeline - Takes 2/3 of space */}
-            <div className="lg:col-span-2">
-              <OpportunityPipeline client="Rillation Revenue" />
-            </div>
+            {/* Dollar-based Opportunity Pipeline */}
+            <OpportunityPipeline 
+              stages={opportunityStages}
+              loading={opportunitiesLoading}
+              error={opportunitiesError}
+              onStageClick={handleOpportunityStageClick}
+            />
           </div>
           
           {/* Inline Leads Table - appears between funnel and spreadsheet */}
@@ -128,6 +200,19 @@ export default function PipelineView() {
         onSave={refetch}
         mode="pipeline"
       />
+      
+      {/* Opportunity Stage Modal */}
+      {selectedOpportunityStage && (
+        <OpportunityStageModal
+          isOpen={!!selectedOpportunityStage}
+          onClose={handleOpportunityModalClose}
+          stageName={selectedOpportunityStage}
+          client="Rillation Revenue"
+          startDate={dateRange.start}
+          endDate={dateRange.end}
+          onSave={handleOpportunityModalSave}
+        />
+      )}
     </div>
   )
 }

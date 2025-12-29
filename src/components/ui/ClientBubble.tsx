@@ -1,3 +1,5 @@
+import { useRef } from 'react'
+import { motion, useMotionValue, useTransform, useSpring, useMotionTemplate } from 'framer-motion'
 import { formatNumber, formatPercentage } from '../../lib/supabase'
 import type { ClientBubbleData } from '../../types/database'
 
@@ -75,11 +77,86 @@ export default function ClientBubble({ data, onClick }: ClientBubbleProps) {
     ? (data.meetings / (data.positiveReplies || 1)) * 100
     : 0
 
+  // Magnetic hover effect
+  const cardRef = useRef<HTMLDivElement>(null)
+  const x = useMotionValue(0)
+  const y = useMotionValue(0)
+  
+  // Spring values for smooth following
+  const springConfig = { damping: 25, stiffness: 300 }
+  const xSpring = useSpring(x, springConfig)
+  const ySpring = useSpring(y, springConfig)
+  
+  // Transform values - limit movement to 15px
+  const rotateX = useTransform(ySpring, [-0.5, 0.5], [5, -5])
+  const rotateY = useTransform(xSpring, [-0.5, 0.5], [-5, 5])
+  const moveX = useTransform(xSpring, [-0.5, 0.5], [-12, 12])
+  const moveY = useTransform(ySpring, [-0.5, 0.5], [-12, 12])
+  
+  // Glow position
+  const glowX = useTransform(xSpring, [-0.5, 0.5], ['20%', '80%'])
+  const glowY = useTransform(ySpring, [-0.5, 0.5], ['20%', '80%'])
+  const glowBackground = useMotionTemplate`radial-gradient(circle 200px at ${glowX} ${glowY}, rgba(139, 92, 246, 0.15), rgba(6, 182, 212, 0.1), transparent 70%)`
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!cardRef.current) return
+    
+    const rect = cardRef.current.getBoundingClientRect()
+    const centerX = rect.left + rect.width / 2
+    const centerY = rect.top + rect.height / 2
+    
+    const mouseX = e.clientX - centerX
+    const mouseY = e.clientY - centerY
+    
+    // Normalize to -0.5 to 0.5 range
+    const normalizedX = mouseX / rect.width
+    const normalizedY = mouseY / rect.height
+    
+    x.set(normalizedX)
+    y.set(normalizedY)
+  }
+
+  const handleMouseLeave = () => {
+    x.set(0)
+    y.set(0)
+  }
+
   return (
-    <div 
-      className="bg-rillation-card rounded-xl p-6 border border-rillation-border hover:border-rillation-purple/30 transition-all duration-200 group cursor-pointer"
+    <motion.div
+      ref={cardRef}
+      className="relative bg-rillation-card rounded-xl p-6 border border-rillation-border group cursor-pointer overflow-hidden"
       onClick={onClick}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
+      style={{
+        rotateX,
+        rotateY,
+        x: moveX,
+        y: moveY,
+        transformStyle: 'preserve-3d',
+      }}
+      whileHover={{
+        scale: 1.02,
+        borderColor: 'rgba(139, 92, 246, 0.3)',
+        transition: { duration: 0.2 }
+      }}
+      whileTap={{
+        scale: 0.98,
+        transition: { duration: 0.1 }
+      }}
+      transition={{ type: 'spring', stiffness: 300, damping: 25 }}
     >
+      {/* Glow effect */}
+      <motion.div
+        className="absolute inset-0 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-300"
+        style={{
+          background: glowBackground,
+          filter: 'blur(40px)',
+        }}
+      />
+      
+      {/* Content */}
+      <div className="relative z-10">
       {/* Client Name */}
       <h3 className="text-lg font-semibold text-rillation-text mb-4 group-hover:text-rillation-purple transition-colors">
         {data.client}
@@ -124,6 +201,7 @@ export default function ClientBubble({ data, onClick }: ClientBubbleProps) {
       <p className="text-xs text-rillation-purple opacity-0 group-hover:opacity-100 transition-opacity mt-4 text-center">
         Click to edit targets
       </p>
-    </div>
+      </div>
+    </motion.div>
   )
 }

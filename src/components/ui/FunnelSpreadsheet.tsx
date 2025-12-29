@@ -58,49 +58,49 @@ export default function FunnelSpreadsheet({ data, month, year }: FunnelSpreadshe
   }
 
   return (
-    <div className="bg-rillation-card rounded-xl border border-rillation-border overflow-hidden">
-      <div className="p-4 border-b border-rillation-border flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-rillation-text">Overall Funnel Breakdown</h3>
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-rillation-text-muted">Year:</span>
-          <select className="bg-rillation-bg border border-rillation-border rounded px-2 py-1 text-sm text-rillation-text">
+    <div className="bg-rillation-card rounded-lg border border-rillation-border overflow-hidden">
+      <div className="px-3 py-2 border-b border-rillation-border flex items-center justify-between">
+        <h3 className="text-sm font-semibold text-rillation-text">Overall Funnel Breakdown</h3>
+        <div className="flex items-center gap-1.5">
+          <span className="text-xs text-rillation-text-muted">Year:</span>
+          <select className="bg-rillation-bg border border-rillation-border rounded px-1.5 py-0.5 text-xs text-rillation-text">
             <option value={year}>{year}</option>
           </select>
         </div>
       </div>
       
       <div className="overflow-x-auto">
-        <table className="w-full">
+        <table className="w-full text-xs">
           <thead>
             <tr className="bg-gradient-to-r from-rillation-purple to-rillation-magenta">
-              <th className="px-4 py-3 text-left text-sm font-medium text-white min-w-[180px]">
+              <th className="px-2 py-1.5 text-left text-xs font-medium text-white min-w-[120px]">
                 Metric
               </th>
-              <th colSpan={6} className="px-4 py-3 text-center text-sm font-medium text-white">
+              <th colSpan={6} className="px-2 py-1.5 text-center text-xs font-medium text-white">
                 {monthNames[month - 1]}
               </th>
             </tr>
             <tr className="bg-rillation-card-hover">
-              <th className="px-4 py-2 text-left text-xs font-medium text-rillation-text-muted"></th>
-              <th className="px-4 py-2 text-center text-xs font-medium text-rillation-purple">
-                Estimate LOW
+              <th className="px-2 py-1 text-left text-[10px] font-medium text-rillation-text-muted"></th>
+              <th className="px-2 py-1 text-center text-[10px] font-medium text-rillation-purple min-w-[60px]">
+                Low
               </th>
-              <th className="px-4 py-2 text-center text-xs font-medium text-rillation-purple">
-                Estimate AVG
+              <th className="px-2 py-1 text-center text-[10px] font-medium text-rillation-purple min-w-[60px]">
+                Avg
               </th>
-              <th className="px-4 py-2 text-center text-xs font-medium text-rillation-magenta">
-                Estimate HIGH
+              <th className="px-2 py-1 text-center text-[10px] font-medium text-rillation-magenta min-w-[60px]">
+                High
               </th>
-              <th className="px-4 py-2 text-center text-xs font-medium text-rillation-purple">
-                Estimate
+              <th className="px-2 py-1 text-center text-[10px] font-medium text-rillation-purple min-w-[60px]">
+                Est 1
               </th>
-              <th className="px-4 py-2 text-center text-xs font-medium text-rillation-purple">
-                Estimate
+              <th className="px-2 py-1 text-center text-[10px] font-medium text-rillation-purple min-w-[60px]">
+                Est 2
               </th>
-              <th className="px-4 py-2 text-center text-xs font-medium text-rillation-text">
+              <th className="px-2 py-1 text-center text-[10px] font-medium text-rillation-text min-w-[60px]">
                 Actual
               </th>
-              <th className="px-4 py-2 text-center text-xs font-medium text-rillation-green">
+              <th className="px-2 py-1 text-center text-[10px] font-medium text-rillation-green min-w-[60px]">
                 Projected
               </th>
             </tr>
@@ -112,32 +112,32 @@ export default function FunnelSpreadsheet({ data, month, year }: FunnelSpreadshe
               return (
                 <tr 
                   key={row.key}
-                  className={`border-b border-rillation-border/30 hover:bg-rillation-card-hover transition-colors ${
-                    index % 2 === 0 ? 'bg-rillation-card' : 'bg-rillation-bg/30'
+                  className={`border-b border-rillation-border/40 hover:bg-rillation-card-hover transition-colors ${
+                    index % 2 === 0 ? 'bg-rillation-card/40' : 'bg-rillation-bg/40'
                   }`}
                 >
-                  <td className="px-4 py-2 text-sm text-rillation-text">
+                  <td className="px-2 py-1 text-[11px] text-rillation-text font-medium">
                     {row.label}
                   </td>
-                  <td className="px-4 py-2 text-sm text-center text-rillation-text-muted">
+                  <td className="px-2 py-1 text-[11px] text-center text-rillation-text-muted">
                     {formatValue(rowData?.estimate_low, row.format)}
                   </td>
-                  <td className="px-4 py-2 text-sm text-center text-rillation-text-muted">
+                  <td className="px-2 py-1 text-[11px] text-center text-rillation-text-muted">
                     {formatValue(rowData?.estimate_avg, row.format)}
                   </td>
-                  <td className="px-4 py-2 text-sm text-center text-rillation-text-muted">
+                  <td className="px-2 py-1 text-[11px] text-center text-rillation-text-muted">
                     {formatValue(rowData?.estimate_high, row.format)}
                   </td>
-                  <td className="px-4 py-2 text-sm text-center text-rillation-text-muted">
+                  <td className="px-2 py-1 text-[11px] text-center text-rillation-text-muted">
                     {formatValue(rowData?.estimate_1, row.format)}
                   </td>
-                  <td className="px-4 py-2 text-sm text-center text-rillation-text-muted">
+                  <td className="px-2 py-1 text-[11px] text-center text-rillation-text-muted">
                     {formatValue(rowData?.estimate_2, row.format)}
                   </td>
-                  <td className="px-4 py-2 text-sm text-center text-rillation-text font-medium">
+                  <td className="px-2 py-1 text-[11px] text-center text-rillation-text font-semibold">
                     {formatValue(rowData?.actual, row.format)}
                   </td>
-                  <td className="px-4 py-2 text-sm text-center text-rillation-green font-medium">
+                  <td className="px-2 py-1 text-[11px] text-center text-rillation-green font-semibold">
                     {formatValue(rowData?.projected, row.format)}
                   </td>
                 </tr>

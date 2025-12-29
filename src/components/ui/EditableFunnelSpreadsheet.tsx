@@ -185,32 +185,32 @@ export default function EditableFunnelSpreadsheet({
     : metricRows.filter(m => m.stage === selectedStage)
 
   return (
-    <div className="bg-gradient-to-br from-rillation-card to-rillation-bg rounded-xl border border-rillation-border overflow-hidden">
+    <div className="bg-gradient-to-br from-rillation-card to-rillation-bg rounded-lg border border-rillation-border overflow-hidden">
       {/* Header */}
-      <div className="p-4 border-b border-rillation-border bg-rillation-card/50">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <h3 className="text-lg font-semibold text-rillation-text">Funnel Breakdown</h3>
+      <div className="px-3 py-2 border-b border-rillation-border bg-rillation-card/50">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-3">
+            <h3 className="text-sm font-semibold text-rillation-text">Funnel Breakdown</h3>
             
             {/* Stage Filter Dropdown */}
             <div className="relative">
               <select
                 value={selectedStage}
                 onChange={(e) => setSelectedStage(e.target.value)}
-                className="appearance-none pl-3 pr-8 py-1.5 text-sm bg-rillation-bg border border-rillation-border rounded-lg text-rillation-text focus:outline-none focus:border-rillation-purple cursor-pointer"
+                className="appearance-none pl-2 pr-6 py-1 text-xs bg-rillation-bg border border-rillation-border rounded text-rillation-text focus:outline-none focus:border-rillation-purple cursor-pointer"
               >
                 {stageFilters.map(filter => (
                   <option key={filter.key} value={filter.key}>{filter.label}</option>
                 ))}
               </select>
-              <ChevronDown size={14} className="absolute right-2 top-1/2 -translate-y-1/2 text-rillation-text-muted pointer-events-none" />
+              <ChevronDown size={12} className="absolute right-1.5 top-1/2 -translate-y-1/2 text-rillation-text-muted pointer-events-none" />
             </div>
           </div>
           
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-rillation-text-muted">Year:</span>
-              <select className="bg-rillation-bg border border-rillation-border rounded px-2 py-1 text-sm text-rillation-text">
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs text-rillation-text-muted">Year:</span>
+              <select className="bg-rillation-bg border border-rillation-border rounded px-1.5 py-0.5 text-xs text-rillation-text">
                 <option value={year}>{year}</option>
               </select>
             </div>
@@ -221,8 +221,8 @@ export default function EditableFunnelSpreadsheet({
                 onClick={handleSave}
                 disabled={saving}
               >
-                {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
-                {saving ? 'Saving...' : 'Save Changes'}
+                {saving ? <Loader2 size={12} className="animate-spin" /> : <Save size={12} />}
+                {saving ? 'Saving...' : 'Save'}
               </Button>
             )}
           </div>
@@ -231,22 +231,22 @@ export default function EditableFunnelSpreadsheet({
       
       {/* Table */}
       <div className="overflow-x-auto">
-        <table className="w-full">
+        <table className="w-full text-xs">
           <thead>
             <tr className="bg-gradient-to-r from-rillation-purple to-rillation-magenta">
-              <th className="px-4 py-3 text-left text-sm font-medium text-white min-w-[200px]">
+              <th className="px-2 py-1.5 text-left text-xs font-medium text-white min-w-[140px]">
                 Metric
               </th>
-              <th colSpan={3} className="px-4 py-3 text-center text-sm font-medium text-white">
+              <th colSpan={3} className="px-2 py-1.5 text-center text-xs font-medium text-white">
                 {monthNames[month - 1]} {year}
               </th>
             </tr>
             <tr className="bg-rillation-card-hover/50">
-              <th className="px-4 py-2 text-left text-xs font-medium text-rillation-text-muted"></th>
+              <th className="px-2 py-1 text-left text-xs font-medium text-rillation-text-muted"></th>
               {columns.map((col) => (
                 <th 
                   key={col}
-                  className={`px-4 py-2 text-center text-xs font-medium min-w-[100px] ${
+                  className={`px-2 py-1 text-center text-xs font-medium min-w-[70px] ${
                     col === 'actual' ? 'text-rillation-cyan' : 
                     col === 'projected' ? 'text-rillation-green' : 
                     'text-rillation-purple'
@@ -264,28 +264,30 @@ export default function EditableFunnelSpreadsheet({
               return (
                 <tr 
                   key={row.key}
-                  className={`border-b border-rillation-border/20 transition-colors hover:bg-rillation-card-hover/30 ${
-                    index % 2 === 0 ? 'bg-rillation-card/30' : 'bg-rillation-bg/20'
+                  className={`border-b border-rillation-border/30 transition-colors hover:bg-rillation-card-hover/40 ${
+                    index % 2 === 0 ? 'bg-rillation-card/40' : 'bg-rillation-bg/30'
                   }`}
                 >
-                  <td className="px-4 py-3 text-sm text-rillation-text font-medium">
-                    {row.label}
-                    <span className="ml-2 text-xs text-rillation-text-muted capitalize">
-                      ({row.stage})
-                    </span>
+                  <td className="px-2 py-1.5 text-xs text-rillation-text font-medium">
+                    <div className="flex flex-col">
+                      <span className="leading-tight">{row.label}</span>
+                      <span className="text-[10px] text-rillation-text-muted/70 capitalize">
+                        {row.stage}
+                      </span>
+                    </div>
                   </td>
                   {columns.map((col) => {
                     const cellValue = rowData?.[col as keyof FunnelForecastRow] ?? 0
                     const displayValue = formatValueForInput(cellValue, row.format)
                     
                     return (
-                      <td key={col} className="px-2 py-2">
+                      <td key={col} className="px-1 py-1">
                         <input
                           type="number"
                           value={displayValue}
                           onChange={(e) => handleCellChange(row.key, col, e.target.value)}
                           onFocus={handleFocus}
-                          className={`w-full px-3 py-2 text-sm text-center rounded-lg border transition-all
+                          className={`w-full px-1.5 py-1 text-xs text-center rounded border transition-all
                             focus:border-rillation-purple focus:outline-none focus:ring-1 focus:ring-rillation-purple/50
                             hover:border-rillation-border
                             ${col === 'actual' 

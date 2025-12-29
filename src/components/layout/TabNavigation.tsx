@@ -4,7 +4,7 @@ const tabs = [
   { path: '/quick-view', label: 'Quick View' },
   { path: '/performance', label: 'Performance Overview' },
   { path: '/gtm-scoreboard', label: 'Scorecards' },
-  { path: '/pipeline', label: 'Pipeline View' },
+  { path: '/pipeline', label: 'Pipeline' },
 ]
 
 export default function TabNavigation() {
