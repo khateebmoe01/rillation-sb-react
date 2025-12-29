@@ -11,8 +11,6 @@ import {
   XAxis,
   YAxis,
   Tooltip,
-  BarChart,
-  Bar,
 } from 'recharts'
 import type { CategoryBreakdown, DailyCount, CampaignPerformance } from '../../hooks/useDeepInsights'
 

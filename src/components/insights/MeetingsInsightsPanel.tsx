@@ -1,18 +1,12 @@
-import { useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { Calendar, Building, MapPin, DollarSign, Clock, ChevronDown, ChevronUp, TrendingUp, Target } from 'lucide-react'
+import { motion } from 'framer-motion'
+import { Calendar, Building, MapPin, DollarSign, Clock, ChevronDown, ChevronUp, TrendingUp } from 'lucide-react'
 import {
   ResponsiveContainer,
-  BarChart,
-  Bar,
   XAxis,
   YAxis,
   Tooltip,
-  Cell,
   AreaChart,
   Area,
-  ComposedChart,
-  Line,
 } from 'recharts'
 import type {
   IndustryBreakdown,

@@ -6,10 +6,6 @@ import {
   Cell,
   ResponsiveContainer,
   Tooltip,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
 } from 'recharts'
 import type { ClientBreakdown } from '../../hooks/useDeepInsights'
 
