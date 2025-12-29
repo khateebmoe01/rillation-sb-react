@@ -17,6 +17,7 @@ interface ExpandableDataPanelProps {
   onPageChange: (page: number) => void
   onClose: () => void
   isOpen: boolean
+  onRowClick?: (row: Record<string, any>) => void
 }
 
 export default function ExpandableDataPanel({
@@ -29,6 +30,7 @@ export default function ExpandableDataPanel({
   onPageChange,
   onClose,
   isOpen,
+  onRowClick,
 }: ExpandableDataPanelProps) {
   if (!isOpen) return null
 
@@ -110,7 +112,8 @@ export default function ExpandableDataPanel({
             {data.map((row, index) => (
               <tr
                 key={index}
-                className="border-b border-rillation-border/30 hover:bg-rillation-card-hover transition-colors"
+                className={`border-b border-rillation-border/30 hover:bg-rillation-card-hover transition-colors ${onRowClick ? 'cursor-pointer' : ''}`}
+                onClick={() => onRowClick?.(row)}
               >
                 {columns.map((col) => (
                   <td key={col.key} className="px-4 py-3 text-sm text-rillation-text">

@@ -1,179 +1,204 @@
 import { useState, useEffect } from 'react'
-import { MessageSquare, Users, Calendar, TrendingUp, PieChart } from 'lucide-react'
-import ReplyDetailModal from '../components/ui/ReplyDetailModal'
+import { motion, AnimatePresence } from 'framer-motion'
+import { Sparkles, RefreshCw, ChevronDown, X } from 'lucide-react'
 import { useFilters } from '../contexts/FilterContext'
-import { supabase, formatDateForQuery, formatNumber } from '../lib/supabase'
+import { useDeepInsights } from '../hooks/useDeepInsights'
+import { supabase, formatDateForQuery, formatDateForQueryEndOfDay } from '../lib/supabase'
+import InsightsSummaryBar from '../components/insights/InsightsSummaryBar'
+import ReplyInsightsPanel from '../components/insights/ReplyInsightsPanel'
+import EngagedLeadsPanel from '../components/insights/EngagedLeadsPanel'
+import MeetingsInsightsPanel from '../components/insights/MeetingsInsightsPanel'
+import ExpandableDataPanel from '../components/ui/ExpandableDataPanel'
+import ReplyDetailModal from '../components/ui/ReplyDetailModal'
 import type { Reply, MeetingBooked } from '../types/database'
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  PieChart as RechartsPieChart,
-  Pie,
-  Cell,
-  Legend,
-} from 'recharts'
 
-type AnalysisType = 'replies' | 'engaged_leads' | 'meetings'
+const PAGE_SIZE = 15
 
-const analysisTypes = [
-  { id: 'replies' as const, label: 'Reply Analysis', icon: MessageSquare },
-  { id: 'engaged_leads' as const, label: 'Engaged Lead Analysis', icon: Users },
-  { id: 'meetings' as const, label: 'Meetings Booked Analysis', icon: Calendar },
+const repliesColumns = [
+  { key: 'from_email', label: 'From' },
+  { key: 'subject', label: 'Subject' },
+  { key: 'category', label: 'Category' },
+  { key: 'client', label: 'Client' },
+  { key: 'date_received', label: 'Date', format: 'datetime' as const },
 ]
 
-const COLORS = ['#a855f7', '#22d3ee', '#22c55e', '#f97316', '#ef4444', '#d946ef']
+const meetingsColumns = [
+  { key: 'full_name', label: 'Name' },
+  { key: 'company', label: 'Company' },
+  { key: 'email', label: 'Email' },
+  { key: 'industry', label: 'Industry' },
+  { key: 'company_hq_state', label: 'State' },
+  { key: 'campaign_name', label: 'Campaign' },
+  { key: 'created_time', label: 'Date', format: 'date' as const },
+]
+
+const engagedLeadsColumns = [
+  { key: 'email', label: 'Email' },
+  { key: 'client', label: 'Client' },
+  { key: 'status', label: 'Status' },
+  { key: 'created_at', label: 'Date', format: 'datetime' as const },
+]
 
 export default function DeepView() {
-  // Analysis type state
-  const [activeAnalysis, setActiveAnalysis] = useState<AnalysisType>('replies')
-  
-  // Use global filters
   const { selectedClient, dateRange } = useFilters()
-  const [selectedCategory, setSelectedCategory] = useState('')
   
-  // Data state
-  const [replies, setReplies] = useState<Reply[]>([])
-  const [engagedLeads, setEngagedLeads] = useState<any[]>([])
-  const [meetings, setMeetings] = useState<MeetingBooked[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  
-  // Analytics data
-  const [categoryBreakdown, setCategoryBreakdown] = useState<any[]>([])
-  const [clientBreakdown, setClientBreakdown] = useState<any[]>([])
-  const [dailyTrend, setDailyTrend] = useState<any[]>([])
-  
-  // Summary stats for replies
-  const [summaryStats, setSummaryStats] = useState({
-    totalReplies: 0,
-    interested: 0,
-    notInterested: 0,
-    outOfOffice: 0,
+  // Deep insights data
+  const { data, loading, error, refetch } = useDeepInsights({
+    startDate: dateRange.start,
+    endDate: dateRange.end,
+    client: selectedClient || undefined,
   })
-  
-  // Pagination state
+
+  // Expanded panels state
+  const [expandedPanels, setExpandedPanels] = useState<Set<string>>(new Set())
+  const [activeMetric, setActiveMetric] = useState<string | null>(null)
+
+  // Detail table data
+  const [repliesData, setRepliesData] = useState<Reply[]>([])
   const [repliesPage, setRepliesPage] = useState(1)
-  const [repliesTotalCount, setRepliesTotalCount] = useState(0)
-  const [engagedLeadsPage, setEngagedLeadsPage] = useState(1)
-  const [engagedLeadsTotalCount, setEngagedLeadsTotalCount] = useState(0)
+  const [repliesCount, setRepliesCount] = useState(0)
+  const [repliesLoading, setRepliesLoading] = useState(false)
+
+  const [meetingsData, setMeetingsData] = useState<MeetingBooked[]>([])
   const [meetingsPage, setMeetingsPage] = useState(1)
-  const [meetingsTotalCount, setMeetingsTotalCount] = useState(0)
-  
-  // Reply detail modal state
+  const [meetingsCount, setMeetingsCount] = useState(0)
+  const [meetingsLoading, setMeetingsLoading] = useState(false)
+
+  const [leadsData, setLeadsData] = useState<any[]>([])
+  const [leadsPage, setLeadsPage] = useState(1)
+  const [leadsCount, setLeadsCount] = useState(0)
+  const [leadsLoading, setLeadsLoading] = useState(false)
+
+  // Reply modal
   const [selectedReply, setSelectedReply] = useState<Reply | null>(null)
   const [isReplyModalOpen, setIsReplyModalOpen] = useState(false)
   
-  // Meetings filter state
-  const [selectedMeetingDate, setSelectedMeetingDate] = useState<string | null>(null)
-  const [selectedMeetingClient, setSelectedMeetingClient] = useState<string | null>(null)
+  // Handle metric click in summary bar
+  const handleMetricClick = (metric: string) => {
+    setActiveMetric(activeMetric === metric ? null : metric)
+    
+    // Auto-expand relevant panel
+    if (metric === 'replies' || metric === 'interested' || metric === 'notInterested' || metric === 'ooo') {
+      setExpandedPanels(prev => {
+        const newSet = new Set(prev)
+        if (!newSet.has('replies')) {
+          newSet.add('replies')
+        }
+        return newSet
+      })
+    } else if (metric === 'leads') {
+      setExpandedPanels(prev => {
+        const newSet = new Set(prev)
+        if (!newSet.has('leads')) {
+          newSet.add('leads')
+        }
+        return newSet
+      })
+    } else if (metric === 'meetings') {
+      setExpandedPanels(prev => {
+        const newSet = new Set(prev)
+        if (!newSet.has('meetings')) {
+          newSet.add('meetings')
+        }
+        return newSet
+      })
+    }
+  }
 
-  // Fetch data based on active analysis
+  // Toggle panel expansion
+  const togglePanel = (panel: string) => {
+    setExpandedPanels(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(panel)) {
+        newSet.delete(panel)
+      } else {
+        newSet.add(panel)
+      }
+      return newSet
+    })
+  }
+
+  // Fetch replies data when panel is expanded
   useEffect(() => {
-    async function fetchData() {
-      try {
-        setLoading(true)
-        setError(null)
-        
-        const startStr = formatDateForQuery(dateRange.start)
-        const endStr = formatDateForQuery(dateRange.end)
+    async function fetchRepliesData() {
+      if (!expandedPanels.has('replies')) return
 
-        if (activeAnalysis === 'replies') {
-          // Fetch replies with count for pagination
-          const PAGE_SIZE = 15
-          const offset = (repliesPage - 1) * PAGE_SIZE
+      setRepliesLoading(true)
+      const startStr = formatDateForQuery(dateRange.start)
+      const endStrNextDay = formatDateForQueryEndOfDay(dateRange.end)
+      const offset = (repliesPage - 1) * PAGE_SIZE
+
+      try {
           let query = supabase
             .from('replies')
             .select('*', { count: 'exact' })
             .gte('date_received', startStr)
-            .lte('date_received', endStr)
+          .lt('date_received', endStrNextDay)
             .order('date_received', { ascending: false })
             .range(offset, offset + PAGE_SIZE - 1)
 
           if (selectedClient) query = query.eq('client', selectedClient)
-          if (selectedCategory) query = query.eq('category', selectedCategory)
 
-          const { data, count: totalRepliesCount, error: queryError } = await query
-          if (queryError) throw queryError
-          setReplies(data || [])
-          setRepliesTotalCount(totalRepliesCount || 0)
+        const { data, count, error } = await query
+        if (error) throw error
 
-          // Fetch accurate counts for each category
-          const totalQuery = supabase
-            .from('replies')
-            .select('*', { count: 'exact', head: true })
-            .gte('date_received', startStr)
-            .lte('date_received', endStr)
-          
-          const interestedQuery = supabase
-            .from('replies')
-            .select('*', { count: 'exact', head: true })
-            .gte('date_received', startStr)
-            .lte('date_received', endStr)
-            .eq('category', 'Interested')
-          
-          const notInterestedQuery = supabase
-            .from('replies')
-            .select('*', { count: 'exact', head: true })
-            .gte('date_received', startStr)
-            .lte('date_received', endStr)
-            .eq('category', 'Not Interested')
-          
-          const oooQuery = supabase
-            .from('replies')
-            .select('*', { count: 'exact', head: true })
-            .gte('date_received', startStr)
-            .lte('date_received', endStr)
-            .or('category.ilike.%out of office%,category.ilike.%ooo%')
+        setRepliesData(data || [])
+        setRepliesCount(count || 0)
+      } catch (err) {
+        console.error('Error fetching replies:', err)
+      } finally {
+        setRepliesLoading(false)
+      }
+    }
 
-          let totalQueryFinal = totalQuery
-          let interestedQueryFinal = interestedQuery
-          let notInterestedQueryFinal = notInterestedQuery
-          let oooQueryFinal = oooQuery
+    fetchRepliesData()
+  }, [expandedPanels, repliesPage, dateRange, selectedClient])
 
-          if (selectedClient) {
-            totalQueryFinal = totalQueryFinal.eq('client', selectedClient)
-            interestedQueryFinal = interestedQueryFinal.eq('client', selectedClient)
-            notInterestedQueryFinal = notInterestedQueryFinal.eq('client', selectedClient)
-            oooQueryFinal = oooQueryFinal.eq('client', selectedClient)
-          }
+  // Fetch meetings data when panel is expanded
+  useEffect(() => {
+    async function fetchMeetingsData() {
+      if (!expandedPanels.has('meetings')) return
 
-          const [totalRes, interestedRes, notInterestedRes, oooRes] = await Promise.all([
-            totalQueryFinal,
-            interestedQueryFinal,
-            notInterestedQueryFinal,
-            oooQueryFinal,
-          ])
+      setMeetingsLoading(true)
+      const startStr = formatDateForQuery(dateRange.start)
+      const endStrNextDay = formatDateForQueryEndOfDay(dateRange.end)
+      const offset = (meetingsPage - 1) * PAGE_SIZE
 
-          // Calculate category breakdown for chart (from all data, not just first page)
-          const categories = new Map<string, number>()
-          categories.set('Total Replies', totalRes.count || 0)
-          categories.set('Interested', interestedRes.count || 0)
-          categories.set('Not Interested', notInterestedRes.count || 0)
-          categories.set('Out of Office', oooRes.count || 0)
-          
-          setCategoryBreakdown(
-            Array.from(categories.entries())
-              .filter(([name]) => name !== 'Total Replies')
-              .map(([name, value]) => ({ name, value }))
-          )
-          
-          // Store summary stats
-          setSummaryStats({
-            totalReplies: totalRes.count || 0,
-            interested: interestedRes.count || 0,
-            notInterested: notInterestedRes.count || 0,
-            outOfOffice: oooRes.count || 0,
-          })
+      try {
+        let query = supabase
+          .from('meetings_booked')
+          .select('*', { count: 'exact' })
+          .gte('created_time', startStr)
+          .lt('created_time', endStrNextDay)
+          .order('created_time', { ascending: false })
+          .range(offset, offset + PAGE_SIZE - 1)
 
-        } else if (activeAnalysis === 'engaged_leads') {
-          // Fetch engaged leads with pagination
-          const PAGE_SIZE = 15
-          const offset = (engagedLeadsPage - 1) * PAGE_SIZE
+        if (selectedClient) query = query.eq('client', selectedClient)
+
+        const { data, count, error } = await query
+        if (error) throw error
+
+        setMeetingsData(data || [])
+        setMeetingsCount(count || 0)
+      } catch (err) {
+        console.error('Error fetching meetings:', err)
+      } finally {
+        setMeetingsLoading(false)
+      }
+    }
+
+    fetchMeetingsData()
+  }, [expandedPanels, meetingsPage, dateRange, selectedClient])
+
+  // Fetch engaged leads data when panel is expanded
+  useEffect(() => {
+    async function fetchLeadsData() {
+      if (!expandedPanels.has('leads')) return
+
+      setLeadsLoading(true)
+      const offset = (leadsPage - 1) * PAGE_SIZE
+
+      try {
           let query = supabase
             .from('engaged_leads')
             .select('*', { count: 'exact' })
@@ -182,664 +207,300 @@ export default function DeepView() {
 
           if (selectedClient) query = query.eq('client', selectedClient)
 
-          const { data, count: totalCount, error: queryError } = await query
-          if (queryError) throw queryError
-          const engagedRows = (data || []) as any[]
-          setEngagedLeads(engagedRows)
-          setEngagedLeadsTotalCount(totalCount || 0)
+        const { data, count, error } = await query
+        if (error) throw error
 
-          // Calculate client breakdown
-          const clientCounts = new Map<string, number>()
-          engagedRows.forEach((l) => {
-            const client = l.client || 'Unknown'
-            clientCounts.set(client, (clientCounts.get(client) || 0) + 1)
-          })
-          setClientBreakdown(
-            Array.from(clientCounts.entries()).map(([name, value]) => ({ name, value }))
-          )
-
-        } else if (activeAnalysis === 'meetings') {
-          // Fetch meetings with pagination
-          const PAGE_SIZE = 15
-          const offset = (meetingsPage - 1) * PAGE_SIZE
-          let query = supabase
-            .from('meetings_booked')
-            .select('*', { count: 'exact' })
-            .gte('created_time', startStr)
-            .lte('created_time', endStr)
-            .order('created_time', { ascending: false })
-            .range(offset, offset + PAGE_SIZE - 1)
-
-          if (selectedClient) query = query.eq('client', selectedClient)
-          
-          // Apply chart filter if selected
-          if (selectedMeetingDate) {
-            const dateStr = selectedMeetingDate.split('T')[0]
-            query = query.gte('created_time', `${dateStr}T00:00:00`)
-            query = query.lte('created_time', `${dateStr}T23:59:59`)
-          }
-          if (selectedMeetingClient) {
-            query = query.eq('client', selectedMeetingClient)
-          }
-
-          const { data, count: totalCount, error: queryError } = await query
-          if (queryError) throw queryError
-          setMeetings(data || [])
-          setMeetingsTotalCount(totalCount || 0)
-
-          // Fetch all meetings for charts (not filtered by pagination or chart filters)
-          let allMeetingsQuery = supabase
-            .from('meetings_booked')
-            .select('*')
-            .gte('created_time', startStr)
-            .lte('created_time', endStr)
-
-          if (selectedClient) allMeetingsQuery = allMeetingsQuery.eq('client', selectedClient)
-
-          const { data: allMeetingsData } = await allMeetingsQuery
-          const allMeetingsRows = (allMeetingsData || []) as any[]
-
-          // Calculate daily trend from all meetings
-          const dailyCounts = new Map<string, number>()
-          allMeetingsRows.forEach((m) => {
-            const date = m.created_time?.split('T')[0] || ''
-            dailyCounts.set(date, (dailyCounts.get(date) || 0) + 1)
-          })
-          
-          // Helper to format date string to display without timezone issues
-          const formatDateDisplay = (dateStr: string) => {
-            const [_year, month, day] = dateStr.split('-').map(Number)
-            const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-            return `${monthNames[month - 1]} ${day}`
-          }
-          
-          setDailyTrend(
-            Array.from(dailyCounts.entries())
-              .sort((a, b) => a[0].localeCompare(b[0]))
-              .map(([date, count]) => ({
-                date: formatDateDisplay(date),
-                dateKey: date, // Store original date for filtering
-                meetings: count,
-              }))
-          )
-
-          // Calculate client breakdown for meetings from all meetings
-          const meetingsByClient = new Map<string, number>()
-          allMeetingsRows.forEach((m) => {
-            const client = m.client || 'Unknown'
-            meetingsByClient.set(client, (meetingsByClient.get(client) || 0) + 1)
-          })
-          setClientBreakdown(
-            Array.from(meetingsByClient.entries()).map(([name, value]) => ({ name, value }))
-          )
-        }
+        setLeadsData(data || [])
+        setLeadsCount(count || 0)
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to fetch data')
+        console.error('Error fetching leads:', err)
       } finally {
-        setLoading(false)
+        setLeadsLoading(false)
       }
     }
 
-    fetchData()
-  }, [activeAnalysis, dateRange, selectedClient, selectedCategory, repliesPage, engagedLeadsPage, meetingsPage, selectedMeetingDate, selectedMeetingClient])
+    fetchLeadsData()
+  }, [expandedPanels, leadsPage, selectedClient])
 
   // Reset pagination when filters change
   useEffect(() => {
     setRepliesPage(1)
-    setEngagedLeadsPage(1)
     setMeetingsPage(1)
-    setSelectedMeetingDate(null)
-    setSelectedMeetingClient(null)
+    setLeadsPage(1)
   }, [selectedClient, dateRange])
 
-  // Category colors
-  const getCategoryColor = (category: string) => {
-    switch (category) {
-      case 'Interested':
-        return 'bg-green-500/20 text-green-400 border-green-500/30'
-      case 'Not Interested':
-        return 'bg-red-500/20 text-red-400 border-red-500/30'
-      case 'Out of Office':
-        return 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30'
-      default:
-        return 'bg-gray-500/20 text-gray-400 border-gray-500/30'
-    }
+  // Handle row click for replies table
+  const handleReplyClick = (row: any) => {
+    setSelectedReply(row as Reply)
+    setIsReplyModalOpen(true)
   }
 
   return (
-    <div className="space-y-6 fade-in">
-      {/* Analysis Type Tabs */}
-      <div className="flex gap-2">
-        {analysisTypes.map((type) => {
-          const Icon = type.icon
-          const isActive = activeAnalysis === type.id
-          
-          return (
-            <button
-              key={type.id}
-              onClick={() => setActiveAnalysis(type.id)}
-              className={`
-                flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-all
-                ${isActive
-                  ? 'bg-gradient-to-r from-rillation-purple to-rillation-magenta text-white'
-                  : 'bg-rillation-card border border-rillation-border text-rillation-text-muted hover:text-rillation-text hover:bg-rillation-card-hover'
-                }
-              `}
-            >
-              <Icon size={16} />
-              {type.label}
-            </button>
-          )
-        })}
-      </div>
-
-      {/* Category Filter Bar (only category filter is local to this page) */}
-      {activeAnalysis === 'replies' && (
-        <div className="bg-rillation-card rounded-xl p-4 border border-rillation-border">
-          <div className="flex flex-wrap items-center gap-4">
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-rillation-text-muted">Category:</span>
-              <select
-                value={selectedCategory}
-                onChange={(e) => setSelectedCategory(e.target.value)}
-                className="appearance-none px-3 py-1.5 text-xs bg-rillation-card border border-rillation-border rounded-lg text-rillation-text focus:outline-none focus:border-rillation-purple cursor-pointer"
-              >
-                <option value="">All Categories</option>
-                <option value="Interested">Interested</option>
-                <option value="Not Interested">Not Interested</option>
-                <option value="Out of Office">Out of Office</option>
-              </select>
-            </div>
+    <div className="space-y-6">
+      {/* Header with refresh button */}
+      <motion.div
+        className="flex items-center justify-between"
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+      >
+        <div className="flex items-center gap-3">
+          <motion.div
+            className="p-2 rounded-xl bg-gradient-to-br from-rillation-purple/20 to-rillation-magenta/20 border border-rillation-purple/30"
+            animate={{
+              boxShadow: [
+                '0 0 20px rgba(168, 85, 247, 0.1)',
+                '0 0 30px rgba(168, 85, 247, 0.2)',
+                '0 0 20px rgba(168, 85, 247, 0.1)',
+              ],
+            }}
+            transition={{ duration: 2, repeat: Infinity }}
+          >
+            <Sparkles size={24} className="text-rillation-purple" />
+          </motion.div>
+          <div>
+            <h1 className="text-xl font-bold text-rillation-text">Deep Insights</h1>
+            <p className="text-xs text-rillation-text-muted">
+              Comprehensive analytics across replies, leads & meetings
+            </p>
           </div>
         </div>
-      )}
+        <motion.button
+          onClick={() => refetch()}
+          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-rillation-card border border-rillation-border text-rillation-text-muted hover:text-rillation-text hover:border-rillation-purple/50 transition-all"
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          disabled={loading}
+        >
+          <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
+          <span className="text-sm">Refresh</span>
+        </motion.button>
+      </motion.div>
 
       {/* Error State */}
+      <AnimatePresence>
       {error && (
-        <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 text-red-400">
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 text-red-400"
+          >
           {error}
-        </div>
+          </motion.div>
       )}
+      </AnimatePresence>
 
       {/* Loading State */}
-      {loading && (
-        <div className="flex items-center justify-center py-12">
-          <div className="w-8 h-8 border-2 border-rillation-purple border-t-transparent rounded-full animate-spin" />
-        </div>
-      )}
+      <AnimatePresence>
+        {loading && !data && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="flex flex-col items-center justify-center py-16"
+          >
+            <motion.div
+              className="w-12 h-12 border-3 border-rillation-purple border-t-transparent rounded-full"
+              animate={{ rotate: 360 }}
+              transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+            />
+            <p className="mt-4 text-sm text-rillation-text-muted">Loading insights...</p>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-      {/* Reply Analysis */}
-      {!loading && activeAnalysis === 'replies' && (
-        <div className="space-y-6">
-          {/* Category Breakdown Chart */}
-          {categoryBreakdown.length > 0 && (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div className="bg-rillation-card rounded-xl p-6 border border-rillation-border">
-                <h3 className="text-lg font-semibold text-rillation-text mb-4 flex items-center gap-2">
-                  <PieChart size={20} className="text-rillation-purple" />
-                  Category Breakdown
-                </h3>
-                <ResponsiveContainer width="100%" height={250}>
-                  <RechartsPieChart>
-                    <Pie
-                      data={categoryBreakdown}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={60}
-                      outerRadius={100}
-                      dataKey="value"
-                      label={({ name, value }) => `${name}: ${value}`}
-                    >
-                      {categoryBreakdown.map((_, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip />
-                  </RechartsPieChart>
-                </ResponsiveContainer>
+      {/* Main Content */}
+      {data && (
+        <motion.div
+          className="space-y-6"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.1 }}
+        >
+          {/* Summary Bar */}
+          <InsightsSummaryBar
+            totalReplies={data.totalReplies}
+            interested={data.interestedCount}
+            notInterested={data.notInterestedCount}
+            outOfOffice={data.outOfOfficeCount}
+            engagedLeads={data.engagedLeadsCount}
+            meetingsBooked={data.meetingsBookedCount}
+            onMetricClick={handleMetricClick}
+            activeMetric={activeMetric || undefined}
+          />
+
+          {/* Row 1: Reply Insights + Engaged Leads */}
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+            {/* Reply Insights Panel */}
+            <ReplyInsightsPanel
+              categoryBreakdown={data.repliesByCategory}
+              repliesByDay={data.repliesByDay}
+              campaignPerformance={data.campaignPerformance}
+              avgRepliesPerDay={data.avgRepliesPerDay}
+              bestDay={data.bestDay}
+              onExpandClick={() => togglePanel('replies')}
+              isExpanded={expandedPanels.has('replies')}
+            />
+
+            {/* Engaged Leads Panel */}
+            <EngagedLeadsPanel
+              totalLeads={data.engagedLeadsCount}
+              leadsByClient={data.engagedLeadsByClient}
+              onExpandClick={() => togglePanel('leads')}
+              isExpanded={expandedPanels.has('leads')}
+            />
               </div>
               
-              <div className="bg-rillation-card rounded-xl p-6 border border-rillation-border">
-                <h3 className="text-lg font-semibold text-rillation-text mb-4">Summary Stats</h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-rillation-bg rounded-lg p-4">
-                    <p className="text-2xl font-bold text-rillation-text">{summaryStats.totalReplies}</p>
-                    <p className="text-xs text-rillation-text-muted">Total Replies</p>
-                  </div>
-                  <div className="bg-rillation-bg rounded-lg p-4">
-                    <p className="text-2xl font-bold text-rillation-green">
-                      {summaryStats.interested}
-                    </p>
-                    <p className="text-xs text-rillation-text-muted">Interested</p>
-                  </div>
-                  <div className="bg-rillation-bg rounded-lg p-4">
-                    <p className="text-2xl font-bold text-rillation-red">
-                      {summaryStats.notInterested}
-                    </p>
-                    <p className="text-xs text-rillation-text-muted">Not Interested</p>
-                  </div>
-                  <div className="bg-rillation-bg rounded-lg p-4">
-                    <p className="text-2xl font-bold text-rillation-orange">
-                      {summaryStats.outOfOffice}
-                    </p>
-                    <p className="text-xs text-rillation-text-muted">Out of Office</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
+          {/* Row 2: Meetings Insights - Full Width */}
+          <MeetingsInsightsPanel
+            totalMeetings={data.meetingsBookedCount}
+            meetingsByIndustry={data.meetingsByIndustry}
+            meetingsByState={data.meetingsByState}
+            meetingsByRevenue={data.meetingsByRevenue}
+            meetingsByCompanyAge={data.meetingsByCompanyAge}
+            meetingsByDay={data.meetingsByDay}
+            onExpandClick={() => togglePanel('meetings')}
+            isExpanded={expandedPanels.has('meetings')}
+          />
 
-          {/* Replies List */}
-          <div className="bg-rillation-card rounded-xl border border-rillation-border">
-            <div className="p-4 border-b border-rillation-border flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-rillation-text flex items-center gap-2">
-                <MessageSquare size={20} className="text-rillation-purple" />
-                Recent Replies
-              </h3>
-              <span className="text-sm text-rillation-text-muted">
-                Showing {((repliesPage - 1) * 15) + 1} - {Math.min(repliesPage * 15, repliesTotalCount)} of {repliesTotalCount} replies
-              </span>
-            </div>
-            <div className="divide-y divide-rillation-border/30">
-              {replies.map((reply) => (
-                <div
-                  key={reply.reply_id}
-                  className="p-4 hover:bg-rillation-card-hover transition-colors cursor-pointer"
-                  onClick={() => {
-                    setSelectedReply(reply)
-                    setIsReplyModalOpen(true)
-                  }}
-                >
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className={`px-2 py-0.5 text-xs rounded-full border ${getCategoryColor(reply.category)}`}>
-                          {reply.category}
+          {/* Expandable Detail Tables */}
+          <AnimatePresence>
+            {expandedPanels.size > 0 && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.3 }}
+                className="space-y-4"
+              >
+                {/* Section header */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <ChevronDown size={16} className="text-rillation-text-muted" />
+                    <span className="text-sm font-medium text-rillation-text-muted">
+                      Detail Tables
                         </span>
-                        <span className="text-xs text-rillation-text-muted">{reply.client}</span>
-                      </div>
-                      <p className="text-sm font-medium text-rillation-text mb-1">
-                        {reply.subject || '(No Subject)'}
-                      </p>
-                      <p className="text-xs text-rillation-text-muted truncate">
-                        From: {reply.from_email}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-xs text-rillation-text-muted">
-                        {new Date(reply.date_received).toLocaleDateString('en-US', {
-                          month: 'short',
-                          day: 'numeric',
-                          year: 'numeric',
-                        })}
-                      </p>
-                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
-            {/* Pagination */}
-            {repliesTotalCount > 15 && (
-              <div className="p-4 border-t border-rillation-border flex items-center justify-between">
-                <button
-                  onClick={() => setRepliesPage((p) => Math.max(1, p - 1))}
-                  disabled={repliesPage === 1}
-                  className="px-4 py-2 bg-rillation-card-hover border border-rillation-border rounded-lg text-sm text-rillation-text disabled:opacity-50 disabled:cursor-not-allowed hover:bg-rillation-bg transition-colors"
-                >
-                  Previous
-                </button>
-                <span className="text-sm text-rillation-text-muted">
-                  Page {repliesPage} of {Math.ceil(repliesTotalCount / 15)}
-                </span>
-                <button
-                  onClick={() => setRepliesPage((p) => Math.min(Math.ceil(repliesTotalCount / 15), p + 1))}
-                  disabled={repliesPage >= Math.ceil(repliesTotalCount / 15)}
-                  className="px-4 py-2 bg-rillation-card-hover border border-rillation-border rounded-lg text-sm text-rillation-text disabled:opacity-50 disabled:cursor-not-allowed hover:bg-rillation-bg transition-colors"
-                >
-                  Next
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Engaged Leads Analysis */}
-      {!loading && activeAnalysis === 'engaged_leads' && (
-        <div className="space-y-6">
-          {/* Summary Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="bg-rillation-card rounded-xl p-6 border border-rillation-border">
-              <p className="text-3xl font-bold text-rillation-text">{formatNumber(engagedLeadsTotalCount)}</p>
-              <p className="text-sm text-rillation-text-muted mt-1">Total Engaged Leads</p>
-            </div>
-            <div className="bg-rillation-card rounded-xl p-6 border border-rillation-border">
-              <p className="text-3xl font-bold text-rillation-purple">{clientBreakdown.length}</p>
-              <p className="text-sm text-rillation-text-muted mt-1">Clients</p>
-            </div>
-            <div className="bg-rillation-card rounded-xl p-6 border border-rillation-border">
-              <p className="text-3xl font-bold text-rillation-cyan">
-                {engagedLeadsTotalCount > 0 && clientBreakdown.length > 0 ? Math.round(engagedLeadsTotalCount / clientBreakdown.length) : 0}
-              </p>
-              <p className="text-sm text-rillation-text-muted mt-1">Avg per Client</p>
-            </div>
-            <div className="bg-rillation-card rounded-xl p-6 border border-rillation-border">
-              <p className="text-3xl font-bold text-rillation-green">
-                {clientBreakdown.length > 0 ? clientBreakdown[0]?.name : '-'}
-              </p>
-              <p className="text-sm text-rillation-text-muted mt-1">Top Client</p>
-            </div>
-          </div>
-
-          {/* Client Distribution Chart */}
-          {clientBreakdown.length > 0 && (
-            <div className="bg-rillation-card rounded-xl p-6 border border-rillation-border">
-              <h3 className="text-lg font-semibold text-rillation-text mb-4 flex items-center gap-2">
-                <TrendingUp size={20} className="text-rillation-purple" />
-                Leads by Client
-              </h3>
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={clientBreakdown}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#2a2a3a" />
-                  <XAxis dataKey="name" stroke="#94a3b8" tick={{ fontSize: 11 }} />
-                  <YAxis stroke="#94a3b8" tick={{ fontSize: 11 }} />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: '#12121a',
-                      border: '1px solid #2a2a3a',
-                      borderRadius: '8px',
-                    }}
-                  />
-                  <Bar dataKey="value" fill="#a855f7" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          )}
-
-          {/* Leads Table */}
-          <div className="bg-rillation-card rounded-xl border border-rillation-border overflow-hidden">
-            <div className="p-4 border-b border-rillation-border flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-rillation-text">Engaged Leads</h3>
-              <span className="text-sm text-rillation-text-muted">
-                Showing {((engagedLeadsPage - 1) * 15) + 1} - {Math.min(engagedLeadsPage * 15, engagedLeadsTotalCount)} of {engagedLeadsTotalCount} leads
-              </span>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-rillation-card-hover">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-rillation-text-muted uppercase">Email</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-rillation-text-muted uppercase">Client</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-rillation-text-muted uppercase">Status</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-rillation-text-muted uppercase">Date</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-rillation-border/30">
-                  {engagedLeads.map((lead, index) => (
-                    <tr key={lead.id || index} className="hover:bg-rillation-card-hover">
-                      <td className="px-4 py-3 text-sm text-rillation-text">{lead.email || '-'}</td>
-                      <td className="px-4 py-3 text-sm text-rillation-text">{lead.client || '-'}</td>
-                      <td className="px-4 py-3 text-sm">
-                        <span className="px-2 py-1 bg-rillation-purple/20 text-rillation-purple rounded text-xs">
-                          {lead.status || lead.current_stage || 'Engaged'}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-sm text-rillation-text-muted">
-                        {lead.date_created 
-                          ? new Date(lead.date_created).toLocaleDateString() 
-                          : lead.created_at 
-                            ? new Date(lead.created_at).toLocaleDateString() 
-                            : '-'}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            {/* Pagination */}
-            {engagedLeadsTotalCount > 15 && (
-              <div className="p-4 border-t border-rillation-border flex items-center justify-between">
-                <button
-                  onClick={() => setEngagedLeadsPage((p) => Math.max(1, p - 1))}
-                  disabled={engagedLeadsPage === 1}
-                  className="px-4 py-2 bg-rillation-card-hover border border-rillation-border rounded-lg text-sm text-rillation-text disabled:opacity-50 disabled:cursor-not-allowed hover:bg-rillation-bg transition-colors"
-                >
-                  Previous
-                </button>
-                <span className="text-sm text-rillation-text-muted">
-                  Page {engagedLeadsPage} of {Math.ceil(engagedLeadsTotalCount / 15)}
-                </span>
-                <button
-                  onClick={() => setEngagedLeadsPage((p) => Math.min(Math.ceil(engagedLeadsTotalCount / 15), p + 1))}
-                  disabled={engagedLeadsPage >= Math.ceil(engagedLeadsTotalCount / 15)}
-                  className="px-4 py-2 bg-rillation-card-hover border border-rillation-border rounded-lg text-sm text-rillation-text disabled:opacity-50 disabled:cursor-not-allowed hover:bg-rillation-bg transition-colors"
-                >
-                  Next
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Meetings Analysis */}
-      {!loading && activeAnalysis === 'meetings' && (
-        <div className="space-y-6">
-          {/* Summary Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="bg-rillation-card rounded-xl p-6 border border-rillation-border">
-              <p className="text-3xl font-bold text-rillation-text">{formatNumber(meetingsTotalCount)}</p>
-              <p className="text-sm text-rillation-text-muted mt-1">Total Meetings</p>
-            </div>
-            <div className="bg-rillation-card rounded-xl p-6 border border-rillation-border">
-              <p className="text-3xl font-bold text-rillation-purple">{clientBreakdown.length}</p>
-              <p className="text-sm text-rillation-text-muted mt-1">Clients with Meetings</p>
-            </div>
-            <div className="bg-rillation-card rounded-xl p-6 border border-rillation-border">
-              <p className="text-3xl font-bold text-rillation-cyan">
-                {dailyTrend.length > 0 
-                  ? Math.round(meetings.length / dailyTrend.length * 10) / 10
-                  : 0
-                }
-              </p>
-              <p className="text-sm text-rillation-text-muted mt-1">Avg per Day</p>
-            </div>
-            <div className="bg-rillation-card rounded-xl p-6 border border-rillation-border">
-              <p className="text-3xl font-bold text-rillation-green">
-                {Math.max(...dailyTrend.map((d) => d.meetings), 0)}
-              </p>
-              <p className="text-sm text-rillation-text-muted mt-1">Best Day</p>
-            </div>
-          </div>
-
-          {/* Charts Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Daily Trend */}
-            <div className="bg-rillation-card rounded-xl p-6 border border-rillation-border">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-rillation-text flex items-center gap-2">
-                  <TrendingUp size={20} className="text-rillation-purple" />
-                  Daily Trend
-                </h3>
-                {selectedMeetingDate && (
-                  <button
-                    onClick={() => {
-                      setSelectedMeetingDate(null)
-                      setMeetingsPage(1)
-                    }}
-                    className="text-xs text-rillation-purple hover:text-rillation-magenta"
+                  <motion.button
+                    onClick={() => setExpandedPanels(new Set())}
+                    className="flex items-center gap-1 px-3 py-1 rounded-lg text-xs text-rillation-text-muted hover:text-rillation-text hover:bg-rillation-card-hover transition-all"
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
                   >
-                    Clear Date Filter
-                  </button>
+                    <X size={14} />
+                    Close All
+                  </motion.button>
+                </div>
+
+                {/* Tables Grid */}
+                <div className={`grid gap-4 ${
+                  expandedPanels.size === 1 ? 'grid-cols-1' :
+                  expandedPanels.size === 2 ? 'grid-cols-1 lg:grid-cols-2' :
+                  'grid-cols-1'
+                }`}>
+                  {/* Replies Table */}
+                  {expandedPanels.has('replies') && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -20 }}
+                    >
+                      {repliesLoading && repliesData.length === 0 ? (
+                        <div className="bg-rillation-card rounded-xl border border-rillation-border p-8 flex items-center justify-center">
+                          <div className="w-6 h-6 border-2 border-rillation-cyan border-t-transparent rounded-full animate-spin" />
+              </div>
+                      ) : (
+                        <ExpandableDataPanel
+                          title="All Replies"
+                          data={repliesData}
+                          columns={repliesColumns}
+                          totalCount={repliesCount}
+                          currentPage={repliesPage}
+                          pageSize={PAGE_SIZE}
+                          onPageChange={setRepliesPage}
+                          onClose={() => togglePanel('replies')}
+                          isOpen={true}
+                          onRowClick={handleReplyClick}
+                        />
+                      )}
+                    </motion.div>
+                  )}
+
+                  {/* Engaged Leads Table */}
+                  {expandedPanels.has('leads') && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -20 }}
+                    >
+                      {leadsLoading && leadsData.length === 0 ? (
+                        <div className="bg-rillation-card rounded-xl border border-rillation-border p-8 flex items-center justify-center">
+                          <div className="w-6 h-6 border-2 border-rillation-purple border-t-transparent rounded-full animate-spin" />
+            </div>
+                      ) : (
+                        <ExpandableDataPanel
+                          title="Engaged Leads"
+                          data={leadsData}
+                          columns={engagedLeadsColumns}
+                          totalCount={leadsCount}
+                          currentPage={leadsPage}
+                          pageSize={PAGE_SIZE}
+                          onPageChange={setLeadsPage}
+                          onClose={() => togglePanel('leads')}
+                          isOpen={true}
+                        />
+                      )}
+                    </motion.div>
+                  )}
+
+                  {/* Meetings Table */}
+                  {expandedPanels.has('meetings') && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -20 }}
+                    >
+                      {meetingsLoading && meetingsData.length === 0 ? (
+                        <div className="bg-rillation-card rounded-xl border border-rillation-border p-8 flex items-center justify-center">
+                          <div className="w-6 h-6 border-2 border-rillation-magenta border-t-transparent rounded-full animate-spin" />
+              </div>
+                      ) : (
+                        <ExpandableDataPanel
+                          title="Meetings Booked"
+                          data={meetingsData}
+                          columns={meetingsColumns}
+                          totalCount={meetingsCount}
+                          currentPage={meetingsPage}
+                          pageSize={PAGE_SIZE}
+                          onPageChange={setMeetingsPage}
+                          onClose={() => togglePanel('meetings')}
+                          isOpen={true}
+                        />
+                      )}
+                    </motion.div>
                 )}
               </div>
-              <ResponsiveContainer width="100%" height={250}>
-                <BarChart data={dailyTrend}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#2a2a3a" />
-                  <XAxis dataKey="date" stroke="#94a3b8" tick={{ fontSize: 10 }} />
-                  <YAxis stroke="#94a3b8" tick={{ fontSize: 11 }} />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: '#12121a',
-                      border: '1px solid #2a2a3a',
-                      borderRadius: '8px',
-                    }}
-                  />
-                  <Bar 
-                    dataKey="meetings" 
-                    fill="#d946ef" 
-                    radius={[4, 4, 0, 0]}
-                    onClick={(data: any) => {
-                      if (data && data.activePayload && data.activePayload[0]) {
-                        const dateKey = data.activePayload[0].payload.dateKey
-                        setSelectedMeetingDate(dateKey)
-                        setSelectedMeetingClient(null) // Clear client filter when date is selected
-                        setMeetingsPage(1)
-                      }
-                    }}
-                    style={{ cursor: 'pointer' }}
-                  />
-                </BarChart>
-              </ResponsiveContainer>
-              {selectedMeetingDate && (
-                <p className="text-xs text-rillation-text-muted mt-2">
-                  Filtered by: {new Date(selectedMeetingDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                </p>
-              )}
-            </div>
-
-            {/* By Client */}
-            <div className="bg-rillation-card rounded-xl p-6 border border-rillation-border">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-rillation-text flex items-center gap-2">
-                  <PieChart size={20} className="text-rillation-purple" />
-                  By Client
-                </h3>
-                {selectedMeetingClient && (
-                  <button
-                    onClick={() => {
-                      setSelectedMeetingClient(null)
-                      setMeetingsPage(1)
-                    }}
-                    className="text-xs text-rillation-purple hover:text-rillation-magenta"
-                  >
-                    Clear Client Filter
-                  </button>
-                )}
-              </div>
-              <ResponsiveContainer width="100%" height={250}>
-                <RechartsPieChart>
-                  <Pie
-                    data={clientBreakdown}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={50}
-                    outerRadius={90}
-                    dataKey="value"
-                    onClick={(data: any) => {
-                      if (data && data.name) {
-                        setSelectedMeetingClient(data.name)
-                        setSelectedMeetingDate(null) // Clear date filter when client is selected
-                        setMeetingsPage(1)
-                      }
-                    }}
-                    style={{ cursor: 'pointer' }}
-                  >
-                    {clientBreakdown.map((item, index) => (
-                      <Cell 
-                        key={`cell-${index}`} 
-                        fill={selectedMeetingClient === item.name ? '#d946ef' : COLORS[index % COLORS.length]}
-                        opacity={selectedMeetingClient && selectedMeetingClient !== item.name ? 0.3 : 1}
-                      />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                  <Legend />
-                </RechartsPieChart>
-              </ResponsiveContainer>
-              {selectedMeetingClient && (
-                <p className="text-xs text-rillation-text-muted mt-2">
-                  Filtered by: {selectedMeetingClient}
-                </p>
-              )}
-            </div>
-          </div>
-
-          {/* Meetings Table */}
-          <div className="bg-rillation-card rounded-xl border border-rillation-border overflow-hidden">
-            <div className="p-4 border-b border-rillation-border flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-rillation-text">Recent Meetings</h3>
-              <span className="text-sm text-rillation-text-muted">
-                Showing {((meetingsPage - 1) * 15) + 1} - {Math.min(meetingsPage * 15, meetingsTotalCount)} of {meetingsTotalCount} meetings
-              </span>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-rillation-card-hover">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-rillation-text-muted uppercase">Name</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-rillation-text-muted uppercase">Company</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-rillation-text-muted uppercase">Email</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-rillation-text-muted uppercase">Campaign</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-rillation-text-muted uppercase">Date</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-rillation-border/30">
-                  {meetings.map((meeting, index) => (
-                    <tr key={meeting.id || index} className="hover:bg-rillation-card-hover">
-                      <td className="px-4 py-3 text-sm text-rillation-text">{meeting.full_name || '-'}</td>
-                      <td className="px-4 py-3 text-sm text-rillation-text">{meeting.company || '-'}</td>
-                      <td className="px-4 py-3 text-sm text-rillation-text">{meeting.email || '-'}</td>
-                      <td className="px-4 py-3 text-sm text-rillation-text-muted">{meeting.campaign_name || 'N/A'}</td>
-                      <td className="px-4 py-3 text-sm text-rillation-text-muted">
-                        {meeting.created_time 
-                          ? new Date(meeting.created_time).toLocaleDateString('en-US', {
-                              month: 'short',
-                              day: 'numeric',
-                              year: 'numeric',
-                            })
-                          : '-'
-                        }
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            {/* Pagination */}
-            {meetingsTotalCount > 15 && (
-              <div className="p-4 border-t border-rillation-border flex items-center justify-between">
-                <button
-                  onClick={() => setMeetingsPage((p) => Math.max(1, p - 1))}
-                  disabled={meetingsPage === 1}
-                  className="px-4 py-2 bg-rillation-card-hover border border-rillation-border rounded-lg text-sm text-rillation-text disabled:opacity-50 disabled:cursor-not-allowed hover:bg-rillation-bg transition-colors"
-                >
-                  Previous
-                </button>
-                <span className="text-sm text-rillation-text-muted">
-                  Page {meetingsPage} of {Math.ceil(meetingsTotalCount / 15)}
-                </span>
-                <button
-                  onClick={() => setMeetingsPage((p) => Math.min(Math.ceil(meetingsTotalCount / 15), p + 1))}
-                  disabled={meetingsPage >= Math.ceil(meetingsTotalCount / 15)}
-                  className="px-4 py-2 bg-rillation-card-hover border border-rillation-border rounded-lg text-sm text-rillation-text disabled:opacity-50 disabled:cursor-not-allowed hover:bg-rillation-bg transition-colors"
-                >
-                  Next
-                </button>
-              </div>
+              </motion.div>
             )}
-          </div>
-        </div>
+          </AnimatePresence>
+        </motion.div>
       )}
 
       {/* Empty State */}
-      {!loading && 
-        ((activeAnalysis === 'replies' && replies.length === 0) ||
-         (activeAnalysis === 'engaged_leads' && engagedLeads.length === 0) ||
-         (activeAnalysis === 'meetings' && meetings.length === 0)) && (
-        <div className="text-center py-12 text-rillation-text-muted">
-          No data found for the selected filters.
+      {!loading && data && data.totalReplies === 0 && data.meetingsBookedCount === 0 && data.engagedLeadsCount === 0 && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="flex flex-col items-center justify-center py-16 text-center"
+        >
+          <div className="w-16 h-16 rounded-full bg-rillation-card border border-rillation-border flex items-center justify-center mb-4">
+            <Sparkles size={24} className="text-rillation-text-muted" />
         </div>
+          <h3 className="text-lg font-medium text-rillation-text mb-2">No Data Found</h3>
+          <p className="text-sm text-rillation-text-muted max-w-md">
+            No insights available for the selected date range and filters. Try adjusting your filters or selecting a different time period.
+          </p>
+        </motion.div>
       )}
 
       {/* Reply Detail Modal */}

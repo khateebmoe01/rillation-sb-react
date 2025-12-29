@@ -74,7 +74,7 @@ export default function DebugView() {
       case 'warning':
         return 'bg-yellow-500/20 text-yellow-400 border-yellow-500/50'
       default:
-        return 'bg-gray-500/20 text-gray-400 border-gray-500/50'
+        return 'bg-gray-500/20 text-white border-gray-500/50'
     }
   }
 
@@ -114,20 +114,20 @@ export default function DebugView() {
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="border-b border-gray-700">
-                <th className="p-2 text-gray-300 font-semibold">Table Name</th>
-                <th className="p-2 text-gray-300 font-semibold">Date Column</th>
-                <th className="p-2 text-gray-300 font-semibold">Column Type</th>
-                <th className="p-2 text-gray-300 font-semibold">Actions</th>
+                <th className="p-2 text-white font-semibold">Table Name</th>
+                <th className="p-2 text-white font-semibold">Date Column</th>
+                <th className="p-2 text-white font-semibold">Column Type</th>
+                <th className="p-2 text-white font-semibold">Actions</th>
               </tr>
             </thead>
             <tbody>
               {Object.entries(TABLE_DATE_COLUMNS).map(([table, info]) => (
                 <tr key={table} className="border-b border-gray-700/50 hover:bg-gray-700/30">
                   <td className="p-2 text-white font-mono">{table}</td>
-                  <td className="p-2 text-gray-400 font-mono">
-                    {info.column || <span className="text-gray-500 italic">N/A</span>}
+                  <td className="p-2 text-white font-mono">
+                    {info.column || <span className="text-white italic">N/A</span>}
                   </td>
-                  <td className="p-2 text-gray-400">{info.type}</td>
+                  <td className="p-2 text-white">{info.type}</td>
                   <td className="p-2">
                     <button
                       onClick={() => handleRunTableTest(table as TableName)}
@@ -161,13 +161,13 @@ export default function DebugView() {
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="border-b border-gray-700">
-                  <th className="p-2 text-gray-300 font-semibold">Table</th>
-                  <th className="p-2 text-gray-300 font-semibold">Date Column</th>
-                  <th className="p-2 text-gray-300 font-semibold">Total Count</th>
-                  <th className="p-2 text-gray-300 font-semibold">Nov 2025</th>
-                  <th className="p-2 text-gray-300 font-semibold">Dec 2025</th>
-                  <th className="p-2 text-gray-300 font-semibold">Sum (Nov+Dec)</th>
-                  <th className="p-2 text-gray-300 font-semibold">Validation</th>
+                  <th className="p-2 text-white font-semibold">Table</th>
+                  <th className="p-2 text-white font-semibold">Date Column</th>
+                  <th className="p-2 text-white font-semibold">Total Count</th>
+                  <th className="p-2 text-white font-semibold">Nov 2025</th>
+                  <th className="p-2 text-white font-semibold">Dec 2025</th>
+                  <th className="p-2 text-white font-semibold">Sum (Nov+Dec)</th>
+                  <th className="p-2 text-white font-semibold">Validation</th>
                 </tr>
               </thead>
               <tbody>
@@ -177,13 +177,13 @@ export default function DebugView() {
                     className="border-b border-gray-700/50 hover:bg-gray-700/30"
                   >
                     <td className="p-2 text-white font-mono">{result.table}</td>
-                    <td className="p-2 text-gray-400 font-mono">
-                      {result.dateColumn || <span className="text-gray-500 italic">N/A</span>}
+                    <td className="p-2 text-white font-mono">
+                      {result.dateColumn || <span className="text-white italic">N/A</span>}
                     </td>
-                    <td className="p-2 text-gray-300">{result.totalCount.toLocaleString()}</td>
-                    <td className="p-2 text-gray-300">{result.november2025.toLocaleString()}</td>
-                    <td className="p-2 text-gray-300">{result.december2025.toLocaleString()}</td>
-                    <td className="p-2 text-gray-300">{result.sumNovDec.toLocaleString()}</td>
+                    <td className="p-2 text-white">{result.totalCount.toLocaleString()}</td>
+                    <td className="p-2 text-white">{result.november2025.toLocaleString()}</td>
+                    <td className="p-2 text-white">{result.december2025.toLocaleString()}</td>
+                    <td className="p-2 text-white">{result.sumNovDec.toLocaleString()}</td>
                     <td className="p-2">
                       <span
                         className={`px-2 py-1 rounded border text-xs font-semibold ${getValidationBadge(
@@ -211,7 +211,7 @@ export default function DebugView() {
         </h2>
         <div className="bg-gray-900 rounded p-4 max-h-96 overflow-y-auto font-mono text-sm">
           {queryLog.length === 0 ? (
-            <div className="text-gray-500 italic">No queries logged yet. Navigate the app to see queries.</div>
+            <div className="text-white italic">No queries logged yet. Navigate the app to see queries.</div>
           ) : (
             <div className="space-y-2">
               {queryLog.slice().reverse().map((entry, idx) => (
@@ -231,11 +231,11 @@ export default function DebugView() {
                         [{new Date(entry.timestamp).toLocaleTimeString()}] {entry.table}
                       </div>
                       {entry.filters.length > 0 && (
-                        <div className="text-gray-400 mt-1">
+                        <div className="text-white mt-1">
                           Filters: {entry.filters.join(', ')}
                         </div>
                       )}
-                      <div className="text-gray-300 mt-1">
+                      <div className="text-white mt-1">
                         Rows: {entry.rowCount.toLocaleString()}
                         {entry.hitLimit && (
                           <span className="ml-2 text-yellow-400 font-semibold">

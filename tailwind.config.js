@@ -24,7 +24,7 @@ export default {
           'green': '#22c55e',
           'red': '#ef4444',
           'text': '#f1f5f9',
-          'text-muted': '#94a3b8',
+          'text-muted': '#ffffff',
         }
       },
       fontFamily: {
