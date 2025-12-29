@@ -278,7 +278,8 @@ export default function EditableFunnelSpreadsheet({
                   </td>
                   {columns.map((col) => {
                     const cellValue = rowData?.[col as keyof FunnelForecastRow] ?? 0
-                    const displayValue = formatValueForInput(cellValue, row.format)
+                    const numValue = typeof cellValue === 'number' ? cellValue : 0
+                    const displayValue = formatValueForInput(numValue, row.format)
                     
                     return (
                       <td key={col} className="px-1 py-1">

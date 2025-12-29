@@ -241,40 +241,47 @@ export default function InlineLeadsTable({
           .update({
             value: numValue,
             stage: stageName,
-          })
+          } as any)
           .eq('id', lead.opportunityId)
 
         if (error) throw error
       } else if (numValue > 0) {
         // Create new opportunity if value is set
+        const insertData: any = {
+          client: client || '',
+          opportunity_name: lead.full_name || lead.company || lead.email || 'Unknown',
+          stage: stageName,
+          value: numValue,
+          contact_name: lead.full_name || `${lead.first_name || ''} ${lead.last_name || ''}`.trim(),
+        }
+        
+        if (lead.email) {
+          insertData.contact_email = lead.email
+        }
+
         const { error } = await supabase
           .from('client_opportunities')
-          .insert({
-            client: client || '',
-            opportunity_name: lead.full_name || lead.company || lead.email || 'Unknown',
-            stage: stageName,
-            value: numValue,
-            contact_email: lead.email,
-            contact_name: lead.full_name || `${lead.first_name || ''} ${lead.last_name || ''}`.trim(),
-          })
+          .insert(insertData)
 
         if (error) throw error
 
         // Fetch the new opportunity ID and update local state
-        const { data: newOpp } = await supabase
-          .from('client_opportunities')
-          .select('id')
-          .eq('client', client || '')
-          .eq('contact_email', lead.email)
-          .eq('stage', stageName)
-          .single()
+        if (lead.email) {
+          const { data: newOpp } = await supabase
+            .from('client_opportunities')
+            .select('id')
+            .eq('client', client || '')
+            .eq('contact_email', lead.email)
+            .eq('stage', stageName)
+            .single()
 
-        if (newOpp) {
-          setLeads((prev) => {
-            const updated = [...prev]
-            updated[leadIndex] = { ...updated[leadIndex], opportunityId: newOpp.id }
-            return updated
-          })
+          if (newOpp && newOpp.id) {
+            setLeads((prev) => {
+              const updated = [...prev]
+              updated[leadIndex] = { ...updated[leadIndex], opportunityId: newOpp.id }
+              return updated
+            })
+          }
         }
       }
     } catch (err) {

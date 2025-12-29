@@ -222,22 +222,27 @@ export default function OpportunityStageModal({
                 stage: opp.stage,
                 opportunity_name: opp.opportunity_name,
                 contact_name: opp.contact_name,
-              })
+              } as any)
               .eq('id', opp.id)
 
             if (error) throw error
           } else {
             // Insert new
+            const insertData: any = {
+              client: opp.client,
+              opportunity_name: opp.opportunity_name,
+              stage: opp.stage,
+              value: opp.value,
+              contact_name: opp.contact_name,
+            }
+            
+            if (opp.contact_email) {
+              insertData.contact_email = opp.contact_email
+            }
+
             const { error } = await supabase
               .from('client_opportunities')
-              .insert({
-                client: opp.client,
-                opportunity_name: opp.opportunity_name,
-                stage: opp.stage,
-                value: opp.value,
-                contact_email: opp.contact_email,
-                contact_name: opp.contact_name,
-              })
+              .insert(insertData)
 
             if (error) throw error
           }
