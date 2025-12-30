@@ -6,7 +6,6 @@ import CampaignFilter from '../components/ui/CampaignFilter'
 import Button from '../components/ui/Button'
 import MiniScorecard from '../components/ui/MiniScorecard'
 import ConfigureTargetsModal from '../components/ui/ConfigureTargetsModal'
-import { useClients } from '../hooks/useClients'
 import { useCampaigns } from '../hooks/useCampaigns'
 import { usePerformanceData } from '../hooks/usePerformanceData'
 import { useQuickViewData } from '../hooks/useQuickViewData'
@@ -75,7 +74,6 @@ export default function PerformanceOverview() {
   const [isConfigureModalOpen, setIsConfigureModalOpen] = useState(false)
   
   // Fetch data
-  const { clients } = useClients()
   const { campaigns } = useCampaigns()
   const { clientData, loading, error, refetch } = usePerformanceData({
     startDate: dateRange.start,

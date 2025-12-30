@@ -158,7 +158,7 @@ export default function ConfigureTargetsModal({
 
   // Fetch leads and opportunities for pipeline mode
   useEffect(() => {
-    if (!isOpen || mode !== 'pipeline') return
+    if (!isOpen || mode !== 'pipeline' || !client) return
 
     async function fetchData() {
       setLoading(true)
@@ -170,7 +170,7 @@ export default function ConfigureTargetsModal({
         const { data: opportunitiesData, error: oppError } = await supabase
           .from('client_opportunities')
           .select('*')
-          .eq('client', client)
+          .eq('client', client!)
 
         if (oppError) {
           console.error('Error fetching opportunities:', oppError)
@@ -196,7 +196,7 @@ export default function ConfigureTargetsModal({
             .from('engaged_leads')
             .select('*')
             .eq(booleanColumn, true)
-            .eq('client', client)
+            .eq('client', client!)
             .gte('date_created', startStr)
             .lte('date_created', endStr)
             .order('created_at', { ascending: false })
