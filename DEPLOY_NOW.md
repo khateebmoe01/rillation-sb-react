@@ -105,3 +105,4 @@ vercel --prod
 - **Supabase Dashboard:** https://app.supabase.com/project/pfxgcavxdktxooiqthoi
 - **Vercel Dashboard:** https://vercel.com/dashboard
 
+

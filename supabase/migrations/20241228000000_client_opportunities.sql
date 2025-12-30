@@ -36,3 +36,4 @@ CREATE TRIGGER update_client_opportunities_updated_at
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
 
+

@@ -431,3 +431,4 @@ export function useDeepInsights({ startDate, endDate, client }: UseDeepInsightsP
   return { data, loading, error, refetch: fetchData }
 }
 
+
