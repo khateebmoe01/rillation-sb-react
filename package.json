@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "split-fc-inboxes": "npx tsx scripts/split-fc-inboxes.ts",
     "backfill-sequence-stats": "npx tsx scripts/backfill-sequence-stats.ts",
