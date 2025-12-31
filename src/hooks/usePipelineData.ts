@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback } from 'react'
-import { supabase, formatDateForQuery } from '../lib/supabase'
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { supabase, formatDateForQuery, formatDateForQueryEndOfDay } from '../lib/supabase'
+import { dataCache, DataCache } from '../lib/cache'
 import type { FunnelStage, FunnelForecast } from '../types/database'
 
 interface UsePipelineDataParams {
@@ -9,49 +10,96 @@ interface UsePipelineDataParams {
   year: number
 }
 
+interface CachedPipelineData {
+  funnelStages: FunnelStage[]
+  spreadsheetData: FunnelForecast[]
+}
+
 export function usePipelineData({ startDate, endDate, month, year }: UsePipelineDataParams) {
   const [funnelStages, setFunnelStages] = useState<FunnelStage[]>([])
   const [spreadsheetData, setSpreadsheetData] = useState<FunnelForecast[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  
+  const hasInitialData = useRef(false)
 
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (isBackgroundRefresh = false) => {
+    const cacheKey = DataCache.createKey('pipeline', {
+      startDate,
+      endDate,
+      month,
+      year,
+    })
+
+    // Try to get cached data first
+    if (!isBackgroundRefresh) {
+      const cached = dataCache.get<CachedPipelineData>(cacheKey)
+      if (cached) {
+        setFunnelStages(cached.data.funnelStages)
+        setSpreadsheetData(cached.data.spreadsheetData)
+        hasInitialData.current = true
+        
+        if (!cached.isStale) {
+          setLoading(false)
+          return
+        }
+        setLoading(false)
+      }
+    }
+
     try {
-      setLoading(true)
+      if (!hasInitialData.current && !isBackgroundRefresh) {
+        setLoading(true)
+      }
       setError(null)
       
       const startStr = formatDateForQuery(startDate)
       const endStr = formatDateForQuery(endDate)
+      const endStrNextDay = formatDateForQueryEndOfDay(endDate)
 
-      // Fetch campaign reporting data for funnel - only Rillation Revenue
-      const { data: campaignData, error: campaignError } = await supabase
-        .from('campaign_reporting')
-        .select('*')
-        .gte('date', startStr)
-        .lte('date', endStr)
-        .eq('client', 'Rillation Revenue')
+      // Parallelize all data fetches
+      const [campaignResult, repliesResult, meetingsResult, engagedLeadsResult, forecastResult] = await Promise.all([
+        supabase
+          .from('campaign_reporting')
+          .select('*')
+          .gte('date', startStr)
+          .lte('date', endStr)
+          .eq('client', 'Rillation Revenue'),
+        supabase
+          .from('replies')
+          .select('*')
+          .gte('date_received', startStr)
+          .lt('date_received', endStrNextDay)
+          .eq('client', 'Rillation Revenue'),
+        supabase
+          .from('meetings_booked')
+          .select('*')
+          .gte('created_time', startStr)
+          .lt('created_time', endStrNextDay)
+          .eq('client', 'Rillation Revenue'),
+        supabase
+          .from('engaged_leads')
+          .select('*')
+          .gte('date_created', startStr)
+          .lte('date_created', endStr)
+          .eq('client', 'Rillation Revenue'),
+        supabase
+          .from('funnel_forecasts')
+          .select('*')
+          .eq('month', month)
+          .eq('year', year)
+          .eq('client', 'Rillation Revenue'),
+      ])
 
-      if (campaignError) throw campaignError
+      if (campaignResult.error) throw campaignResult.error
+      if (repliesResult.error) throw repliesResult.error
+      if (meetingsResult.error) throw meetingsResult.error
 
-      // Fetch replies data - only Rillation Revenue
-      const { data: repliesData, error: repliesError } = await supabase
-        .from('replies')
-        .select('*')
-        .gte('date_received', startStr)
-        .lte('date_received', endStr)
-        .eq('client', 'Rillation Revenue')
-
-      if (repliesError) throw repliesError
-
-      // Fetch meetings booked - only Rillation Revenue
-      const { data: meetingsData, error: meetingsError } = await supabase
-        .from('meetings_booked')
-        .select('*')
-        .gte('created_time', startStr)
-        .lte('created_time', endStr)
-        .eq('client', 'Rillation Revenue')
-
-      if (meetingsError) throw meetingsError
+      const campaignData = campaignResult.data || []
+      const repliesData = repliesResult.data || []
+      const meetingsData = meetingsResult.data || []
+      const engagedLeadsData = engagedLeadsResult.data || []
+      const forecastData = forecastResult.data || []
 
       // Calculate funnel stages from actual data
       const campaignRows = (campaignData || []) as any[]
@@ -70,37 +118,8 @@ export function usePipelineData({ startDate, endDate, month, year }: UsePipeline
       const positiveReplies = campaignRows.reduce((sum, row) => sum + (row.interested || 0), 0)
       
       // Sales handoff count (from engaged_leads or manual tracking)
-      const salesHandoff = meetingsData?.length || 0
-      const meetingsBooked = meetingsData?.length || 0
-
-      // Fetch engaged_leads to get counts from boolean columns
-      // Filter by date_created within the selected date range
-      const { data: engagedLeadsData, error: engagedLeadsError } = await supabase
-        .from('engaged_leads')
-        .select('*')
-        .gte('date_created', startStr)
-        .lte('date_created', endStr)
-        .eq('client', 'Rillation Revenue')
-
-      if (engagedLeadsError) {
-        console.error('Error fetching engaged_leads:', engagedLeadsError)
-        // Don't throw, just continue with zeros
-      }
-
-      console.log('Engaged leads data:', engagedLeadsData?.length, 'records')
-      if (engagedLeadsData && engagedLeadsData.length > 0) {
-        console.log('Sample engaged lead columns:', Object.keys(engagedLeadsData[0]))
-        // Log boolean column values from first few records
-        const sampleLeads = engagedLeadsData.slice(0, 5).map((l: any) => ({
-          showed_up_to_disco: l.showed_up_to_disco,
-          qualified: l.qualified,
-          demo_booked: l.demo_booked,
-          showed_up_to_demo: l.showed_up_to_demo,
-          proposal_sent: l.proposal_sent,
-          closed: l.closed,
-        }))
-        console.log('Sample boolean values:', JSON.stringify(sampleLeads))
-      }
+      const salesHandoff = meetingsData.length || 0
+      const meetingsBooked = meetingsData.length || 0
 
       // Count leads by stage using boolean columns
       // Check for any truthy value (true, 'true', 1, 'yes', 'Yes', etc.)
@@ -124,21 +143,9 @@ export function usePipelineData({ startDate, endDate, month, year }: UsePipeline
       
       console.log('Engaged leads counts:', { showedUpToDisco, qualified, demoBooked, showedUpToDemo, proposalSent, closed })
 
-      // Fetch funnel forecasts for manual overrides (optional) - only Rillation Revenue
-      let forecastQuery = supabase
-        .from('funnel_forecasts')
-        .select('*')
-        .eq('month', month)
-        .eq('year', year)
-      
-      // Filter by client if client column exists
-      forecastQuery = forecastQuery.eq('client', 'Rillation Revenue')
-      
-      const { data: forecastData, error: forecastError } = await forecastQuery
-
       // Don't throw error if forecast table doesn't exist or is empty
       const forecastRows = (forecastData || []) as FunnelForecast[]
-      if (!forecastError && forecastRows.length > 0) {
+      if (forecastRows.length > 0) {
         // Create forecast map
         const forecastMap = new Map<string, FunnelForecast>()
         forecastRows.forEach((f) => {
@@ -177,8 +184,6 @@ export function usePipelineData({ startDate, endDate, month, year }: UsePipeline
         { name: 'Closed', value: closed, percentage: proposalSent > 0 ? (closed / proposalSent) * 100 : 0 },
       ]
 
-      setFunnelStages(stages)
-      
       // Calculate actual values from tracked data
       const actualValues: Record<string, number> = {
         'total_messages_sent': totalSent,
@@ -219,7 +224,15 @@ export function usePipelineData({ startDate, endDate, month, year }: UsePipeline
             projected: 0,
           }))
       
+      setFunnelStages(stages)
       setSpreadsheetData(mergedSpreadsheetData)
+      hasInitialData.current = true
+
+      // Cache the results
+      dataCache.set(cacheKey, {
+        funnelStages: stages,
+        spreadsheetData: mergedSpreadsheetData,
+      })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch data')
     } finally {
@@ -231,5 +244,16 @@ export function usePipelineData({ startDate, endDate, month, year }: UsePipeline
     fetchData()
   }, [fetchData])
 
-  return { funnelStages, spreadsheetData, loading, error, refetch: fetchData }
+  const refetch = useCallback(() => {
+    const cacheKey = DataCache.createKey('pipeline', {
+      startDate,
+      endDate,
+      month,
+      year,
+    })
+    dataCache.invalidate(cacheKey)
+    return fetchData(false)
+  }, [fetchData, startDate, endDate, month, year])
+
+  return { funnelStages, spreadsheetData, loading, error, refetch }
 }

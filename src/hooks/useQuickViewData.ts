@@ -23,38 +23,14 @@ export function useQuickViewData({ startDate, endDate, client }: UseQuickViewDat
       const endStr = formatDateForQuery(endDate)
       const endStrNextDay = formatDateForQueryEndOfDay(endDate) // For timestamp comparisons
 
-      // ========== DEBUG LOGGING START ==========
-      console.group('=== QuickView Data Fetch Debug ===')
-      console.log('📥 INPUT PARAMETERS:')
-      console.log('  - Raw startDate:', startDate?.toISOString(), startDate)
-      console.log('  - Raw endDate:', endDate?.toISOString(), endDate)
-      console.log('  - Client filter:', client || '(none)')
-      console.log('📅 FORMATTED DATES:')
-      console.log('  - startStr (for DATE fields):', startStr)
-      console.log('  - endStr (for DATE fields):', endStr)
-      console.log('  - endStrNextDay (for TIMESTAMP fields):', endStrNextDay)
-      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
-      // ========== DEBUG LOGGING END ==========
-
-      // Fetch ALL campaign reporting data using pagination to overcome Supabase limits
-      // Supabase may have server-side limits even with .limit(), so we paginate
+      // Fetch campaign reporting data using pagination to overcome Supabase limits
       let allCampaignData: any[] = []
       let hasMore = true
       let pageSize = 1000
       let offset = 0
-      let pageNumber = 0
       const maxPages = 100 // Safety limit
 
-      console.log('📊 FETCHING CAMPAIGN_REPORTING DATA:')
-      console.log('  - Table: campaign_reporting')
-      console.log('  - Date filter: >=', startStr, 'AND <=', endStr)
-      console.log('  - Client filter:', client || '(none)')
-      console.log('  - Page size:', pageSize)
-
-      while (hasMore && pageNumber < maxPages) {
-        pageNumber++
-        console.log(`  📄 Page ${pageNumber}: Fetching rows ${offset} to ${offset + pageSize - 1}`)
-
+      while (hasMore && offset / pageSize < maxPages) {
         let campaignQuery = supabase
           .from('campaign_reporting')
           .select('date,campaign_name,emails_sent,total_leads_contacted,bounced,interested')
@@ -66,26 +42,15 @@ export function useQuickViewData({ startDate, endDate, client }: UseQuickViewDat
 
         const { data: pageData, error: campaignError } = await campaignQuery
 
-        if (campaignError) {
-          console.error('  ❌ Query error:', campaignError)
-          throw campaignError
-        }
-
-        console.log(`  ✅ Page ${pageNumber}: Received ${pageData?.length || 0} rows`)
+        if (campaignError) throw campaignError
 
         if (pageData && pageData.length > 0) {
           allCampaignData = allCampaignData.concat(pageData)
           offset += pageSize
           hasMore = pageData.length === pageSize // Continue if we got a full page
-          console.log(`  → Total rows so far: ${allCampaignData.length}, hasMore: ${hasMore}`)
         } else {
           hasMore = false
-          console.log(`  → No more data, stopping pagination`)
         }
-      }
-
-      if (pageNumber >= maxPages) {
-        console.warn('  ⚠️ WARNING: Hit max page limit! May have incomplete data!')
       }
 
       const campaignData = allCampaignData
@@ -99,36 +64,6 @@ export function useQuickViewData({ startDate, endDate, client }: UseQuickViewDat
         interested: number | null
       }
 
-      // ========== DEBUG: Analyze campaign data ==========
-      console.log('📈 CAMPAIGN DATA ANALYSIS:')
-      console.log('  - Total rows fetched:', campaignData.length)
-      
-      if (campaignData.length > 0) {
-        const uniqueDates = [...new Set(campaignData.map((r: any) => r.date))].sort()
-        console.log('  - Unique dates in data:', uniqueDates.length, 'dates')
-        console.log('  - Date range in data:', uniqueDates[0], 'to', uniqueDates[uniqueDates.length - 1])
-        console.log('  - First 3 rows sample:', campaignData.slice(0, 3))
-        
-        // Check for dates outside expected range
-        const rowsOutsideRange = campaignData.filter((r: any) => {
-          return r.date < startStr || r.date > endStr
-        })
-        if (rowsOutsideRange.length > 0) {
-          console.warn('  ⚠️ WARNING: Found', rowsOutsideRange.length, 'rows outside date range!')
-          console.warn('  - Sample:', rowsOutsideRange.slice(0, 3))
-        }
-
-        // Check for duplicate rows (by date + campaign if we had campaign_id)
-        const rowKeys = campaignData.map((r: any) => r.date + '|' + JSON.stringify(r))
-        const uniqueKeys = new Set(rowKeys)
-        if (uniqueKeys.size < campaignData.length) {
-          console.warn('  ⚠️ WARNING: Potential duplicate rows detected!')
-          console.warn('  - Total rows:', campaignData.length)
-          console.warn('  - Unique rows:', uniqueKeys.size)
-        }
-      }
-      // ========== DEBUG END ==========
-
       // Calculate metrics from all fetched rows
       // Filter out rows with null/empty campaign_name to match useCampaignStats behavior
       const validRows = (campaignData as CampaignRow[] | null)?.filter(row => row.campaign_name) || []
@@ -137,13 +72,7 @@ export function useQuickViewData({ startDate, endDate, client }: UseQuickViewDat
       const bounces = validRows.reduce((sum, row) => sum + (row.bounced || 0), 0) || 0
       const positiveReplies = validRows.reduce((sum, row) => sum + (row.interested || 0), 0) || 0
 
-      console.log('💰 CALCULATED METRICS:')
-      console.log('  - totalEmailsSent:', totalEmailsSent)
-      console.log('  - uniqueProspects:', uniqueProspects)
-      console.log('  - bounces:', bounces)
-      console.log('  - positiveReplies:', positiveReplies)
-
-      // Fetch ALL replies data using pagination
+      // Fetch replies data using pagination
       // date_received is TIMESTAMPTZ, so use lt() with next day to include entire end date
       let allRepliesData: any[] = []
       let repliesOffset = 0
@@ -181,10 +110,6 @@ export function useQuickViewData({ startDate, endDate, client }: UseQuickViewDat
       // Total replies = actual count
       const totalReplies = totalRepliesCount || 0
 
-      console.log('💬 REPLIES DATA:')
-      console.log('  - Total replies count (from Supabase):', totalRepliesCount)
-      console.log('  - Replies rows fetched:', allRepliesData.length)
-
       type ReplyRow = {
         category: string | null
         date_received: string | null
@@ -196,7 +121,7 @@ export function useQuickViewData({ startDate, endDate, client }: UseQuickViewDat
         return !cat.includes('out of office') && !cat.includes('ooo') && cat !== 'out of office'
       }).length || 0
 
-      // Fetch ALL meetings booked using pagination
+      // Fetch meetings booked using pagination
       // created_time is TIMESTAMPTZ, so use lt() with next day to include entire end date
       let allMeetingsData: any[] = []
       let meetingsOffset = 0
@@ -227,23 +152,6 @@ export function useQuickViewData({ startDate, endDate, client }: UseQuickViewDat
 
       const meetingsData = allMeetingsData
       const meetingsBooked = meetingsData?.length || 0
-
-      console.log('📅 MEETINGS DATA:')
-      console.log('  - Meetings booked:', meetingsBooked)
-
-      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
-      console.log('✅ FINAL METRICS BEING SET:')
-      console.log({
-        totalEmailsSent,
-        uniqueProspects,
-        totalReplies,
-        realReplies,
-        positiveReplies,
-        bounces,
-        meetingsBooked,
-      })
-      console.groupEnd()
-      // ========== DEBUG LOGGING END ==========
 
       setMetrics({
         totalEmailsSent,

@@ -8,27 +8,22 @@ import MiniScorecard from '../components/ui/MiniScorecard'
 import ConfigureTargetsModal from '../components/ui/ConfigureTargetsModal'
 import { useCampaigns } from '../hooks/useCampaigns'
 import { usePerformanceData } from '../hooks/usePerformanceData'
-import { useQuickViewData } from '../hooks/useQuickViewData'
 import { useFilters } from '../contexts/FilterContext'
 import type { ClientBubbleData } from '../types/database'
 
-// Component to fetch and display individual client scorecard
+// Component to display individual client scorecard
 function ClientScorecard({ 
   client, 
+  scorecardData,
   dateRange, 
   onClick 
 }: { 
   client: ClientBubbleData
+  scorecardData?: { metrics: any; chartData: any[] }
   dateRange: { start: Date; end: Date }
   onClick: () => void 
 }) {
-  const { metrics, chartData, loading } = useQuickViewData({
-    startDate: dateRange.start,
-    endDate: dateRange.end,
-    client: client.client,
-  })
-
-  if (loading || !metrics) {
+  if (!scorecardData) {
     return (
       <motion.div
         className="bg-rillation-card rounded-xl p-4 border border-rillation-border"
@@ -49,8 +44,8 @@ function ClientScorecard({
   return (
     <MiniScorecard
       clientName={client.client}
-      metrics={metrics}
-      chartData={chartData}
+      metrics={scorecardData.metrics}
+      chartData={scorecardData.chartData}
       targets={{
         emailsTarget: client.emailsTarget,
         prospectsTarget: client.prospectsTarget,
@@ -75,7 +70,7 @@ export default function PerformanceOverview() {
   
   // Fetch data
   const { campaigns } = useCampaigns()
-  const { clientData, loading, error, refetch } = usePerformanceData({
+  const { clientData, scorecardData, loading, error, refetch } = usePerformanceData({
     startDate: dateRange.start,
     endDate: dateRange.end,
     campaign: selectedCampaign || undefined,
@@ -194,6 +189,7 @@ export default function PerformanceOverview() {
               <ClientScorecard 
                 key={client.client}
                 client={client}
+                scorecardData={scorecardData.get(client.client)}
                 dateRange={dateRange}
                 onClick={() => handleClientClick(client)}
               />

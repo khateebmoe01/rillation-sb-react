@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase, formatDateForQuery, formatDateForQueryEndOfDay } from '../lib/supabase'
+import { dataCache, DataCache } from '../lib/cache'
 
 export interface SalesMetric {
   date: string
@@ -26,33 +27,66 @@ export interface UseSalesMetricsParams {
   client?: string
 }
 
+interface CachedSalesData {
+  dailyMetrics: SalesMetric[]
+  summary: SalesSummary
+}
+
+const DEFAULT_SUMMARY: SalesSummary = {
+  totalRevenue: 0,
+  avgDealValue: 0,
+  winRate: 0,
+  totalClosedWon: 0,
+  totalClosedLost: 0,
+  totalDeals: 0,
+}
+
 export function useSalesMetrics({ startDate, endDate, client }: UseSalesMetricsParams) {
   const [dailyMetrics, setDailyMetrics] = useState<SalesMetric[]>([])
-  const [summary, setSummary] = useState<SalesSummary>({
-    totalRevenue: 0,
-    avgDealValue: 0,
-    winRate: 0,
-    totalClosedWon: 0,
-    totalClosedLost: 0,
-    totalDeals: 0,
-  })
+  const [summary, setSummary] = useState<SalesSummary>(DEFAULT_SUMMARY)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  
+  const hasInitialData = useRef(false)
 
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (isBackgroundRefresh = false) => {
+    const cacheKey = DataCache.createKey('sales', {
+      startDate,
+      endDate,
+      client: client || '',
+    })
+
+    // Try to get cached data first
+    if (!isBackgroundRefresh) {
+      const cached = dataCache.get<CachedSalesData>(cacheKey)
+      if (cached) {
+        setDailyMetrics(cached.data.dailyMetrics)
+        setSummary(cached.data.summary)
+        hasInitialData.current = true
+        
+        if (!cached.isStale) {
+          setLoading(false)
+          return
+        }
+        setLoading(false)
+      }
+    }
+
     try {
-      setLoading(true)
+      if (!hasInitialData.current && !isBackgroundRefresh) {
+        setLoading(true)
+      }
       setError(null)
 
       const startStr = formatDateForQuery(startDate)
       const endStrNextDay = formatDateForQueryEndOfDay(endDate)
 
       // Query client_opportunities - filter for "Closed" stage
-      // Note: We'll filter by date after fetching because we want to use updated_at (when closed)
-      // or created_at as fallback, and Supabase doesn't easily support COALESCE in filters
+      // Fetch only needed fields and filter by date in JS (since we need COALESCE logic)
+      // Closed opportunities should be a small subset, so this is acceptable
       let query = supabase
         .from('client_opportunities')
-        .select('*')
+        .select('value,updated_at,created_at')
         .eq('stage', 'Closed')
 
       if (client) {
@@ -63,16 +97,11 @@ export function useSalesMetrics({ startDate, endDate, client }: UseSalesMetricsP
 
       if (queryError) throw queryError
 
-      const allOpportunities = (data || []) as any[]
-
       // Filter by date range - use updated_at (when closed) or created_at as fallback
-      // Compare date strings (YYYY-MM-DD format compares correctly as strings)
-      const opportunities = allOpportunities.filter((opp: any) => {
+      const opportunities = (data || []).filter((opp: any) => {
         const closeDate = opp.updated_at || opp.created_at
         if (!closeDate) return false
-        
         const closeDateStr = closeDate.split('T')[0]
-        // Compare dates as strings (ISO format YYYY-MM-DD compares correctly)
         return closeDateStr >= startStr && closeDateStr < endStrNextDay
       })
 
@@ -89,14 +118,14 @@ export function useSalesMetrics({ startDate, endDate, client }: UseSalesMetricsP
       const avgDealValue = totalClosedWon > 0 ? totalRevenue / totalClosedWon : 0
       const winRate = totalDeals > 0 ? (totalClosedWon / totalDeals) * 100 : 0
 
-      setSummary({
+      const newSummary: SalesSummary = {
         totalRevenue,
         avgDealValue,
         winRate,
         totalClosedWon,
         totalClosedLost,
         totalDeals,
-      })
+      }
 
       // Group by day for daily trends
       const dailyMap = new Map<string, {
@@ -171,7 +200,15 @@ export function useSalesMetrics({ startDate, endDate, client }: UseSalesMetricsP
         }
       })
 
+      setSummary(newSummary)
       setDailyMetrics(dailyMetricsData)
+      hasInitialData.current = true
+
+      // Cache the results
+      dataCache.set(cacheKey, {
+        dailyMetrics: dailyMetricsData,
+        summary: newSummary,
+      })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch sales metrics')
     } finally {
@@ -183,6 +220,15 @@ export function useSalesMetrics({ startDate, endDate, client }: UseSalesMetricsP
     fetchData()
   }, [fetchData])
 
-  return { dailyMetrics, summary, loading, error, refetch: fetchData }
-}
+  const refetch = useCallback(() => {
+    const cacheKey = DataCache.createKey('sales', {
+      startDate,
+      endDate,
+      client: client || '',
+    })
+    dataCache.invalidate(cacheKey)
+    return fetchData(false)
+  }, [fetchData, startDate, endDate, client])
 
+  return { dailyMetrics, summary, loading, error, refetch }
+}

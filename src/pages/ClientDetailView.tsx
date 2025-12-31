@@ -11,8 +11,10 @@ import CampaignBreakdownTable from '../components/ui/CampaignBreakdownTable'
 import MeetingsBookedTable from '../components/ui/MeetingsBookedTable'
 import { useQuickViewData } from '../hooks/useQuickViewData'
 import { useCampaignStats } from '../hooks/useCampaignStats'
+import { useFirmographicInsights } from '../hooks/useFirmographicInsights'
 import { useFilters } from '../contexts/FilterContext'
 import { supabase, formatDateForQuery, formatDateForQueryEndOfDay } from '../lib/supabase'
+import FirmographicInsightsPanel from '../components/insights/FirmographicInsightsPanel'
 
 const PAGE_SIZE = 15
 
@@ -119,6 +121,17 @@ export default function ClientDetailView() {
     client: decodedClientName || undefined,
     page: 1,
     pageSize: 100,
+  })
+
+  // Fetch firmographic insights
+  const {
+    data: firmographicData,
+    loading: firmographicLoading,
+    error: firmographicError,
+  } = useFirmographicInsights({
+    startDate: dateRange.start,
+    endDate: dateRange.end,
+    client: decodedClientName || undefined,
   })
 
   // Fetch meetings data when meetings panel is active
@@ -617,6 +630,15 @@ export default function ClientDetailView() {
               client={decodedClientName}
               startDate={dateRange.start}
               endDate={dateRange.end}
+            />
+          </motion.div>
+
+          {/* Firmographic Analysis - Deep Insights */}
+          <motion.div variants={itemVariants}>
+            <FirmographicInsightsPanel
+              data={firmographicData}
+              loading={firmographicLoading}
+              error={firmographicError}
             />
           </motion.div>
         </motion.div>
