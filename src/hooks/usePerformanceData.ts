@@ -6,7 +6,7 @@ import type { ClientBubbleData, ClientTarget, QuickViewMetrics, ChartDataPoint }
 interface UsePerformanceDataParams {
   startDate: Date
   endDate: Date
-  campaign?: string
+  campaigns?: string[]
 }
 
 export interface ClientScorecardData {
@@ -19,7 +19,7 @@ interface CachedPerformanceData {
   scorecardData: Map<string, ClientScorecardData>
 }
 
-export function usePerformanceData({ startDate, endDate, campaign }: UsePerformanceDataParams) {
+export function usePerformanceData({ startDate, endDate, campaigns }: UsePerformanceDataParams) {
   const [clientData, setClientData] = useState<ClientBubbleData[]>([])
   const [scorecardData, setScorecardData] = useState<Map<string, ClientScorecardData>>(new Map())
   const [loading, setLoading] = useState(true)
@@ -32,7 +32,7 @@ export function usePerformanceData({ startDate, endDate, campaign }: UsePerforma
     const cacheKey = DataCache.createKey('performance', {
       startDate,
       endDate,
-      campaign: campaign || '',
+      campaigns: campaigns?.join(',') || '',
     })
 
     // Try to get cached data first
@@ -88,7 +88,7 @@ export function usePerformanceData({ startDate, endDate, campaign }: UsePerforma
             .gte('date', startStr)
             .lte('date', endStr)
           
-          if (campaign) campaignQuery = campaignQuery.eq('campaign_name', campaign)
+          if (campaigns && campaigns.length > 0) campaignQuery = campaignQuery.in('campaign_name', campaigns)
           
           const { data, error } = await campaignQuery
           if (error) throw error
@@ -243,6 +243,7 @@ export function usePerformanceData({ startDate, endDate, campaign }: UsePerforma
               prospects: 0,
               replied: 0,
               positiveReplies: 0,
+              meetings: 0,
             })
           }
           const point = dateMap.get(date)!
@@ -263,6 +264,7 @@ export function usePerformanceData({ startDate, endDate, campaign }: UsePerforma
               prospects: 0,
               replied: 0,
               positiveReplies: 0,
+              meetings: 0,
             })
           }
           const point = dateMap.get(dateStr)!
@@ -316,7 +318,7 @@ export function usePerformanceData({ startDate, endDate, campaign }: UsePerforma
       if (timeoutId) clearTimeout(timeoutId)
       setLoading(false)
     }
-  }, [startDate, endDate, campaign])
+  }, [startDate, endDate, campaigns])
 
   useEffect(() => {
     fetchData()
@@ -327,11 +329,11 @@ export function usePerformanceData({ startDate, endDate, campaign }: UsePerforma
     const cacheKey = DataCache.createKey('performance', {
       startDate,
       endDate,
-      campaign: campaign || '',
+      campaigns: campaigns?.join(',') || '',
     })
     dataCache.invalidate(cacheKey)
     return fetchData(false)
-  }, [fetchData, startDate, endDate, campaign])
+  }, [fetchData, startDate, endDate, campaigns])
 
   return { clientData, scorecardData, loading, error, refetch }
 }

@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
+import { Routes, Route, Navigate, useLocation, useParams } from 'react-router-dom'
 import Layout from './components/layout/Layout'
 import ConfigError from './components/ui/ConfigError'
 import QuickView from './pages/QuickView'
@@ -8,6 +8,12 @@ import Infrastructure from './pages/Infrastructure'
 import DebugView from './pages/DebugView'
 import ClientDetailView from './pages/ClientDetailView'
 import { getSupabaseConfigError } from './lib/supabase'
+
+// Redirect component that properly handles URL params
+function ClientDetailRedirect() {
+  const { clientName } = useParams<{ clientName: string }>()
+  return <Navigate to={`/performance/${clientName}`} replace />
+}
 
 function App() {
   const configError = getSupabaseConfigError()
@@ -29,7 +35,7 @@ function App() {
         <Route path="/debug" element={<DebugView />} />
         {/* Legacy routes - redirect to new structure */}
         <Route path="/gtm-scoreboard" element={<Navigate to="/performance" replace />} />
-        <Route path="/client-detail/:clientName" element={<Navigate to="/performance/:clientName" replace />} />
+        <Route path="/client-detail/:clientName" element={<ClientDetailRedirect />} />
       </Routes>
     </Layout>
   )

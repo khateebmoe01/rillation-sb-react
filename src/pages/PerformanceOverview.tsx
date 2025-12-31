@@ -64,7 +64,7 @@ export default function PerformanceOverview() {
   const navigate = useNavigate()
   
   // Filter state
-  const [selectedCampaign, setSelectedCampaign] = useState('')
+  const [selectedCampaigns, setSelectedCampaigns] = useState<string[]>([])
   const [clientSearchQuery, setClientSearchQuery] = useState('')
   const [isConfigureModalOpen, setIsConfigureModalOpen] = useState(false)
   
@@ -73,7 +73,7 @@ export default function PerformanceOverview() {
   const { clientData, scorecardData, loading, error, refetch } = usePerformanceData({
     startDate: dateRange.start,
     endDate: dateRange.end,
-    campaign: selectedCampaign || undefined,
+    campaigns: selectedCampaigns.length > 0 ? selectedCampaigns : undefined,
   })
 
   // Filter client data based on search query
@@ -83,7 +83,7 @@ export default function PerformanceOverview() {
 
   // Handle clear campaign filter (client and date filters are global)
   const handleClear = () => {
-    setSelectedCampaign('')
+    setSelectedCampaigns([])
   }
 
   // Handle client click - navigate to client detail view
@@ -113,8 +113,8 @@ export default function PerformanceOverview() {
               <span className="text-xs text-rillation-text-muted">CAMPAIGN</span>
               <CampaignFilter
                 campaigns={campaigns}
-                selectedCampaign={selectedCampaign}
-                onChange={setSelectedCampaign}
+                selectedCampaigns={selectedCampaigns}
+                onChange={setSelectedCampaigns}
               />
             </div>
             <div className="relative">

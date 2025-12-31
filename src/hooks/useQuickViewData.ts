@@ -6,9 +6,10 @@ interface UseQuickViewDataParams {
   startDate: Date
   endDate: Date
   client?: string
+  campaigns?: string[]
 }
 
-export function useQuickViewData({ startDate, endDate, client }: UseQuickViewDataParams) {
+export function useQuickViewData({ startDate, endDate, client, campaigns }: UseQuickViewDataParams) {
   const [metrics, setMetrics] = useState<QuickViewMetrics | null>(null)
   const [chartData, setChartData] = useState<ChartDataPoint[]>([])
   const [loading, setLoading] = useState(true)
@@ -39,6 +40,7 @@ export function useQuickViewData({ startDate, endDate, client }: UseQuickViewDat
           .range(offset, offset + pageSize - 1)
 
         if (client) campaignQuery = campaignQuery.eq('client', client)
+        if (campaigns && campaigns.length > 0) campaignQuery = campaignQuery.in('campaign_name', campaigns)
 
         const { data: pageData, error: campaignError } = await campaignQuery
 
@@ -183,6 +185,7 @@ export function useQuickViewData({ startDate, endDate, client }: UseQuickViewDat
             prospects: 0,
             replied: 0,
             positiveReplies: 0,
+            meetings: 0,
           })
         }
         const point = dateMap.get(date)!
@@ -202,6 +205,7 @@ export function useQuickViewData({ startDate, endDate, client }: UseQuickViewDat
               prospects: 0,
               replied: 0,
               positiveReplies: 0,
+              meetings: 0,
             })
           }
           const point = dateMap.get(dateStr)!
@@ -212,6 +216,25 @@ export function useQuickViewData({ startDate, endDate, client }: UseQuickViewDat
           }
           // Note: positiveReplies (Interested) is now calculated from campaign_reporting.interested
           // in the campaign data loop above, not from replies table
+        }
+      })
+
+      // Add meetings data to chart
+      ;(meetingsData as any[] | null)?.forEach((meeting) => {
+        const dateStr = meeting.created_time?.split('T')[0]
+        if (dateStr) {
+          if (!dateMap.has(dateStr)) {
+            dateMap.set(dateStr, {
+              date: formatDateDisplay(dateStr),
+              sent: 0,
+              prospects: 0,
+              replied: 0,
+              positiveReplies: 0,
+              meetings: 0,
+            })
+          }
+          const point = dateMap.get(dateStr)!
+          point.meetings += 1
         }
       })
 
@@ -226,7 +249,7 @@ export function useQuickViewData({ startDate, endDate, client }: UseQuickViewDat
     } finally {
       setLoading(false)
     }
-  }, [startDate, endDate, client])
+  }, [startDate, endDate, client, campaigns])
 
   useEffect(() => {
     fetchData()

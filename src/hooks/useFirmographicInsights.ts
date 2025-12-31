@@ -20,6 +20,9 @@ export interface DimensionInsight {
   items: FirmographicItem[]
 }
 
+// Alias for backwards compatibility
+export type FirmographicDimensionData = DimensionInsight
+
 export interface FirmographicInsightsData {
   industry: DimensionInsight
   revenue: DimensionInsight
@@ -32,6 +35,7 @@ interface UseFirmographicInsightsParams {
   startDate: Date
   endDate: Date
   client?: string
+  campaigns?: string[]
 }
 
 // Helper to normalize revenue to bands
@@ -62,7 +66,6 @@ function normalizeRevenue(revenue: string | null): string | null {
 function normalizeCompanySize(size: string | null): string | null {
   if (!size || size.trim() === '') return null
   
-  const sizeStr = size.toLowerCase()
   const sizeNum = parseFloat(size.replace(/[^0-9.]/g, ''))
   
   if (!isNaN(sizeNum)) {
@@ -83,7 +86,7 @@ function isValidValue(value: string | null): boolean {
   return trimmed !== '' && trimmed.toLowerCase() !== 'unknown'
 }
 
-export function useFirmographicInsights({ startDate, endDate, client }: UseFirmographicInsightsParams) {
+export function useFirmographicInsights({ startDate, endDate, client, campaigns }: UseFirmographicInsightsParams) {
   const [data, setData] = useState<FirmographicInsightsData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -111,8 +114,13 @@ export function useFirmographicInsights({ startDate, endDate, client }: UseFirmo
       const { data: activeCampaigns, error: campaignsError } = await campaignsQuery
       if (campaignsError) throw campaignsError
 
-      // Get unique campaign IDs
-      const campaignIds = [...new Set((activeCampaigns || []).map(c => c.campaign_id).filter(Boolean))]
+      // Get unique campaign IDs - filter to selected campaigns if provided
+      let campaignIds = [...new Set((activeCampaigns as { campaign_id: string }[] || []).map(c => c.campaign_id).filter(Boolean))]
+      
+      // If specific campaigns are selected, filter to those campaigns
+      if (campaigns && campaigns.length > 0) {
+        campaignIds = campaignIds.filter(id => campaigns.includes(id))
+      }
 
       // Fetch all leads for the client that belong to active campaigns
       // If no active campaigns, we'll still fetch all leads for the client
@@ -124,16 +132,35 @@ export function useFirmographicInsights({ startDate, endDate, client }: UseFirmo
         leadsQuery = leadsQuery.eq('client', client)
       }
 
-      // If we have active campaigns, filter by them
+      // If we have campaigns to filter by
       if (campaignIds.length > 0) {
         leadsQuery = leadsQuery.in('campaign_id', campaignIds)
+      } else if (campaigns && campaigns.length > 0) {
+        // If specific campaigns were requested but not found in active, filter to those campaigns anyway
+        leadsQuery = leadsQuery.in('campaign_id', campaigns)
       }
 
       const { data: allLeads, error: leadsError } = await leadsQuery
 
       if (leadsError) throw leadsError
 
-      const leads = allLeads || []
+      // Type the leads data
+      type LeadData = {
+        email: string | null
+        industry: string | null
+        annual_revenue: string | null
+        company_size: string | null
+        company_hq_state: string | null
+        company_hq_country: string | null
+        specialty_signal_a: string | null
+        specialty_signal_b: string | null
+        specialty_signal_c: string | null
+        campaign_id: string | null
+        client: string | null
+        created_time: string | null
+      }
+
+      const leads = (allLeads as LeadData[] || []) as LeadData[]
       const totalLeads = leads.length
 
       // Fetch replies (exclude OOO)
@@ -149,8 +176,20 @@ export function useFirmographicInsights({ startDate, endDate, client }: UseFirmo
         repliesQuery = repliesQuery.eq('client', client)
       }
 
-      const { data: replies, error: repliesError } = await repliesQuery
+      const { data: repliesData, error: repliesError } = await repliesQuery
       if (repliesError) throw repliesError
+
+      // Type the replies data
+      type ReplyData = {
+        lead_id: string | null
+        from_email: string | null
+        primary_to_email: string | null
+        category: string | null
+        date_received: string | null
+        client: string | null
+      }
+
+      const replies = (repliesData as ReplyData[] || []) as ReplyData[]
 
       // Fetch meetings
       let meetingsQuery = supabase
@@ -163,8 +202,21 @@ export function useFirmographicInsights({ startDate, endDate, client }: UseFirmo
         meetingsQuery = meetingsQuery.eq('client', client)
       }
 
-      const { data: meetings, error: meetingsError } = await meetingsQuery
+      const { data: meetingsData, error: meetingsError } = await meetingsQuery
       if (meetingsError) throw meetingsError
+
+      // Type the meetings data
+      type MeetingData = {
+        email: string | null
+        industry: string | null
+        annual_revenue: string | null
+        company_hq_state: string | null
+        client: string | null
+        campaign_id: string | null
+        created_time: string | null
+      }
+
+      const meetings = (meetingsData as MeetingData[] || []) as MeetingData[]
 
       // Create email -> lead map for quick lookup
       const leadMap = new Map<string, any>()
@@ -384,7 +436,7 @@ export function useFirmographicInsights({ startDate, endDate, client }: UseFirmo
     } finally {
       setLoading(false)
     }
-  }, [startDate, endDate, client])
+  }, [startDate, endDate, client, campaigns])
 
   useEffect(() => {
     fetchData()

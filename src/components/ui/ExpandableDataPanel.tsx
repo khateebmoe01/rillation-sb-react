@@ -76,20 +76,20 @@ export default function ExpandableDataPanel({
   }
 
   return (
-    <div className="bg-rillation-card rounded-xl border border-rillation-border overflow-hidden fade-in">
+    <div className="bg-slate-800/60 rounded-xl border border-slate-700/50 overflow-hidden backdrop-blur-sm fade-in">
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-rillation-border">
+      <div className="flex items-center justify-between p-4 border-b border-slate-700/50">
         <div className="flex items-center gap-3">
-          <h3 className="text-lg font-semibold text-rillation-text">{title}</h3>
-          <span className="text-sm text-rillation-text-muted">
+          <h3 className="text-lg font-semibold text-white">{title}</h3>
+          <span className="text-sm text-slate-300">
             Showing {startItem} - {endItem} of {totalCount}
           </span>
         </div>
         <button
           onClick={onClose}
-          className="p-1 hover:bg-rillation-card-hover rounded-lg transition-colors"
+          className="p-1 hover:bg-slate-700/50 rounded-lg transition-colors"
         >
-          <X size={20} className="text-rillation-text-muted" />
+          <X size={20} className="text-white" />
         </button>
       </div>
 
@@ -97,11 +97,11 @@ export default function ExpandableDataPanel({
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead>
-            <tr className="bg-rillation-card-hover">
+            <tr className="bg-slate-700/30">
               {columns.map((col) => (
                 <th
                   key={col.key}
-                  className="px-4 py-3 text-left text-xs font-medium text-rillation-text-muted uppercase tracking-wider"
+                  className="px-4 py-3 text-left text-xs font-medium text-slate-300 uppercase tracking-wider"
                 >
                   {col.label}
                 </th>
@@ -112,11 +112,11 @@ export default function ExpandableDataPanel({
             {data.map((row, index) => (
               <tr
                 key={index}
-                className={`border-b border-rillation-border/30 hover:bg-rillation-card-hover transition-colors ${onRowClick ? 'cursor-pointer' : ''}`}
+                className={`border-b border-slate-700/30 hover:bg-slate-700/30 transition-colors ${onRowClick ? 'cursor-pointer' : ''}`}
                 onClick={() => onRowClick?.(row)}
               >
                 {columns.map((col) => (
-                  <td key={col.key} className="px-4 py-3 text-sm text-rillation-text">
+                  <td key={col.key} className="px-4 py-3 text-sm text-white">
                     {formatValue(row[col.key], col.format)}
                   </td>
                 ))}
@@ -128,11 +128,11 @@ export default function ExpandableDataPanel({
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-between p-4 border-t border-rillation-border">
+        <div className="flex items-center justify-between p-4 border-t border-slate-700/50">
           <button
             onClick={() => onPageChange(currentPage - 1)}
             disabled={currentPage === 1}
-            className="flex items-center gap-1 px-3 py-1.5 text-sm text-rillation-text-muted hover:text-rillation-text disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center gap-1 px-3 py-1.5 text-sm text-slate-300 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <ChevronLeft size={16} />
             Previous
@@ -157,8 +157,8 @@ export default function ExpandableDataPanel({
                   onClick={() => onPageChange(pageNum)}
                   className={`w-8 h-8 rounded-lg text-sm font-medium transition-colors ${
                     currentPage === pageNum
-                      ? 'bg-rillation-purple text-white'
-                      : 'text-rillation-text-muted hover:bg-rillation-card-hover'
+                      ? 'bg-white text-slate-900'
+                      : 'text-slate-300 hover:bg-slate-700/50'
                   }`}
                 >
                   {pageNum}
@@ -170,7 +170,7 @@ export default function ExpandableDataPanel({
           <button
             onClick={() => onPageChange(currentPage + 1)}
             disabled={currentPage === totalPages}
-            className="flex items-center gap-1 px-3 py-1.5 text-sm text-rillation-text-muted hover:text-rillation-text disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center gap-1 px-3 py-1.5 text-sm text-slate-300 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Next
             <ChevronRight size={16} />
@@ -180,4 +180,3 @@ export default function ExpandableDataPanel({
     </div>
   )
 }
-

@@ -1,17 +1,11 @@
-import { ReactNode } from 'react'
 import { formatNumber, formatPercentage } from '../../lib/supabase'
-import { TrendingUp, TrendingDown } from 'lucide-react'
 
 interface ClickableMetricCardProps {
   title: string
   value: number
   percentage?: number
   percentageLabel?: string
-  icon: ReactNode
-  trend?: 'up' | 'down' | 'neutral'
-  trendValue?: string
   colorClass?: string
-  isClickable?: boolean
   isActive?: boolean
   onClick?: () => void
 }
@@ -21,44 +15,34 @@ export default function ClickableMetricCard({
   value,
   percentage,
   percentageLabel,
-  icon,
-  trend,
-  trendValue,
-  colorClass = 'text-rillation-text-muted',
-  isClickable = false,
+  colorClass = 'text-white',
   isActive = false,
   onClick,
 }: ClickableMetricCardProps) {
   return (
     <div 
       className={`
-        metric-card bg-rillation-card rounded-xl p-5 card-glow border border-rillation-border
-        ${isClickable ? 'cursor-pointer hover:border-rillation-text' : ''}
-        ${isActive ? 'ring-2 ring-white border-white' : ''}
+        bg-slate-800/60 rounded-xl p-4 border transition-all cursor-pointer
+        hover:border-white/50 hover:bg-slate-700/60
+        ${isActive ? 'ring-2 ring-white border-white bg-slate-700/60' : 'border-slate-700/50'}
       `}
-      onClick={isClickable ? onClick : undefined}
+      onClick={onClick}
     >
       {/* Header */}
-      <div className="flex items-center gap-2 mb-3">
-        <span className={colorClass}>{icon}</span>
-        <span className="text-xs font-medium text-rillation-text-muted uppercase tracking-wider">
+      <div className="mb-2">
+        <span className="text-xs font-medium text-white uppercase tracking-wider">
           {title}
         </span>
-        {isClickable && (
-          <span className="ml-auto text-xs text-rillation-text-muted opacity-0 group-hover:opacity-100 transition-opacity">
-            Click to view
-          </span>
-        )}
       </div>
       
       {/* Value */}
-      <div className="flex items-baseline gap-3">
-        <span className="text-3xl font-bold text-rillation-text">
+      <div className="flex items-baseline gap-2">
+        <span className={`text-2xl font-bold ${colorClass}`}>
           {formatNumber(value)}
         </span>
         
         {percentage !== undefined && (
-          <span className="text-sm text-rillation-text-muted">
+          <span className="text-sm text-white">
             {formatPercentage(percentage)}
           </span>
         )}
@@ -66,24 +50,10 @@ export default function ClickableMetricCard({
       
       {/* Percentage Label */}
       {percentageLabel && (
-        <p className="text-xs text-rillation-text-muted mt-1">
+        <p className="text-xs text-white/70 mt-1">
           {percentageLabel}
         </p>
-      )}
-      
-      {/* Trend */}
-      {trend && (
-        <div className={`flex items-center gap-1 mt-2 text-xs ${
-          trend === 'up' ? 'text-rillation-green' : 
-          trend === 'down' ? 'text-rillation-red' : 
-          'text-rillation-text-muted'
-        }`}>
-          {trend === 'up' && <TrendingUp size={14} />}
-          {trend === 'down' && <TrendingDown size={14} />}
-          <span>{trendValue}</span>
-        </div>
       )}
     </div>
   )
 }
-

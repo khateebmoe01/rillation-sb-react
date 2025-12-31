@@ -248,6 +248,7 @@ export interface ChartDataPoint {
   prospects: number
   replied: number
   positiveReplies: number
+  meetings: number
 }
 
 export interface FunnelStage {

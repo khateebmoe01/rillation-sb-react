@@ -39,6 +39,15 @@ function getTargetColor(actual: number, target: number): string {
   return 'text-rillation-red'
 }
 
+// Helper function to get color hex for charts
+function getTargetColorHex(actual: number, target: number): string {
+  if (target === 0) return '#ffffff'
+  const percentage = (actual / target) * 100
+  if (percentage >= 100) return '#22c55e' // green
+  if (percentage >= 50) return '#eab308' // yellow
+  return '#ef4444' // red
+}
+
 export default function MiniScorecard({ clientName, metrics, chartData, targets, dateRange, onClick }: MiniScorecardProps) {
   const [selectedMetric, setSelectedMetric] = useState<MetricType>(null)
 
@@ -101,7 +110,7 @@ export default function MiniScorecard({ clientName, metrics, chartData, targets,
     if (active && payload && payload.length) {
       return (
         <div className="bg-[#1a1f2e] border border-[#2a3142] rounded-lg p-2 shadow-xl">
-          <p className="text-xs text-rillation-text-muted mb-1">{label}</p>
+          <p className="text-xs text-slate-300 mb-1">{label}</p>
           {payload.map((entry: any, index: number) => (
             <p key={index} className="text-xs" style={{ color: entry.color }}>
               {entry.name}: {entry.value.toLocaleString()}
@@ -126,7 +135,7 @@ export default function MiniScorecard({ clientName, metrics, chartData, targets,
           e.stopPropagation()
           onClick?.()
         }}
-        className="absolute top-4 right-4 p-2 rounded-lg bg-[#2a3142] border border-[#3a4152] text-rillation-text-muted z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+        className="absolute top-4 right-4 p-2 rounded-lg bg-slate-700/50 border border-slate-600/50 text-white z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
         whileHover={{ scale: 1.1, backgroundColor: '#3a4152', color: '#ffffff' }}
         whileTap={{ scale: 0.9 }}
         transition={{ duration: 0.2 }}
@@ -171,7 +180,7 @@ export default function MiniScorecard({ clientName, metrics, chartData, targets,
             <span className={`text-lg font-bold ${targets ? getTargetColor(metrics.realReplies, targets.repliesTarget) : 'text-rillation-text'}`}>
               {formatNumber(metrics.realReplies)}
             </span>
-            <span className="text-xs text-rillation-text-muted">{formatPercentage(realReplyRate)}</span>
+            <span className="text-xs text-slate-300">{formatPercentage(realReplyRate)}</span>
           </div>
         </div>
         <div 
@@ -183,7 +192,7 @@ export default function MiniScorecard({ clientName, metrics, chartData, targets,
             <span className="text-lg font-bold text-rillation-text">
               {formatNumber(metrics.positiveReplies)}
             </span>
-            <span className="text-xs text-rillation-text-muted">{formatPercentage(positiveRate)}</span>
+            <span className="text-xs text-slate-300">{formatPercentage(positiveRate)}</span>
           </div>
         </div>
         <div className="text-center">
@@ -192,7 +201,7 @@ export default function MiniScorecard({ clientName, metrics, chartData, targets,
             <span className="text-lg font-bold text-rillation-text">
               {formatNumber(metrics.bounces)}
             </span>
-            <span className="text-xs text-rillation-text-muted">{formatPercentage(bounceRate)}</span>
+            <span className="text-xs text-slate-300">{formatPercentage(bounceRate)}</span>
           </div>
         </div>
         <div 
@@ -204,7 +213,7 @@ export default function MiniScorecard({ clientName, metrics, chartData, targets,
             <span className={`text-lg font-bold ${targets ? getTargetColor(metrics.meetingsBooked, targets.meetingsTarget) : 'text-rillation-text'}`}>
               {formatNumber(metrics.meetingsBooked)}
             </span>
-            <span className="text-xs text-rillation-text-muted">{formatPercentage(meetingRate)}</span>
+            <span className="text-xs text-slate-300">{formatPercentage(meetingRate)}</span>
           </div>
         </div>
       </div>
@@ -250,7 +259,7 @@ export default function MiniScorecard({ clientName, metrics, chartData, targets,
                   type="monotone"
                   dataKey="sent"
                   name="Sent"
-                  stroke="#ffffff"
+                  stroke={targets ? getTargetColorHex(metrics.totalEmailsSent, targets.emailsTarget) : '#ffffff'}
                   strokeWidth={2}
                   dot={false}
                   activeDot={{ r: 4 }}
@@ -264,7 +273,7 @@ export default function MiniScorecard({ clientName, metrics, chartData, targets,
                     type="monotone"
                     dataKey="sentTarget"
                     name="Sent Target"
-                    stroke="#ffffff"
+                    stroke="#888888"
                     strokeWidth={1.5}
                     strokeDasharray="5 5"
                     dot={false}
@@ -283,7 +292,7 @@ export default function MiniScorecard({ clientName, metrics, chartData, targets,
                   type="monotone"
                   dataKey="prospects"
                   name="Prospects"
-                  stroke="#888888"
+                  stroke={targets ? getTargetColorHex(metrics.uniqueProspects, targets.prospectsTarget) : '#888888'}
                   strokeWidth={2}
                   dot={false}
                   activeDot={{ r: 4 }}
@@ -316,7 +325,7 @@ export default function MiniScorecard({ clientName, metrics, chartData, targets,
                   type="monotone"
                   dataKey="replied"
                   name="Real Replies"
-                  stroke="#888888"
+                  stroke={targets ? getTargetColorHex(metrics.realReplies, targets.repliesTarget) : '#888888'}
                   strokeWidth={2}
                   dot={false}
                   activeDot={{ r: 4 }}
@@ -349,7 +358,7 @@ export default function MiniScorecard({ clientName, metrics, chartData, targets,
                   type="monotone"
                   dataKey="positiveReplies"
                   name="Interested"
-                  stroke="#888888"
+                  stroke="#22c55e"
                   strokeWidth={2}
                   dot={false}
                   activeDot={{ r: 4 }}
@@ -382,7 +391,7 @@ export default function MiniScorecard({ clientName, metrics, chartData, targets,
                   type="monotone"
                   dataKey="positiveReplies"
                   name="Meetings"
-                  stroke="#888888"
+                  stroke={targets ? getTargetColorHex(metrics.meetingsBooked, targets.meetingsTarget) : '#888888'}
                   strokeWidth={2}
                   dot={false}
                   activeDot={{ r: 4 }}

@@ -317,6 +317,13 @@ export default function ConfigureTargetsModal({
     setClientSearchQuery('')
   }
 
+  // Initialize selected client when modal opens with a client prop
+  useEffect(() => {
+    if (isOpen && mode === 'targets' && client) {
+      setSelectedClientForTargets(client)
+    }
+  }, [isOpen, mode, client])
+
   // Reset when modal closes
   useEffect(() => {
     if (!isOpen) {

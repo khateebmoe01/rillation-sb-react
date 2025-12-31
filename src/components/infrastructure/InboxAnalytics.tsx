@@ -109,27 +109,23 @@ export default function InboxAnalytics() {
         <MetricCard
           title="Total Inboxes"
           value={totalInboxes}
-          icon={<BarChart3 size={18} />}
-          colorClass="text-rillation-purple"
+          colorClass="text-white"
         />
         <MetricCard
           title="Clients"
           value={Object.keys(inboxesByClient).length}
-          icon={<TrendingUp size={18} />}
-          colorClass="text-rillation-cyan"
+          colorClass="text-white"
         />
         <MetricCard
           title="Providers"
           value={Object.keys(inboxesByProvider).length}
-          icon={<PieChart size={18} />}
-          colorClass="text-rillation-orange"
+          colorClass="text-white"
         />
         <MetricCard
           title="Avg Deliverability"
           value={Math.round(avgDeliverability)}
           percentage={avgDeliverability}
-          icon={<TrendingUp size={18} />}
-          colorClass="text-rillation-green"
+          colorClass="text-green-400"
         />
       </div>
 
