@@ -50,12 +50,20 @@ export default function FunnelChart({
 
   return (
     <motion.div 
-      className="bg-rillation-card rounded-xl p-4 sm:p-6 border border-rillation-border card-glow w-full"
+      className="relative overflow-hidden rounded-xl p-4 sm:p-6 border border-rillation-border bg-gradient-to-b from-slate-900/90 to-slate-900/70 w-full"
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
     >
-      <h3 className="text-lg font-semibold text-rillation-text mb-4">Pipeline Funnel</h3>
+      {/* Subtle grid pattern overlay */}
+      <div 
+        className="absolute inset-0 opacity-[0.03] pointer-events-none"
+        style={{
+          backgroundImage: 'linear-gradient(rgba(255,255,255,.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.1) 1px, transparent 1px)',
+          backgroundSize: '20px 20px'
+        }}
+      />
+      <h3 className="text-lg font-semibold text-rillation-text mb-4 relative z-10">Pipeline Funnel</h3>
       
       {/* Funnel Visualization - True Funnel Shape */}
       <motion.div 

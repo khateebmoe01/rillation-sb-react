@@ -80,15 +80,15 @@ export default function CampaignBreakdownTable({ client }: CampaignBreakdownTabl
 
   return (
     <ExpandableDataPanel
-      title="Breakdown by Campaign"
+      title="Campaign Performance"
       data={tableData}
       columns={columns}
       totalCount={totalCount}
       currentPage={page}
       pageSize={PAGE_SIZE}
       onPageChange={setPage}
-      onClose={() => {}}
       isOpen={true}
+      showCloseButton={false}
     />
   )
 }

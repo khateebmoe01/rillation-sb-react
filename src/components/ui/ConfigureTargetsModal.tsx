@@ -343,14 +343,15 @@ export default function ConfigureTargetsModal({
         group.leads.forEach((lead) => {
           // Save if: value > 0 OR there's an existing opportunity (even if setting to 0)
           if (lead.estimatedValue > 0 || lead.opportunityId) {
+            const contactName = lead.full_name || `${lead.first_name || ''} ${lead.last_name || ''}`.trim() || 'Unknown'
             upsertData.push({
-              id: lead.opportunityId || undefined, // Include id if exists for update
+              id: lead.opportunityId || null,
               client,
               opportunity_name: lead.full_name || lead.company || lead.email || 'Unknown',
               stage: group.stage,
               value: lead.estimatedValue,
-              contact_email: lead.email,
-              contact_name: lead.full_name || `${lead.first_name || ''} ${lead.last_name || ''}`.trim(),
+              contact_email: lead.email || null,
+              contact_name: contactName,
             })
           }
         })
@@ -361,8 +362,8 @@ export default function ConfigureTargetsModal({
         for (const opp of upsertData) {
           if (opp.id) {
             // Update existing
-            const { error } = await (supabase
-              .from('client_opportunities') as any)
+            const { error, data } = await supabase
+              .from('client_opportunities')
               .update({
                 value: opp.value,
                 stage: opp.stage,
@@ -370,22 +371,37 @@ export default function ConfigureTargetsModal({
                 contact_name: opp.contact_name,
               })
               .eq('id', opp.id)
+              .select()
 
-            if (error) throw error
+            if (error) {
+              console.error('Error updating opportunity:', opp.id, error)
+              throw error
+            }
+            console.log('Updated opportunity:', data)
           } else {
-            // Insert new
-            const { error } = await (supabase
-              .from('client_opportunities') as any)
-              .insert({
-                client: opp.client,
-                opportunity_name: opp.opportunity_name,
-                stage: opp.stage,
-                value: opp.value,
-                contact_email: opp.contact_email,
-                contact_name: opp.contact_name,
-              })
+            // Insert new - build insert data without null/undefined fields
+            const insertData: Record<string, any> = {
+              client: opp.client,
+              opportunity_name: opp.opportunity_name,
+              stage: opp.stage,
+              value: opp.value,
+              contact_name: opp.contact_name,
+            }
+            // Only include contact_email if it has a value
+            if (opp.contact_email) {
+              insertData.contact_email = opp.contact_email
+            }
 
-            if (error) throw error
+            const { error, data } = await supabase
+              .from('client_opportunities')
+              .insert(insertData)
+              .select()
+
+            if (error) {
+              console.error('Error inserting opportunity:', insertData, error)
+              throw error
+            }
+            console.log('Inserted opportunity:', data)
           }
         }
       }
@@ -394,7 +410,7 @@ export default function ConfigureTargetsModal({
       onClose()
     } catch (err) {
       console.error('Error saving opportunities:', err)
-      alert('Failed to save estimated values')
+      alert('Failed to save estimated values. Please check the console for details.')
     } finally {
       setSaving(false)
     }

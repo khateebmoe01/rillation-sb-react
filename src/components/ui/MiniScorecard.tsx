@@ -88,7 +88,8 @@ export default function MiniScorecard({ clientName, metrics, chartData, targets,
     setSelectedMetric(selectedMetric === metric ? null : metric)
   }
 
-  // Calculate percentages
+  // Calculate percentages - reply rates based on contacted prospects (uniqueProspects)
+  // This gives accurate conversion rates for the selected month
   const realReplyRate = metrics.uniqueProspects > 0 
     ? (metrics.realReplies / metrics.uniqueProspects) * 100 
     : 0
@@ -124,11 +125,20 @@ export default function MiniScorecard({ clientName, metrics, chartData, targets,
 
   return (
     <motion.div
-      className="relative bg-[#1a1f2e] rounded-xl p-6 border border-[#2a3142] hover:border-[#3a4152] transition-all group"
+      className="relative overflow-hidden rounded-xl p-6 border border-slate-700/60 bg-gradient-to-b from-slate-900/90 to-slate-900/70 hover:border-rillation-text hover:shadow-xl transition-all group"
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ type: 'spring', stiffness: 300, damping: 25 }}
     >
+      {/* Subtle grid pattern overlay */}
+      <div 
+        className="absolute inset-0 opacity-[0.03] pointer-events-none"
+        style={{
+          backgroundImage: 'linear-gradient(rgba(255,255,255,.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.1) 1px, transparent 1px)',
+          backgroundSize: '20px 20px'
+        }}
+      />
+
       {/* Deep View Button - appears on hover in top-right */}
       <motion.button
         onClick={(e) => {

@@ -169,7 +169,7 @@ export default function TrendChart({ data, selectedMetric, targets, metrics }: T
                 </>
               )}
 
-              {/* Default: show all metrics with grayscale */}
+              {/* Default: show all metrics with distinct colors */}
               {!selectedMetric && (
                 <>
                   <Line
@@ -180,7 +180,7 @@ export default function TrendChart({ data, selectedMetric, targets, metrics }: T
                     stroke="#ffffff"
                     strokeWidth={2}
                     dot={false}
-                    activeDot={{ r: 3 }}
+                    activeDot={{ r: 3, fill: '#ffffff' }}
                     animationDuration={800}
                   />
                   <Line
@@ -188,10 +188,10 @@ export default function TrendChart({ data, selectedMetric, targets, metrics }: T
                     type="monotone"
                     dataKey="prospects"
                     name="Prospects"
-                    stroke="#94a3b8"
+                    stroke="#3b82f6"
                     strokeWidth={1.5}
                     dot={false}
-                    activeDot={{ r: 3 }}
+                    activeDot={{ r: 3, fill: '#3b82f6' }}
                     animationDuration={800}
                   />
                   <Line
@@ -199,10 +199,10 @@ export default function TrendChart({ data, selectedMetric, targets, metrics }: T
                     type="monotone"
                     dataKey="replied"
                     name="Replied"
-                    stroke="#64748b"
+                    stroke="#22c55e"
                     strokeWidth={1.5}
                     dot={false}
-                    activeDot={{ r: 3 }}
+                    activeDot={{ r: 3, fill: '#22c55e' }}
                     animationDuration={800}
                   />
                   <Line
@@ -210,10 +210,10 @@ export default function TrendChart({ data, selectedMetric, targets, metrics }: T
                     type="monotone"
                     dataKey="positiveReplies"
                     name="Interested"
-                    stroke="#475569"
+                    stroke="#eab308"
                     strokeWidth={1.5}
                     dot={false}
-                    activeDot={{ r: 3 }}
+                    activeDot={{ r: 3, fill: '#eab308' }}
                     animationDuration={800}
                   />
                 </>
@@ -232,15 +232,15 @@ export default function TrendChart({ data, selectedMetric, targets, metrics }: T
               <span className="text-white">Sent</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <div className="w-2.5 h-2.5 rounded-full bg-slate-400" />
+              <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#3b82f6' }} />
               <span className="text-white">Prospects</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <div className="w-2.5 h-2.5 rounded-full bg-slate-500" />
+              <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#22c55e' }} />
               <span className="text-white">Replied</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <div className="w-2.5 h-2.5 rounded-full bg-slate-600" />
+              <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#eab308' }} />
               <span className="text-white">Interested</span>
             </div>
           </>
@@ -263,6 +263,11 @@ export default function TrendChart({ data, selectedMetric, targets, metrics }: T
             )}
           </div>
         )}
+      </div>
+
+      {/* Weekend note */}
+      <div className="text-center mt-2">
+        <span className="text-[10px] text-slate-500 italic">Weekends removed (Sat/Sun data redistributed to Fri/Mon)</span>
       </div>
     </motion.div>
   )

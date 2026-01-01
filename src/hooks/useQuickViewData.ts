@@ -238,12 +238,53 @@ export function useQuickViewData({ startDate, endDate, client, campaigns }: UseQ
         }
       })
 
-      // Sort by date and convert to array
-      const sortedData = Array.from(dateMap.entries())
+      // Sort by date
+      const sortedEntries = Array.from(dateMap.entries())
         .sort((a, b) => a[0].localeCompare(b[0]))
-        .map(([, point]) => point)
 
-      setChartData(sortedData)
+      // Apply weekend smoothing: redistribute Sat/Sun data to Fri/Mon
+      // and remove weekend days from the chart
+      const smoothedData: ChartDataPoint[] = []
+      
+      for (let i = 0; i < sortedEntries.length; i++) {
+        const [dateStr, point] = sortedEntries[i]
+        const date = new Date(dateStr + 'T00:00:00')
+        const dayOfWeek = date.getDay() // 0 = Sunday, 6 = Saturday
+        
+        if (dayOfWeek === 6) {
+          // Saturday - add data to the previous Friday (if exists)
+          const prevEntry = smoothedData[smoothedData.length - 1]
+          if (prevEntry) {
+            prevEntry.sent += point.sent
+            prevEntry.prospects += point.prospects
+            prevEntry.replied += point.replied
+            prevEntry.positiveReplies += point.positiveReplies
+            prevEntry.meetings += point.meetings
+          }
+        } else if (dayOfWeek === 0) {
+          // Sunday - find the next Monday and add data there
+          // We'll store Sunday data temporarily and add it when we hit Monday
+          // For simplicity, we'll add it to the next weekday entry we process
+          const nextMonday = sortedEntries.find(([d], idx) => {
+            if (idx <= i) return false
+            const nextDate = new Date(d + 'T00:00:00')
+            return nextDate.getDay() >= 1 && nextDate.getDay() <= 5
+          })
+          if (nextMonday) {
+            const nextPoint = dateMap.get(nextMonday[0])!
+            nextPoint.sent += point.sent
+            nextPoint.prospects += point.prospects
+            nextPoint.replied += point.replied
+            nextPoint.positiveReplies += point.positiveReplies
+            nextPoint.meetings += point.meetings
+          }
+        } else {
+          // Weekday - add to smoothed data
+          smoothedData.push(point)
+        }
+      }
+
+      setChartData(smoothedData)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch data')
     } finally {

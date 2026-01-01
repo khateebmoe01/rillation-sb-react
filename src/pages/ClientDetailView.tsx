@@ -5,7 +5,6 @@ import { ArrowLeft, Settings } from 'lucide-react'
 import MetricCard from '../components/ui/MetricCard'
 import ClickableMetricCard from '../components/ui/ClickableMetricCard'
 import TrendChart from '../components/charts/TrendChart'
-import TopCampaignsChart from '../components/charts/TopCampaignsChart'
 import CampaignBreakdownTable from '../components/ui/CampaignBreakdownTable'
 import ConfigureTargetsModal from '../components/ui/ConfigureTargetsModal'
 import { useQuickViewData } from '../hooks/useQuickViewData'
@@ -44,11 +43,16 @@ export default function ClientDetailView() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [decodedClientName, rawClientName])
 
-  // Navigate to new client when filter changes
+  // Navigate to new client when filter changes, or to /performance when "All Clients" is selected
   useEffect(() => {
-    if (!isSettingFromUrl.current && selectedClient && selectedClient !== decodedClientName && selectedClient.trim() !== '') {
-      const encodedClientName = encodeURIComponent(selectedClient)
-      navigate(`/performance/${encodedClientName}`, { replace: true })
+    if (!isSettingFromUrl.current) {
+      // If "All Clients" is selected (empty string), go back to the top-level performance view
+      if (selectedClient === '') {
+        navigate('/performance', { replace: true })
+      } else if (selectedClient !== decodedClientName && selectedClient.trim() !== '') {
+        const encodedClientName = encodeURIComponent(selectedClient)
+        navigate(`/performance/${encodedClientName}`, { replace: true })
+      }
     }
   }, [selectedClient, decodedClientName, navigate])
 
@@ -154,7 +158,8 @@ export default function ClientDetailView() {
     setSelectedChartMetric(prev => prev === metric ? null : metric)
   }
 
-  // Calculate percentages
+  // Calculate percentages - reply rates are based on contacted prospects (uniqueProspects)
+  // This gives accurate conversion rates for the selected month
   const replyRate = metrics && metrics.uniqueProspects > 0 ? (metrics.totalReplies / metrics.uniqueProspects) * 100 : 0
   const realReplyRate = metrics && metrics.uniqueProspects > 0 ? (metrics.realReplies / metrics.uniqueProspects) * 100 : 0
   const positiveRate = metrics && metrics.realReplies > 0 ? (metrics.positiveReplies / metrics.realReplies) * 100 : 0
@@ -309,15 +314,7 @@ export default function ClientDetailView() {
             error={firmographicError}
           />
 
-          {/* Campaign Performance */}
-          {!campaignsLoading && campaignStats.length > 0 && (
-            <div>
-              <h2 className="text-lg font-semibold text-white mb-3">Campaign Performance</h2>
-              <TopCampaignsChart campaigns={campaignStats} maxItems={10} />
-            </div>
-          )}
-
-          {/* Breakdown by Campaign Table */}
+          {/* Campaign Performance Table (formerly "Breakdown by Campaign") */}
           <CampaignBreakdownTable client={decodedClientName} />
         </div>
       )}

@@ -15,9 +15,10 @@ interface ExpandableDataPanelProps {
   currentPage: number
   pageSize: number
   onPageChange: (page: number) => void
-  onClose: () => void
+  onClose?: () => void
   isOpen: boolean
   onRowClick?: (row: Record<string, any>) => void
+  showCloseButton?: boolean
 }
 
 export default function ExpandableDataPanel({
@@ -31,6 +32,7 @@ export default function ExpandableDataPanel({
   onClose,
   isOpen,
   onRowClick,
+  showCloseButton = true,
 }: ExpandableDataPanelProps) {
   if (!isOpen) return null
 
@@ -76,7 +78,7 @@ export default function ExpandableDataPanel({
   }
 
   return (
-    <div className="bg-slate-800/60 rounded-xl border border-slate-700/50 overflow-hidden backdrop-blur-sm fade-in">
+    <div className="bg-slate-800/60 rounded-xl border border-slate-700/50 overflow-hidden backdrop-blur-sm fade-in hover:border-white hover:shadow-[0_0_15px_rgba(255,255,255,0.1)] transition-all duration-200">
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-slate-700/50">
         <div className="flex items-center gap-3">
@@ -85,12 +87,14 @@ export default function ExpandableDataPanel({
             Showing {startItem} - {endItem} of {totalCount}
           </span>
         </div>
-        <button
-          onClick={onClose}
-          className="p-1 hover:bg-slate-700/50 rounded-lg transition-colors"
-        >
-          <X size={20} className="text-white" />
-        </button>
+        {showCloseButton && onClose && (
+          <button
+            onClick={onClose}
+            className="p-1 hover:bg-slate-700/50 rounded-lg transition-colors"
+          >
+            <X size={20} className="text-white" />
+          </button>
+        )}
       </div>
 
       {/* Table */}
