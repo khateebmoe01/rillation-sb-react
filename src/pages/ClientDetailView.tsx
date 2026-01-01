@@ -125,7 +125,7 @@ export default function ClientDetailView() {
     fetchTargets()
   }, [decodedClientName, dateRange])
 
-  const { campaigns: campaignStats, loading: campaignsLoading } = useCampaignStats({
+  const { campaigns: campaignStats } = useCampaignStats({
     startDate: dateRange.start,
     endDate: dateRange.end,
     client: decodedClientName || undefined,

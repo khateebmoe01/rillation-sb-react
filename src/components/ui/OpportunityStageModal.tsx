@@ -219,7 +219,7 @@ export default function OpportunityStageModal({
         for (const opp of upsertData) {
           if (opp.id) {
             // Update existing
-            const { error, data } = await supabase
+            const { error, data } = await (supabase as any)
               .from('client_opportunities')
               .update({
                 value: opp.value,
@@ -249,7 +249,7 @@ export default function OpportunityStageModal({
               insertData.contact_email = opp.contact_email
             }
 
-            const { error, data } = await supabase
+            const { error, data } = await (supabase as any)
               .from('client_opportunities')
               .insert(insertData)
               .select()
