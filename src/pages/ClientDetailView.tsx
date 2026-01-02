@@ -14,6 +14,8 @@ import { useFilters } from '../contexts/FilterContext'
 import { supabase } from '../lib/supabase'
 import FirmographicInsightsPanel from '../components/insights/FirmographicInsightsPanel'
 import CampaignFilter from '../components/ui/CampaignFilter'
+import MeetingsDrillDown from '../components/ui/MeetingsDrillDown'
+import AICopilotPanel from '../components/insights/AICopilotPanel'
 
 type ChartMetric = 'sent' | 'prospects' | 'replied' | 'positiveReplies' | 'meetings' | null
 
@@ -73,8 +75,18 @@ export default function ClientDetailView() {
 
   // State
   const [selectedCampaigns, setSelectedCampaigns] = useState<string[]>([])
+  const [tableCampaignSelection, setTableCampaignSelection] = useState<string[]>([])
   const [selectedChartMetric, setSelectedChartMetric] = useState<ChartMetric>(null)
   const [showConfigureTargets, setShowConfigureTargets] = useState(false)
+  const [showMeetingsDrillDown, setShowMeetingsDrillDown] = useState(false)
+  const [showAICopilot, setShowAICopilot] = useState(false)
+
+  // Combined campaigns for filtering (from both campaign filter and table selection)
+  const effectiveCampaignFilter = tableCampaignSelection.length > 0 
+    ? tableCampaignSelection 
+    : selectedCampaigns.length > 0 
+      ? selectedCampaigns 
+      : undefined
 
   // Fetch data - pass selectedCampaigns to filter
   const { metrics, chartData, loading, error } = useQuickViewData({
@@ -137,7 +149,7 @@ export default function ClientDetailView() {
     startDate: dateRange.start,
     endDate: dateRange.end,
     client: decodedClientName || undefined,
-    campaigns: selectedCampaigns.length > 0 ? selectedCampaigns : undefined,
+    campaigns: effectiveCampaignFilter,
   })
 
   // Get client-specific campaigns from campaignStats
@@ -199,30 +211,35 @@ export default function ClientDetailView() {
       animate={{ opacity: 1 }}
       transition={{ duration: 0.3 }}
     >
-      {/* Header */}
-      <div className="flex items-center justify-between gap-4 flex-wrap">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => navigate('/gtm-scoreboard')}
-            className="flex items-center gap-2 px-3 py-1.5 bg-slate-800/60 border border-slate-700/50 rounded-lg text-sm text-white hover:bg-slate-700/60 transition-colors"
-          >
-            <ArrowLeft size={14} />
-            Back
-          </button>
-          <h1 className="text-xl font-bold text-white">{decodedClientName}</h1>
-          <button
-            onClick={() => setShowConfigureTargets(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-700/50 border border-slate-600/50 rounded-lg text-xs text-white hover:bg-slate-600/50 transition-colors"
-          >
-            <Settings size={14} />
-            Configure Targets
-          </button>
+      {/* Header - Client filter prominently placed top-left */}
+      <div className="space-y-4">
+        {/* Top row - Client filter left, campaign filter right */}
+        <div className="flex items-center justify-between gap-4 flex-wrap">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => navigate('/performance')}
+              className="flex items-center gap-2 px-3 py-1.5 bg-slate-800/60 border border-slate-700/50 rounded-lg text-sm text-white hover:bg-slate-700/60 transition-colors"
+            >
+              <ArrowLeft size={14} />
+              Back
+            </button>
+            <h1 className="text-xl font-bold text-white">{decodedClientName}</h1>
+          </div>
+          <div className="flex items-center gap-3">
+            <CampaignFilter
+              campaigns={clientCampaigns}
+              selectedCampaigns={selectedCampaigns}
+              onChange={setSelectedCampaigns}
+            />
+            <button
+              onClick={() => setShowConfigureTargets(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-700/50 border border-slate-600/50 rounded-lg text-xs text-white hover:bg-slate-600/50 transition-colors"
+            >
+              <Settings size={14} />
+              Configure Targets
+            </button>
+          </div>
         </div>
-        <CampaignFilter
-          campaigns={clientCampaigns}
-          selectedCampaigns={selectedCampaigns}
-          onChange={setSelectedCampaigns}
-        />
       </div>
 
       {/* Error State */}
@@ -293,10 +310,23 @@ export default function ClientDetailView() {
               value={metrics.meetingsBooked}
               percentage={meetingRate}
               colorClass={targets ? getTargetColor(metrics.meetingsBooked, targets.meetingsTarget) : 'text-white'}
-              isActive={selectedChartMetric === 'meetings'}
-              onClick={() => handleChartMetricClick('meetings')}
+              isActive={selectedChartMetric === 'meetings' || showMeetingsDrillDown}
+              onClick={() => {
+                handleChartMetricClick('meetings')
+                setShowMeetingsDrillDown(prev => !prev)
+              }}
             />
           </div>
+
+          {/* Meetings Drill-Down Panel */}
+          <MeetingsDrillDown
+            isOpen={showMeetingsDrillDown}
+            onClose={() => setShowMeetingsDrillDown(false)}
+            startDate={dateRange.start}
+            endDate={dateRange.end}
+            client={decodedClientName}
+            campaignIds={tableCampaignSelection.length > 0 ? tableCampaignSelection : undefined}
+          />
 
           {/* Trend Chart */}
           <TrendChart 
@@ -306,16 +336,27 @@ export default function ClientDetailView() {
             metrics={metrics}
           />
 
+          {/* Campaign Performance Table - Moved above Firmographic per Ziad's request */}
+          <CampaignBreakdownTable 
+            client={decodedClientName} 
+            onCampaignsSelected={setTableCampaignSelection}
+          />
 
-          {/* Firmographic Analysis */}
+          {/* Selection notice for firmographic filter */}
+          {tableCampaignSelection.length > 0 && (
+            <div className="flex items-center gap-2 px-4 py-2 bg-violet-900/20 border border-violet-500/30 rounded-lg text-sm">
+              <span className="text-violet-300">
+                Deep Insights below filtered by {tableCampaignSelection.length} selected campaign{tableCampaignSelection.length > 1 ? 's' : ''}
+              </span>
+            </div>
+          )}
+
+          {/* Deep Insights (formerly Firmographic Analysis) */}
           <FirmographicInsightsPanel
             data={firmographicData}
             loading={firmographicLoading}
             error={firmographicError}
           />
-
-          {/* Campaign Performance Table (formerly "Breakdown by Campaign") */}
-          <CampaignBreakdownTable client={decodedClientName} />
         </div>
       )}
 
@@ -352,6 +393,14 @@ export default function ClientDetailView() {
           }
           fetchTargets()
         }}
+      />
+
+      {/* AI Co-Pilot Panel */}
+      <AICopilotPanel
+        isOpen={showAICopilot}
+        onToggle={() => setShowAICopilot(prev => !prev)}
+        firmographicData={firmographicData}
+        clientName={decodedClientName}
       />
     </motion.div>
   )

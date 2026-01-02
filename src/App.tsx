@@ -1,4 +1,5 @@
 import { Routes, Route, Navigate, useLocation, useParams } from 'react-router-dom'
+import { AnimatePresence, motion } from 'framer-motion'
 import Layout from './components/layout/Layout'
 import ConfigError from './components/ui/ConfigError'
 import QuickView from './pages/QuickView'
@@ -15,6 +16,20 @@ function ClientDetailRedirect() {
   return <Navigate to={`/performance/${clientName}`} replace />
 }
 
+// Page transition wrapper component
+function PageTransition({ children }: { children: React.ReactNode }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, x: 20 }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={{ opacity: 0, x: -20 }}
+      transition={{ duration: 0.25, ease: 'easeInOut' }}
+    >
+      {children}
+    </motion.div>
+  )
+}
+
 function App() {
   const configError = getSupabaseConfigError()
   const location = useLocation()
@@ -25,18 +40,20 @@ function App() {
   
   return (
     <Layout>
-      <Routes location={location} key={location.pathname}>
-        <Route path="/" element={<Navigate to="/quick-view" replace />} />
-        <Route path="/quick-view" element={<QuickView />} />
-        <Route path="/performance" element={<PerformanceOverview />} />
-        <Route path="/performance/:clientName" element={<ClientDetailView />} />
-        <Route path="/pipeline" element={<PipelineView />} />
-        <Route path="/infrastructure" element={<Infrastructure />} />
-        <Route path="/debug" element={<DebugView />} />
-        {/* Legacy routes - redirect to new structure */}
-        <Route path="/gtm-scoreboard" element={<Navigate to="/performance" replace />} />
-        <Route path="/client-detail/:clientName" element={<ClientDetailRedirect />} />
-      </Routes>
+      <AnimatePresence mode="wait">
+        <Routes location={location} key={location.pathname}>
+          <Route path="/" element={<Navigate to="/quick-view" replace />} />
+          <Route path="/quick-view" element={<PageTransition><QuickView /></PageTransition>} />
+          <Route path="/performance" element={<PageTransition><PerformanceOverview /></PageTransition>} />
+          <Route path="/performance/:clientName" element={<PageTransition><ClientDetailView /></PageTransition>} />
+          <Route path="/pipeline" element={<PageTransition><PipelineView /></PageTransition>} />
+          <Route path="/infrastructure" element={<PageTransition><Infrastructure /></PageTransition>} />
+          <Route path="/debug" element={<PageTransition><DebugView /></PageTransition>} />
+          {/* Legacy routes - redirect to new structure */}
+          <Route path="/gtm-scoreboard" element={<Navigate to="/performance" replace />} />
+          <Route path="/client-detail/:clientName" element={<ClientDetailRedirect />} />
+        </Routes>
+      </AnimatePresence>
     </Layout>
   )
 }

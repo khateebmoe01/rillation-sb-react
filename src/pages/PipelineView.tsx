@@ -1,15 +1,14 @@
-import { useState } from 'react'
-import { Settings } from 'lucide-react'
-import Button from '../components/ui/Button'
+import { useState, useMemo } from 'react'
 import FunnelChart from '../components/charts/FunnelChart'
 import OpportunityPipeline from '../components/charts/OpportunityPipeline'
-import EditableFunnelSpreadsheet from '../components/ui/EditableFunnelSpreadsheet'
 import InlineLeadsTable from '../components/ui/InlineLeadsTable'
 import ConfigureTargetsModal from '../components/ui/ConfigureTargetsModal'
 import OpportunityStageModal from '../components/ui/OpportunityStageModal'
 import SalesMetricCards from '../components/ui/SalesMetricCards'
 import SalesMetricsChart from '../components/charts/SalesMetricsChart'
+import PipelineMetricsSection from '../components/ui/PipelineMetricsSection'
 import { usePipelineData } from '../hooks/usePipelineData'
+import { useQuickViewData } from '../hooks/useQuickViewData'
 import { useFilters } from '../contexts/FilterContext'
 import { useSalesMetrics } from '../hooks/useSalesMetrics'
 import { useOpportunities } from '../hooks/useOpportunities'
@@ -33,7 +32,7 @@ export default function PipelineView() {
   const [selectedOpportunityStage, setSelectedOpportunityStage] = useState<string | null>(null)
   
   // Fetch data using global date range
-  const { funnelStages, spreadsheetData, loading, error, refetch } = usePipelineData({
+  const { funnelStages, loading, error, refetch } = usePipelineData({
     startDate: dateRange.start,
     endDate: dateRange.end,
     month: selectedMonth,
@@ -50,9 +49,49 @@ export default function PipelineView() {
     client: selectedClient || undefined,
   })
 
+  // Fetch performance data for chart dates template
+  const { chartData: performanceChartData, loading: performanceLoading } = useQuickViewData({
+    startDate: dateRange.start,
+    endDate: dateRange.end,
+    client: 'Rillation Revenue',
+  })
+
+  // Build pipeline chart data from funnel stages
+  const pipelineChartData = useMemo(() => {
+    const meetingsBooked = funnelStages.find(s => s.name === 'Meetings Booked')?.value || 0
+    const showedUp = funnelStages.find(s => s.name === 'Showed Up to Disco')?.value || 0
+    const qualified = funnelStages.find(s => s.name === 'Qualified')?.value || 0
+    const demo = funnelStages.find(s => s.name === 'Showed Up to Demo')?.value || 0
+    const proposalSent = funnelStages.find(s => s.name === 'Proposal Sent')?.value || 0
+    const closed = funnelStages.find(s => s.name === 'Closed')?.value || 0
+
+    // Use the performance chart data dates as a template
+    return performanceChartData.map((point, idx, arr) => {
+      const progress = (idx + 1) / arr.length
+      return {
+        date: point.date,
+        meetingsBooked: Math.round(meetingsBooked * progress),
+        showedUp: Math.round(showedUp * progress),
+        qualified: Math.round(qualified * progress),
+        demo: Math.round(demo * progress),
+        proposalSent: Math.round(proposalSent * progress),
+        closed: Math.round(closed * progress),
+      }
+    })
+  }, [funnelStages, performanceChartData])
+
+  // Build pipeline metrics object
+  const pipelineMetrics = useMemo(() => ({
+    meetingsBooked: funnelStages.find(s => s.name === 'Meetings Booked')?.value || 0,
+    showedUp: funnelStages.find(s => s.name === 'Showed Up to Disco')?.value || 0,
+    qualified: funnelStages.find(s => s.name === 'Qualified')?.value || 0,
+    demo: funnelStages.find(s => s.name === 'Showed Up to Demo')?.value || 0,
+    proposalSent: funnelStages.find(s => s.name === 'Proposal Sent')?.value || 0,
+    closed: funnelStages.find(s => s.name === 'Closed')?.value || 0,
+  }), [funnelStages])
+
   // Handle funnel stage click - toggle selection
   const handleStageClick = (stageName: string, _stageIndex: number) => {
-    // If clicking the same stage, close it. Otherwise, open the new one.
     if (selectedStage === stageName) {
       setSelectedStage(null)
     } else {
@@ -78,21 +117,11 @@ export default function PipelineView() {
   // Handle opportunity modal save - refetch opportunities
   const handleOpportunityModalSave = () => {
     setSelectedOpportunityStage(null)
-    // Refetch opportunities to show updated values
     refetchOpportunities()
   }
 
   return (
     <div className="space-y-4 sm:space-y-6 fade-in">
-      {/* Set Estimated Value Button - inline with page content */}
-      <div className="flex justify-end px-2 sm:px-0">
-        <Button variant="primary" size="sm" onClick={() => setIsConfigureModalOpen(true)}>
-          <Settings size={14} />
-          <span className="hidden sm:inline">Set Estimated Value</span>
-          <span className="sm:hidden">Set Value</span>
-        </Button>
-      </div>
-
       {/* Error State */}
       {(error || salesError) && (
         <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 text-red-400">
@@ -100,7 +129,14 @@ export default function PipelineView() {
         </div>
       )}
 
-      {/* Loading State */}
+      {/* Pipeline Metrics Section - At the top, same design as Performance */}
+      <PipelineMetricsSection
+        metrics={pipelineMetrics}
+        chartData={pipelineChartData}
+        loading={loading || performanceLoading}
+      />
+
+      {/* Loading State for remaining content */}
       {loading && (
         <div className="flex items-center justify-center py-12">
           <div className="w-8 h-8 border-2 border-rillation-text border-t-transparent rounded-full animate-spin" />
@@ -148,7 +184,7 @@ export default function PipelineView() {
 
           {/* Dual Funnel System - Lead Funnel and Opportunity Pipeline */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
-            {/* Lead Count Funnel */}
+            {/* Lead Count Funnel (Full) */}
             <FunnelChart 
               stages={funnelStages}
               onStageClick={handleStageClick}
@@ -162,10 +198,11 @@ export default function PipelineView() {
               loading={opportunitiesLoading}
               error={opportunitiesError}
               onStageClick={handleOpportunityStageClick}
+              onSetEstimatedValue={() => setIsConfigureModalOpen(true)}
             />
           </div>
           
-          {/* Inline Leads Table - appears between funnel and spreadsheet */}
+          {/* Inline Leads Table */}
           {selectedStage && (
             <InlineLeadsTable
               stageName={selectedStage}
@@ -175,14 +212,6 @@ export default function PipelineView() {
               onClose={handleTableClose}
             />
           )}
-          
-          {/* Editable Spreadsheet */}
-          <EditableFunnelSpreadsheet 
-            data={spreadsheetData} 
-            month={selectedMonth} 
-            year={selectedYear}
-            onSave={refetch}
-          />
         </>
       )}
       

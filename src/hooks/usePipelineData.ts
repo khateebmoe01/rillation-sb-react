@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase, formatDateForQuery, formatDateForQueryEndOfDay } from '../lib/supabase'
 import { dataCache, DataCache } from '../lib/cache'
+import { getDeepestStage } from '../lib/pipeline-utils'
 import type { FunnelStage, FunnelForecast } from '../types/database'
 
 interface UsePipelineDataParams {
@@ -121,25 +122,38 @@ export function usePipelineData({ startDate, endDate, month, year }: UsePipeline
       const salesHandoff = meetingsData.length || 0
       const meetingsBooked = meetingsData.length || 0
 
-      // Count leads by stage using boolean columns
-      // Check for any truthy value (true, 'true', 1, 'yes', 'Yes', etc.)
-      const isTruthy = (val: any): boolean => {
-        if (val === true || val === 1 || val === '1') return true
-        if (typeof val === 'string') {
-          const lower = val.toLowerCase()
-          return lower === 'true' || lower === 'yes' || lower === 'y'
+      // Count leads by their DEEPEST stage only (a lead only counts in their most advanced stage)
+      // This prevents a closed lead from also counting in Demo Booked, etc.
+      let showedUpToDisco = 0
+      let qualified = 0
+      let demoBooked = 0
+      let showedUpToDemo = 0
+      let proposalSent = 0
+      let closed = 0
+
+      ;(engagedLeadsData || []).forEach((lead: any) => {
+        const deepestStage = getDeepestStage(lead)
+        switch (deepestStage) {
+          case 'Showed Up to Disco':
+            showedUpToDisco++
+            break
+          case 'Qualified':
+            qualified++
+            break
+          case 'Demo Booked':
+            demoBooked++
+            break
+          case 'Showed Up to Demo':
+            showedUpToDemo++
+            break
+          case 'Proposal Sent':
+            proposalSent++
+            break
+          case 'Closed':
+            closed++
+            break
         }
-        return !!val && val !== null && val !== undefined && val !== ''
-      }
-      
-      let showedUpToDisco = engagedLeadsData?.filter((lead: any) => isTruthy(lead.showed_up_to_disco)).length || 0
-      let qualified = engagedLeadsData?.filter((lead: any) => isTruthy(lead.qualified)).length || 0
-      let demoBooked = engagedLeadsData?.filter((lead: any) => isTruthy(lead.demo_booked)).length || 0
-      let showedUpToDemo = engagedLeadsData?.filter((lead: any) => isTruthy(lead.showed_up_to_demo)).length || 0
-      let proposalSent = engagedLeadsData?.filter((lead: any) => 
-        isTruthy(lead.proposal_sent) || isTruthy(lead.pilot_accepted)
-      ).length || 0
-      let closed = engagedLeadsData?.filter((lead: any) => isTruthy(lead.closed)).length || 0
+      })
       
       console.log('Engaged leads counts:', { showedUpToDisco, qualified, demoBooked, showedUpToDemo, proposalSent, closed })
 

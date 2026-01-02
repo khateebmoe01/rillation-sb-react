@@ -169,7 +169,7 @@ export default function TrendChart({ data, selectedMetric, targets, metrics }: T
                 </>
               )}
 
-              {/* Default: show all metrics with distinct colors */}
+              {/* Default: show all metrics with distinct colors - no white, red, yellow, green */}
               {!selectedMetric && (
                 <>
                   <Line
@@ -177,10 +177,10 @@ export default function TrendChart({ data, selectedMetric, targets, metrics }: T
                     type="monotone"
                     dataKey="sent"
                     name="Sent"
-                    stroke="#ffffff"
+                    stroke="#8b5cf6"
                     strokeWidth={2}
                     dot={false}
-                    activeDot={{ r: 3, fill: '#ffffff' }}
+                    activeDot={{ r: 3, fill: '#8b5cf6' }}
                     animationDuration={800}
                   />
                   <Line
@@ -199,10 +199,10 @@ export default function TrendChart({ data, selectedMetric, targets, metrics }: T
                     type="monotone"
                     dataKey="replied"
                     name="Replied"
-                    stroke="#22c55e"
+                    stroke="#06b6d4"
                     strokeWidth={1.5}
                     dot={false}
-                    activeDot={{ r: 3, fill: '#22c55e' }}
+                    activeDot={{ r: 3, fill: '#06b6d4' }}
                     animationDuration={800}
                   />
                   <Line
@@ -210,10 +210,21 @@ export default function TrendChart({ data, selectedMetric, targets, metrics }: T
                     type="monotone"
                     dataKey="positiveReplies"
                     name="Interested"
-                    stroke="#eab308"
+                    stroke="#f59e0b"
                     strokeWidth={1.5}
                     dot={false}
-                    activeDot={{ r: 3, fill: '#eab308' }}
+                    activeDot={{ r: 3, fill: '#f59e0b' }}
+                    animationDuration={800}
+                  />
+                  <Line
+                    yAxisId="right"
+                    type="monotone"
+                    dataKey="meetings"
+                    name="Meetings"
+                    stroke="#d946ef"
+                    strokeWidth={1.5}
+                    dot={false}
+                    activeDot={{ r: 3, fill: '#d946ef' }}
                     animationDuration={800}
                   />
                 </>
@@ -228,7 +239,7 @@ export default function TrendChart({ data, selectedMetric, targets, metrics }: T
         {!selectedMetric ? (
           <>
             <div className="flex items-center gap-1.5">
-              <div className="w-2.5 h-2.5 rounded-full bg-white" />
+              <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#8b5cf6' }} />
               <span className="text-white">Sent</span>
             </div>
             <div className="flex items-center gap-1.5">
@@ -236,12 +247,16 @@ export default function TrendChart({ data, selectedMetric, targets, metrics }: T
               <span className="text-white">Prospects</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#22c55e' }} />
+              <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#06b6d4' }} />
               <span className="text-white">Replied</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#eab308' }} />
+              <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#f59e0b' }} />
               <span className="text-white">Interested</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#d946ef' }} />
+              <span className="text-white">Meetings</span>
             </div>
           </>
         ) : (
@@ -263,11 +278,6 @@ export default function TrendChart({ data, selectedMetric, targets, metrics }: T
             )}
           </div>
         )}
-      </div>
-
-      {/* Weekend note */}
-      <div className="text-center mt-2">
-        <span className="text-[10px] text-slate-500 italic">Weekends removed (Sat/Sun data redistributed to Fri/Mon)</span>
       </div>
     </motion.div>
   )

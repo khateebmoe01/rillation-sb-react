@@ -1,18 +1,201 @@
-import { useState } from 'react'
-import { useCampaignStats } from '../../hooks/useCampaignStats'
+import { useState, useMemo } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { ChevronDown, ChevronUp, ArrowUpDown, CheckCircle2, Activity, HelpCircle, ChevronRight } from 'lucide-react'
+import { useCampaignStats, CampaignStat } from '../../hooks/useCampaignStats'
+import { useSequenceStats, SequenceStat } from '../../hooks/useSequenceStats'
 import { useFilters } from '../../contexts/FilterContext'
 import { formatNumber } from '../../lib/supabase'
-import ExpandableDataPanel from './ExpandableDataPanel'
 
 interface CampaignBreakdownTableProps {
   client: string
+  onCampaignsSelected?: (campaignIds: string[]) => void
 }
 
-const PAGE_SIZE = 10
+const PAGE_SIZE = 5
 
-export default function CampaignBreakdownTable({ client }: CampaignBreakdownTableProps) {
+type SortField = 'recent' | 'performance' | 'sent' | 'meetings'
+type StatusFilter = 'all' | 'completed' | 'active'
+
+// Status badge component
+function StatusBadge({ status }: { status: 'active' | 'completed' | 'unknown' }) {
+  const config = {
+    active: { 
+      icon: Activity, 
+      label: 'Active', 
+      className: 'bg-blue-500/20 text-blue-400 border-blue-500/30' 
+    },
+    completed: { 
+      icon: CheckCircle2, 
+      label: 'Completed', 
+      className: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' 
+    },
+    unknown: { 
+      icon: HelpCircle, 
+      label: 'Unknown', 
+      className: 'bg-slate-500/20 text-slate-400 border-slate-500/30' 
+    },
+  }
+  
+  const { icon: Icon, label, className } = config[status]
+  
+  return (
+    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border ${className}`}>
+      <Icon size={12} />
+      {label}
+    </span>
+  )
+}
+
+// Sequence row component
+function SequenceRow({ sequence }: { sequence: SequenceStat }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, height: 0 }}
+      animate={{ opacity: 1, height: 'auto' }}
+      exit={{ opacity: 0, height: 0 }}
+      className="grid grid-cols-8 gap-4 px-4 py-2 bg-slate-800/30 border-l-2 border-violet-500/50 ml-4 text-sm"
+    >
+      <div className="col-span-2 flex items-center gap-2">
+        <span className="text-violet-400 font-medium">Step {sequence.step_number}:</span>
+        <span className="text-slate-300">{sequence.step_name}</span>
+      </div>
+      <div className="text-center text-slate-300">{formatNumber(sequence.sent)}</div>
+      <div className="text-center text-slate-400">—</div>
+      <div className="text-center text-slate-300">{formatNumber(sequence.total_replies)}</div>
+      <div className="text-center text-slate-400">—</div>
+      <div className="text-center text-slate-300">{formatNumber(sequence.positive_replies)}</div>
+      <div className="text-center text-slate-300">{formatNumber(sequence.meetings_booked)}</div>
+    </motion.div>
+  )
+}
+
+// Campaign row with expandable sequence
+function CampaignRow({ 
+  campaign, 
+  isExpanded, 
+  onToggle,
+  dateRange,
+  isSelected,
+  onSelect
+}: { 
+  campaign: CampaignStat
+  isExpanded: boolean
+  onToggle: () => void
+  dateRange: { start: Date; end: Date }
+  isSelected: boolean
+  onSelect: (selected: boolean) => void
+}) {
+  const { data: sequenceData, loading: seqLoading, fetchSequenceStats } = useSequenceStats()
+  
+  const handleToggle = () => {
+    if (!isExpanded) {
+      // Fetch sequence data when expanding
+      fetchSequenceStats({
+        campaignId: campaign.campaign_id,
+        client: campaign.client,
+        startDate: dateRange.start,
+        endDate: dateRange.end,
+      })
+    }
+    onToggle()
+  }
+
+  return (
+    <div className="border-b border-slate-700/50">
+      {/* Main campaign row */}
+      <motion.div
+        className={`grid grid-cols-[auto_2fr_1fr_1fr_1fr_1fr_1fr_1fr_1fr_1fr] gap-3 px-3 py-3 cursor-pointer hover:bg-slate-800/40 transition-colors ${
+          isExpanded ? 'bg-slate-800/30' : ''
+        } ${isSelected ? 'bg-violet-900/20 border-l-2 border-violet-500' : ''}`}
+        onClick={handleToggle}
+        whileHover={{ backgroundColor: 'rgba(30, 41, 59, 0.4)' }}
+      >
+        {/* Selection checkbox */}
+        <div className="flex items-center justify-center">
+          <input
+            type="checkbox"
+            checked={isSelected}
+            onChange={(e) => {
+              e.stopPropagation()
+              onSelect(e.target.checked)
+            }}
+            onClick={(e) => e.stopPropagation()}
+            className="w-4 h-4 rounded border-slate-600 bg-slate-800 text-violet-500 focus:ring-violet-500 focus:ring-offset-0 cursor-pointer"
+          />
+        </div>
+        <div className="flex items-center gap-2 min-w-0 pl-1">
+          <motion.div
+            animate={{ rotate: isExpanded ? 90 : 0 }}
+            transition={{ duration: 0.2 }}
+            className="flex-shrink-0"
+          >
+            <ChevronRight size={16} className="text-slate-400" />
+          </motion.div>
+          <span className="text-white font-medium overflow-hidden text-ellipsis whitespace-nowrap" title={campaign.campaign_name}>
+            {campaign.campaign_name}
+          </span>
+        </div>
+        <div className="text-center flex items-center justify-center">
+          <StatusBadge status={campaign.status} />
+        </div>
+        <div className="text-center text-white flex items-center justify-center">{formatNumber(campaign.totalSent)}</div>
+        <div className="text-center text-slate-300 flex items-center justify-center">{formatNumber(campaign.uniqueProspects)}</div>
+        <div className="text-center text-slate-300 flex items-center justify-center">{formatNumber(campaign.totalReplies)}</div>
+        <div className="text-center text-slate-300 flex items-center justify-center">{formatNumber(campaign.realReplies)}</div>
+        <div className="text-center text-emerald-400 flex items-center justify-center">{formatNumber(campaign.positiveReplies)}</div>
+        <div className="text-center text-slate-300 flex items-center justify-center">{formatNumber(campaign.bounces)}</div>
+        <div className="text-center text-fuchsia-400 font-semibold flex items-center justify-center">{formatNumber(campaign.meetingsBooked)}</div>
+      </motion.div>
+
+      {/* Expandable sequence section */}
+      <AnimatePresence>
+        {isExpanded && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.2 }}
+            className="bg-slate-900/50"
+          >
+            {seqLoading ? (
+              <div className="px-8 py-4 text-center">
+                <div className="w-4 h-4 border-2 border-violet-500 border-t-transparent rounded-full animate-spin mx-auto" />
+              </div>
+            ) : sequenceData.length > 0 ? (
+              <div className="py-2">
+                {/* Sequence header */}
+                <div className="grid grid-cols-8 gap-4 px-4 py-1 text-xs text-slate-500 ml-4">
+                  <div className="col-span-2">Sequence Step</div>
+                  <div className="text-center">Sent</div>
+                  <div className="text-center">Prospects</div>
+                  <div className="text-center">Total Replies</div>
+                  <div className="text-center">Real Replies</div>
+                  <div className="text-center">Positive</div>
+                  <div className="text-center">Meetings</div>
+                </div>
+                {sequenceData.map((seq) => (
+                  <SequenceRow key={seq.step_number} sequence={seq} />
+                ))}
+              </div>
+            ) : (
+              <div className="px-8 py-4 text-center text-slate-500 text-sm">
+                No sequence data available
+              </div>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
+
+export default function CampaignBreakdownTable({ client, onCampaignsSelected }: CampaignBreakdownTableProps) {
   const { dateRange } = useFilters()
   const [page, setPage] = useState(1)
+  const [sortField, setSortField] = useState<SortField>('sent')
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
+  const [expandedCampaigns, setExpandedCampaigns] = useState<Set<string>>(new Set())
+  const [selectedCampaigns, setSelectedCampaigns] = useState<Set<string>>(new Set())
   
   const {
     campaigns: allCampaigns,
@@ -25,6 +208,82 @@ export default function CampaignBreakdownTable({ client }: CampaignBreakdownTabl
     page: 1,
     pageSize: 1000, // Get all campaigns, then paginate locally
   })
+
+  // Toggle campaign expansion
+  const toggleCampaign = (campaignId: string) => {
+    setExpandedCampaigns(prev => {
+      const next = new Set(prev)
+      if (next.has(campaignId)) {
+        next.delete(campaignId)
+      } else {
+        next.add(campaignId)
+      }
+      return next
+    })
+  }
+
+  // Handle campaign selection
+  const handleCampaignSelect = (campaignId: string, selected: boolean) => {
+    setSelectedCampaigns(prev => {
+      const next = new Set(prev)
+      if (selected) {
+        next.add(campaignId)
+      } else {
+        next.delete(campaignId)
+      }
+      // Notify parent of selection change
+      onCampaignsSelected?.(Array.from(next))
+      return next
+    })
+  }
+
+  // Select all visible campaigns
+  const handleSelectAll = (selected: boolean) => {
+    if (selected) {
+      const newSelection = new Set(paginatedCampaigns.map(c => c.campaign_id))
+      setSelectedCampaigns(newSelection)
+      onCampaignsSelected?.(Array.from(newSelection))
+    } else {
+      setSelectedCampaigns(new Set())
+      onCampaignsSelected?.([])
+    }
+  }
+
+  // Clear selection
+  const clearSelection = () => {
+    setSelectedCampaigns(new Set())
+    onCampaignsSelected?.([])
+  }
+
+  // Filter and sort campaigns
+  const filteredAndSortedCampaigns = useMemo(() => {
+    let campaigns = [...allCampaigns]
+    
+    // Apply status filter
+    if (statusFilter !== 'all') {
+      campaigns = campaigns.filter(c => c.status === statusFilter)
+    }
+    
+    // Apply sorting
+    campaigns.sort((a, b) => {
+      switch (sortField) {
+        case 'performance':
+          return b.performanceScore - a.performanceScore
+        case 'meetings':
+          return b.meetingsBooked - a.meetingsBooked
+        case 'sent':
+        default:
+          return b.totalSent - a.totalSent
+      }
+    })
+    
+    return campaigns
+  }, [allCampaigns, sortField, statusFilter])
+
+  // Reset page when filters change
+  useMemo(() => {
+    setPage(1)
+  }, [sortField, statusFilter])
 
   if (loading) {
     return (
@@ -51,45 +310,178 @@ export default function CampaignBreakdownTable({ client }: CampaignBreakdownTabl
   }
 
   // Paginate campaigns locally
-  const totalCount = allCampaigns.length
+  const totalCount = filteredAndSortedCampaigns.length
   const offset = (page - 1) * PAGE_SIZE
-  const paginatedCampaigns = allCampaigns.slice(offset, offset + PAGE_SIZE)
+  const paginatedCampaigns = filteredAndSortedCampaigns.slice(offset, offset + PAGE_SIZE)
 
-  // Transform campaigns to table data format
-  const tableData = paginatedCampaigns.map((campaign) => ({
-    campaign_name: campaign.campaign_name,
-    totalSent: formatNumber(campaign.totalSent),
-    uniqueProspects: formatNumber(campaign.uniqueProspects),
-    totalReplies: formatNumber(campaign.totalReplies),
-    realReplies: formatNumber(campaign.realReplies),
-    positiveReplies: formatNumber(campaign.positiveReplies),
-    bounces: formatNumber(campaign.bounces),
-    meetingsBooked: formatNumber(campaign.meetingsBooked),
-  }))
+  // Count campaigns by status
+  const statusCounts = {
+    all: allCampaigns.length,
+    active: allCampaigns.filter(c => c.status === 'active').length,
+    completed: allCampaigns.filter(c => c.status === 'completed').length,
+  }
 
-  const columns = [
-    { key: 'campaign_name', label: 'Campaign Name' },
-    { key: 'totalSent', label: 'Emails Sent' },
-    { key: 'uniqueProspects', label: 'Unique Prospects' },
-    { key: 'totalReplies', label: 'Total Replies' },
-    { key: 'realReplies', label: 'Real Replies' },
-    { key: 'positiveReplies', label: 'Positive Replies' },
-    { key: 'bounces', label: 'Bounces' },
-    { key: 'meetingsBooked', label: 'Meetings Booked' },
-  ]
+  // Pagination controls
+  const totalPages = Math.ceil(totalCount / PAGE_SIZE)
 
   return (
-    <ExpandableDataPanel
-      title="Campaign Performance"
-      data={tableData}
-      columns={columns}
-      totalCount={totalCount}
-      currentPage={page}
-      pageSize={PAGE_SIZE}
-      onPageChange={setPage}
-      isOpen={true}
-      showCloseButton={false}
-    />
+    <div className="space-y-3">
+      {/* Filter and Sort Controls */}
+      <div className="flex items-center justify-between gap-4 flex-wrap">
+        {/* Status Filter */}
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-rillation-text-muted">Status:</span>
+          <div className="flex gap-1">
+            {(['all', 'completed', 'active'] as StatusFilter[]).map((status) => (
+              <motion.button
+                key={status}
+                onClick={() => setStatusFilter(status)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                  statusFilter === status
+                    ? 'bg-slate-700 text-white'
+                    : 'bg-slate-800/50 text-slate-400 hover:bg-slate-700/50'
+                }`}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+              >
+                {status === 'all' ? 'All' : status.charAt(0).toUpperCase() + status.slice(1)}
+                <span className="ml-1.5 text-slate-500">({statusCounts[status]})</span>
+              </motion.button>
+            ))}
+          </div>
+        </div>
+
+        {/* Sort Controls */}
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-rillation-text-muted">Sort by:</span>
+          <div className="flex gap-1">
+            {[
+              { field: 'sent' as SortField, label: 'Emails Sent' },
+              { field: 'meetings' as SortField, label: 'Meetings' },
+              { field: 'performance' as SortField, label: 'Performance' },
+            ].map(({ field, label }) => (
+              <motion.button
+                key={field}
+                onClick={() => setSortField(field)}
+                className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                  sortField === field
+                    ? 'bg-violet-600/30 text-violet-300 border border-violet-500/30'
+                    : 'bg-slate-800/50 text-slate-400 hover:bg-slate-700/50'
+                }`}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+              >
+                <ArrowUpDown size={12} />
+                {label}
+              </motion.button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Custom Campaign Table with Expandable Rows */}
+      <div className="bg-rillation-card rounded-xl border border-rillation-border overflow-hidden">
+        {/* Header */}
+        <div className="px-4 py-3 border-b border-slate-700/50 flex items-center justify-between">
+          <h3 className="text-sm font-semibold text-white">Campaign Performance</h3>
+          <span className="text-xs text-slate-500">
+            Click a campaign to view sequence breakdown
+          </span>
+        </div>
+
+        {/* Table Header */}
+        <div className="grid grid-cols-[auto_2fr_1fr_1fr_1fr_1fr_1fr_1fr_1fr_1fr] gap-3 px-3 py-2 bg-slate-800/50 text-xs text-slate-400 font-medium border-b border-slate-700/30">
+          <div className="flex items-center justify-center">
+            <input
+              type="checkbox"
+              checked={paginatedCampaigns.length > 0 && paginatedCampaigns.every(c => selectedCampaigns.has(c.campaign_id))}
+              onChange={(e) => handleSelectAll(e.target.checked)}
+              className="w-4 h-4 rounded border-slate-600 bg-slate-800 text-violet-500 focus:ring-violet-500 focus:ring-offset-0 cursor-pointer"
+            />
+          </div>
+          <div className="pl-1">Campaign Name</div>
+          <div className="text-center">Status</div>
+          <div className="text-center">Emails Sent</div>
+          <div className="text-center">Prospects</div>
+          <div className="text-center">Total Replies</div>
+          <div className="text-center">Real Replies</div>
+          <div className="text-center">Positive</div>
+          <div className="text-center">Bounces</div>
+          <div className="text-center">Meetings</div>
+        </div>
+
+        {/* Selection info bar */}
+        {selectedCampaigns.size > 0 && (
+          <div className="px-4 py-2 bg-violet-900/30 border-b border-violet-500/30 flex items-center justify-between">
+            <span className="text-sm text-violet-300">
+              {selectedCampaigns.size} campaign{selectedCampaigns.size > 1 ? 's' : ''} selected
+            </span>
+            <motion.button
+              onClick={clearSelection}
+              className="text-xs text-violet-400 hover:text-violet-300 transition-colors"
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+            >
+              Clear selection
+            </motion.button>
+          </div>
+        )}
+
+        {/* Campaign Rows */}
+        <div className="divide-y divide-slate-800/30">
+          {paginatedCampaigns.map((campaign) => (
+            <CampaignRow
+              key={campaign.campaign_id}
+              campaign={campaign}
+              isExpanded={expandedCampaigns.has(campaign.campaign_id)}
+              onToggle={() => toggleCampaign(campaign.campaign_id)}
+              dateRange={dateRange}
+              isSelected={selectedCampaigns.has(campaign.campaign_id)}
+              onSelect={(selected) => handleCampaignSelect(campaign.campaign_id, selected)}
+            />
+          ))}
+        </div>
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="px-4 py-3 border-t border-slate-700/50 flex items-center justify-between">
+            <span className="text-xs text-slate-500">
+              Showing {offset + 1}-{Math.min(offset + PAGE_SIZE, totalCount)} of {totalCount} campaigns
+            </span>
+            <div className="flex items-center gap-2">
+              <motion.button
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+                disabled={page === 1}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                  page === 1
+                    ? 'bg-slate-800/30 text-slate-600 cursor-not-allowed'
+                    : 'bg-slate-700/50 text-slate-300 hover:bg-slate-700'
+                }`}
+                whileHover={page !== 1 ? { scale: 1.02 } : {}}
+                whileTap={page !== 1 ? { scale: 0.98 } : {}}
+              >
+                <ChevronUp size={14} className="rotate-[-90deg]" />
+              </motion.button>
+              <span className="text-xs text-slate-400">
+                Page {page} of {totalPages}
+              </span>
+              <motion.button
+                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                disabled={page === totalPages}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                  page === totalPages
+                    ? 'bg-slate-800/30 text-slate-600 cursor-not-allowed'
+                    : 'bg-slate-700/50 text-slate-300 hover:bg-slate-700'
+                }`}
+                whileHover={page !== totalPages ? { scale: 1.02 } : {}}
+                whileTap={page !== totalPages ? { scale: 0.98 } : {}}
+              >
+                <ChevronDown size={14} className="rotate-[-90deg]" />
+              </motion.button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
   )
 }
-

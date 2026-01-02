@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion'
+import { Settings } from 'lucide-react'
 import { formatNumber } from '../../lib/supabase'
 import type { OpportunityStage } from '../../hooks/useOpportunities'
 
@@ -7,9 +8,10 @@ interface OpportunityPipelineProps {
   loading?: boolean
   error?: string | null
   onStageClick?: (stageName: string, stageIndex: number) => void
+  onSetEstimatedValue?: () => void
 }
 
-export default function OpportunityPipeline({ stages, loading, error, onStageClick }: OpportunityPipelineProps) {
+export default function OpportunityPipeline({ stages, loading, error, onStageClick, onSetEstimatedValue }: OpportunityPipelineProps) {
 
   if (loading) {
     return (
@@ -86,7 +88,18 @@ export default function OpportunityPipeline({ stages, loading, error, onStageCli
 
   return (
     <div className="bg-rillation-card rounded-xl p-4 sm:p-6 border border-rillation-border w-full h-full flex flex-col">
-      <h3 className="text-lg font-semibold text-rillation-text mb-4 flex-shrink-0">Estimated Pipeline Value</h3>
+      <div className="flex items-center justify-between mb-4 flex-shrink-0">
+        <h3 className="text-lg font-semibold text-rillation-text">Estimated Pipeline Value</h3>
+        {onSetEstimatedValue && (
+          <button
+            onClick={onSetEstimatedValue}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-rillation-purple hover:bg-rillation-purple/80 rounded-lg transition-colors"
+          >
+            <Settings size={12} />
+            <span className="hidden sm:inline">Set Values</span>
+          </button>
+        )}
+      </div>
       
       {/* Unified Enhanced Cards with 3D Perspective */}
       <motion.div

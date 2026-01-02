@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Settings, Search } from 'lucide-react'
+import { Settings, Search, Eye } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import CampaignFilter from '../components/ui/CampaignFilter'
@@ -8,6 +8,7 @@ import MiniScorecard from '../components/ui/MiniScorecard'
 import ConfigureTargetsModal from '../components/ui/ConfigureTargetsModal'
 import { useCampaigns } from '../hooks/useCampaigns'
 import { usePerformanceData } from '../hooks/usePerformanceData'
+import { useCampaignScorecardData } from '../hooks/useCampaignScorecardData'
 import { useFilters } from '../contexts/FilterContext'
 import type { ClientBubbleData } from '../types/database'
 
@@ -58,38 +59,89 @@ function ClientScorecard({
   )
 }
 
+// Component to display campaign scorecard
+function CampaignScorecard({ 
+  campaignName,
+  metrics,
+  chartData,
+  dateRange,
+}: { 
+  campaignName: string
+  metrics: any
+  chartData: any[]
+  dateRange: { start: Date; end: Date }
+}) {
+  return (
+    <MiniScorecard
+      clientName={campaignName}
+      metrics={metrics}
+      chartData={chartData}
+      dateRange={dateRange}
+    />
+  )
+}
+
 export default function PerformanceOverview() {
   // Use global filters
-  const { dateRange } = useFilters()
+  const { dateRange, selectedClient } = useFilters()
   const navigate = useNavigate()
   
   // Filter state
   const [selectedCampaigns, setSelectedCampaigns] = useState<string[]>([])
   const [clientSearchQuery, setClientSearchQuery] = useState('')
+  const [campaignSearchQuery, setCampaignSearchQuery] = useState('')
   const [isConfigureModalOpen, setIsConfigureModalOpen] = useState(false)
+  
+  // Determine if we're in client view mode
+  const isClientView = !!selectedClient
   
   // Fetch data
   const { campaigns } = useCampaigns()
-  const { clientData, scorecardData, loading, error, refetch } = usePerformanceData({
+  
+  // Fetch client data (for all clients view)
+  const { clientData, scorecardData, loading: clientsLoading, error: clientsError, refetch } = usePerformanceData({
     startDate: dateRange.start,
     endDate: dateRange.end,
     campaigns: selectedCampaigns.length > 0 ? selectedCampaigns : undefined,
+  })
+  
+  // Fetch campaign data (for single client view)
+  const { campaigns: campaignScorecards, loading: campaignsLoading, error: campaignsError } = useCampaignScorecardData({
+    startDate: dateRange.start,
+    endDate: dateRange.end,
+    client: selectedClient,
   })
 
   // Filter client data based on search query
   const filteredClientData = clientData.filter(client => 
     client.client.toLowerCase().includes(clientSearchQuery.toLowerCase())
   )
+  
+  // Filter campaign data based on search query
+  const filteredCampaignData = campaignScorecards.filter(campaign =>
+    campaign.campaignName.toLowerCase().includes(campaignSearchQuery.toLowerCase())
+  )
+
+  // Determine loading and error states
+  const loading = isClientView ? campaignsLoading : clientsLoading
+  const error = isClientView ? campaignsError : clientsError
 
   // Handle clear campaign filter (client and date filters are global)
   const handleClear = () => {
     setSelectedCampaigns([])
+    setClientSearchQuery('')
+    setCampaignSearchQuery('')
   }
 
   // Handle client click - navigate to client detail view
   const handleClientClick = (client: ClientBubbleData) => {
-    // Encode client name for URL (handle special characters)
     const encodedClientName = encodeURIComponent(client.client)
+    navigate(`/performance/${encodedClientName}`)
+  }
+
+  // Handle view client insights click
+  const handleViewClientInsights = () => {
+    const encodedClientName = encodeURIComponent(selectedClient)
     navigate(`/performance/${encodedClientName}`)
   }
 
@@ -109,36 +161,74 @@ export default function PerformanceOverview() {
       <div className="bg-rillation-card rounded-xl p-4 border border-rillation-border">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex flex-wrap items-center gap-4">
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-rillation-text-muted">CAMPAIGN</span>
-              <CampaignFilter
-                campaigns={campaigns}
-                selectedCampaigns={selectedCampaigns}
-                onChange={setSelectedCampaigns}
-              />
-            </div>
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-rillation-text-muted" size={16} />
-              <input
-                type="text"
-                placeholder="Search clients..."
-                value={clientSearchQuery}
-                onChange={(e) => setClientSearchQuery(e.target.value)}
-                className="pl-10 pr-4 py-1.5 text-xs bg-rillation-card border border-rillation-border rounded-lg text-rillation-text focus:outline-none focus:border-rillation-text w-48"
-              />
-            </div>
+            {!isClientView && (
+              <>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-rillation-text-muted">CAMPAIGN</span>
+                  <CampaignFilter
+                    campaigns={campaigns}
+                    selectedCampaigns={selectedCampaigns}
+                    onChange={setSelectedCampaigns}
+                  />
+                </div>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-rillation-text-muted" size={16} />
+                  <input
+                    type="text"
+                    placeholder="Search clients..."
+                    value={clientSearchQuery}
+                    onChange={(e) => setClientSearchQuery(e.target.value)}
+                    className="pl-10 pr-4 py-1.5 text-xs bg-rillation-card border border-rillation-border rounded-lg text-rillation-text focus:outline-none focus:border-rillation-text w-48"
+                  />
+                </div>
+              </>
+            )}
+            {isClientView && (
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-rillation-text-muted" size={16} />
+                <input
+                  type="text"
+                  placeholder="Search campaigns..."
+                  value={campaignSearchQuery}
+                  onChange={(e) => setCampaignSearchQuery(e.target.value)}
+                  className="pl-10 pr-4 py-1.5 text-xs bg-rillation-card border border-rillation-border rounded-lg text-rillation-text focus:outline-none focus:border-rillation-text w-48"
+                />
+              </div>
+            )}
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="secondary" size="sm" onClick={handleClear}>
-              Clear Campaign Filter
-            </Button>
-            <Button variant="primary" size="sm" onClick={handleConfigureTargetsClick}>
+            {!isClientView && (
+              <Button variant="secondary" size="sm" onClick={handleClear}>
+                Clear Campaign Filter
+              </Button>
+            )}
+            {isClientView && (
+              <Button variant="primary" size="sm" onClick={handleViewClientInsights}>
+                <Eye size={14} />
+                View Client Insights
+              </Button>
+            )}
+            <Button variant={isClientView ? "secondary" : "primary"} size="sm" onClick={handleConfigureTargetsClick}>
               <Settings size={14} />
               Configure Targets
             </Button>
           </div>
         </div>
       </div>
+
+      {/* Title for client view */}
+      {isClientView && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex items-center gap-3"
+        >
+          <h2 className="text-xl font-bold text-white">{selectedClient}</h2>
+          <span className="text-sm text-slate-400">
+            {filteredCampaignData.length} campaign{filteredCampaignData.length !== 1 ? 's' : ''}
+          </span>
+        </motion.div>
+      )}
 
       {/* Error State */}
       {error && (
@@ -165,11 +255,11 @@ export default function PerformanceOverview() {
         )}
       </AnimatePresence>
 
-      {/* Mini Scorecards with Framer Motion Animation */}
+      {/* Client Scorecards (All Clients View) */}
       <AnimatePresence mode="wait">
-        {!loading && clientData.length > 0 && (
+        {!loading && !isClientView && clientData.length > 0 && (
           <motion.div
-            key="grid"
+            key="clients-grid"
             className="grid grid-cols-1 md:grid-cols-2 gap-6"
             variants={{
               hidden: { opacity: 0 },
@@ -198,15 +288,65 @@ export default function PerformanceOverview() {
         )}
       </AnimatePresence>
 
-      {/* Empty State */}
-      {!loading && clientData.length === 0 && (
+      {/* Campaign Scorecards (Single Client View) */}
+      <AnimatePresence mode="wait">
+        {!loading && isClientView && campaignScorecards.length > 0 && (
+          <motion.div
+            key="campaigns-grid"
+            className="grid grid-cols-1 md:grid-cols-2 gap-6"
+            variants={{
+              hidden: { opacity: 0 },
+              show: {
+                opacity: 1,
+                transition: {
+                  staggerChildren: 0.08,
+                  delayChildren: 0.1,
+                },
+              },
+            }}
+            initial="hidden"
+            animate="show"
+            exit="hidden"
+          >
+            {filteredCampaignData.map((campaign) => (
+              <motion.div
+                key={campaign.campaignId}
+                variants={{
+                  hidden: { opacity: 0, y: 20 },
+                  show: { opacity: 1, y: 0 },
+                }}
+              >
+                <CampaignScorecard 
+                  campaignName={campaign.campaignName}
+                  metrics={campaign.metrics}
+                  chartData={campaign.chartData}
+                  dateRange={dateRange}
+                />
+              </motion.div>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Empty States */}
+      {!loading && !isClientView && clientData.length === 0 && (
         <div className="text-center py-12 text-rillation-text-muted">
           No client data found for the selected filters.
         </div>
       )}
-      {!loading && clientData.length > 0 && filteredClientData.length === 0 && (
+      {!loading && !isClientView && clientData.length > 0 && filteredClientData.length === 0 && (
         <div className="text-center py-12 text-rillation-text-muted">
           No clients match your search query.
+        </div>
+      )}
+      {!loading && isClientView && campaignScorecards.length === 0 && (
+        <div className="text-center py-12 text-rillation-text-muted">
+          No campaign data found for {selectedClient}.
+        </div>
+      )}
+      {!loading && isClientView && campaignScorecards.length > 0 && filteredCampaignData.length === 0 && (
+        <div className="text-center py-12 text-rillation-text-muted">
+          No campaigns match your search query.
         </div>
       )}
 
@@ -214,6 +354,7 @@ export default function PerformanceOverview() {
       <ConfigureTargetsModal
         isOpen={isConfigureModalOpen}
         onClose={() => setIsConfigureModalOpen(false)}
+        client={isClientView ? selectedClient : undefined}
         startDate={dateRange.start}
         endDate={dateRange.end}
         onSave={handleTargetsSaved}

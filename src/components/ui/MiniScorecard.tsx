@@ -1,6 +1,5 @@
 import { useState, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ChevronRight } from 'lucide-react'
 import {
   LineChart,
   Line,
@@ -125,10 +124,13 @@ export default function MiniScorecard({ clientName, metrics, chartData, targets,
 
   return (
     <motion.div
-      className="relative overflow-hidden rounded-xl p-6 border border-slate-700/60 bg-gradient-to-b from-slate-900/90 to-slate-900/70 hover:border-rillation-text hover:shadow-xl transition-all group"
+      className="relative overflow-hidden rounded-xl p-6 border border-slate-700/60 bg-gradient-to-b from-slate-900/90 to-slate-900/70 hover:border-rillation-text hover:shadow-xl transition-all cursor-pointer"
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+      onClick={onClick}
+      whileHover={{ scale: 1.01 }}
+      whileTap={{ scale: 0.99 }}
     >
       {/* Subtle grid pattern overlay */}
       <div 
@@ -139,23 +141,8 @@ export default function MiniScorecard({ clientName, metrics, chartData, targets,
         }}
       />
 
-      {/* Deep View Button - appears on hover in top-right */}
-      <motion.button
-        onClick={(e) => {
-          e.stopPropagation()
-          onClick?.()
-        }}
-        className="absolute top-4 right-4 p-2 rounded-lg bg-slate-700/50 border border-slate-600/50 text-white z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
-        whileHover={{ scale: 1.1, backgroundColor: '#3a4152', color: '#ffffff' }}
-        whileTap={{ scale: 0.9 }}
-        transition={{ duration: 0.2 }}
-        title="View Details"
-      >
-        <ChevronRight size={16} />
-      </motion.button>
-
       {/* Client Name */}
-      <h3 className="text-lg font-semibold text-rillation-text mb-6 pr-10">{clientName}</h3>
+      <h3 className="text-lg font-semibold text-rillation-text mb-6">{clientName}</h3>
       
       {/* Metrics Grid - Horizontal layout, 6 metrics */}
       <div className="grid grid-cols-6 gap-6 mb-6 px-2">

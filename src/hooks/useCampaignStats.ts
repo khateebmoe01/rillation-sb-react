@@ -12,6 +12,11 @@ export interface CampaignStat {
   positiveReplies: number
   bounces: number
   meetingsBooked: number
+  // Status fields
+  status: 'active' | 'completed' | 'unknown'
+  lastActivityDate: string | null
+  // Performance score (for sorting by winning campaigns)
+  performanceScore: number
 }
 
 interface UseCampaignStatsParams {
@@ -114,6 +119,9 @@ export function useCampaignStats({ startDate, endDate, client, page, pageSize }:
             positiveReplies: 0,
             bounces: 0,
             meetingsBooked: 0,
+            status: 'unknown',
+            lastActivityDate: null,
+            performanceScore: 0,
           })
         }
 
@@ -123,6 +131,7 @@ export function useCampaignStats({ startDate, endDate, client, page, pageSize }:
         stat.bounces += row.bounced || 0
         stat.positiveReplies += row.interested || 0
       })
+
 
       // Fetch ALL replies data using pagination
       // date_received is TIMESTAMPTZ, so use lt() with next day to include entire end date
@@ -273,6 +282,9 @@ export function useCampaignStats({ startDate, endDate, client, page, pageSize }:
             positiveReplies: 0,
             bounces: 0,
             meetingsBooked: 0,
+            status: 'unknown',
+            lastActivityDate: null,
+            performanceScore: 0,
           })
         }
 
@@ -298,6 +310,35 @@ export function useCampaignStats({ startDate, endDate, client, page, pageSize }:
         fetch('http://127.0.0.1:7242/ingest/9428b436-58ef-4c72-b9f2-dfdc5784cfa8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'useCampaignStats.ts:290',message:'Final campaign stats',data:{campaign_name:targetCampaignName,campaign_id:targetCampaign.campaign_id,totalReplies:targetCampaign.totalReplies,realReplies:targetCampaign.realReplies,client:targetCampaign.client,target_replies_count:targetCampaignReplies.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'E'})}).catch(()=>{});
       }
       // #endregion
+
+      // Calculate performance score and determine status for each campaign
+      const today = new Date()
+      const tenDaysAgo = new Date(today)
+      tenDaysAgo.setDate(tenDaysAgo.getDate() - 10)
+      
+      campaignStatsMap.forEach((stat) => {
+        // Performance score: weighted combination of key metrics
+        // Higher weight on meetings booked and positive replies
+        const meetingWeight = 10
+        const positiveWeight = 3
+        const replyWeight = 1
+        stat.performanceScore = 
+          (stat.meetingsBooked * meetingWeight) +
+          (stat.positiveReplies * positiveWeight) +
+          (stat.realReplies * replyWeight)
+        
+        // Determine status based on activity
+        // A campaign is "completed" if it hasn't had activity in the last 10 days
+        // This is a heuristic - in reality, you'd want to check the actual campaign status from the source
+        const lastActivity = stat.lastActivityDate ? new Date(stat.lastActivityDate) : null
+        if (lastActivity && lastActivity < tenDaysAgo) {
+          stat.status = 'completed'
+        } else if (stat.totalSent > 0) {
+          stat.status = 'active'
+        } else {
+          stat.status = 'unknown'
+        }
+      })
 
       // Convert to array and sort
       // Don't filter out campaigns with 0 sent - include all to match scorecard totals

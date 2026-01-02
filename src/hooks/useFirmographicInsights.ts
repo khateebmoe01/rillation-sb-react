@@ -29,6 +29,10 @@ export interface FirmographicInsightsData {
   employees: DimensionInsight
   geography: DimensionInsight
   signals: DimensionInsight
+  jobTitle: DimensionInsight
+  technologies: DimensionInsight
+  companyMaturity: DimensionInsight
+  fundingStatus: DimensionInsight
 }
 
 interface UseFirmographicInsightsParams {
@@ -86,6 +90,89 @@ function isValidValue(value: string | null): boolean {
   return trimmed !== '' && trimmed.toLowerCase() !== 'unknown'
 }
 
+// Helper to categorize company maturity based on year founded
+function categorizeCompanyMaturity(yearFounded: string | number | null): string | null {
+  if (yearFounded === null || yearFounded === undefined) return null
+  
+  // Convert to string if it's a number
+  const yearStr = String(yearFounded)
+  
+  // Try to parse as a year (e.g., "2020") or a full date
+  const yearMatch = yearStr.match(/\d{4}/)
+  if (!yearMatch) return null
+  
+  const foundedYear = parseInt(yearMatch[0], 10)
+  if (isNaN(foundedYear) || foundedYear < 1800 || foundedYear > new Date().getFullYear()) return null
+  
+  const currentYear = new Date().getFullYear()
+  const yearsDiff = currentYear - foundedYear
+  
+  if (yearsDiff < 2) return 'Startup (0-2 years)'
+  if (yearsDiff < 5) return 'Early Stage (2-5 years)'
+  if (yearsDiff < 10) return 'Growth Stage (5-10 years)'
+  if (yearsDiff < 20) return 'Established (10-20 years)'
+  return 'Mature (20+ years)'
+}
+
+// Helper to normalize seniority levels/job titles into categories
+function normalizeJobTitle(seniorityLevel: string | null): string | null {
+  if (!seniorityLevel || !isValidValue(seniorityLevel)) return null
+  
+  const lowerTitle = seniorityLevel.toLowerCase()
+  
+  // C-Level
+  if (lowerTitle.includes('ceo') || lowerTitle.includes('chief executive')) return 'CEO'
+  if (lowerTitle.includes('cto') || lowerTitle.includes('chief technology')) return 'CTO'
+  if (lowerTitle.includes('cfo') || lowerTitle.includes('chief financial')) return 'CFO'
+  if (lowerTitle.includes('coo') || lowerTitle.includes('chief operating')) return 'COO'
+  if (lowerTitle.includes('cmo') || lowerTitle.includes('chief marketing')) return 'CMO'
+  if (lowerTitle.includes('cio') || lowerTitle.includes('chief information')) return 'CIO'
+  if (lowerTitle.includes('chief') || lowerTitle.startsWith('c-')) return 'Other C-Suite'
+  
+  // VP Level
+  if (lowerTitle.includes('vp ') || lowerTitle.includes('vice president')) {
+    if (lowerTitle.includes('sales')) return 'VP Sales'
+    if (lowerTitle.includes('marketing')) return 'VP Marketing'
+    if (lowerTitle.includes('engineering') || lowerTitle.includes('technology')) return 'VP Engineering'
+    if (lowerTitle.includes('operation')) return 'VP Operations'
+    if (lowerTitle.includes('product')) return 'VP Product'
+    return 'VP (Other)'
+  }
+  
+  // Director Level
+  if (lowerTitle.includes('director')) {
+    if (lowerTitle.includes('sales')) return 'Director of Sales'
+    if (lowerTitle.includes('marketing')) return 'Director of Marketing'
+    if (lowerTitle.includes('engineering') || lowerTitle.includes('technology')) return 'Director of Engineering'
+    if (lowerTitle.includes('operation')) return 'Director of Operations'
+    if (lowerTitle.includes('product')) return 'Director of Product'
+    if (lowerTitle.includes('hr') || lowerTitle.includes('human')) return 'Director of HR'
+    return 'Director (Other)'
+  }
+  
+  // Manager Level
+  if (lowerTitle.includes('manager')) {
+    if (lowerTitle.includes('sales')) return 'Sales Manager'
+    if (lowerTitle.includes('marketing')) return 'Marketing Manager'
+    if (lowerTitle.includes('product')) return 'Product Manager'
+    if (lowerTitle.includes('project')) return 'Project Manager'
+    if (lowerTitle.includes('account')) return 'Account Manager'
+    return 'Manager (Other)'
+  }
+  
+  // Owner/Founder
+  if (lowerTitle.includes('owner') || lowerTitle.includes('founder') || lowerTitle.includes('partner')) {
+    return 'Owner/Founder'
+  }
+  
+  // President
+  if (lowerTitle.includes('president') && !lowerTitle.includes('vice')) {
+    return 'President'
+  }
+  
+  return seniorityLevel.trim() // Return original if no match
+}
+
 export function useFirmographicInsights({ startDate, endDate, client, campaigns }: UseFirmographicInsightsParams) {
   const [data, setData] = useState<FirmographicInsightsData | null>(null)
   const [loading, setLoading] = useState(true)
@@ -95,6 +182,13 @@ export function useFirmographicInsights({ startDate, endDate, client, campaigns 
     try {
       setLoading(true)
       setError(null)
+
+      console.log('Fetching firmographic insights with params:', { 
+        client, 
+        campaigns: campaigns?.length || 0,
+        startDate, 
+        endDate 
+      })
 
       const startStr = formatDateForQuery(startDate)
       const endStr = formatDateForQuery(endDate)
@@ -126,7 +220,7 @@ export function useFirmographicInsights({ startDate, endDate, client, campaigns 
       // If no active campaigns, we'll still fetch all leads for the client
       let leadsQuery = supabase
         .from('all_leads')
-        .select('email, industry, annual_revenue, company_size, company_hq_state, company_hq_country, specialty_signal_a, specialty_signal_b, specialty_signal_c, campaign_id, client, created_time')
+        .select('email, industry, annual_revenue, company_size, company_hq_state, company_hq_country, specialty_signal_a, specialty_signal_b, specialty_signal_c, campaign_id, client, created_time, seniority_level, tech_stack, year_founded')
 
       if (client) {
         leadsQuery = leadsQuery.eq('client', client)
@@ -142,7 +236,14 @@ export function useFirmographicInsights({ startDate, endDate, client, campaigns 
 
       const { data: allLeads, error: leadsError } = await leadsQuery
 
-      if (leadsError) throw leadsError
+      if (leadsError) {
+        console.error('Supabase query error:', leadsError)
+        throw new Error(`Database error: ${leadsError.message || JSON.stringify(leadsError)}`)
+      }
+
+      if (!allLeads) {
+        console.warn('No leads data returned from query')
+      }
 
       // Type the leads data
       type LeadData = {
@@ -158,10 +259,15 @@ export function useFirmographicInsights({ startDate, endDate, client, campaigns 
         campaign_id: string | null
         client: string | null
         created_time: string | null
+        seniority_level: string | null
+        tech_stack: string | null
+        year_founded: string | null
       }
 
       const leads = (allLeads as LeadData[] || []) as LeadData[]
       const totalLeads = leads.length
+      
+      console.log(`Successfully fetched ${totalLeads} leads for firmographic analysis`)
 
       // Fetch replies (exclude OOO)
       let repliesQuery = supabase
@@ -424,15 +530,58 @@ export function useFirmographicInsights({ startDate, endDate, client, campaigns 
         items: signalItems,
       }
 
+      // Process Job Title dimension (using seniority_level)
+      const jobTitleInsight = processDimension(
+        'Job Title',
+        (lead) => normalizeJobTitle(lead.seniority_level)
+      )
+
+      // Process Technologies dimension (using tech_stack)
+      const technologiesInsight = processDimension(
+        'Technologies',
+        (lead) => {
+          // Technologies might be comma-separated, take the first one or the whole thing
+          const tech = lead.tech_stack
+          if (!tech || !isValidValue(tech)) return null
+          const firstTech = tech.split(',')[0]?.trim()
+          return isValidValue(firstTech) ? firstTech : null
+        }
+      )
+
+      // Process Company Maturity dimension (using year_founded)
+      const companyMaturityInsight = processDimension(
+        'Company Maturity',
+        (lead) => categorizeCompanyMaturity(lead.year_founded)
+      )
+
+      // Funding Status dimension - not used for now, return empty insight
+      const fundingStatusInsight: DimensionInsight = {
+        dimension: 'Funding Status',
+        coverage: 0,
+        totalLeads,
+        totalLeadsWithData: 0,
+        items: [],
+      }
+
       setData({
         industry: industryInsight,
         revenue: revenueInsight,
         employees: employeesInsight,
         geography: geographyInsight,
         signals: signalsInsight,
+        jobTitle: jobTitleInsight,
+        technologies: technologiesInsight,
+        companyMaturity: companyMaturityInsight,
+        fundingStatus: fundingStatusInsight,
       })
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch firmographic insights')
+      console.error('Firmographic insights error:', err)
+      // Log the full error details
+      if (err && typeof err === 'object') {
+        console.error('Error details:', JSON.stringify(err, null, 2))
+      }
+      const errorMessage = err instanceof Error ? `Error: ${err.message}` : 'Failed to fetch firmographic insights'
+      setError(errorMessage)
     } finally {
       setLoading(false)
     }

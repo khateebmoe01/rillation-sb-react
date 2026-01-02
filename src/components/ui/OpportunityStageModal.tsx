@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { X, Save, Loader2, Trash2 } from 'lucide-react'
 import { supabase, formatDateForQuery, formatCurrency } from '../../lib/supabase'
+import { isLeadAtDeepestStage, stageToBooleanMap } from '../../lib/pipeline-utils'
 import Button from './Button'
 import ModalPortal from './ModalPortal'
 
@@ -29,15 +30,7 @@ interface LeadWithOpportunity {
   markedForDeletion?: boolean
 }
 
-// Map pipeline stage to boolean column in engaged_leads
-const stageToBooleanMap: Record<string, string> = {
-  'Showed Up to Disco': 'showed_up_to_disco',
-  'Qualified': 'qualified',
-  'Demo Booked': 'demo_booked',
-  'Showed Up to Demo': 'showed_up_to_demo',
-  'Proposal Sent': 'proposal_sent',
-  'Closed': 'closed',
-}
+// stageToBooleanMap is now imported from pipeline-utils
 
 export default function OpportunityStageModal({
   isOpen,
@@ -106,8 +99,14 @@ export default function OpportunityStageModal({
           return
         }
 
+        // Filter to only include leads whose DEEPEST stage matches this stage
+        // This prevents a closed lead from also appearing in Demo Booked, etc.
+        const filteredLeads = (leadsData || []).filter((lead: any) => 
+          isLeadAtDeepestStage(lead, stageName)
+        )
+
         // Transform leads and merge with opportunities
-        const transformedLeads: LeadWithOpportunity[] = (leadsData || []).map((lead: any) => {
+        const transformedLeads: LeadWithOpportunity[] = filteredLeads.map((lead: any) => {
           const email = (lead.email || '').toLowerCase()
           const opportunity = email ? opportunityMap.get(email) : null
 

@@ -7,7 +7,28 @@ const corsHeaders = {
 }
 
 const BISON_API_BASE = "https://send.rillationrevenue.com/api"
-const CLAY_WEBHOOK_URL = "https://api.clay.com/v3/sources/webhook/pull-in-data-from-a-webhook-ae5a0d54-d8f8-4bca-94e8-3e3a2e8cea49"
+
+// Helper to extract error message from various error types
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) {
+    return error.message
+  }
+  if (typeof error === 'object' && error !== null) {
+    const obj = error as Record<string, unknown>
+    if (typeof obj.message === 'string') return obj.message
+    if (typeof obj.error === 'string') return obj.error
+    if (typeof obj.code === 'string') return obj.code
+    try {
+      return JSON.stringify(error)
+    } catch {
+      return 'Unknown error object'
+    }
+  }
+  if (typeof error === 'string') {
+    return error
+  }
+  return String(error)
+}
 
 interface LeadData {
   id?: number
@@ -44,6 +65,106 @@ interface Tag {
   id: number
   name: string
 }
+
+// Mapping of custom variable names (normalized) to database column names
+// Handles various naming conventions (snake_case, camelCase, Title Case, etc.)
+const CUSTOM_VAR_TO_COLUMN_MAP: Record<string, string> = {
+  // Existing mappings
+  'company_linkedin': 'company_linkedin',
+  'companylinkedin': 'company_linkedin',
+  'company linkedin': 'company_linkedin',
+  'linkedin': 'company_linkedin',
+  
+  'company_domain': 'company_domain',
+  'companydomain': 'company_domain',
+  'company domain': 'company_domain',
+  'domain': 'company_domain',
+  
+  'campaign_name': 'campaign_name',
+  'campaignname': 'campaign_name',
+  'campaign name': 'campaign_name',
+  'campaign': 'campaign_name',
+  
+  'profile_url': 'profile_url',
+  'profileurl': 'profile_url',
+  'profile url': 'profile_url',
+  'linkedin_url': 'profile_url',
+  'linkedinurl': 'profile_url',
+  
+  'campaign_id': 'campaign_id',
+  'campaignid': 'campaign_id',
+  'campaign id': 'campaign_id',
+  
+  // Firmographic fields
+  'company_size': 'company_size',
+  'companysize': 'company_size',
+  'company size': 'company_size',
+  'employee_count': 'company_size',
+  'employeecount': 'company_size',
+  'employees': 'company_size',
+  
+  'annual_revenue': 'annual_revenue',
+  'annualrevenue': 'annual_revenue',
+  'annual revenue': 'annual_revenue',
+  'revenue': 'annual_revenue',
+  
+  'industry': 'industry',
+  
+  'company_hq_city': 'company_hq_city',
+  'companyhqcity': 'company_hq_city',
+  'company hq city': 'company_hq_city',
+  'hq_city': 'company_hq_city',
+  'hqcity': 'company_hq_city',
+  'city': 'company_hq_city',
+  
+  'company_hq_state': 'company_hq_state',
+  'companyhqstate': 'company_hq_state',
+  'company hq state': 'company_hq_state',
+  'hq_state': 'company_hq_state',
+  'hqstate': 'company_hq_state',
+  'state': 'company_hq_state',
+  
+  'company_hq_country': 'company_hq_country',
+  'companyhqcountry': 'company_hq_country',
+  'company hq country': 'company_hq_country',
+  'hq_country': 'company_hq_country',
+  'hqcountry': 'company_hq_country',
+  'country': 'company_hq_country',
+  
+  'year_founded': 'year_founded',
+  'yearfounded': 'year_founded',
+  'year founded': 'year_founded',
+  'founded': 'year_founded',
+  'founded_year': 'year_founded',
+  
+  'business_model': 'business_model',
+  'businessmodel': 'business_model',
+  'business model': 'business_model',
+  
+  'funding_stage': 'funding_stage',
+  'fundingstage': 'funding_stage',
+  'funding stage': 'funding_stage',
+  'funding': 'funding_stage',
+  
+  'tech_stack': 'tech_stack',
+  'techstack': 'tech_stack',
+  'tech stack': 'tech_stack',
+  'technologies': 'tech_stack',
+  
+  'is_hiring': 'is_hiring',
+  'ishiring': 'is_hiring',
+  'is hiring': 'is_hiring',
+  'hiring': 'is_hiring',
+  
+  'growth_score': 'growth_score',
+  'growthscore': 'growth_score',
+  'growth score': 'growth_score',
+}
+
+// Columns that require special type handling
+const INTEGER_COLUMNS = new Set(['campaign_id'])
+const BOOLEAN_COLUMNS = new Set(['is_hiring'])
+const ARRAY_COLUMNS = new Set(['tech_stack'])
 
 async function callBisonAPI(
   endpoint: string,
@@ -229,6 +350,46 @@ function parseDatetime(dtStr: string | undefined | null): string | null {
   }
 }
 
+// Normalize custom variable name for matching
+function normalizeVarName(name: string): string {
+  return name.toLowerCase().replace(/[-_\s]+/g, '').trim()
+}
+
+// Parse value based on column type
+function parseValueForColumn(columnName: string, value: string | null): any {
+  if (value === null || value === '') return null
+  
+  // Integer columns
+  if (INTEGER_COLUMNS.has(columnName)) {
+    const parsed = parseInt(String(value))
+    return isNaN(parsed) ? null : parsed
+  }
+  
+  // Boolean columns
+  if (BOOLEAN_COLUMNS.has(columnName)) {
+    const lowerVal = String(value).toLowerCase().trim()
+    if (lowerVal === 'true' || lowerVal === 'yes' || lowerVal === '1') return true
+    if (lowerVal === 'false' || lowerVal === 'no' || lowerVal === '0') return false
+    return null
+  }
+  
+  // Array columns
+  if (ARRAY_COLUMNS.has(columnName)) {
+    // Try to parse as JSON array first
+    try {
+      const parsed = JSON.parse(value)
+      if (Array.isArray(parsed)) return parsed
+    } catch {
+      // Not JSON, try comma-separated
+    }
+    // Split by comma and trim
+    return value.split(',').map(s => s.trim()).filter(Boolean)
+  }
+  
+  // Default: return as string
+  return value
+}
+
 function prepareLeadRecord(leadData: LeadData, workspaceName: string): Record<string, any> {
   // Initialize with direct fields (allow null values)
   const leadRecord: Record<string, any> = {
@@ -253,50 +414,30 @@ function prepareLeadRecord(leadData: LeadData, workspaceName: string): Record<st
   const createdTime = parseDatetime(leadData.created_at || leadData.created_time)
   leadRecord.created_time = createdTime || null
 
-  // Extract custom variables with exact name matching
+  // Extract ALL custom variables and map them to database columns
   const customVars = leadData.custom_variables || []
-  const customVarMap = new Map<string, string | null>()
+  const processedColumns = new Set<string>()
   
   if (Array.isArray(customVars)) {
     for (const varItem of customVars) {
       if (typeof varItem === 'object' && varItem.name) {
-        // Store exact name -> value mapping (allow null/empty values)
-        const varName = varItem.name.toLowerCase()
+        const varName = varItem.name
         const varValue = varItem.value || null
-        customVarMap.set(varName, varValue)
-      }
-    }
-  }
-
-  // Map exact custom variable names to record fields
-  const fieldMappings: Record<string, string> = {
-    'company_linkedin': 'company_linkedin',
-    'company_domain': 'company_domain',
-    'campaign_name': 'campaign_name',
-    'profile_url': 'profile_url',
-    'campaign_id': 'campaign_id',
-  }
-
-  // Initialize all custom variable fields as null first
-  for (const recordField of Object.values(fieldMappings)) {
-    leadRecord[recordField] = null
-  }
-
-  // Extract values from custom variables using exact matching
-  for (const [customVarName, recordField] of Object.entries(fieldMappings)) {
-    const value = customVarMap.get(customVarName.toLowerCase())
-    if (value !== undefined) {
-      // Handle campaign_id as integer
-      if (recordField === 'campaign_id' && value !== null && value !== '') {
-        try {
-          const parsedId = parseInt(String(value))
-          leadRecord[recordField] = isNaN(parsedId) ? null : parsedId
-        } catch {
-          leadRecord[recordField] = null
+        
+        // Try to find matching column using normalized name
+        const normalizedName = normalizeVarName(varName)
+        
+        // Check exact match first, then normalized match
+        let columnName = CUSTOM_VAR_TO_COLUMN_MAP[varName.toLowerCase()]
+        if (!columnName) {
+          columnName = CUSTOM_VAR_TO_COLUMN_MAP[normalizedName]
         }
-      } else {
-        // For other fields, use the value (can be null or empty string)
-        leadRecord[recordField] = value === '' ? null : value
+        
+        // If we found a matching column and haven't processed it yet
+        if (columnName && !processedColumns.has(columnName)) {
+          leadRecord[columnName] = parseValueForColumn(columnName, varValue)
+          processedColumns.add(columnName)
+        }
       }
     }
   }
@@ -343,74 +484,35 @@ function prepareLeadRecord(leadData: LeadData, workspaceName: string): Record<st
   return leadRecord
 }
 
-async function getExistingEmails(supabase: any): Promise<Set<string>> {
+// Creates a unique key for email+client combination
+function createEmailClientKey(email: string, client: string): string {
+  return `${email.toLowerCase()}:${client.toLowerCase()}`
+}
+
+async function getExistingEmailClientPairs(supabase: any): Promise<Set<string>> {
   try {
     const { data, error } = await supabase
       .from('meetings_booked')
-      .select('email')
+      .select('email, client')
     
     if (error) {
-      console.error('Error fetching existing emails:', error)
+      console.error('Error fetching existing email+client pairs:', error)
       return new Set()
     }
 
-    const emails = new Set<string>()
+    const pairs = new Set<string>()
     if (data && Array.isArray(data)) {
       for (const row of data) {
-        if (row.email) {
-          emails.add(row.email.toLowerCase())
+        if (row.email && row.client) {
+          pairs.add(createEmailClientKey(row.email, row.client))
         }
       }
     }
 
-    return emails
+    return pairs
   } catch (error) {
-    console.error('Error getting existing emails:', error)
+    console.error('Error getting existing email+client pairs:', error)
     return new Set()
-  }
-}
-
-async function pushToClayWebhook(leadRecord: Record<string, any>): Promise<boolean> {
-  try {
-    console.log(`Pushing to Clay webhook for email: ${leadRecord.email}`)
-    console.log(`Webhook URL: ${CLAY_WEBHOOK_URL}`)
-    
-    const payload = JSON.stringify(leadRecord)
-    console.log(`Payload size: ${payload.length} bytes`)
-    
-    const response = await fetch(CLAY_WEBHOOK_URL, {
-      method: "POST",
-      headers: { 
-        "Content-Type": "application/json",
-        "Accept": "application/json",
-      },
-      body: payload,
-    })
-    
-    const responseText = await response.text()
-    const statusCode = response.status
-    
-    // Accept any 2xx status code as success
-    const isSuccess = statusCode >= 200 && statusCode < 300
-    
-    if (!isSuccess) {
-      console.error(`Clay webhook failed with status ${statusCode}`)
-      console.error(`Response: ${responseText.substring(0, 1000)}`)
-      return false
-    }
-    
-    console.log(`Clay webhook success for ${leadRecord.email}, status: ${statusCode}`)
-    if (responseText) {
-      console.log(`Response: ${responseText.substring(0, 500)}`)
-    }
-    return true
-  } catch (error) {
-    console.error("Clay webhook error:", error)
-    if (error instanceof Error) {
-      console.error("Error message:", error.message)
-      console.error("Error stack:", error.stack)
-    }
-    return false
   }
 }
 
@@ -467,22 +569,18 @@ serve(async (req) => {
     const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000)
     const sinceDate = yesterday.toISOString()
 
-    // Get existing emails to avoid duplicates
-    const existingEmails = await getExistingEmails(supabase)
+    // Get existing email+client pairs to avoid duplicates
+    const existingPairs = await getExistingEmailClientPairs(supabase)
 
     let totalProcessed = 0
     let totalNew = 0
-    let totalWebhookSuccess = 0
-    let totalWebhookFailures = 0
-    const results: Record<string, { processed: number; new: number; webhook_success: number; webhook_failures: number; errors: string[] }> = {}
+    const results: Record<string, { processed: number; new: number; errors: string[] }> = {}
 
     // Process each workspace
     for (const workspace of workspaces) {
       const workspaceResults = {
         processed: 0,
         new: 0,
-        webhook_success: 0,
-        webhook_failures: 0,
         errors: [] as string[],
       }
 
@@ -519,14 +617,14 @@ serve(async (req) => {
           workspaceResults.processed++
           totalProcessed++
 
-          // Check if email already exists
-          const emailLower = lead.email.toLowerCase()
-          if (existingEmails.has(emailLower)) {
+          // Check if email+client combination already exists
+          const pairKey = createEmailClientKey(lead.email, workspace.name)
+          if (existingPairs.has(pairKey)) {
             continue // Skip duplicates
           }
 
           try {
-            // Prepare lead record
+            // Prepare lead record with all custom variables enriched
             const leadRecord = prepareLeadRecord(lead, workspace.name)
 
             // Insert new lead
@@ -536,48 +634,35 @@ serve(async (req) => {
 
             if (insertError) {
               // Check if it's a duplicate error (race condition)
-              const errorMsg = insertError.message.toLowerCase()
+              const errorMsg = (insertError.message || '').toLowerCase()
               if (errorMsg.includes('duplicate') || errorMsg.includes('unique') || errorMsg.includes('23505')) {
                 // Add to existing set to avoid future duplicates in this run
-                existingEmails.add(emailLower)
+                existingPairs.add(pairKey)
                 continue
               }
-              throw insertError
+              // Format Supabase error properly
+              const formattedError = insertError.message || insertError.code || JSON.stringify(insertError)
+              workspaceResults.errors.push(`Error inserting ${lead.email}: ${formattedError}`)
+              console.error(`Insert error for ${lead.email}:`, insertError)
+              continue
             }
 
             // Add to existing set and increment counters
-            existingEmails.add(emailLower)
+            existingPairs.add(pairKey)
             workspaceResults.new++
             totalNew++
 
             console.log(`Added new lead: ${lead.email} from ${workspace.name}`)
-
-            // Push to Clay webhook with API key included
-            const webhookPayload = {
-              ...leadRecord,
-              api_key_bison: workspace.token,
-            }
-            console.log(`Webhook payload keys: ${Object.keys(webhookPayload).join(', ')}`)
-            const webhookSuccess = await pushToClayWebhook(webhookPayload)
-            if (webhookSuccess) {
-              workspaceResults.webhook_success++
-              totalWebhookSuccess++
-              console.log(`Successfully pushed ${lead.email} to Clay webhook`)
-            } else {
-              workspaceResults.webhook_failures++
-              totalWebhookFailures++
-              console.error(`Failed to push ${lead.email} to Clay webhook`)
-            }
-          } catch (leadError) {
-            const errorMsg = leadError instanceof Error ? leadError.message : String(leadError)
+          } catch (leadError: unknown) {
+            const errorMsg = getErrorMessage(leadError)
             workspaceResults.errors.push(`Error processing ${lead.email}: ${errorMsg}`)
             console.error(`Error processing lead ${lead.email}:`, leadError)
           }
         }
 
         results[workspace.name] = workspaceResults
-      } catch (workspaceError) {
-        const errorMsg = workspaceError instanceof Error ? workspaceError.message : String(workspaceError)
+      } catch (workspaceError: unknown) {
+        const errorMsg = getErrorMessage(workspaceError)
         workspaceResults.errors.push(`Workspace error: ${errorMsg}`)
         results[workspace.name] = workspaceResults
         console.error(`Error processing workspace ${workspace.name}:`, workspaceError)
@@ -593,22 +678,19 @@ serve(async (req) => {
           workspaces_processed: workspaces.length,
           total_leads_processed: totalProcessed,
           total_new_leads_added: totalNew,
-          total_webhook_success: totalWebhookSuccess,
-          total_webhook_failures: totalWebhookFailures,
         },
         results: results,
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Sync error:', error)
     return new Response(
       JSON.stringify({
         success: false,
-        error: error instanceof Error ? error.message : String(error),
+        error: getErrorMessage(error),
       }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   }
 })
-

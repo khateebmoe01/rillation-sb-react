@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { X, Save, Loader2, ChevronDown, ChevronUp, Search } from 'lucide-react'
 import { supabase, formatDateForQuery, formatCurrency } from '../../lib/supabase'
+import { isLeadAtDeepestStage, stageToBooleanMap, PIPELINE_STAGES_ORDERED } from '../../lib/pipeline-utils'
 import Button from './Button'
 import ModalPortal from './ModalPortal'
 
@@ -34,21 +35,11 @@ interface StageGroup {
   collapsed: boolean
 }
 
-// Pipeline stages we support
-const PIPELINE_STAGES = [
-  'Demo Booked',
-  'Showed Up to Demo',
-  'Proposal Sent',
-  'Closed',
-]
+// Pipeline stages we support in Configure Targets modal
+// Use all 6 stages from the ordered list
+const PIPELINE_STAGES = PIPELINE_STAGES_ORDERED
 
-// Map pipeline stage to boolean column in engaged_leads
-const stageToBooleanMap: Record<string, string> = {
-  'Demo Booked': 'demo_booked',
-  'Showed Up to Demo': 'showed_up_to_demo',
-  'Proposal Sent': 'proposal_sent',
-  'Closed': 'closed',
-}
+// stageToBooleanMap is now imported from pipeline-utils
 
 export default function ConfigureTargetsModal({
   isOpen,
@@ -208,8 +199,14 @@ export default function ConfigureTargetsModal({
             continue
           }
 
+          // Filter to only include leads whose DEEPEST stage matches this stage
+          // This prevents a closed lead from also appearing in Demo Booked, etc.
+          const filteredLeads = (leadsData || []).filter((lead: any) => 
+            isLeadAtDeepestStage(lead, stage)
+          )
+
           // Transform leads and merge with opportunities
-          const leads: LeadWithOpportunity[] = (leadsData || []).map((lead: any) => {
+          const leads: LeadWithOpportunity[] = filteredLeads.map((lead: any) => {
             const email = (lead.email || '').toLowerCase()
             const opportunity = email ? opportunityMap.get(email) : null
 
