@@ -13,7 +13,7 @@ import {
   X,
   Sparkles
 } from 'lucide-react'
-import { formatNumber, formatPercentage } from '../../lib/supabase'
+import { formatPercentage } from '../../lib/supabase'
 import type { FirmographicInsightsData, FirmographicDimensionData } from '../../hooks/useFirmographicInsights'
 import DimensionComparisonChart from './DimensionComparisonChart'
 

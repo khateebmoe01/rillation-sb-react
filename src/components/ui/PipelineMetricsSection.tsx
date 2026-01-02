@@ -10,7 +10,6 @@ import {
   ResponsiveContainer,
 } from 'recharts'
 import ClickableMetricCard from './ClickableMetricCard'
-import { formatNumber, formatPercentage } from '../../lib/supabase'
 
 interface PipelineMetricsSectionProps {
   metrics: {

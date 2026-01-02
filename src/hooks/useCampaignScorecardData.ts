@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { supabase, formatDateForQuery, formatDateForQueryEndOfDay } from '../lib/supabase'
 import type { QuickViewMetrics, ChartDataPoint } from '../types/database'
 
@@ -8,11 +8,15 @@ interface UseCampaignScorecardDataParams {
   client: string
 }
 
+export type CampaignStatus = 'active' | 'paused' | 'completed' | 'all'
+
 export interface CampaignScorecardData {
   campaignName: string
   campaignId: string
   metrics: QuickViewMetrics
   chartData: ChartDataPoint[]
+  status: CampaignStatus
+  lastActivityDate: string | null
 }
 
 export function useCampaignScorecardData({ startDate, endDate, client }: UseCampaignScorecardDataParams) {
@@ -126,6 +130,7 @@ export function useCampaignScorecardData({ startDate, endDate, client }: UseCamp
           bounces: number
           meetingsBooked: number
         }
+        lastActivityDate: string | null
       }>()
 
       // Helper to format date string to display
@@ -153,11 +158,16 @@ export function useCampaignScorecardData({ startDate, endDate, client }: UseCamp
               positiveReplies: 0,
               bounces: 0,
               meetingsBooked: 0,
-            }
+            },
+            lastActivityDate: null,
           })
         }
-
+        
+        // Track last activity date
         const campaign = campaignMap.get(key)!
+        if (row.date && (!campaign.lastActivityDate || row.date > campaign.lastActivityDate)) {
+          campaign.lastActivityDate = row.date
+        }
         campaign.totals.totalEmailsSent += row.emails_sent || 0
         campaign.totals.uniqueProspects += row.total_leads_contacted || 0
         campaign.totals.bounces += row.bounced || 0
@@ -224,6 +234,13 @@ export function useCampaignScorecardData({ startDate, endDate, client }: UseCamp
 
       // Convert to array and build scorecards
       const scorecards: CampaignScorecardData[] = []
+      
+      // Determine campaign status based on activity
+      const today = new Date()
+      const sevenDaysAgo = new Date(today)
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+      const thirtyDaysAgo = new Date(today)
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
 
       campaignMap.forEach((campaign) => {
         // Sort daily data by date and convert to array
@@ -231,11 +248,29 @@ export function useCampaignScorecardData({ startDate, endDate, client }: UseCamp
           .sort((a, b) => a[0].localeCompare(b[0]))
           .map(([_, point]) => point)
 
+        // Determine status based on last activity
+        let status: CampaignStatus = 'active'
+        const lastActivityStr = campaign.lastActivityDate
+        if (lastActivityStr) {
+          const lastActivity = new Date(lastActivityStr)
+          if (lastActivity < thirtyDaysAgo) {
+            status = 'completed' // No activity in 30+ days = completed
+          } else if (lastActivity < sevenDaysAgo) {
+            status = 'paused' // No activity in 7-30 days = paused
+          } else {
+            status = 'active' // Activity in last 7 days = active
+          }
+        } else {
+          status = 'completed' // No activity data = completed
+        }
+
         scorecards.push({
           campaignName: campaign.campaignName,
           campaignId: campaign.campaignId,
           metrics: campaign.totals,
           chartData: sortedDailyData,
+          status,
+          lastActivityDate: campaign.lastActivityDate,
         })
       })
 
