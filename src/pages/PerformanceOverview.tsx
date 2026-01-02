@@ -1,16 +1,21 @@
 import { useState } from 'react'
-import { Settings, Search, Eye } from 'lucide-react'
+import { Settings, Search, Eye, ChevronDown } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import CampaignFilter from '../components/ui/CampaignFilter'
 import Button from '../components/ui/Button'
 import MiniScorecard from '../components/ui/MiniScorecard'
 import ConfigureTargetsModal from '../components/ui/ConfigureTargetsModal'
-import { useCampaigns } from '../hooks/useCampaigns'
 import { usePerformanceData } from '../hooks/usePerformanceData'
-import { useCampaignScorecardData } from '../hooks/useCampaignScorecardData'
+import { useCampaignScorecardData, type CampaignStatus } from '../hooks/useCampaignScorecardData'
 import { useFilters } from '../contexts/FilterContext'
 import type { ClientBubbleData } from '../types/database'
+
+const STATUS_OPTIONS: { value: CampaignStatus | 'all'; label: string; color: string }[] = [
+  { value: 'all', label: 'All Statuses', color: 'text-slate-400' },
+  { value: 'active', label: 'Active', color: 'text-green-400' },
+  { value: 'paused', label: 'Paused', color: 'text-yellow-400' },
+  { value: 'completed', label: 'Completed', color: 'text-slate-500' },
+]
 
 // Component to display individual client scorecard
 function ClientScorecard({ 
@@ -87,22 +92,19 @@ export default function PerformanceOverview() {
   const navigate = useNavigate()
   
   // Filter state
-  const [selectedCampaigns, setSelectedCampaigns] = useState<string[]>([])
   const [clientSearchQuery, setClientSearchQuery] = useState('')
   const [campaignSearchQuery, setCampaignSearchQuery] = useState('')
+  const [selectedStatus, setSelectedStatus] = useState<CampaignStatus | 'all'>('all')
+  const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false)
   const [isConfigureModalOpen, setIsConfigureModalOpen] = useState(false)
   
   // Determine if we're in client view mode
   const isClientView = !!selectedClient
   
-  // Fetch data
-  const { campaigns } = useCampaigns()
-  
   // Fetch client data (for all clients view)
   const { clientData, scorecardData, loading: clientsLoading, error: clientsError, refetch } = usePerformanceData({
     startDate: dateRange.start,
     endDate: dateRange.end,
-    campaigns: selectedCampaigns.length > 0 ? selectedCampaigns : undefined,
   })
   
   // Fetch campaign data (for single client view)
@@ -117,20 +119,30 @@ export default function PerformanceOverview() {
     client.client.toLowerCase().includes(clientSearchQuery.toLowerCase())
   )
   
-  // Filter campaign data based on search query
-  const filteredCampaignData = campaignScorecards.filter(campaign =>
-    campaign.campaignName.toLowerCase().includes(campaignSearchQuery.toLowerCase())
-  )
+  // Filter campaign data based on search query and status
+  const filteredCampaignData = campaignScorecards.filter(campaign => {
+    const matchesSearch = campaign.campaignName.toLowerCase().includes(campaignSearchQuery.toLowerCase())
+    const matchesStatus = selectedStatus === 'all' || campaign.status === selectedStatus
+    return matchesSearch && matchesStatus
+  })
+  
+  // Count campaigns by status
+  const statusCounts = {
+    all: campaignScorecards.length,
+    active: campaignScorecards.filter(c => c.status === 'active').length,
+    paused: campaignScorecards.filter(c => c.status === 'paused').length,
+    completed: campaignScorecards.filter(c => c.status === 'completed').length,
+  }
 
   // Determine loading and error states
   const loading = isClientView ? campaignsLoading : clientsLoading
   const error = isClientView ? campaignsError : clientsError
 
-  // Handle clear campaign filter (client and date filters are global)
+  // Handle clear search
   const handleClear = () => {
-    setSelectedCampaigns([])
     setClientSearchQuery('')
     setCampaignSearchQuery('')
+    setSelectedStatus('all')
   }
 
   // Handle client click - navigate to client detail view
@@ -162,44 +174,82 @@ export default function PerformanceOverview() {
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex flex-wrap items-center gap-4">
             {!isClientView && (
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-white/50" size={18} />
+                <input
+                  type="text"
+                  placeholder="Search clients..."
+                  value={clientSearchQuery}
+                  onChange={(e) => setClientSearchQuery(e.target.value)}
+                  className="pl-10 pr-4 py-2 text-sm bg-rillation-bg border border-rillation-border rounded-lg text-white placeholder:text-white/40 focus:outline-none focus:border-rillation-purple w-64"
+                />
+              </div>
+            )}
+            {isClientView && (
               <>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-rillation-text-muted">CAMPAIGN</span>
-                  <CampaignFilter
-                    campaigns={campaigns}
-                    selectedCampaigns={selectedCampaigns}
-                    onChange={setSelectedCampaigns}
-                  />
+                {/* Status Filter Dropdown */}
+                <div className="relative">
+                  <button
+                    onClick={() => setIsStatusDropdownOpen(!isStatusDropdownOpen)}
+                    className="flex items-center gap-2 px-3 py-1.5 text-xs bg-rillation-card border border-rillation-border rounded-lg text-rillation-text hover:border-rillation-text transition-colors"
+                  >
+                    <span className={STATUS_OPTIONS.find(s => s.value === selectedStatus)?.color}>
+                      {STATUS_OPTIONS.find(s => s.value === selectedStatus)?.label}
+                    </span>
+                    <span className="text-slate-500">
+                      ({statusCounts[selectedStatus]})
+                    </span>
+                    <ChevronDown size={14} className={`transition-transform ${isStatusDropdownOpen ? 'rotate-180' : ''}`} />
+                  </button>
+                  
+                  <AnimatePresence>
+                    {isStatusDropdownOpen && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -8 }}
+                        className="absolute top-full left-0 mt-1 bg-rillation-card border border-rillation-border rounded-lg shadow-xl z-50 min-w-[160px] overflow-hidden"
+                      >
+                        {STATUS_OPTIONS.map((option) => (
+                          <button
+                            key={option.value}
+                            onClick={() => {
+                              setSelectedStatus(option.value)
+                              setIsStatusDropdownOpen(false)
+                            }}
+                            className={`w-full flex items-center justify-between px-3 py-2 text-xs hover:bg-rillation-bg transition-colors ${
+                              selectedStatus === option.value ? 'bg-rillation-bg' : ''
+                            }`}
+                          >
+                            <span className={option.color}>{option.label}</span>
+                            <span className="text-slate-500">
+                              {statusCounts[option.value]}
+                            </span>
+                          </button>
+                        ))}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
+                
+                {/* Campaign Search */}
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-rillation-text-muted" size={16} />
                   <input
                     type="text"
-                    placeholder="Search clients..."
-                    value={clientSearchQuery}
-                    onChange={(e) => setClientSearchQuery(e.target.value)}
+                    placeholder="Search campaigns..."
+                    value={campaignSearchQuery}
+                    onChange={(e) => setCampaignSearchQuery(e.target.value)}
                     className="pl-10 pr-4 py-1.5 text-xs bg-rillation-card border border-rillation-border rounded-lg text-rillation-text focus:outline-none focus:border-rillation-text w-48"
                   />
                 </div>
               </>
             )}
-            {isClientView && (
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-rillation-text-muted" size={16} />
-                <input
-                  type="text"
-                  placeholder="Search campaigns..."
-                  value={campaignSearchQuery}
-                  onChange={(e) => setCampaignSearchQuery(e.target.value)}
-                  className="pl-10 pr-4 py-1.5 text-xs bg-rillation-card border border-rillation-border rounded-lg text-rillation-text focus:outline-none focus:border-rillation-text w-48"
-                />
-              </div>
-            )}
           </div>
           <div className="flex items-center gap-2">
-            {!isClientView && (
+            {!isClientView && clientSearchQuery && (
               <Button variant="secondary" size="sm" onClick={handleClear}>
-                Clear Campaign Filter
+                Clear
               </Button>
             )}
             {isClientView && (
@@ -346,7 +396,7 @@ export default function PerformanceOverview() {
       )}
       {!loading && isClientView && campaignScorecards.length > 0 && filteredCampaignData.length === 0 && (
         <div className="text-center py-12 text-rillation-text-muted">
-          No campaigns match your search query.
+          No campaigns match your filters.
         </div>
       )}
 
