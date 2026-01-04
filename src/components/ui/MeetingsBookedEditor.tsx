@@ -149,6 +149,7 @@ export default function MeetingsBookedEditor({
 
       const { error } = await supabase
         .from('meetings_booked')
+        // @ts-expect-error - updateData matches the table schema
         .update(updateData)
         .eq('id', meeting.id)
 

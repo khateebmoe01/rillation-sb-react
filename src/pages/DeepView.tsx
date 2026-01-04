@@ -118,7 +118,7 @@ export default function DeepView() {
     })
   }
 
-  // Fetch replies data when panel is expanded - show UNIQUE leads only
+  // Fetch replies data when panel is expanded - show UNIQUE lead+campaign+client combinations only
   useEffect(() => {
     async function fetchRepliesData() {
       if (!expandedPanels.has('replies')) return
@@ -135,27 +135,31 @@ export default function DeepView() {
             .select('*')
             .gte('date_received', startStr)
           .lt('date_received', endStrNextDay)
-            .order('date_received', { ascending: false })
+            .order('date_received', { ascending: true }) // Ascending to get earliest first
 
           if (selectedClient) query = query.eq('client', selectedClient)
 
         const { data, error } = await query
         if (error) throw error
 
-        // Deduplicate by lead_id or from_email, keeping the most recent reply per lead
-        const seenLeads = new Map<string, any>()
+        // Deduplicate by lead+campaign_id+client, keeping the earliest reply per combination
+        const seenCombinations = new Map<string, any>()
         ;(data || []).forEach((reply: any) => {
-          const uniqueKey = reply.lead_id || reply.from_email || ''
-          if (!uniqueKey) return
+          const leadKey = reply.lead_id || reply.from_email || ''
+          if (!leadKey) return
           
-          // Only keep if we haven't seen this lead yet (first occurrence is most recent due to ordering)
-          if (!seenLeads.has(uniqueKey)) {
-            seenLeads.set(uniqueKey, reply)
+          // Create unique key combining lead + campaign + client
+          const uniqueKey = `${leadKey}||${reply.campaign_id || ''}||${reply.client || ''}`
+          
+          // Only keep if we haven't seen this combination yet (first occurrence is earliest due to ascending order)
+          if (!seenCombinations.has(uniqueKey)) {
+            seenCombinations.set(uniqueKey, reply)
           }
         })
         
-        // Convert to array and apply pagination
-        const uniqueReplies = Array.from(seenLeads.values())
+        // Convert to array, sort by date descending for display, and apply pagination
+        const uniqueReplies = Array.from(seenCombinations.values())
+          .sort((a, b) => new Date(b.date_received).getTime() - new Date(a.date_received).getTime())
         const totalUniqueCount = uniqueReplies.length
         const paginatedReplies = uniqueReplies.slice(offset, offset + PAGE_SIZE)
 

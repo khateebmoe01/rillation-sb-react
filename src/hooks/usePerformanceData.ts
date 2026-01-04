@@ -281,7 +281,7 @@ export function usePerformanceData({ startDate, endDate, campaigns }: UsePerform
           point.positiveReplies += row.interested || 0
         })
 
-        // Add replies data to chart (counting unique leads per day)
+        // Add replies data to chart (counting unique lead+campaign per day)
         const uniqueLeadsByDate = new Map<string, Set<string>>()
         
         clientReplies.forEach((reply) => {
@@ -304,8 +304,9 @@ export function usePerformanceData({ startDate, endDate, campaigns }: UsePerform
           
           const cat = (reply.category || '').toLowerCase()
           if (!cat.includes('out of office') && !cat.includes('ooo')) {
-            const uniqueKey = (reply as any).lead_id || (reply as any).from_email || ''
-            if (uniqueKey && !uniqueLeadsByDate.get(dateStr)!.has(uniqueKey)) {
+            const leadKey = (reply as any).lead_id || (reply as any).from_email || ''
+            const uniqueKey = `${leadKey}||${(reply as any).campaign_id || ''}`
+            if (leadKey && !uniqueLeadsByDate.get(dateStr)!.has(uniqueKey)) {
               uniqueLeadsByDate.get(dateStr)!.add(uniqueKey)
               const point = dateMap.get(dateStr)!
               point.replied += 1

@@ -182,7 +182,7 @@ export function useDeepInsights({ startDate, endDate, client }: UseDeepInsightsP
         }
       }
 
-      // Process replies data - count UNIQUE leads for each category
+      // Process replies data - count UNIQUE lead+campaign+client combinations for each category
       const categoryBreakdown: CategoryBreakdown = {
         interested: 0,
         notInterested: 0,
@@ -190,29 +190,32 @@ export function useDeepInsights({ startDate, endDate, client }: UseDeepInsightsP
         other: 0,
       }
 
-      // Track unique leads globally and by category
+      // Track unique lead+campaign+client combinations globally and by category
       const uniqueLeadsAll = new Set<string>()
       const uniqueLeadsInterested = new Set<string>()
       const uniqueLeadsNotInterested = new Set<string>()
       const uniqueLeadsOOO = new Set<string>()
       const uniqueLeadsOther = new Set<string>()
       
-      // Track unique leads by day
+      // Track unique combinations by day
       const uniqueLeadsByDay = new Map<string, Set<string>>()
       
-      // Track unique leads by campaign
+      // Track unique leads by campaign (for per-campaign stats, use just lead as unique key)
       const campaignRepliesMap = new Map<string, { totalSet: Set<string>; interestedSet: Set<string> }>()
 
       allReplies.forEach((reply: any) => {
-        const uniqueKey = reply.lead_id || reply.from_email || ''
-        if (!uniqueKey) return
+        const leadKey = reply.lead_id || reply.from_email || ''
+        if (!leadKey) return
+        
+        // Create unique key combining lead + campaign + client
+        const uniqueKey = `${leadKey}||${reply.campaign_id || ''}||${reply.client || ''}`
         
         const cat = (reply.category || '').toLowerCase()
         
-        // Track unique lead for overall count
+        // Track unique combination for overall count
         uniqueLeadsAll.add(uniqueKey)
         
-        // Category breakdown - track unique leads per category
+        // Category breakdown - track unique combinations per category
         if (cat === 'interested') {
           uniqueLeadsInterested.add(uniqueKey)
         } else if (cat === 'not interested') {
@@ -223,7 +226,7 @@ export function useDeepInsights({ startDate, endDate, client }: UseDeepInsightsP
           uniqueLeadsOther.add(uniqueKey)
         }
 
-        // Daily breakdown - track unique leads per day
+        // Daily breakdown - track unique combinations per day
         const dateKey = reply.date_received?.split('T')[0]
         if (dateKey) {
           if (!uniqueLeadsByDay.has(dateKey)) {
@@ -232,15 +235,15 @@ export function useDeepInsights({ startDate, endDate, client }: UseDeepInsightsP
           uniqueLeadsByDay.get(dateKey)!.add(uniqueKey)
         }
 
-        // Campaign performance - track unique leads per campaign
+        // Campaign performance - track unique leads per campaign (use just leadKey here since it's already per-campaign)
         const campaignId = reply.campaign_id || 'Unknown'
         if (!campaignRepliesMap.has(campaignId)) {
           campaignRepliesMap.set(campaignId, { totalSet: new Set(), interestedSet: new Set() })
         }
         const existing = campaignRepliesMap.get(campaignId)!
-        existing.totalSet.add(uniqueKey)
+        existing.totalSet.add(leadKey)
         if (cat === 'interested') {
-          existing.interestedSet.add(uniqueKey)
+          existing.interestedSet.add(leadKey)
         }
       })
       
@@ -250,7 +253,7 @@ export function useDeepInsights({ startDate, endDate, client }: UseDeepInsightsP
       categoryBreakdown.outOfOffice = uniqueLeadsOOO.size
       categoryBreakdown.other = uniqueLeadsOther.size
       
-      // Convert daily unique leads to counts
+      // Convert daily unique combinations to counts
       const repliesByDayMap = new Map<string, number>()
       uniqueLeadsByDay.forEach((leads, dateKey) => {
         repliesByDayMap.set(dateKey, leads.size)

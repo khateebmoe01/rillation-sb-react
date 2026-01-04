@@ -54,7 +54,7 @@ export default function CustomVariablesDiscovery() {
       const variableMap = new Map<string, { count: number; samples: Set<string> }>()
 
       for (const row of data || []) {
-        const customVars = row.custom_variables_jsonb
+        const customVars = (row as any).custom_variables_jsonb
         if (customVars && typeof customVars === 'object') {
           for (const [key, value] of Object.entries(customVars)) {
             const existing = variableMap.get(key) || { count: 0, samples: new Set() }
