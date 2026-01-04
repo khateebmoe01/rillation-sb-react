@@ -79,26 +79,20 @@ export function useQuickViewData({ startDate, endDate, client, campaigns }: UseQ
       let allRepliesData: any[] = []
       let repliesOffset = 0
       let hasMoreReplies = true
-      let totalRepliesCount = 0
 
       while (hasMoreReplies) {
         let allRepliesQuery = supabase
           .from('replies')
-          .select('category,date_received', { count: 'exact' })
+          .select('category,date_received,lead_id,from_email,campaign_id,client')
           .gte('date_received', startStr)
           .lt('date_received', endStrNextDay)
           .range(repliesOffset, repliesOffset + pageSize - 1)
 
         if (client) allRepliesQuery = allRepliesQuery.eq('client', client)
 
-        const { data: pageData, count, error: allRepliesError } = await allRepliesQuery
+        const { data: pageData, error: allRepliesError } = await allRepliesQuery
 
         if (allRepliesError) throw allRepliesError
-
-        // Get total count from first query
-        if (repliesOffset === 0 && count !== null) {
-          totalRepliesCount = count
-        }
 
         if (pageData && pageData.length > 0) {
           allRepliesData = allRepliesData.concat(pageData)
@@ -109,19 +103,41 @@ export function useQuickViewData({ startDate, endDate, client, campaigns }: UseQ
         }
       }
 
-      // Total replies = actual count
-      const totalReplies = totalRepliesCount || 0
-
       type ReplyRow = {
         category: string | null
         date_received: string | null
+        lead_id: string | null
+        from_email: string | null
+        campaign_id: string | null
+        client: string | null
       }
 
-      // Real replies = all replies EXCLUDING "Out Of Office"
-      const realReplies = (allRepliesData as ReplyRow[] | null)?.filter((r) => {
+      // Count UNIQUE lead+campaign+client combinations (a lead replying in 2 campaigns counts as 2)
+      const allRepliesSet = new Set<string>()
+      const realRepliesSet = new Set<string>()
+      
+      ;(allRepliesData as ReplyRow[] | null)?.forEach((r) => {
+        // Use lead_id if available, otherwise use from_email as unique identifier
+        const leadKey = r.lead_id || r.from_email || ''
+        if (!leadKey) return
+        
+        // Create unique key combining lead + campaign + client
+        const uniqueKey = `${leadKey}||${r.campaign_id || ''}||${r.client || ''}`
+        
+        // Count for total replies
+        allRepliesSet.add(uniqueKey)
+        
+        // Count for real replies (excluding OOO)
         const cat = (r.category || '').toLowerCase()
-        return !cat.includes('out of office') && !cat.includes('ooo') && cat !== 'out of office'
-      }).length || 0
+        if (!cat.includes('out of office') && !cat.includes('ooo') && cat !== 'out of office') {
+          realRepliesSet.add(uniqueKey)
+        }
+      })
+
+      // Total replies = unique lead+campaign+client combinations
+      const totalReplies = allRepliesSet.size
+      // Real replies = unique lead+campaign+client combinations (excluding OOO)
+      const realReplies = realRepliesSet.size
 
       // Fetch meetings booked using pagination
       // created_time is TIMESTAMPTZ, so use lt() with next day to include entire end date
@@ -194,7 +210,10 @@ export function useQuickViewData({ startDate, endDate, client, campaigns }: UseQ
         point.positiveReplies += row.interested || 0
       })
 
-      // Add replies data to chart from replies table
+      // Add replies data to chart from replies table (counting unique lead+campaign+client per day)
+      // Track unique combinations per date for chart data
+      const uniqueLeadsByDate = new Map<string, Set<string>>()
+      
       ;(allRepliesData as ReplyRow[] | null)?.forEach((reply) => {
         const dateStr = reply.date_received?.split('T')[0]
         if (dateStr) {
@@ -208,11 +227,20 @@ export function useQuickViewData({ startDate, endDate, client, campaigns }: UseQ
               meetings: 0,
             })
           }
-          const point = dateMap.get(dateStr)!
-          // Count non-OOO replies
+          if (!uniqueLeadsByDate.has(dateStr)) {
+            uniqueLeadsByDate.set(dateStr, new Set())
+          }
+          
+          // Count non-OOO replies - only count unique lead+campaign+client per day
           const cat = (reply.category || '').toLowerCase()
           if (!cat.includes('out of office') && !cat.includes('ooo')) {
-            point.replied += 1
+            const leadKey = reply.lead_id || reply.from_email || ''
+            const uniqueKey = `${leadKey}||${reply.campaign_id || ''}||${reply.client || ''}`
+            if (leadKey && !uniqueLeadsByDate.get(dateStr)!.has(uniqueKey)) {
+              uniqueLeadsByDate.get(dateStr)!.add(uniqueKey)
+              const point = dateMap.get(dateStr)!
+              point.replied += 1
+            }
           }
           // Note: positiveReplies (Interested) is now calculated from campaign_reporting.interested
           // in the campaign data loop above, not from replies table

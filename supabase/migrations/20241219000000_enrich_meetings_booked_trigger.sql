@@ -36,8 +36,10 @@ BEGIN
 
   -- Update the new row with data from engaged_leads
   -- Overwrite strategy: Always use values from engaged_leads (even if NULL)
-  -- Basic lead info
-  NEW.full_name = lead_record.full_name;
+  -- Basic lead info (engaged_leads has first_name/last_name, not full_name)
+  NEW.full_name = TRIM(COALESCE(lead_record.first_name, '') || ' ' || COALESCE(lead_record.last_name, ''));
+  NEW.first_name = lead_record.first_name;
+  NEW.last_name = lead_record.last_name;
   NEW.company = lead_record.company;
 
   -- Firmographic columns

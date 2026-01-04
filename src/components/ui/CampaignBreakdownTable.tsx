@@ -47,24 +47,27 @@ function StatusBadge({ status }: { status: 'active' | 'completed' | 'unknown' })
 }
 
 // Sequence row component
-function SequenceRow({ sequence }: { sequence: SequenceStat }) {
+function SequenceRow({ sequence, index }: { sequence: SequenceStat; index?: number }) {
   return (
     <motion.div
-      initial={{ opacity: 0, height: 0 }}
-      animate={{ opacity: 1, height: 'auto' }}
-      exit={{ opacity: 0, height: 0 }}
+      initial={{ opacity: 0, x: -10 }}
+      animate={{ 
+        opacity: 1, 
+        x: 0,
+        transition: { delay: (index || 0) * 0.05, duration: 0.2 }
+      }}
       className="grid grid-cols-8 gap-4 px-4 py-2 bg-slate-800/30 border-l-2 border-violet-500/50 ml-4 text-sm"
     >
       <div className="col-span-2 flex items-center gap-2">
         <span className="text-violet-400 font-medium">Step {sequence.step_number}:</span>
-        <span className="text-slate-300">{sequence.step_name}</span>
+        <span className="text-white">{sequence.step_name}</span>
       </div>
-      <div className="text-center text-slate-300">{formatNumber(sequence.sent)}</div>
-      <div className="text-center text-slate-400">—</div>
-      <div className="text-center text-slate-300">{formatNumber(sequence.total_replies)}</div>
-      <div className="text-center text-slate-400">—</div>
-      <div className="text-center text-slate-300">{formatNumber(sequence.positive_replies)}</div>
-      <div className="text-center text-slate-300">{formatNumber(sequence.meetings_booked)}</div>
+      <div className="text-center text-white">{formatNumber(sequence.sent)}</div>
+      <div className="text-center text-white">—</div>
+      <div className="text-center text-white">{formatNumber(sequence.total_replies)}</div>
+      <div className="text-center text-white">—</div>
+      <div className="text-center text-white">{formatNumber(sequence.positive_replies)}</div>
+      <div className="text-center text-white">{formatNumber(sequence.meetings_booked)}</div>
     </motion.div>
   )
 }
@@ -148,23 +151,41 @@ function CampaignRow({
       </motion.div>
 
       {/* Expandable sequence section */}
-      <AnimatePresence>
+      <AnimatePresence initial={false}>
         {isExpanded && (
           <motion.div
             initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.2 }}
-            className="bg-slate-900/50"
+            animate={{ 
+              opacity: 1, 
+              height: 'auto',
+              transition: {
+                height: { duration: 0.3, ease: [0.4, 0, 0.2, 1] },
+                opacity: { duration: 0.2, delay: 0.1 }
+              }
+            }}
+            exit={{ 
+              opacity: 0, 
+              height: 0,
+              transition: {
+                height: { duration: 0.2, ease: [0.4, 0, 0.2, 1] },
+                opacity: { duration: 0.1 }
+              }
+            }}
+            className="bg-slate-900/50 overflow-hidden"
           >
             {seqLoading ? (
               <div className="px-8 py-4 text-center">
                 <div className="w-4 h-4 border-2 border-violet-500 border-t-transparent rounded-full animate-spin mx-auto" />
               </div>
             ) : sequenceData.length > 0 ? (
-              <div className="py-2">
+              <motion.div 
+                className="py-2"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.15 }}
+              >
                 {/* Sequence header */}
-                <div className="grid grid-cols-8 gap-4 px-4 py-1 text-xs text-slate-500 ml-4">
+                <div className="grid grid-cols-8 gap-4 px-4 py-1 text-xs text-white ml-4">
                   <div className="col-span-2">Sequence Step</div>
                   <div className="text-center">Sent</div>
                   <div className="text-center">Prospects</div>
@@ -173,12 +194,12 @@ function CampaignRow({
                   <div className="text-center">Positive</div>
                   <div className="text-center">Meetings</div>
                 </div>
-                {sequenceData.map((seq) => (
-                  <SequenceRow key={seq.step_number} sequence={seq} />
+                {sequenceData.map((seq, idx) => (
+                  <SequenceRow key={seq.step_number} sequence={seq} index={idx} />
                 ))}
-              </div>
+              </motion.div>
             ) : (
-              <div className="px-8 py-4 text-center text-slate-500 text-sm">
+              <div className="px-8 py-4 text-center text-white text-sm">
                 No sequence data available
               </div>
             )}
@@ -326,71 +347,71 @@ export default function CampaignBreakdownTable({ client, onCampaignsSelected }: 
 
   return (
     <div className="space-y-3">
-      {/* Filter and Sort Controls */}
-      <div className="flex items-center justify-between gap-4 flex-wrap">
-        {/* Status Filter */}
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-rillation-text-muted">Status:</span>
-          <div className="flex gap-1">
-            {(['all', 'completed', 'active'] as StatusFilter[]).map((status) => (
-              <motion.button
-                key={status}
-                onClick={() => setStatusFilter(status)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                  statusFilter === status
-                    ? 'bg-slate-700 text-white'
-                    : 'bg-slate-800/50 text-slate-400 hover:bg-slate-700/50'
-                }`}
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-              >
-                {status === 'all' ? 'All' : status.charAt(0).toUpperCase() + status.slice(1)}
-                <span className="ml-1.5 text-slate-500">({statusCounts[status]})</span>
-              </motion.button>
-            ))}
-          </div>
-        </div>
-
-        {/* Sort Controls */}
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-rillation-text-muted">Sort by:</span>
-          <div className="flex gap-1">
-            {[
-              { field: 'sent' as SortField, label: 'Emails Sent' },
-              { field: 'meetings' as SortField, label: 'Meetings' },
-              { field: 'performance' as SortField, label: 'Performance' },
-            ].map(({ field, label }) => (
-              <motion.button
-                key={field}
-                onClick={() => setSortField(field)}
-                className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                  sortField === field
-                    ? 'bg-violet-600/30 text-violet-300 border border-violet-500/30'
-                    : 'bg-slate-800/50 text-slate-400 hover:bg-slate-700/50'
-                }`}
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-              >
-                <ArrowUpDown size={12} />
-                {label}
-              </motion.button>
-            ))}
-          </div>
-        </div>
-      </div>
+      {/* Title - Outside the box */}
+      <h2 className="text-xl font-bold text-white">Campaign Performance</h2>
 
       {/* Custom Campaign Table with Expandable Rows */}
       <div className="bg-rillation-card rounded-xl border border-rillation-border overflow-hidden">
-        {/* Header */}
-        <div className="px-4 py-3 border-b border-slate-700/50 flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-white">Campaign Performance</h3>
-          <span className="text-xs text-slate-500">
+        {/* Filter and Sort Controls - Inside the box */}
+        <div className="px-4 py-3 border-b border-slate-700/50 flex items-center justify-between gap-4 flex-wrap">
+          {/* Status Filter */}
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-white">Status:</span>
+            <div className="flex gap-1">
+              {(['all', 'completed', 'active'] as StatusFilter[]).map((status) => (
+                <motion.button
+                  key={status}
+                  onClick={() => setStatusFilter(status)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                    statusFilter === status
+                      ? 'bg-slate-700 text-white'
+                      : 'bg-slate-800/50 text-slate-400 hover:bg-slate-700/50'
+                  }`}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  {status === 'all' ? 'All' : status.charAt(0).toUpperCase() + status.slice(1)}
+                  <span className="ml-1.5 text-slate-500">({statusCounts[status]})</span>
+                </motion.button>
+              ))}
+            </div>
+          </div>
+
+          {/* Sort Controls */}
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-white">Sort by:</span>
+            <div className="flex gap-1">
+              {[
+                { field: 'sent' as SortField, label: 'Emails Sent' },
+                { field: 'meetings' as SortField, label: 'Meetings' },
+                { field: 'performance' as SortField, label: 'Performance' },
+              ].map(({ field, label }) => (
+                <motion.button
+                  key={field}
+                  onClick={() => setSortField(field)}
+                  className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                    sortField === field
+                      ? 'bg-violet-600/30 text-violet-300 border border-violet-500/30'
+                      : 'bg-slate-800/50 text-slate-400 hover:bg-slate-700/50'
+                  }`}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  <ArrowUpDown size={12} />
+                  {label}
+                </motion.button>
+              ))}
+            </div>
+          </div>
+
+          {/* Helper text */}
+          <span className="text-xs text-white/60 ml-auto">
             Click a campaign to view sequence breakdown
           </span>
         </div>
 
         {/* Table Header */}
-        <div className="grid grid-cols-[auto_2fr_1fr_1fr_1fr_1fr_1fr_1fr_1fr_1fr] gap-3 px-3 py-2 bg-slate-800/50 text-xs text-slate-400 font-medium border-b border-slate-700/30">
+        <div className="grid grid-cols-[auto_2fr_1fr_1fr_1fr_1fr_1fr_1fr_1fr_1fr] gap-3 px-3 py-2 bg-slate-800/50 text-xs text-white font-medium border-b border-slate-700/30">
           <div className="flex items-center justify-center">
             <input
               type="checkbox"
@@ -445,7 +466,7 @@ export default function CampaignBreakdownTable({ client, onCampaignsSelected }: 
         {/* Pagination */}
         {totalPages > 1 && (
           <div className="px-4 py-3 border-t border-slate-700/50 flex items-center justify-between">
-            <span className="text-xs text-slate-500">
+            <span className="text-xs text-white">
               Showing {offset + 1}-{Math.min(offset + PAGE_SIZE, totalCount)} of {totalCount} campaigns
             </span>
             <div className="flex items-center gap-2">
@@ -455,14 +476,14 @@ export default function CampaignBreakdownTable({ client, onCampaignsSelected }: 
                 className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
                   page === 1
                     ? 'bg-slate-800/30 text-slate-600 cursor-not-allowed'
-                    : 'bg-slate-700/50 text-slate-300 hover:bg-slate-700'
+                    : 'bg-slate-700/50 text-white hover:bg-slate-700'
                 }`}
                 whileHover={page !== 1 ? { scale: 1.02 } : {}}
                 whileTap={page !== 1 ? { scale: 0.98 } : {}}
               >
                 <ChevronUp size={14} className="rotate-[-90deg]" />
               </motion.button>
-              <span className="text-xs text-slate-400">
+              <span className="text-xs text-white">
                 Page {page} of {totalPages}
               </span>
               <motion.button
@@ -471,7 +492,7 @@ export default function CampaignBreakdownTable({ client, onCampaignsSelected }: 
                 className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
                   page === totalPages
                     ? 'bg-slate-800/30 text-slate-600 cursor-not-allowed'
-                    : 'bg-slate-700/50 text-slate-300 hover:bg-slate-700'
+                    : 'bg-slate-700/50 text-white hover:bg-slate-700'
                 }`}
                 whileHover={page !== totalPages ? { scale: 1.02 } : {}}
                 whileTap={page !== totalPages ? { scale: 0.98 } : {}}

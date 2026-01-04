@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Settings, Search, Eye, ChevronDown } from 'lucide-react'
+import { Settings, Search, Eye, ChevronDown, ArrowLeft, Sparkles } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import Button from '../components/ui/Button'
@@ -88,7 +88,7 @@ function CampaignScorecard({
 
 export default function PerformanceOverview() {
   // Use global filters
-  const { dateRange, selectedClient } = useFilters()
+  const { dateRange, selectedClient, setSelectedClient } = useFilters()
   const navigate = useNavigate()
   
   // Filter state
@@ -234,13 +234,13 @@ export default function PerformanceOverview() {
                 
                 {/* Campaign Search */}
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-rillation-text-muted" size={16} />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-white" size={16} />
                   <input
                     type="text"
                     placeholder="Search campaigns..."
                     value={campaignSearchQuery}
                     onChange={(e) => setCampaignSearchQuery(e.target.value)}
-                    className="pl-10 pr-4 py-1.5 text-xs bg-rillation-card border border-rillation-border rounded-lg text-rillation-text focus:outline-none focus:border-rillation-text w-48"
+                    className="pl-10 pr-4 py-1.5 text-xs bg-rillation-card border border-rillation-border rounded-lg text-white focus:outline-none focus:border-white w-48"
                   />
                 </div>
               </>
@@ -253,10 +253,45 @@ export default function PerformanceOverview() {
               </Button>
             )}
             {isClientView && (
-              <Button variant="primary" size="sm" onClick={handleViewClientInsights}>
-                <Eye size={14} />
-                View Client Insights
-              </Button>
+              <>
+                {/* Back to All Clients Button */}
+                <motion.button
+                  onClick={() => setSelectedClient('')}
+                  className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-slate-700/50 text-white border border-slate-600 hover:bg-slate-600/50 hover:border-slate-500 transition-colors"
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  whileHover={{ scale: 1.02, x: -2 }}
+                  whileTap={{ scale: 0.98 }}
+                  transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+                >
+                  <motion.div
+                    animate={{ x: [0, -3, 0] }}
+                    transition={{ duration: 1.5, repeat: Infinity, ease: 'easeInOut' }}
+                  >
+                    <ArrowLeft size={16} />
+                  </motion.div>
+                  Back to All Clients
+                </motion.button>
+
+                {/* Get Deeper Insights Button */}
+                <motion.button
+                  onClick={handleViewClientInsights}
+                  className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-gradient-to-r from-violet-600 to-purple-600 text-white border border-violet-500/50 hover:from-violet-500 hover:to-purple-500 shadow-lg shadow-violet-500/20"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  whileHover={{ scale: 1.02, boxShadow: '0 0 20px rgba(139, 92, 246, 0.4)' }}
+                  whileTap={{ scale: 0.98 }}
+                  transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+                >
+                  <motion.div
+                    animate={{ rotate: [0, 15, -15, 0], scale: [1, 1.1, 1] }}
+                    transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+                  >
+                    <Sparkles size={16} />
+                  </motion.div>
+                  Get Deeper Insights
+                </motion.button>
+              </>
             )}
             <Button variant={isClientView ? "secondary" : "primary"} size="sm" onClick={handleConfigureTargetsClick}>
               <Settings size={14} />
@@ -274,7 +309,7 @@ export default function PerformanceOverview() {
           className="flex items-center gap-3"
         >
           <h2 className="text-xl font-bold text-white">{selectedClient}</h2>
-          <span className="text-sm text-slate-400">
+          <span className="text-sm text-white">
             {filteredCampaignData.length} campaign{filteredCampaignData.length !== 1 ? 's' : ''}
           </span>
         </motion.div>
@@ -380,22 +415,22 @@ export default function PerformanceOverview() {
 
       {/* Empty States */}
       {!loading && !isClientView && clientData.length === 0 && (
-        <div className="text-center py-12 text-rillation-text-muted">
+        <div className="text-center py-12 text-white">
           No client data found for the selected filters.
         </div>
       )}
       {!loading && !isClientView && clientData.length > 0 && filteredClientData.length === 0 && (
-        <div className="text-center py-12 text-rillation-text-muted">
+        <div className="text-center py-12 text-white">
           No clients match your search query.
         </div>
       )}
       {!loading && isClientView && campaignScorecards.length === 0 && (
-        <div className="text-center py-12 text-rillation-text-muted">
+        <div className="text-center py-12 text-white">
           No campaign data found for {selectedClient}.
         </div>
       )}
       {!loading && isClientView && campaignScorecards.length > 0 && filteredCampaignData.length === 0 && (
-        <div className="text-center py-12 text-rillation-text-muted">
+        <div className="text-center py-12 text-white">
           No campaigns match your filters.
         </div>
       )}

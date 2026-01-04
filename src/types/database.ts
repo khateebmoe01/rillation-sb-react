@@ -111,12 +111,21 @@ export interface MeetingBooked {
   campaign_id: string
   email: string
   // Firmographic fields
+  company_size?: string
   annual_revenue?: string
   industry?: string
   company_hq_state?: string
   company_hq_city?: string
   company_hq_country?: string
   year_founded?: string
+  business_model?: string
+  funding_stage?: string
+  tech_stack?: string[]
+  is_hiring?: boolean
+  growth_score?: string
+  // JSONB column for all custom variables (future-proofing)
+  custom_variables_jsonb?: Record<string, any>
+  created_at?: string
 }
 
 export interface Client {

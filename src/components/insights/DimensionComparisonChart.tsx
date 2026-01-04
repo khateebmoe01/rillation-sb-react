@@ -25,9 +25,19 @@ interface DimensionComparisonChartProps {
 }
 
 const METRIC_CONFIG = {
-  replyRate: { label: 'Reply Rate', key: 'positive' as const }, // Using positive as closest proxy
-  positiveRate: { label: 'Positive Rate', key: 'positive' as const },
-  bookingRate: { label: 'Booking Rate', key: 'booked' as const },
+  replyRate: { label: 'Reply Rate', field: 'engaged' as const },
+  positiveRate: { label: 'Positive Rate', field: 'positive' as const },
+  bookingRate: { label: 'Booking Rate', field: 'booked' as const },
+}
+
+// Calculate rate for an item based on metric
+function calculateRate(
+  item: { leadsIn: number; engaged: number; positive: number; booked: number },
+  metric: 'replyRate' | 'positiveRate' | 'bookingRate'
+): number {
+  if (item.leadsIn === 0) return 0
+  const field = METRIC_CONFIG[metric].field
+  return (item[field] / item.leadsIn) * 100
 }
 
 // Generate combined data for scatter chart
@@ -45,22 +55,15 @@ function generateCombinedData(
     color: string
   }[] = []
 
-  const metricKey = METRIC_CONFIG[metric].key
-
   // Take top 8 from each dimension to avoid overcrowding
   const xItems = xDimension.items.slice(0, 8)
   const yItems = yDimension.items.slice(0, 8)
 
-  // Helper to get metric value safely
-  const getMetricValue = (item: { positive: number; booked: number }, key: 'positive' | 'booked'): number => {
-    return item[key] || 0
-  }
-
   xItems.forEach(xItem => {
-    const xRate = xItem.leadsIn > 0 ? (getMetricValue(xItem, metricKey) / xItem.leadsIn) * 100 : 0
+    const xRate = calculateRate(xItem, metric)
     
     yItems.forEach(yItem => {
-      const yRate = yItem.leadsIn > 0 ? (getMetricValue(yItem, metricKey) / yItem.leadsIn) * 100 : 0
+      const yRate = calculateRate(yItem, metric)
       
       // Combined score for color intensity
       const avgRate = (xRate + yRate) / 2
@@ -85,22 +88,23 @@ function generateCombinedData(
 }
 
 // Custom tooltip for scatter chart
-function CustomTooltip({ active, payload }: any) {
+function CustomTooltip({ active, payload, metric }: any) {
   if (active && payload && payload.length) {
     const data = payload[0].payload
+    const metricLabel = metric ? METRIC_CONFIG[metric as keyof typeof METRIC_CONFIG]?.label : 'Rate'
     return (
       <div className="bg-slate-900 border border-slate-700 rounded-lg p-3 shadow-xl">
-        <div className="text-xs text-slate-400 mb-1">Combination</div>
+        <div className="text-xs text-white mb-1">Combination</div>
         <div className="text-sm font-medium text-white mb-2">
           {data.xValue} × {data.yValue}
         </div>
         <div className="space-y-1 text-xs">
           <div className="flex justify-between gap-4">
-            <span className="text-slate-400">X Rate:</span>
+            <span className="text-white">X {metricLabel}:</span>
             <span className="text-white font-mono">{data.xRate.toFixed(1)}%</span>
           </div>
           <div className="flex justify-between gap-4">
-            <span className="text-slate-400">Y Rate:</span>
+            <span className="text-white">Y {metricLabel}:</span>
             <span className="text-white font-mono">{data.yRate.toFixed(1)}%</span>
           </div>
         </div>
@@ -245,7 +249,7 @@ export default function DimensionComparisonChart({
               }}
             />
             <ZAxis type="number" dataKey="size" range={[50, 400]} />
-            <Tooltip content={<CustomTooltip />} />
+            <Tooltip content={<CustomTooltip metric={metric} />} />
             <Scatter data={scatterData}>
               {scatterData.map((entry, index) => (
                 <Cell key={`cell-${index}`} fill={entry.color} fillOpacity={0.7} />

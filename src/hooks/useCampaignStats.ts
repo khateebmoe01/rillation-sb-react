@@ -148,7 +148,7 @@ export function useCampaignStats({ startDate, endDate, client, page, pageSize }:
         // If campaign_name column doesn't exist, we'll use campaign_id for matching
         let repliesQuery = supabase
           .from('replies')
-          .select('campaign_id, client, category, date_received')
+          .select('campaign_id, client, category, date_received, lead_id, from_email')
           .gte('date_received', startStr)
           .lt('date_received', endStrNextDay)
           .range(repliesOffset, repliesOffset + batchSize - 1)
@@ -174,6 +174,8 @@ export function useCampaignStats({ startDate, endDate, client, page, pageSize }:
         client: string | null
         category: string | null
         date_received: string | null
+        lead_id: string | null
+        from_email: string | null
       }
 
       // Fetch ALL meetings booked using pagination
@@ -246,10 +248,13 @@ export function useCampaignStats({ startDate, endDate, client, page, pageSize }:
         }
       })
 
-      // Count replies by campaign and create campaign entries for replies-only campaigns
+      // Count UNIQUE leads by campaign and create campaign entries for replies-only campaigns
       // Use campaign_id||client as the key directly to match campaignStatsMap structure
       const targetCampaignClient = client || 'Sb P' // Use filtered client or default
       let targetCampaignReplies: any[] = []
+      
+      // Track unique leads per campaign for deduplication
+      const uniqueLeadsByCampaignKey = new Map<string, { all: Set<string>, real: Set<string> }>()
       
       ;(repliesData as ReplyRow[] | null)?.forEach((reply) => {
         if (!reply.campaign_id || !reply.client) return
@@ -288,16 +293,33 @@ export function useCampaignStats({ startDate, endDate, client, page, pageSize }:
           })
         }
 
-        const stat = campaignStatsMap.get(key)!
-        // Count ALL replies (including OOO) for totalReplies
-        // No need to check client match since key already includes client
-        stat.totalReplies += 1
-
+        // Initialize tracking for this campaign key if needed
+        if (!uniqueLeadsByCampaignKey.has(key)) {
+          uniqueLeadsByCampaignKey.set(key, { all: new Set(), real: new Set() })
+        }
+        
+        const uniqueKey = reply.lead_id || reply.from_email || ''
+        if (!uniqueKey) return
+        
+        const tracking = uniqueLeadsByCampaignKey.get(key)!
         const cat = (reply.category || '').toLowerCase()
         const isOOO = cat.includes('out of office') || cat.includes('ooo')
-        // Exclude OOO for realReplies
+        
+        // Track unique lead for total replies
+        tracking.all.add(uniqueKey)
+        
+        // Track unique lead for real replies (excluding OOO)
         if (!isOOO) {
-          stat.realReplies += 1
+          tracking.real.add(uniqueKey)
+        }
+      })
+      
+      // Apply unique counts to campaign stats
+      uniqueLeadsByCampaignKey.forEach((tracking, key) => {
+        const stat = campaignStatsMap.get(key)
+        if (stat) {
+          stat.totalReplies = tracking.all.size
+          stat.realReplies = tracking.real.size
         }
       })
       

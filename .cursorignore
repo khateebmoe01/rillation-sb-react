@@ -1,0 +1,11 @@
+# Allow .env file to be visible to Cursor
+!.env
+!.env.local
+
+# Still ignore other sensitive files
+node_modules/
+dist/
+*.sw?
+.DS_Store
+
+

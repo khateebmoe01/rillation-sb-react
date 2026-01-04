@@ -272,7 +272,8 @@ async function getLeadsWithTag(
 ): Promise<LeadData[]> {
   const allLeads: LeadData[] = []
   let page = 1
-  const perPage = 200
+  // Bison API caps at 15 per page regardless of per_page param
+  const perPage = 100
 
   while (true) {
     // Build query string manually for array parameters
@@ -311,22 +312,18 @@ async function getLeadsWithTag(
 
       allLeads.push(...leads)
 
-      // Check pagination
+      // Use meta.last_page for reliable pagination (Bison caps at ~15 per page)
       if (typeof data === 'object' && data.meta) {
-        const currentPage = data.meta.current_page || page
-        const lastPage = data.meta.last_page
-        if (lastPage && currentPage >= lastPage) {
+        const lastPage = data.meta.last_page || 1
+        console.log(`Fetched page ${page}/${lastPage} - ${leads.length} leads (total: ${allLeads.length})`)
+        if (page >= lastPage) {
           break
         }
-      }
-
-      // Check links for pagination
-      if (typeof data === 'object' && data.links && !data.links.next) {
-        break
-      }
-
-      if (leads.length < perPage) {
-        break
+      } else {
+        // Fallback: check if there's a next link
+        if (typeof data === 'object' && data.links && !data.links.next) {
+          break
+        }
       }
 
       page++
@@ -410,19 +407,28 @@ function prepareLeadRecord(leadData: LeadData, workspaceName: string): Record<st
     leadRecord.full_name = null
   }
 
-  // Parse datetime fields
-  const createdTime = parseDatetime(leadData.created_at || leadData.created_time)
-  leadRecord.created_time = createdTime || null
+  // created_time is set to NOW() when inserting new records
+  // This field is excluded from updates to preserve the original insert timestamp
+  leadRecord.created_time = new Date().toISOString()
 
   // Extract ALL custom variables and map them to database columns
   const customVars = leadData.custom_variables || []
   const processedColumns = new Set<string>()
+  
+  // Store ALL custom variables in JSONB for future-proofing and discovery
+  // This ensures no data loss for unmapped variables
+  const customVarsJsonb: Record<string, any> = {}
   
   if (Array.isArray(customVars)) {
     for (const varItem of customVars) {
       if (typeof varItem === 'object' && varItem.name) {
         const varName = varItem.name
         const varValue = varItem.value || null
+        
+        // Always store in JSONB (preserves all custom variables)
+        if (varValue !== null && varValue !== '') {
+          customVarsJsonb[varName] = varValue
+        }
         
         // Try to find matching column using normalized name
         const normalizedName = normalizeVarName(varName)
@@ -441,6 +447,11 @@ function prepareLeadRecord(leadData: LeadData, workspaceName: string): Record<st
       }
     }
   }
+  
+  // Add JSONB column with all custom variables
+  leadRecord.custom_variables_jsonb = Object.keys(customVarsJsonb).length > 0 
+    ? customVarsJsonb 
+    : {}
 
   // Extract campaign information from lead_campaign_data (fallback if not in custom variables)
   const leadCampaignData = leadData.lead_campaign_data || []
@@ -516,12 +527,123 @@ async function getExistingEmailClientPairs(supabase: any): Promise<Set<string>> 
   }
 }
 
+// Background sync function - runs after response is sent
+async function runSyncInBackground() {
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')!
+  const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+  const supabase = createClient(supabaseUrl, supabaseServiceKey)
+
+  try {
+    const { data: clients } = await supabase
+      .from('Clients')
+      .select('Business, "Api Key - Bison"')
+
+    const workspaces: Workspace[] = (clients || [])
+      .filter((c: any) => c.Business && c['Api Key - Bison'])
+      .map((c: any) => ({ name: c.Business, token: c['Api Key - Bison'] }))
+
+    const now = new Date()
+    const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000)
+    const sinceDate = yesterday.toISOString()
+
+    const existingPairs = await getExistingEmailClientPairs(supabase)
+
+    let totalProcessed = 0
+    let totalNew = 0
+    let totalUpdated = 0
+
+    for (const workspace of workspaces) {
+      try {
+        console.log(`Processing workspace: ${workspace.name}`)
+        const tags = await getTagsForWorkspace(workspace.token)
+        const meetingBookedTagId = findMeetingBookedTag(tags)
+
+        if (!meetingBookedTagId) {
+          console.log(`No Meeting Booked tag for ${workspace.name}`)
+          continue
+        }
+
+        let leads = await getLeadsWithTag(workspace.token, meetingBookedTagId, sinceDate)
+        if (leads.length === 0) {
+          leads = await getLeadsWithTag(workspace.token, meetingBookedTagId)
+        }
+
+        console.log(`Found ${leads.length} leads for ${workspace.name}`)
+
+        for (const lead of leads) {
+          if (!lead.email) continue
+
+          totalProcessed++
+          const pairKey = createEmailClientKey(lead.email, workspace.name)
+          const isExisting = existingPairs.has(pairKey)
+
+          try {
+            const leadRecord = prepareLeadRecord(lead, workspace.name)
+
+            if (isExisting) {
+              const { created_time, ...updateFields } = leadRecord
+              const { error } = await supabase
+                .from('meetings_booked')
+                .update(updateFields)
+                .eq('email', lead.email)
+                .eq('client', workspace.name)
+              if (!error) totalUpdated++
+            } else {
+              const { error } = await supabase
+                .from('meetings_booked')
+                .insert(leadRecord)
+              if (!error) {
+                existingPairs.add(pairKey)
+                totalNew++
+              }
+            }
+          } catch (e) {
+            console.error(`Error processing ${lead.email}:`, e)
+          }
+        }
+      } catch (e) {
+        console.error(`Error with workspace ${workspace.name}:`, e)
+      }
+    }
+
+    console.log(`Sync complete: ${totalProcessed} processed, ${totalNew} new, ${totalUpdated} updated`)
+  } catch (error) {
+    console.error('Background sync error:', error)
+  }
+}
+
 serve(async (req) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
 
+  // Check for sync_mode parameter - 'background' (default) or 'wait'
+  const url = new URL(req.url)
+  const syncMode = url.searchParams.get('mode') || 'background'
+
+  if (syncMode === 'background') {
+    // Start sync in background and return immediately
+    // @ts-ignore - EdgeRuntime is available in Supabase Edge Functions
+    if (typeof EdgeRuntime !== 'undefined' && EdgeRuntime.waitUntil) {
+      EdgeRuntime.waitUntil(runSyncInBackground())
+    } else {
+      // Fallback: start without waiting (function keeps running)
+      runSyncInBackground().catch(console.error)
+    }
+
+    return new Response(
+      JSON.stringify({
+        success: true,
+        message: 'Sync started in background',
+        mode: 'background',
+        timestamp: new Date().toISOString(),
+      }),
+      { status: 202, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    )
+  }
+
+  // Original synchronous mode (mode=wait) - returns full results
   try {
     // Initialize Supabase client
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
@@ -574,13 +696,15 @@ serve(async (req) => {
 
     let totalProcessed = 0
     let totalNew = 0
-    const results: Record<string, { processed: number; new: number; errors: string[] }> = {}
+    let totalUpdated = 0
+    const results: Record<string, { processed: number; new: number; updated: number; errors: string[] }> = {}
 
     // Process each workspace
     for (const workspace of workspaces) {
       const workspaceResults = {
         processed: 0,
         new: 0,
+        updated: 0,
         errors: [] as string[],
       }
 
@@ -617,42 +741,58 @@ serve(async (req) => {
           workspaceResults.processed++
           totalProcessed++
 
-          // Check if email+client combination already exists
           const pairKey = createEmailClientKey(lead.email, workspace.name)
-          if (existingPairs.has(pairKey)) {
-            continue // Skip duplicates
-          }
+          const isExisting = existingPairs.has(pairKey)
 
           try {
             // Prepare lead record with all custom variables enriched
             const leadRecord = prepareLeadRecord(lead, workspace.name)
 
-            // Insert new lead
-            const { error: insertError } = await supabase
-              .from('meetings_booked')
-              .insert(leadRecord)
+            if (isExisting) {
+              // UPDATE existing record - preserve created_time
+              const { created_time, ...updateFields } = leadRecord
+              
+              const { error: updateError } = await supabase
+                .from('meetings_booked')
+                .update(updateFields)
+                .eq('email', lead.email)
+                .eq('client', workspace.name)
 
-            if (insertError) {
-              // Check if it's a duplicate error (race condition)
-              const errorMsg = (insertError.message || '').toLowerCase()
-              if (errorMsg.includes('duplicate') || errorMsg.includes('unique') || errorMsg.includes('23505')) {
-                // Add to existing set to avoid future duplicates in this run
-                existingPairs.add(pairKey)
+              if (updateError) {
+                const formattedError = updateError.message || updateError.code || JSON.stringify(updateError)
+                workspaceResults.errors.push(`Error updating ${lead.email}: ${formattedError}`)
+                console.error(`Update error for ${lead.email}:`, updateError)
                 continue
               }
-              // Format Supabase error properly
-              const formattedError = insertError.message || insertError.code || JSON.stringify(insertError)
-              workspaceResults.errors.push(`Error inserting ${lead.email}: ${formattedError}`)
-              console.error(`Insert error for ${lead.email}:`, insertError)
-              continue
+
+              workspaceResults.updated++
+              totalUpdated++
+              console.log(`Updated existing lead: ${lead.email} from ${workspace.name}`)
+            } else {
+              // INSERT new record
+              const { error: insertError } = await supabase
+                .from('meetings_booked')
+                .insert(leadRecord)
+
+              if (insertError) {
+                // Check if it's a duplicate error (race condition)
+                const errorMsg = (insertError.message || '').toLowerCase()
+                if (errorMsg.includes('duplicate') || errorMsg.includes('unique') || errorMsg.includes('23505')) {
+                  existingPairs.add(pairKey)
+                  continue
+                }
+                const formattedError = insertError.message || insertError.code || JSON.stringify(insertError)
+                workspaceResults.errors.push(`Error inserting ${lead.email}: ${formattedError}`)
+                console.error(`Insert error for ${lead.email}:`, insertError)
+                continue
+              }
+
+              existingPairs.add(pairKey)
+              workspaceResults.new++
+              totalNew++
+
+              console.log(`Added new lead: ${lead.email} from ${workspace.name}`)
             }
-
-            // Add to existing set and increment counters
-            existingPairs.add(pairKey)
-            workspaceResults.new++
-            totalNew++
-
-            console.log(`Added new lead: ${lead.email} from ${workspace.name}`)
           } catch (leadError: unknown) {
             const errorMsg = getErrorMessage(leadError)
             workspaceResults.errors.push(`Error processing ${lead.email}: ${errorMsg}`)
@@ -678,6 +818,7 @@ serve(async (req) => {
           workspaces_processed: workspaces.length,
           total_leads_processed: totalProcessed,
           total_new_leads_added: totalNew,
+          total_leads_updated: totalUpdated,
         },
         results: results,
       }),

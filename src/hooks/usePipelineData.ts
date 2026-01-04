@@ -109,11 +109,21 @@ export function usePipelineData({ startDate, endDate, month, year }: UsePipeline
       const totalSent = campaignRows.reduce((sum, row) => sum + (row.emails_sent || 0), 0)
       const uniqueContacts = campaignRows.reduce((sum, row) => sum + (row.total_leads_contacted || 0), 0)
       
-      // Real replies - exclude "Out Of Office" (case insensitive check)
-      const realReplies = replyRows.filter((r) => {
+      // Real replies - count UNIQUE lead+campaign+client combinations (excluding OOO)
+      const realRepliesSet = new Set<string>()
+      replyRows.forEach((r) => {
         const cat = (r.category || '').toLowerCase()
-        return !cat.includes('out of office') && !cat.includes('ooo')
-      }).length
+        if (!cat.includes('out of office') && !cat.includes('ooo')) {
+          // Use lead_id if available, otherwise use from_email as unique identifier
+          const leadKey = r.lead_id || r.from_email || ''
+          if (leadKey) {
+            // Create unique key combining lead + campaign + client
+            const uniqueKey = `${leadKey}||${r.campaign_id || ''}||${r.client || ''}`
+            realRepliesSet.add(uniqueKey)
+          }
+        }
+      })
+      const realReplies = realRepliesSet.size
       
       // Positive replies (Interested) - sum from campaign_reporting.interested
       const positiveReplies = campaignRows.reduce((sum, row) => sum + (row.interested || 0), 0)

@@ -111,7 +111,7 @@ export function useDeepInsights({ startDate, endDate, client }: UseDeepInsightsP
       while (hasMoreReplies) {
         let query = supabase
           .from('replies')
-          .select('category, date_received, campaign_id, client')
+          .select('category, date_received, campaign_id, client, lead_id, from_email')
           .gte('date_received', startStr)
           .lt('date_received', endStrNextDay)
           .range(repliesOffset, repliesOffset + PAGE_SIZE - 1)
@@ -182,7 +182,7 @@ export function useDeepInsights({ startDate, endDate, client }: UseDeepInsightsP
         }
       }
 
-      // Process replies data
+      // Process replies data - count UNIQUE leads for each category
       const categoryBreakdown: CategoryBreakdown = {
         interested: 0,
         notInterested: 0,
@@ -190,37 +190,70 @@ export function useDeepInsights({ startDate, endDate, client }: UseDeepInsightsP
         other: 0,
       }
 
-      const repliesByDayMap = new Map<string, number>()
-      const campaignRepliesMap = new Map<string, { total: number; interested: number }>()
+      // Track unique leads globally and by category
+      const uniqueLeadsAll = new Set<string>()
+      const uniqueLeadsInterested = new Set<string>()
+      const uniqueLeadsNotInterested = new Set<string>()
+      const uniqueLeadsOOO = new Set<string>()
+      const uniqueLeadsOther = new Set<string>()
+      
+      // Track unique leads by day
+      const uniqueLeadsByDay = new Map<string, Set<string>>()
+      
+      // Track unique leads by campaign
+      const campaignRepliesMap = new Map<string, { totalSet: Set<string>; interestedSet: Set<string> }>()
 
       allReplies.forEach((reply: any) => {
+        const uniqueKey = reply.lead_id || reply.from_email || ''
+        if (!uniqueKey) return
+        
         const cat = (reply.category || '').toLowerCase()
         
-        // Category breakdown
+        // Track unique lead for overall count
+        uniqueLeadsAll.add(uniqueKey)
+        
+        // Category breakdown - track unique leads per category
         if (cat === 'interested') {
-          categoryBreakdown.interested++
+          uniqueLeadsInterested.add(uniqueKey)
         } else if (cat === 'not interested') {
-          categoryBreakdown.notInterested++
+          uniqueLeadsNotInterested.add(uniqueKey)
         } else if (cat.includes('out of office') || cat.includes('ooo')) {
-          categoryBreakdown.outOfOffice++
+          uniqueLeadsOOO.add(uniqueKey)
         } else {
-          categoryBreakdown.other++
+          uniqueLeadsOther.add(uniqueKey)
         }
 
-        // Daily breakdown
+        // Daily breakdown - track unique leads per day
         const dateKey = reply.date_received?.split('T')[0]
         if (dateKey) {
-          repliesByDayMap.set(dateKey, (repliesByDayMap.get(dateKey) || 0) + 1)
+          if (!uniqueLeadsByDay.has(dateKey)) {
+            uniqueLeadsByDay.set(dateKey, new Set())
+          }
+          uniqueLeadsByDay.get(dateKey)!.add(uniqueKey)
         }
 
-        // Campaign performance
+        // Campaign performance - track unique leads per campaign
         const campaignId = reply.campaign_id || 'Unknown'
-        const existing = campaignRepliesMap.get(campaignId) || { total: 0, interested: 0 }
-        existing.total++
-        if (cat === 'interested') {
-          existing.interested++
+        if (!campaignRepliesMap.has(campaignId)) {
+          campaignRepliesMap.set(campaignId, { totalSet: new Set(), interestedSet: new Set() })
         }
-        campaignRepliesMap.set(campaignId, existing)
+        const existing = campaignRepliesMap.get(campaignId)!
+        existing.totalSet.add(uniqueKey)
+        if (cat === 'interested') {
+          existing.interestedSet.add(uniqueKey)
+        }
+      })
+      
+      // Convert Sets to counts
+      categoryBreakdown.interested = uniqueLeadsInterested.size
+      categoryBreakdown.notInterested = uniqueLeadsNotInterested.size
+      categoryBreakdown.outOfOffice = uniqueLeadsOOO.size
+      categoryBreakdown.other = uniqueLeadsOther.size
+      
+      // Convert daily unique leads to counts
+      const repliesByDayMap = new Map<string, number>()
+      uniqueLeadsByDay.forEach((leads, dateKey) => {
+        repliesByDayMap.set(dateKey, leads.size)
       })
 
       // Format daily replies
@@ -238,21 +271,22 @@ export function useDeepInsights({ startDate, endDate, client }: UseDeepInsightsP
           count,
         }))
 
-      // Calculate avg replies per day and best day
+      // Calculate avg replies per day and best day (using unique leads)
       const totalDays = repliesByDay.length || 1
-      const avgRepliesPerDay = allReplies.length / totalDays
+      const totalUniqueLeads = uniqueLeadsAll.size
+      const avgRepliesPerDay = totalUniqueLeads / totalDays
       const bestDay = repliesByDay.reduce<{ date: string; count: number } | null>(
         (best, day) => (!best || day.count > best.count ? { date: day.date, count: day.count } : best),
         null
       )
 
-      // Campaign performance (top 10 by positive rate, min 5 replies)
+      // Campaign performance (top 10 by positive rate, min 5 unique leads)
       const campaignPerformance: CampaignPerformance[] = Array.from(campaignRepliesMap.entries())
         .map(([campaign, stats]) => ({
           campaign,
-          totalReplies: stats.total,
-          interested: stats.interested,
-          positiveRate: stats.total > 0 ? (stats.interested / stats.total) * 100 : 0,
+          totalReplies: stats.totalSet.size,
+          interested: stats.interestedSet.size,
+          positiveRate: stats.totalSet.size > 0 ? (stats.interestedSet.size / stats.totalSet.size) * 100 : 0,
         }))
         .filter(c => c.totalReplies >= 5)
         .sort((a, b) => b.positiveRate - a.positiveRate)
@@ -392,8 +426,8 @@ export function useDeepInsights({ startDate, endDate, client }: UseDeepInsightsP
         }))
 
       setData({
-        // Summary metrics
-        totalReplies: allReplies.length,
+        // Summary metrics (using unique leads counts)
+        totalReplies: uniqueLeadsAll.size,
         interestedCount: categoryBreakdown.interested,
         notInterestedCount: categoryBreakdown.notInterested,
         outOfOfficeCount: categoryBreakdown.outOfOffice,
@@ -430,6 +464,8 @@ export function useDeepInsights({ startDate, endDate, client }: UseDeepInsightsP
 
   return { data, loading, error, refetch: fetchData }
 }
+
+
 
 
 

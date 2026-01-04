@@ -54,7 +54,7 @@ export default function ClientFilter({
         whileHover={{ scale: 1.01 }}
         whileTap={{ scale: 0.99 }}
       >
-        <Building2 size={14} className="text-white/60 shrink-0" />
+        <Building2 size={14} className="text-white shrink-0" />
         <span className="flex-1 text-left truncate">{displayValue}</span>
         {selectedClient && (
           <motion.button
@@ -90,7 +90,7 @@ export default function ClientFilter({
             <div className="bg-slate-900/95 backdrop-blur-xl border border-slate-600/50 rounded-xl shadow-2xl overflow-hidden">
               {/* Header */}
               <div className="px-4 py-3 border-b border-slate-700/50">
-                <span className="text-xs font-medium text-white/50 uppercase tracking-wider">
+                <span className="text-xs font-medium text-white uppercase tracking-wider">
                   Select Client
                 </span>
               </div>

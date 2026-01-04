@@ -4,8 +4,7 @@ import OpportunityPipeline from '../components/charts/OpportunityPipeline'
 import InlineLeadsTable from '../components/ui/InlineLeadsTable'
 import ConfigureTargetsModal from '../components/ui/ConfigureTargetsModal'
 import OpportunityStageModal from '../components/ui/OpportunityStageModal'
-import SalesMetricCards from '../components/ui/SalesMetricCards'
-import SalesMetricsChart from '../components/charts/SalesMetricsChart'
+import CompactSalesMetrics from '../components/ui/CompactSalesMetrics'
 import PipelineMetricsSection from '../components/ui/PipelineMetricsSection'
 import { usePipelineData } from '../hooks/usePipelineData'
 import { useQuickViewData } from '../hooks/useQuickViewData'
@@ -146,40 +145,9 @@ export default function PipelineView() {
       {/* Content */}
       {!loading && (
         <>
-          {/* Sales Analytics Section */}
+          {/* Compact Sales Analytics Section */}
           {!salesLoading && !salesError && (
-            <div className="space-y-6">
-              {/* Sales Summary Cards */}
-              <SalesMetricCards summary={summary} />
-
-              {/* Sales Charts Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <SalesMetricsChart
-                  data={dailyMetrics}
-                  type="revenue"
-                  title="Revenue Trend"
-                />
-                <SalesMetricsChart
-                  data={dailyMetrics}
-                  type="dealCount"
-                  title="Deal Count"
-                />
-              </div>
-              
-              {/* Average Deal Value and Win Rate - Same Row */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <SalesMetricsChart
-                  data={dailyMetrics}
-                  type="avgValue"
-                  title="Average Deal Value"
-                />
-                <SalesMetricsChart
-                  data={dailyMetrics}
-                  type="winRate"
-                  title="Win Rate Over Time"
-                />
-              </div>
-            </div>
+            <CompactSalesMetrics summary={summary} dailyMetrics={dailyMetrics} />
           )}
 
           {/* Dual Funnel System - Lead Funnel and Opportunity Pipeline */}

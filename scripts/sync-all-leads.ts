@@ -111,6 +111,7 @@ interface LeadRecord {
   // Optional fields matching all_leads table schema
   first_name: string | null
   last_name: string | null
+  full_name: string | null
   campaign_name: string | null
   created_time: string | null
   industry: string | null
@@ -118,14 +119,19 @@ interface LeadRecord {
   seniority_level: string | null
   company: string | null
   company_domain: string | null
+  profile_url: string | null
+  company_linkedin: string | null
   annual_revenue: string | null
   company_size: string | null
-  year_founded: string | null
+  year_founded: number | null
   company_hq_city: string | null
   company_hq_state: string | null
   company_hq_country: string | null
   tech_stack: string | null
   is_hiring: boolean | null
+  business_model: string | null
+  funding_stage: string | null
+  growth_score: string | null
   specialty_signal_a: string | null
   specialty_signal_b: string | null
   specialty_signal_c: string | null
@@ -134,6 +140,7 @@ interface LeadRecord {
   emails_sent: number | null
   replies: number | null
   unique_replies: number | null
+  custom_variables_jsonb: Record<string, any>
 }
 
 interface SyncStats {
@@ -365,9 +372,11 @@ function parseDateTime(dtStr: string | undefined | null): string | null {
 
 function extractCustomVariables(
   customVars: Array<{ name: string; value: string }> | undefined
-): Record<string, any> {
+): { mapped: Record<string, any>; jsonb: Record<string, any> } {
   const mapped: Record<string, any> = {
     company_domain: null,
+    profile_url: null,
+    company_linkedin: null,
     industry: null,
     seniority_level: null,
     annual_revenue: null,
@@ -378,14 +387,19 @@ function extractCustomVariables(
     company_hq_country: null,
     tech_stack: null,
     is_hiring: null,
+    business_model: null,
+    funding_stage: null,
+    growth_score: null,
     specialty_signal_a: null,
     specialty_signal_b: null,
     specialty_signal_c: null,
     specialty_signal_d: null,
   }
   
+  const jsonb: Record<string, any> = {}
+  
   if (!customVars || !Array.isArray(customVars)) {
-    return mapped
+    return { mapped, jsonb }
   }
   
   // Known field mappings (case-insensitive)
@@ -393,6 +407,13 @@ function extractCustomVariables(
     'company_domain': 'company_domain',
     'companydomain': 'company_domain',
     'domain': 'company_domain',
+    'profile_url': 'profile_url',
+    'profileurl': 'profile_url',
+    'linkedin_url': 'profile_url',
+    'linkedinurl': 'profile_url',
+    'company_linkedin': 'company_linkedin',
+    'companylinkedin': 'company_linkedin',
+    'linkedin': 'company_linkedin',
     'industry': 'industry',
     'seniority_level': 'seniority_level',
     'seniority': 'seniority_level',
@@ -423,6 +444,13 @@ function extractCustomVariables(
     'is_hiring': 'is_hiring',
     'ishiring': 'is_hiring',
     'hiring': 'is_hiring',
+    'business_model': 'business_model',
+    'businessmodel': 'business_model',
+    'funding_stage': 'funding_stage',
+    'fundingstage': 'funding_stage',
+    'funding': 'funding_stage',
+    'growth_score': 'growth_score',
+    'growthscore': 'growth_score',
     'specialty_signal_a': 'specialty_signal_a',
     'specialty_signal_b': 'specialty_signal_b',
     'specialty_signal_c': 'specialty_signal_c',
@@ -432,8 +460,14 @@ function extractCustomVariables(
   for (const varItem of customVars) {
     if (!varItem || typeof varItem !== 'object' || !varItem.name) continue
     
-    const varName = varItem.name.toLowerCase().trim().replace(/[^a-z0-9_]/g, '_')
+    const originalName = varItem.name
+    const varName = originalName.toLowerCase().trim().replace(/[^a-z0-9_]/g, '_')
     const varValue = varItem.value || null
+    
+    // Always store in JSONB (preserves all custom variables)
+    if (varValue !== null && varValue !== '') {
+      jsonb[originalName] = varValue
+    }
     
     // Check if it's a known field
     const mappedField = knownMappings[varName]
@@ -441,13 +475,17 @@ function extractCustomVariables(
       // Handle boolean for is_hiring
       if (mappedField === 'is_hiring') {
         mapped[mappedField] = varValue.toLowerCase() === 'true' || varValue === '1'
+      } else if (mappedField === 'year_founded') {
+        // Parse year_founded as integer
+        const parsed = parseInt(varValue)
+        mapped[mappedField] = isNaN(parsed) ? null : parsed
       } else {
         mapped[mappedField] = varValue
       }
     }
   }
   
-  return mapped
+  return { mapped, jsonb }
 }
 
 function extractCampaignInfo(
@@ -491,8 +529,8 @@ function transformLeadToRecord(
   const email = lead.email.trim().toLowerCase()
   if (!email || !email.includes('@')) return null
   
-  // Extract custom variables
-  const customVars = extractCustomVariables(lead.custom_variables)
+  // Extract custom variables (now returns both mapped fields and full JSONB)
+  const { mapped: customVars, jsonb: customVarsJsonb } = extractCustomVariables(lead.custom_variables)
   
   // Extract campaign info
   const { campaignId, campaignName } = extractCampaignInfo(
@@ -505,7 +543,12 @@ function transformLeadToRecord(
   if (!campaignId) return null
   
   // Extract stats
-  const stats = lead.overall_stats || {}
+  const leadStats = lead.overall_stats || {}
+  
+  // Compute full_name
+  const firstName = lead.first_name?.trim() || null
+  const lastName = lead.last_name?.trim() || null
+  const fullName = [firstName, lastName].filter(Boolean).join(' ') || null
   
   return {
     // Required fields
@@ -513,8 +556,9 @@ function transformLeadToRecord(
     campaign_id: campaignId,
     client: workspace,
     // Optional fields
-    first_name: lead.first_name?.trim() || null,
-    last_name: lead.last_name?.trim() || null,
+    first_name: firstName,
+    last_name: lastName,
+    full_name: fullName,
     campaign_name: campaignName,
     created_time: parseDateTime(lead.created_at),
     industry: customVars.industry,
@@ -522,6 +566,8 @@ function transformLeadToRecord(
     seniority_level: customVars.seniority_level,
     company: lead.company?.trim() || null,
     company_domain: customVars.company_domain,
+    profile_url: customVars.profile_url,
+    company_linkedin: customVars.company_linkedin,
     annual_revenue: customVars.annual_revenue,
     company_size: customVars.company_size,
     year_founded: customVars.year_founded,
@@ -530,33 +576,34 @@ function transformLeadToRecord(
     company_hq_country: customVars.company_hq_country,
     tech_stack: customVars.tech_stack,
     is_hiring: customVars.is_hiring,
+    business_model: customVars.business_model,
+    funding_stage: customVars.funding_stage,
+    growth_score: customVars.growth_score,
     specialty_signal_a: customVars.specialty_signal_a,
     specialty_signal_b: customVars.specialty_signal_b,
     specialty_signal_c: customVars.specialty_signal_c,
     specialty_signal_d: customVars.specialty_signal_d,
     status: null, // Can be updated later
-    emails_sent: stats.emails_sent || 0,
-    replies: stats.replies || 0,
-    unique_replies: stats.replies || 0, // Use same value as replies
+    emails_sent: leadStats.emails_sent || 0,
+    replies: leadStats.replies || 0,
+    unique_replies: leadStats.replies || 0, // Use same value as replies
+    custom_variables_jsonb: Object.keys(customVarsJsonb).length > 0 ? customVarsJsonb : {},
   }
 }
 
-// Supabase insert functions
-async function insertLeadsBatch(leads: LeadRecord[]): Promise<{ inserted: number; skipped: number; errors: number }> {
+// Supabase upsert functions
+async function upsertLeadsBatch(leads: LeadRecord[]): Promise<{ inserted: number; updated: number; errors: number }> {
   if (leads.length === 0) {
-    return { inserted: 0, skipped: 0, errors: 0 }
+    return { inserted: 0, updated: 0, errors: 0 }
   }
   
   if (dryRun) {
-    console.log(`      [DRY RUN] Would insert ${leads.length} leads`)
-    return { inserted: leads.length, skipped: 0, errors: 0 }
+    console.log(`      [DRY RUN] Would upsert ${leads.length} leads`)
+    return { inserted: leads.length, updated: 0, errors: 0 }
   }
   
   try {
-    // First, check which emails+campaign_id combinations already exist
-    const emailCampaignPairs = leads.map(l => `${l.email}|${l.campaign_id}`)
-    
-    // Query existing leads in batches of 100 emails
+    // Check which emails+campaign_id combinations already exist
     const existingPairs = new Set<string>()
     for (let i = 0; i < leads.length; i += 100) {
       const batch = leads.slice(i, i + 100)
@@ -574,18 +621,23 @@ async function insertLeadsBatch(leads: LeadRecord[]): Promise<{ inserted: number
       }
     }
     
-    // Filter out leads that already exist
-    const newLeads = leads.filter(l => !existingPairs.has(`${l.email}|${l.campaign_id}`))
-    const skipped = leads.length - newLeads.length
+    // Separate new and existing leads
+    const newLeads: LeadRecord[] = []
+    const existingLeads: LeadRecord[] = []
     
-    if (newLeads.length === 0) {
-      return { inserted: 0, skipped, errors: 0 }
+    for (const lead of leads) {
+      if (existingPairs.has(`${lead.email}|${lead.campaign_id}`)) {
+        existingLeads.push(lead)
+      } else {
+        newLeads.push(lead)
+      }
     }
     
-    // Insert new leads in batches
     let totalInserted = 0
+    let totalUpdated = 0
     let totalErrors = 0
     
+    // Insert new leads in batches
     for (let i = 0; i < newLeads.length; i += 100) {
       const batch = newLeads.slice(i, i + 100)
       
@@ -611,11 +663,28 @@ async function insertLeadsBatch(leads: LeadRecord[]): Promise<{ inserted: number
       }
     }
     
-    return { inserted: totalInserted, skipped, errors: totalErrors }
+    // Update existing leads (exclude created_time to preserve original)
+    for (const lead of existingLeads) {
+      const { created_time, ...updateFields } = lead
+      
+      const { error } = await supabase
+        .from('all_leads')
+        .update(updateFields)
+        .eq('email', lead.email)
+        .eq('campaign_id', lead.campaign_id)
+      
+      if (error) {
+        totalErrors++
+      } else {
+        totalUpdated++
+      }
+    }
+    
+    return { inserted: totalInserted, updated: totalUpdated, errors: totalErrors }
     
   } catch (error) {
-    console.error(`      ❌ Unexpected error in batch insert: ${error instanceof Error ? error.message : error}`)
-    return { inserted: 0, skipped: 0, errors: leads.length }
+    console.error(`      ❌ Unexpected error in batch upsert: ${error instanceof Error ? error.message : error}`)
+    return { inserted: 0, updated: 0, errors: leads.length }
   }
 }
 
@@ -623,11 +692,11 @@ async function insertLeadsBatch(leads: LeadRecord[]): Promise<{ inserted: number
 async function processCampaign(
   campaign: Campaign,
   workspace: Workspace
-): Promise<{ fetched: number; processed: number; errors: number }> {
+): Promise<{ fetched: number; inserted: number; updated: number; errors: number }> {
   const leads = await fetchLeadsForCampaign(campaign.campaign_id, workspace.apiKey)
   
   if (leads.length === 0) {
-    return { fetched: 0, processed: 0, errors: 0 }
+    return { fetched: 0, inserted: 0, updated: 0, errors: 0 }
   }
   
   // Transform leads
@@ -647,24 +716,23 @@ async function processCampaign(
     stats.skipped += skipped
   }
   
-  // Insert in batches
+  // Upsert in batches
   let totalInserted = 0
-  let totalSkipped = 0
+  let totalUpdated = 0
   let totalErrors = 0
   
   for (let i = 0; i < records.length; i += SUPABASE_BATCH_SIZE) {
     const batch = records.slice(i, i + SUPABASE_BATCH_SIZE)
-    const result = await insertLeadsBatch(batch)
+    const result = await upsertLeadsBatch(batch)
     totalInserted += result.inserted
-    totalSkipped += result.skipped
+    totalUpdated += result.updated
     totalErrors += result.errors
   }
   
-  stats.skipped += totalSkipped
-  
   return { 
     fetched: leads.length, 
-    processed: totalInserted, 
+    inserted: totalInserted, 
+    updated: totalUpdated,
     errors: totalErrors 
   }
 }
@@ -682,7 +750,8 @@ async function processWorkspace(workspace: Workspace): Promise<void> {
   logProgress(`   📊 Found ${campaigns.length} campaigns`)
   
   let workspaceLeads = 0
-  let workspaceProcessed = 0
+  let workspaceInserted = 0
+  let workspaceUpdated = 0
   let workspaceErrors = 0
   
   for (let i = 0; i < campaigns.length; i++) {
@@ -695,12 +764,13 @@ async function processWorkspace(workspace: Workspace): Promise<void> {
       const result = await processCampaign(campaign, workspace)
       
       workspaceLeads += result.fetched
-      workspaceProcessed += result.processed
+      workspaceInserted += result.inserted
+      workspaceUpdated += result.updated
       workspaceErrors += result.errors
       stats.campaignsProcessed++
       
       if (result.fetched > 0) {
-        console.log(`✓ ${result.fetched} leads fetched, ${result.processed} synced`)
+        console.log(`✓ ${result.fetched} leads, +${result.inserted} new, ~${result.updated} updated`)
       } else {
         console.log(`- no leads`)
       }
@@ -715,11 +785,12 @@ async function processWorkspace(workspace: Workspace): Promise<void> {
   }
   
   stats.totalLeadsFetched += workspaceLeads
-  stats.inserted += workspaceProcessed
+  stats.inserted += workspaceInserted
+  stats.updated += workspaceUpdated
   stats.errors += workspaceErrors
   stats.workspacesProcessed++
   
-  logProgress(`   ✅ Workspace complete: ${workspaceLeads} leads fetched, ${workspaceProcessed} synced`)
+  logProgress(`   ✅ Workspace complete: ${workspaceLeads} fetched, +${workspaceInserted} new, ~${workspaceUpdated} updated`)
 }
 
 // Main entry point
@@ -758,7 +829,8 @@ async function main() {
     console.log(`Workspaces processed: ${stats.workspacesProcessed}`)
     console.log(`Campaigns processed: ${stats.campaignsProcessed}`)
     console.log(`Total leads fetched: ${stats.totalLeadsFetched.toLocaleString()}`)
-    console.log(`Leads synced: ${stats.inserted.toLocaleString()}`)
+    console.log(`New leads inserted: ${stats.inserted.toLocaleString()}`)
+    console.log(`Existing leads updated: ${stats.updated.toLocaleString()}`)
     console.log(`Leads skipped (invalid): ${stats.skipped.toLocaleString()}`)
     console.log(`Errors: ${stats.errors}`)
     

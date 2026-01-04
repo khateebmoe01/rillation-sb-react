@@ -54,8 +54,8 @@ export default function TabNavigation() {
                 className={`
                   relative px-4 py-3 text-sm font-medium transition-all duration-200
                   ${isActive
-                    ? 'text-rillation-text'
-                    : 'text-rillation-text-muted hover:text-rillation-text'
+                    ? 'text-white'
+                    : 'text-white/80 hover:text-white'
                   }
                 `}
               >
@@ -74,8 +74,8 @@ export default function TabNavigation() {
             {/* Client Filter */}
             {isPipelinePage ? (
               <div className="flex items-center gap-2 px-3 py-1.5 bg-rillation-bg border border-rillation-border rounded-lg">
-                <Lock size={12} className="text-rillation-text-muted" />
-                <span className="text-sm text-rillation-text">Rillation Revenue</span>
+                <Lock size={12} className="text-white" />
+                <span className="text-sm text-white">Rillation Revenue</span>
               </div>
             ) : (
               <ClientFilter

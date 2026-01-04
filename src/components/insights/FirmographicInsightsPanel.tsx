@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from 'react'
+import { useMemo, useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence, useMotionValue, useTransform, animate } from 'framer-motion'
 import { 
   AlertTriangle, 
@@ -11,7 +11,9 @@ import {
   MapPin,
   Zap,
   X,
-  Sparkles
+  Sparkles,
+  Expand,
+  CheckCircle
 } from 'lucide-react'
 import { formatPercentage } from '../../lib/supabase'
 import type { FirmographicInsightsData, FirmographicDimensionData } from '../../hooks/useFirmographicInsights'
@@ -162,19 +164,24 @@ function getRankingStyle(index: number, total: number): {
 function DimensionTab({
   dimensionKey,
   dimension,
-  isSelected,
-  onClick,
+  selectionIndex,
+  isLocked,
+  onSelect,
+  onExpand,
   index
 }: {
   dimensionKey: DimensionKey
   dimension: FirmographicDimensionData | undefined
-  isSelected: boolean
-  onClick: () => void
+  selectionIndex: number | null // null = not selected, 1 or 2 = selection order
+  isLocked: boolean
+  onSelect: () => void
+  onExpand: () => void
   index: number
 }) {
   const config = DIMENSION_CONFIG[dimensionKey]
   const Icon = config.icon
   const hasNoData = !dimension || dimension.items.length === 0
+  const isSelected = selectionIndex !== null
   
   // Get top 3 items by booking conversion rate
   const top3Items = useMemo(() => {
@@ -185,11 +192,17 @@ function DimensionTab({
       .slice(0, 3)
   }, [dimension])
 
+  // Handle card click for comparison selection
+  const handleCardClick = () => {
+    // Always allow selection - if 2 are selected, clicking a 3rd will swap
+    onSelect()
+  }
+
   return (
-    <motion.button
-      onClick={onClick}
+    <motion.div
+      onClick={handleCardClick}
       className={`
-        relative w-full flex flex-col p-5 rounded-xl border-2 cursor-pointer text-left overflow-hidden
+        relative w-full flex flex-col p-5 rounded-xl border-2 text-left overflow-hidden cursor-pointer
         ${isSelected 
           ? 'bg-slate-800 border-white shadow-[0_0_30px_rgba(255,255,255,0.2)]' 
           : 'bg-slate-800/40 border-slate-700/50 hover:border-white/50'
@@ -197,24 +210,18 @@ function DimensionTab({
       `}
       initial={{ opacity: 0, y: 20, scale: 0.95 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
+      whileHover={{ scale: 1.01 }}
+      whileTap={{ scale: 0.99 }}
       transition={{ 
         delay: index * 0.05, 
         type: 'spring', 
         stiffness: 300, 
         damping: 25 
       }}
-      whileHover={{ 
-        scale: 1.02,
-        boxShadow: `0 0 25px ${config.glowColor}`,
-        transition: { duration: 0.2 }
-      }}
-      whileTap={{ scale: 0.98 }}
     >
       {/* Animated background gradient on hover */}
       <motion.div
         className="absolute inset-0 opacity-0 pointer-events-none"
-        initial={false}
-        whileHover={{ opacity: 1 }}
         style={{
           background: `radial-gradient(circle at 50% 0%, ${config.glowColor} 0%, transparent 60%)`
         }}
@@ -225,10 +232,6 @@ function DimensionTab({
         <div className="flex items-center gap-3">
           <motion.div 
             className={`p-2 rounded-lg bg-slate-700/60 ${config.color}`}
-            whileHover={{ 
-              rotate: [0, -10, 10, -5, 5, 0],
-              transition: { duration: 0.5 }
-            }}
           >
             <Icon size={18} />
           </motion.div>
@@ -237,18 +240,47 @@ function DimensionTab({
           </span>
         </div>
         
-        {/* Selection indicator */}
-        <AnimatePresence>
-          {isSelected && (
-            <motion.div
-              className="w-2.5 h-2.5 rounded-full bg-white"
-              initial={{ scale: 0, rotate: -180 }}
-              animate={{ scale: 1, rotate: 0 }}
-              exit={{ scale: 0, rotate: 180 }}
-              transition={{ type: 'spring', stiffness: 500, damping: 25 }}
-            />
-          )}
-        </AnimatePresence>
+        <div className="flex items-center gap-2">
+          {/* Selection number badge */}
+          <AnimatePresence>
+            {selectionIndex !== null && (
+              <motion.div
+                className="w-6 h-6 rounded-full bg-violet-500 flex items-center justify-center text-white text-xs font-bold"
+                initial={{ scale: 0, rotate: -180 }}
+                animate={{ scale: 1, rotate: 0 }}
+                exit={{ scale: 0, rotate: 180 }}
+                transition={{ type: 'spring', stiffness: 500, damping: 25 }}
+              >
+                {selectionIndex}
+              </motion.div>
+            )}
+          </AnimatePresence>
+          
+          {/* Status indicator - clicking the card handles selection */}
+          <motion.div
+            className={`px-2 py-1 rounded-lg text-xs font-medium pointer-events-none ${
+              isSelected
+                ? 'bg-violet-500/30 text-violet-300 border border-violet-500/50'
+                : 'bg-slate-700/50 text-white/60'
+            }`}
+          >
+            {isSelected ? 'Selected' : isLocked ? 'Click to swap' : 'Click to compare'}
+          </motion.div>
+          
+          {/* Expand button */}
+          <motion.button
+            onClick={(e) => {
+              e.stopPropagation()
+              onExpand()
+            }}
+            className="p-1.5 rounded-lg bg-slate-700/50 text-white hover:bg-slate-600/50 transition-all"
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+            title="View all categories"
+          >
+            <Expand size={14} />
+          </motion.button>
+        </div>
       </div>
 
       {/* Top 3 Preview */}
@@ -274,12 +306,10 @@ function DimensionTab({
                 initial={{ opacity: 0, x: -10 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: index * 0.05 + idx * 0.08 + 0.15 }}
-                whileHover={{ x: 3, transition: { duration: 0.15 } }}
               >
                 <div className="flex items-center gap-2 min-w-0 flex-1">
                   <motion.span 
                     className={`text-xs font-bold w-5 text-center ${rankStyle.textClass}`}
-                    whileHover={{ scale: 1.2 }}
                   >
                     #{idx + 1}
                   </motion.span>
@@ -306,7 +336,7 @@ function DimensionTab({
               animate={{ opacity: 1 }}
               transition={{ delay: index * 0.05 + 0.4 }}
             >
-              +{dimension.items.length - 3} more • Click to expand
+              +{dimension.items.length - 3} more
             </motion.div>
           )}
         </div>
@@ -329,21 +359,19 @@ function DimensionTab({
           </motion.div>
         )}
       </AnimatePresence>
-    </motion.button>
+    </motion.div>
   )
 }
 
-// Detailed Metrics Panel with all 4 rates
-function DetailedMetricsPanel({
+// Detailed Metrics Modal - centered popup
+function DimensionModal({
   dimensionKey,
   dimension,
   onClose,
-  isCompact
 }: {
   dimensionKey: DimensionKey
   dimension: FirmographicDimensionData | undefined
   onClose: () => void
-  isCompact: boolean
 }) {
   const config = DIMENSION_CONFIG[dimensionKey]
   const Icon = config.icon
@@ -362,7 +390,6 @@ function DetailedMetricsPanel({
   }, [dimension, hasBookings])
 
   const totalItems = rankedItems.length
-  const displayItems = isCompact ? rankedItems.slice(0, 6) : rankedItems
 
   // Calculate max booking rate for bar scaling
   const maxBookingRate = useMemo(() => {
@@ -372,306 +399,311 @@ function DetailedMetricsPanel({
 
   return (
     <motion.div
-      className="relative overflow-hidden rounded-xl border border-slate-700/60 bg-gradient-to-b from-slate-900/95 to-slate-800/90 flex-1 min-w-0"
-      initial={{ opacity: 0, scale: 0.9, y: 20 }}
-      animate={{ opacity: 1, scale: 1, y: 0 }}
-      exit={{ opacity: 0, scale: 0.9, y: -20 }}
-      transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-      layout
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
     >
-      {/* Animated grid pattern */}
-      <motion.div 
-        className="absolute inset-0 opacity-[0.02] pointer-events-none"
-        style={{
-          backgroundImage: 'linear-gradient(rgba(255,255,255,.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.1) 1px, transparent 1px)',
-          backgroundSize: '24px 24px'
-        }}
-        animate={{ 
-          backgroundPosition: ['0px 0px', '24px 24px']
-        }}
-        transition={{ duration: 20, repeat: Infinity, ease: 'linear' }}
-      />
-
-      {/* Glow effect at top */}
+      {/* Backdrop */}
       <motion.div
-        className="absolute top-0 left-0 right-0 h-32 pointer-events-none"
-        style={{
-          background: `radial-gradient(ellipse at 50% 0%, ${config.glowColor} 0%, transparent 70%)`
-        }}
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 0.3 }}
-        transition={{ delay: 0.2 }}
-      />
-
-      {/* Header */}
-      <div className="relative flex items-center justify-between px-5 py-4 border-b border-slate-700/40">
-        <div className="flex items-center gap-3">
-          <motion.div 
-            className={`p-2.5 rounded-lg bg-slate-700/50 ${config.color}`}
-            animate={{ 
-              boxShadow: [
-                `0 0 0px ${config.glowColor}`,
-                `0 0 20px ${config.glowColor}`,
-                `0 0 0px ${config.glowColor}`
-              ]
-            }}
-            transition={{ duration: 2, repeat: Infinity }}
-          >
-            <Icon size={22} />
-          </motion.div>
-          <div>
-            <motion.h3 
-              className="text-lg font-bold text-white"
-              initial={{ opacity: 0, x: -10 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.1 }}
-            >
-              {config.label}
-            </motion.h3>
-            <motion.p 
-              className="text-xs text-white/50"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.2 }}
-            >
-              {totalItems} categories ranked by booking rate
-            </motion.p>
-          </div>
-        </div>
-
-        <motion.button
-          onClick={onClose}
-          className="p-2 rounded-lg hover:bg-white/10 transition-colors"
-          whileHover={{ scale: 1.15, rotate: 90 }}
-          whileTap={{ scale: 0.85 }}
-          transition={{ type: 'spring', stiffness: 400, damping: 17 }}
-        >
-          <X size={18} className="text-white/60" />
-        </motion.button>
-      </div>
-
-      {/* Table Header */}
-      <motion.div 
-        className="relative px-5 py-3 border-b border-slate-700/30 bg-slate-800/40"
+        className="absolute inset-0 bg-black/80 backdrop-blur-sm"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        transition={{ delay: 0.15 }}
+        exit={{ opacity: 0 }}
+        onClick={onClose}
+      />
+      
+      {/* Modal Content */}
+      <motion.div
+        className="relative w-full max-w-4xl max-h-[85vh] overflow-hidden rounded-2xl border border-slate-700/60 bg-gradient-to-b from-slate-900 to-slate-800 shadow-2xl"
+        initial={{ opacity: 0, scale: 0.9, y: 40 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.9, y: 40 }}
+        transition={{ type: 'spring', stiffness: 300, damping: 30 }}
       >
-        <div className="flex items-center gap-8">
-          <div className="w-12 shrink-0" />
-          <div className="flex-1 min-w-[200px] text-left">
-            <span className="text-sm font-bold text-white/50 uppercase tracking-wider">Category</span>
-          </div>
-          <div className="w-24 text-center shrink-0">
-            <span className="text-sm font-bold text-white/50 uppercase tracking-wider">Leads</span>
-          </div>
-          <div className="w-24 text-center shrink-0">
-            <span className="text-sm font-bold text-white/50 uppercase tracking-wider">Replied</span>
-          </div>
-          <div className="w-24 text-center shrink-0">
-            <span className="text-sm font-bold text-white/50 uppercase tracking-wider">Engaged</span>
-          </div>
-          <div className="w-24 text-center shrink-0">
-            <span className="text-sm font-bold text-white/50 uppercase tracking-wider">Booked</span>
-          </div>
-          <div className="w-36 shrink-0">
-            <span className="text-sm font-bold text-white/50 uppercase tracking-wider">Rate</span>
-          </div>
-        </div>
-      </motion.div>
-
-      {/* Data Rows */}
-      <div className="relative px-5 py-4 max-h-[450px] overflow-y-auto">
-        <motion.div 
-          className="space-y-3"
-          initial="hidden"
-          animate="visible"
-          variants={{
-            hidden: { opacity: 0 },
-            visible: { 
-              opacity: 1, 
-              transition: { 
-                staggerChildren: 0.04, 
-                delayChildren: 0.1 
-              } 
-            }
+        {/* Glow effect at top */}
+        <motion.div
+          className="absolute top-0 left-0 right-0 h-32 pointer-events-none"
+          style={{
+            background: `radial-gradient(ellipse at 50% 0%, ${config.glowColor} 0%, transparent 70%)`
           }}
-        >
-          {displayItems.map((item, idx) => {
-            const repliedRate = item.leadsIn > 0 ? item.engaged / item.leadsIn : 0
-            const engagedRate = item.leadsIn > 0 ? item.positive / item.leadsIn : 0
-            const bookedRate = item.leadsIn > 0 ? item.booked / item.leadsIn : 0
-            const barWidth = maxBookingRate > 0 ? (bookedRate / maxBookingRate) * 100 : 0
-            
-            const rankStyle = getRankingStyle(idx, totalItems)
-            const isWinner = idx === 0
-            const isLoser = idx === totalItems - 1 && totalItems > 2
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 0.3 }}
+          transition={{ delay: 0.2 }}
+        />
 
-            return (
-              <motion.div
-                key={item.value}
-                className={`relative flex items-center gap-8 px-4 py-4 rounded-xl border transition-all ${rankStyle.bgClass}`}
-                variants={{
-                  hidden: { opacity: 0, x: -30, scale: 0.95 },
-                  visible: { opacity: 1, x: 0, scale: 1 }
-                }}
-                whileHover={{ 
-                  scale: 1.01, 
-                  x: 6,
-                  boxShadow: isWinner ? '0 0 30px rgba(16, 185, 129, 0.3)' : undefined,
-                  transition: { duration: 0.2 }
-                }}
+        {/* Header */}
+        <div className="relative flex items-center justify-between px-6 py-5 border-b border-slate-700/40">
+          <div className="flex items-center gap-4">
+            <motion.div 
+              className={`p-3 rounded-xl bg-slate-700/50 ${config.color}`}
+              animate={{ 
+                boxShadow: [
+                  `0 0 0px ${config.glowColor}`,
+                  `0 0 20px ${config.glowColor}`,
+                  `0 0 0px ${config.glowColor}`
+                ]
+              }}
+              transition={{ duration: 2, repeat: Infinity }}
+            >
+              <Icon size={24} />
+            </motion.div>
+            <div>
+              <motion.h3 
+                className="text-xl font-bold text-white"
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.1 }}
               >
-                {/* Winner sparkle effect */}
-                {isWinner && (
-                  <motion.div
-                    className="absolute -top-1 -right-1"
-                    animate={{ 
-                      rotate: [0, 15, -15, 0],
-                      scale: [1, 1.2, 1]
-                    }}
-                    transition={{ duration: 2, repeat: Infinity }}
-                  >
-                    <Sparkles size={16} className="text-emerald-400" />
-                  </motion.div>
-                )}
+                {config.label}
+              </motion.h3>
+              <motion.p 
+                className="text-sm text-white"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.2 }}
+              >
+                {totalItems} categories ranked by booking rate
+              </motion.p>
+            </div>
+          </div>
 
-                {/* Rank Badge */}
-                <motion.div 
-                  className={`w-12 h-12 flex items-center justify-center rounded-xl font-bold text-base shrink-0 ${
-                    isWinner 
-                      ? 'bg-emerald-500/20 text-emerald-400' 
-                      : isLoser 
-                        ? 'bg-red-500/20 text-red-400'
-                        : 'bg-white/5 text-white/40'
-                  }`}
-                  whileHover={{ scale: 1.1, rotate: isWinner ? [0, -10, 10, 0] : 0 }}
-                  transition={{ duration: 0.3 }}
+          <motion.button
+            onClick={onClose}
+            className="p-2.5 rounded-xl hover:bg-white/10 transition-colors"
+            whileHover={{ scale: 1.15, rotate: 90 }}
+            whileTap={{ scale: 0.85 }}
+            transition={{ type: 'spring', stiffness: 400, damping: 17 }}
+          >
+            <X size={20} className="text-white" />
+          </motion.button>
+        </div>
+
+        {/* Table Header */}
+        <motion.div 
+          className="relative px-6 py-3 border-b border-slate-700/30 bg-slate-800/40"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.15 }}
+        >
+          <div className="flex items-center gap-6">
+            <div className="w-12 shrink-0" />
+            <div className="flex-1 min-w-[180px] text-left">
+              <span className="text-sm font-bold text-white uppercase tracking-wider">Category</span>
+            </div>
+            <div className="w-20 text-center shrink-0">
+              <span className="text-sm font-bold text-white uppercase tracking-wider">Leads</span>
+            </div>
+            <div className="w-20 text-center shrink-0">
+              <span className="text-sm font-bold text-white uppercase tracking-wider">Replied</span>
+            </div>
+            <div className="w-20 text-center shrink-0">
+              <span className="text-sm font-bold text-white uppercase tracking-wider">Engaged</span>
+            </div>
+            <div className="w-20 text-center shrink-0">
+              <span className="text-sm font-bold text-white uppercase tracking-wider">Booked</span>
+            </div>
+            <div className="w-28 shrink-0">
+              <span className="text-sm font-bold text-white uppercase tracking-wider">Rate</span>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Data Rows */}
+        <div className="relative px-6 py-4 max-h-[60vh] overflow-y-auto">
+          <motion.div 
+            className="space-y-2"
+            initial="hidden"
+            animate="visible"
+            variants={{
+              hidden: { opacity: 0 },
+              visible: { 
+                opacity: 1, 
+                transition: { 
+                  staggerChildren: 0.03, 
+                  delayChildren: 0.1 
+                } 
+              }
+            }}
+          >
+            {rankedItems.map((item, idx) => {
+              const repliedRate = item.leadsIn > 0 ? item.engaged / item.leadsIn : 0
+              const engagedRate = item.leadsIn > 0 ? item.positive / item.leadsIn : 0
+              const bookedRate = item.leadsIn > 0 ? item.booked / item.leadsIn : 0
+              const barWidth = maxBookingRate > 0 ? (bookedRate / maxBookingRate) * 100 : 0
+              
+              const rankStyle = getRankingStyle(idx, totalItems)
+              const isWinner = idx === 0
+              const isLoser = idx === totalItems - 1 && totalItems > 2
+
+              return (
+                <motion.div
+                  key={item.value}
+                  className={`relative flex items-center gap-6 px-4 py-3 rounded-xl border transition-all ${rankStyle.bgClass}`}
+                  variants={{
+                    hidden: { opacity: 0, x: -20, scale: 0.98 },
+                    visible: { opacity: 1, x: 0, scale: 1 }
+                  }}
+                  whileHover={{ 
+                    scale: 1.01, 
+                    x: 4,
+                    boxShadow: isWinner ? '0 0 30px rgba(16, 185, 129, 0.3)' : undefined,
+                    transition: { duration: 0.2 }
+                  }}
                 >
-                  {isWinner ? (
-                    <motion.div
-                      animate={{ y: [0, -2, 0] }}
-                      transition={{ duration: 1.5, repeat: Infinity }}
-                    >
-                      <Trophy size={22} />
-                    </motion.div>
-                  ) : isLoser ? (
-                    <TrendingDown size={22} />
-                  ) : (
-                    `#${idx + 1}`
-                  )}
-                </motion.div>
-
-                {/* Category Name */}
-                <div className="flex-1 min-w-[200px]">
-                  <span className={`text-lg font-semibold ${rankStyle.textClass}`} title={item.value}>
-                    {item.value}
-                  </span>
-                </div>
-
-                {/* Leads */}
-                <div className="w-24 text-center shrink-0">
-                  <span className="text-lg font-bold font-mono text-white">
-                    <AnimatedCounter value={item.leadsIn} duration={0.6} />
-                  </span>
-                </div>
-
-                {/* Replied / Leads */}
-                <div className="w-24 text-center shrink-0">
-                  <div className="text-lg font-bold font-mono text-blue-400">
-                    {formatPercentage(repliedRate * 100, 0)}
-                  </div>
-                  <div className="text-xs text-white/40">
-                    {item.engaged}/{item.leadsIn}
-                  </div>
-                </div>
-
-                {/* Engaged / Leads */}
-                <div className="w-24 text-center shrink-0">
-                  <div className="text-lg font-bold font-mono text-amber-400">
-                    {formatPercentage(engagedRate * 100, 0)}
-                  </div>
-                  <div className="text-xs text-white/40">
-                    {item.positive}/{item.leadsIn}
-                  </div>
-                </div>
-
-                {/* Booked / Leads */}
-                <div className="w-24 text-center shrink-0">
-                  <div className={`text-lg font-bold font-mono ${rankStyle.textClass}`}>
-                    {formatPercentage(bookedRate * 100, 0)}
-                  </div>
-                  <div className="text-xs text-white/40">
-                    {item.booked}/{item.leadsIn}
-                  </div>
-                </div>
-
-                {/* Visual Bar */}
-                <div className="w-36 h-10 bg-slate-700/30 rounded-lg overflow-hidden relative shrink-0">
-                  <motion.div
-                    className={`h-full rounded-lg ${rankStyle.barClass}`}
-                    initial={{ width: 0, opacity: 0 }}
-                    animate={{ width: `${Math.max(barWidth, 3)}%`, opacity: 1 }}
-                    transition={{ 
-                      duration: 0.8, 
-                      delay: idx * 0.05, 
-                      ease: [0.25, 0.46, 0.45, 0.94] 
-                    }}
-                  />
+                  {/* Winner sparkle effect */}
                   {isWinner && (
                     <motion.div
-                      className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent"
-                      initial={{ x: '-100%' }}
-                      animate={{ x: '200%' }}
-                      transition={{ duration: 1.2, delay: 0.8, repeat: Infinity, repeatDelay: 2 }}
-                    />
+                      className="absolute -top-1 -right-1"
+                      animate={{ 
+                        rotate: [0, 15, -15, 0],
+                        scale: [1, 1.2, 1]
+                      }}
+                      transition={{ duration: 2, repeat: Infinity }}
+                    >
+                      <Sparkles size={14} className="text-emerald-400" />
+                    </motion.div>
                   )}
-                </div>
-              </motion.div>
-            )
-          })}
-        </motion.div>
 
-        {/* Show more indicator */}
-        {isCompact && rankedItems.length > 6 && (
+                  {/* Rank Badge */}
+                  <motion.div 
+                    className={`w-12 h-10 flex items-center justify-center rounded-lg font-bold text-sm shrink-0 ${
+                      isWinner 
+                        ? 'bg-emerald-500/20 text-emerald-400' 
+                        : isLoser 
+                          ? 'bg-red-500/20 text-red-400'
+                          : 'bg-white/5 text-white/40'
+                    }`}
+                  >
+                    {isWinner ? (
+                      <Trophy size={18} />
+                    ) : isLoser ? (
+                      <TrendingDown size={18} />
+                    ) : (
+                      `#${idx + 1}`
+                    )}
+                  </motion.div>
+
+                  {/* Category Name */}
+                  <div className="flex-1 min-w-[180px]">
+                    <span className={`text-base font-semibold ${rankStyle.textClass}`} title={item.value}>
+                      {item.value}
+                    </span>
+                  </div>
+
+                  {/* Leads */}
+                  <div className="w-20 text-center shrink-0">
+                    <span className="text-base font-bold font-mono text-white">
+                      <AnimatedCounter value={item.leadsIn} duration={0.6} />
+                    </span>
+                  </div>
+
+                  {/* Replied / Leads */}
+                  <div className="w-20 text-center shrink-0">
+                    <div className="text-base font-bold font-mono text-blue-400">
+                      {formatPercentage(repliedRate * 100, 0)}
+                    </div>
+                    <div className="text-xs text-white/40">
+                      {item.engaged}/{item.leadsIn}
+                    </div>
+                  </div>
+
+                  {/* Engaged / Leads */}
+                  <div className="w-20 text-center shrink-0">
+                    <div className="text-base font-bold font-mono text-amber-400">
+                      {formatPercentage(engagedRate * 100, 0)}
+                    </div>
+                    <div className="text-xs text-white/40">
+                      {item.positive}/{item.leadsIn}
+                    </div>
+                  </div>
+
+                  {/* Booked / Leads */}
+                  <div className="w-20 text-center shrink-0">
+                    <div className={`text-base font-bold font-mono ${rankStyle.textClass}`}>
+                      {formatPercentage(bookedRate * 100, 0)}
+                    </div>
+                    <div className="text-xs text-white/40">
+                      {item.booked}/{item.leadsIn}
+                    </div>
+                  </div>
+
+                  {/* Visual Bar */}
+                  <div className="w-28 h-8 bg-slate-700/30 rounded-lg overflow-hidden relative shrink-0">
+                    <motion.div
+                      className={`h-full rounded-lg ${rankStyle.barClass}`}
+                      initial={{ width: 0, opacity: 0 }}
+                      animate={{ width: `${Math.max(barWidth, 3)}%`, opacity: 1 }}
+                      transition={{ 
+                        duration: 0.8, 
+                        delay: idx * 0.03, 
+                        ease: [0.25, 0.46, 0.45, 0.94] 
+                      }}
+                    />
+                  </div>
+                </motion.div>
+              )
+            })}
+          </motion.div>
+        </div>
+
+        {/* Coverage Warning */}
+        {dimension && dimension.coverage < 0.2 && (
           <motion.div 
-            className="text-center mt-4 text-base text-white/40"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.5 }}
+            className="px-6 py-3 border-t border-red-500/20 bg-red-500/5"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
           >
-            +{rankedItems.length - 6} more categories
+            <div className="flex items-center gap-2 text-red-400">
+              <motion.div
+                animate={{ scale: [1, 1.2, 1] }}
+                transition={{ duration: 1, repeat: Infinity }}
+              >
+                <AlertTriangle size={14} />
+              </motion.div>
+              <span className="text-sm">Low coverage ({formatPercentage(dimension.coverage * 100, 0)}) — results may not be representative</span>
+            </div>
           </motion.div>
         )}
-      </div>
-
-      {/* Coverage Warning */}
-      {dimension && dimension.coverage < 0.2 && (
-        <motion.div 
-          className="px-4 py-3 border-t border-red-500/20 bg-red-500/5"
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-        >
-          <div className="flex items-center gap-2 text-red-400">
-            <motion.div
-              animate={{ scale: [1, 1.2, 1] }}
-              transition={{ duration: 1, repeat: Infinity }}
-            >
-              <AlertTriangle size={14} />
-            </motion.div>
-            <span className="text-sm">Low coverage ({formatPercentage(dimension.coverage * 100, 0)}) — results may not be representative</span>
-          </div>
-        </motion.div>
-      )}
+      </motion.div>
     </motion.div>
   )
 }
 
 export default function FirmographicInsightsPanel({ data, loading, error }: FirmographicInsightsPanelProps) {
-  const [selectedDimensions, setSelectedDimensions] = useState<Set<DimensionKey>>(new Set())
+  // Selection state: ordered array of max 2 dimension keys
+  const [selectedDimensions, setSelectedDimensions] = useState<DimensionKey[]>([])
   const [comparisonMetric, setComparisonMetric] = useState<'replyRate' | 'positiveRate' | 'bookingRate'>('bookingRate')
   const [lockedCharts, setLockedCharts] = useState<Array<{ x: DimensionKey; y: DimensionKey; metric: 'replyRate' | 'positiveRate' | 'bookingRate' }>>([])
+  
+  // Modal state for expanded dimension view
+  const [expandedDimension, setExpandedDimension] = useState<DimensionKey | null>(null)
+
+  // Handle dimension selection for comparison (max 2)
+  const handleDimensionSelect = useCallback((key: DimensionKey) => {
+    setSelectedDimensions(prev => {
+      const existingIndex = prev.indexOf(key)
+      if (existingIndex !== -1) {
+        // Already selected, remove it
+        return prev.filter(k => k !== key)
+      } else if (prev.length < 2) {
+        // Add if we have room
+        return [...prev, key]
+      }
+      // If already have 2, replace the second one
+      return [prev[0], key]
+    })
+  }, [])
+
+  // Get selection index for a dimension (1, 2, or null)
+  const getSelectionIndex = useCallback((key: DimensionKey): number | null => {
+    const idx = selectedDimensions.indexOf(key)
+    return idx === -1 ? null : idx + 1
+  }, [selectedDimensions])
+
+  // Check if selection is locked (2 items selected)
+  const isLocked = selectedDimensions.length >= 2
 
   if (loading) {
     return (
@@ -690,7 +722,7 @@ export default function FirmographicInsightsPanel({ data, loading, error }: Firm
             <div className="absolute inset-0 w-12 h-12 border-3 border-emerald-500 border-t-transparent rounded-full" />
           </motion.div>
           <motion.span 
-            className="text-lg font-mono text-white/40"
+            className="text-lg font-mono text-white"
             animate={{ opacity: [0.4, 1, 0.4] }}
             transition={{ duration: 1.5, repeat: Infinity }}
           >
@@ -727,20 +759,6 @@ export default function FirmographicInsightsPanel({ data, loading, error }: Firm
 
   const dimensions: DimensionKey[] = ['industry', 'revenue', 'employees', 'geography', 'jobTitle', 'technologies', 'companyMaturity', 'fundingStatus', 'signals']
 
-  const handleTabClick = (key: DimensionKey) => {
-    setSelectedDimensions(prev => {
-      const next = new Set(prev)
-      if (next.has(key)) {
-        next.delete(key)
-      } else {
-        next.add(key)
-      }
-      return next
-    })
-  }
-
-  const selectedArray = Array.from(selectedDimensions)
-
   return (
     <motion.div 
       className="space-y-4"
@@ -774,27 +792,51 @@ export default function FirmographicInsightsPanel({ data, loading, error }: Firm
             DEEP INSIGHTS
           </motion.h2>
         </div>
-        <motion.span 
-          className="text-sm font-mono text-white/30 tracking-wider"
+        <motion.div 
+          className="flex items-center gap-3"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.3 }}
-          key={selectedArray.length}
         >
+          {/* Selection status */}
           <AnimatePresence mode="wait">
             <motion.span
-              key={selectedArray.length > 0 ? 'selected' : 'default'}
+              key={selectedDimensions.length}
+              className="text-sm font-mono text-white tracking-wider"
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
             >
-              {selectedArray.length > 0 
-                ? `${selectedArray.length} SELECTED — COMPARE UP TO 2` 
-                : 'CLICK A DIMENSION TO EXPAND'
-              }
+              {selectedDimensions.length} SELECTED — COMPARE UP TO 2
             </motion.span>
           </AnimatePresence>
-        </motion.span>
+          
+          {/* Selection info */}
+          {selectedDimensions.length === 2 && (
+            <motion.div
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-green-500/20 text-green-300 text-xs font-medium"
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+            >
+              <CheckCircle size={12} />
+              Comparing
+            </motion.div>
+          )}
+          
+          {/* Clear selection */}
+          {selectedDimensions.length > 0 && (
+            <motion.button
+              onClick={() => setSelectedDimensions([])}
+              className="text-xs text-white hover:text-white transition-colors underline"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+            >
+              Clear
+            </motion.button>
+          )}
+        </motion.div>
       </motion.div>
 
       {/* Dimension Cards - 3 per row with top-3 preview */}
@@ -818,39 +860,18 @@ export default function FirmographicInsightsPanel({ data, loading, error }: Firm
             key={key}
             dimensionKey={key}
             dimension={data[key]}
-            isSelected={selectedDimensions.has(key)}
-            onClick={() => handleTabClick(key)}
+            selectionIndex={getSelectionIndex(key)}
+            isLocked={isLocked}
+            onSelect={() => handleDimensionSelect(key)}
+            onExpand={() => setExpandedDimension(key)}
             index={index}
           />
         ))}
       </motion.div>
 
-      {/* Expanded Panels - Side by Side (max 2) */}
-      <AnimatePresence mode="sync">
-        {selectedArray.length > 0 && (
-          <motion.div 
-            className={`grid gap-4 ${selectedArray.length >= 3 ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3' : selectedArray.length === 2 ? 'grid-cols-1 lg:grid-cols-2' : 'grid-cols-1'}`}
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ type: 'spring', stiffness: 200, damping: 25 }}
-          >
-            {selectedArray.slice(0, 2).map((key) => (
-              <DetailedMetricsPanel
-                key={key}
-                dimensionKey={key}
-                dimension={data[key]}
-                onClose={() => handleTabClick(key)}
-                isCompact={selectedArray.length > 1}
-              />
-            ))}
-          </motion.div>
-        )}
-      </AnimatePresence>
-
       {/* 2D Comparison Chart - appears when exactly 2 dimensions are selected */}
       <AnimatePresence>
-        {selectedArray.length === 2 && data && (
+        {selectedDimensions.length === 2 && data && (
           <motion.div
             initial={{ opacity: 0, height: 0, scale: 0.95 }}
             animate={{ opacity: 1, height: 'auto', scale: 1 }}
@@ -858,22 +879,22 @@ export default function FirmographicInsightsPanel({ data, loading, error }: Firm
             transition={{ type: 'spring', stiffness: 200, damping: 25, delay: 0.1 }}
           >
             <DimensionComparisonChart
-              xDimension={data[selectedArray[0]]}
-              yDimension={data[selectedArray[1]]}
-              xLabel={DIMENSION_CONFIG[selectedArray[0]].shortLabel}
-              yLabel={DIMENSION_CONFIG[selectedArray[1]].shortLabel}
+              xDimension={data[selectedDimensions[0]]}
+              yDimension={data[selectedDimensions[1]]}
+              xLabel={DIMENSION_CONFIG[selectedDimensions[0]].shortLabel}
+              yLabel={DIMENSION_CONFIG[selectedDimensions[1]].shortLabel}
               metric={comparisonMetric}
               onMetricChange={setComparisonMetric}
               onLock={() => {
                 const newLocked = {
-                  x: selectedArray[0],
-                  y: selectedArray[1],
+                  x: selectedDimensions[0],
+                  y: selectedDimensions[1],
                   metric: comparisonMetric,
                 }
                 setLockedCharts(prev => [...prev, newLocked])
               }}
               isLocked={lockedCharts.some(
-                lc => lc.x === selectedArray[0] && lc.y === selectedArray[1]
+                lc => lc.x === selectedDimensions[0] && lc.y === selectedDimensions[1]
               )}
             />
           </motion.div>
@@ -891,7 +912,7 @@ export default function FirmographicInsightsPanel({ data, loading, error }: Firm
           >
             <div className="flex items-center justify-between">
               <motion.h3 
-                className="text-sm font-semibold text-white/70"
+                className="text-sm font-semibold text-white"
                 initial={{ opacity: 0, x: -10 }}
                 animate={{ opacity: 1, x: 0 }}
               >
@@ -899,7 +920,7 @@ export default function FirmographicInsightsPanel({ data, loading, error }: Firm
               </motion.h3>
               <motion.button
                 onClick={() => setLockedCharts([])}
-                className="text-xs text-slate-400 hover:text-white transition-colors"
+                className="text-xs text-white hover:text-white transition-colors"
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
               >
@@ -934,9 +955,9 @@ export default function FirmographicInsightsPanel({ data, loading, error }: Firm
         )}
       </AnimatePresence>
 
-      {/* Legend - only show when panels are open */}
+      {/* Legend - only show when comparison chart is visible */}
       <AnimatePresence>
-        {selectedArray.length > 0 && (
+        {selectedDimensions.length === 2 && (
           <motion.div 
             className="flex items-center justify-center gap-10 pt-2"
             initial={{ opacity: 0, y: 20 }}
@@ -957,10 +978,21 @@ export default function FirmographicInsightsPanel({ data, loading, error }: Firm
                 transition={{ delay: 0.3 + idx * 0.1 }}
               >
                 <div className={`w-5 h-5 rounded bg-gradient-to-r ${item.color}`} />
-                <span className="text-sm text-white/50">{item.label}</span>
+                <span className="text-sm text-white">{item.label}</span>
               </motion.div>
             ))}
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Dimension Detail Modal */}
+      <AnimatePresence>
+        {expandedDimension && data[expandedDimension] && (
+          <DimensionModal
+            dimensionKey={expandedDimension}
+            dimension={data[expandedDimension]}
+            onClose={() => setExpandedDimension(null)}
+          />
         )}
       </AnimatePresence>
     </motion.div>

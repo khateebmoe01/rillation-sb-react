@@ -97,7 +97,7 @@ export function usePerformanceData({ startDate, endDate, campaigns }: UsePerform
         (async () => {
           const { data, error } = await supabase
             .from('replies')
-            .select('category,date_received,client')
+            .select('category,date_received,client,lead_id,from_email,campaign_id')
             .gte('date_received', startStr)
             .lt('date_received', endStrNextDay)
           
@@ -145,6 +145,9 @@ export function usePerformanceData({ startDate, endDate, campaigns }: UsePerform
         client: string | null
         category: string | null
         date_received: string | null
+        lead_id: string | null
+        from_email: string | null
+        campaign_id: string | null
       }
       type MeetingRow = {
         client: string | null
@@ -165,13 +168,23 @@ export function usePerformanceData({ startDate, endDate, campaigns }: UsePerform
         const emailsSent = clientCampaigns.reduce((sum, row) => sum + (row.emails_sent || 0), 0)
         const uniqueProspects = clientCampaigns.reduce((sum, row) => sum + (row.total_leads_contacted || 0), 0)
         
-        // Replies for this client (excluding Out Of Office - case insensitive)
-        const clientReplies = (repliesData as (ReplyRow & { client: string | null })[] | null)?.filter((r) => {
+        // Replies for this client - count UNIQUE lead+campaign combinations (excluding OOO)
+        const clientRepliesRaw = (repliesData as (ReplyRow & { client: string | null, lead_id?: string | null, from_email?: string | null, campaign_id?: string | null })[] | null)?.filter((r) => {
           if (r.client !== clientName) return false
           const cat = (r.category || '').toLowerCase()
           return !cat.includes('out of office') && !cat.includes('ooo')
         }) || []
-        const realReplies = clientReplies.length
+        
+        // Deduplicate by lead_id + campaign_id (a lead in 2 campaigns counts as 2)
+        const uniqueLeadsSet = new Set<string>()
+        clientRepliesRaw.forEach((r) => {
+          const leadKey = r.lead_id || r.from_email || ''
+          if (leadKey) {
+            const uniqueKey = `${leadKey}||${r.campaign_id || ''}`
+            uniqueLeadsSet.add(uniqueKey)
+          }
+        })
+        const realReplies = uniqueLeadsSet.size
         
         // Meetings for this client
         const clientMeetings = (meetingsData as MeetingRow[] | null)?.filter((m) => m.client === clientName) || []
@@ -219,13 +232,29 @@ export function usePerformanceData({ startDate, endDate, campaigns }: UsePerform
         const bounces = clientCampaigns.reduce((sum, row) => sum + (row.bounced || 0), 0)
         const positiveReplies = clientCampaigns.reduce((sum, row) => sum + (row.interested || 0), 0)
         
-        // Real replies (excluding OOO)
-        const realReplies = clientReplies.filter((r) => {
-          const cat = (r.category || '').toLowerCase()
-          return !cat.includes('out of office') && !cat.includes('ooo')
-        }).length
+        // Count UNIQUE lead+campaign combinations for real replies and total replies
+        const allRepliesSet = new Set<string>()
+        const realRepliesSet = new Set<string>()
         
-        const totalReplies = clientReplies.length
+        clientReplies.forEach((r) => {
+          const leadKey = (r as any).lead_id || (r as any).from_email || ''
+          if (!leadKey) return
+          
+          // Create unique key combining lead + campaign
+          const uniqueKey = `${leadKey}||${(r as any).campaign_id || ''}`
+          
+          // Count for total replies
+          allRepliesSet.add(uniqueKey)
+          
+          // Count for real replies (excluding OOO)
+          const cat = (r.category || '').toLowerCase()
+          if (!cat.includes('out of office') && !cat.includes('ooo')) {
+            realRepliesSet.add(uniqueKey)
+          }
+        })
+        
+        const realReplies = realRepliesSet.size
+        const totalReplies = allRepliesSet.size
         const meetingsBooked = clientMeetings.length
 
         // Build chart data by date
@@ -252,7 +281,9 @@ export function usePerformanceData({ startDate, endDate, campaigns }: UsePerform
           point.positiveReplies += row.interested || 0
         })
 
-        // Add replies data to chart
+        // Add replies data to chart (counting unique leads per day)
+        const uniqueLeadsByDate = new Map<string, Set<string>>()
+        
         clientReplies.forEach((reply) => {
           const dateStr = reply.date_received?.split('T')[0]
           if (!dateStr) return
@@ -267,10 +298,18 @@ export function usePerformanceData({ startDate, endDate, campaigns }: UsePerform
               meetings: 0,
             })
           }
-          const point = dateMap.get(dateStr)!
+          if (!uniqueLeadsByDate.has(dateStr)) {
+            uniqueLeadsByDate.set(dateStr, new Set())
+          }
+          
           const cat = (reply.category || '').toLowerCase()
           if (!cat.includes('out of office') && !cat.includes('ooo')) {
-            point.replied += 1
+            const uniqueKey = (reply as any).lead_id || (reply as any).from_email || ''
+            if (uniqueKey && !uniqueLeadsByDate.get(dateStr)!.has(uniqueKey)) {
+              uniqueLeadsByDate.get(dateStr)!.add(uniqueKey)
+              const point = dateMap.get(dateStr)!
+              point.replied += 1
+            }
           }
         })
 

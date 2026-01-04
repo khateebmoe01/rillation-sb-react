@@ -118,7 +118,7 @@ export default function DeepView() {
     })
   }
 
-  // Fetch replies data when panel is expanded
+  // Fetch replies data when panel is expanded - show UNIQUE leads only
   useEffect(() => {
     async function fetchRepliesData() {
       if (!expandedPanels.has('replies')) return
@@ -129,21 +129,38 @@ export default function DeepView() {
       const offset = (repliesPage - 1) * PAGE_SIZE
 
       try {
+          // Fetch ALL replies to deduplicate (we need to do this client-side)
           let query = supabase
             .from('replies')
-            .select('*', { count: 'exact' })
+            .select('*')
             .gte('date_received', startStr)
           .lt('date_received', endStrNextDay)
             .order('date_received', { ascending: false })
-            .range(offset, offset + PAGE_SIZE - 1)
 
           if (selectedClient) query = query.eq('client', selectedClient)
 
-        const { data, count, error } = await query
+        const { data, error } = await query
         if (error) throw error
 
-        setRepliesData(data || [])
-        setRepliesCount(count || 0)
+        // Deduplicate by lead_id or from_email, keeping the most recent reply per lead
+        const seenLeads = new Map<string, any>()
+        ;(data || []).forEach((reply: any) => {
+          const uniqueKey = reply.lead_id || reply.from_email || ''
+          if (!uniqueKey) return
+          
+          // Only keep if we haven't seen this lead yet (first occurrence is most recent due to ordering)
+          if (!seenLeads.has(uniqueKey)) {
+            seenLeads.set(uniqueKey, reply)
+          }
+        })
+        
+        // Convert to array and apply pagination
+        const uniqueReplies = Array.from(seenLeads.values())
+        const totalUniqueCount = uniqueReplies.length
+        const paginatedReplies = uniqueReplies.slice(offset, offset + PAGE_SIZE)
+
+        setRepliesData(paginatedReplies)
+        setRepliesCount(totalUniqueCount)
       } catch (err) {
         console.error('Error fetching replies:', err)
       } finally {
@@ -258,15 +275,15 @@ export default function DeepView() {
             <Sparkles size={24} className="text-rillation-purple" />
           </motion.div>
           <div>
-            <h1 className="text-xl font-bold text-rillation-text">Deep Insights</h1>
-            <p className="text-xs text-rillation-text-muted">
+            <h1 className="text-xl font-bold text-white">Deep Insights</h1>
+            <p className="text-xs text-white">
               Comprehensive analytics across replies, leads & meetings
             </p>
           </div>
         </div>
         <motion.button
           onClick={() => refetch()}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-rillation-card border border-rillation-border text-rillation-text-muted hover:text-rillation-text hover:border-rillation-purple/50 transition-all"
+          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-rillation-card border border-rillation-border text-white hover:text-white hover:border-rillation-purple/50 transition-all"
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
           disabled={loading}
@@ -304,7 +321,7 @@ export default function DeepView() {
               animate={{ rotate: 360 }}
               transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
             />
-            <p className="mt-4 text-sm text-rillation-text-muted">Loading insights...</p>
+            <p className="mt-4 text-sm text-white">Loading insights...</p>
           </motion.div>
         )}
       </AnimatePresence>
@@ -376,14 +393,14 @@ export default function DeepView() {
                 {/* Section header */}
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <ChevronDown size={16} className="text-rillation-text-muted" />
-                    <span className="text-sm font-medium text-rillation-text-muted">
+                    <ChevronDown size={16} className="text-white" />
+                    <span className="text-sm font-medium text-white">
                       Detail Tables
                         </span>
                   </div>
                   <motion.button
                     onClick={() => setExpandedPanels(new Set())}
-                    className="flex items-center gap-1 px-3 py-1 rounded-lg text-xs text-rillation-text-muted hover:text-rillation-text hover:bg-rillation-card-hover transition-all"
+                    className="flex items-center gap-1 px-3 py-1 rounded-lg text-xs text-white hover:text-white hover:bg-rillation-card-hover transition-all"
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                   >
@@ -494,10 +511,10 @@ export default function DeepView() {
           className="flex flex-col items-center justify-center py-16 text-center"
         >
           <div className="w-16 h-16 rounded-full bg-rillation-card border border-rillation-border flex items-center justify-center mb-4">
-            <Sparkles size={24} className="text-rillation-text-muted" />
+            <Sparkles size={24} className="text-white" />
         </div>
-          <h3 className="text-lg font-medium text-rillation-text mb-2">No Data Found</h3>
-          <p className="text-sm text-rillation-text-muted max-w-md">
+          <h3 className="text-lg font-medium text-white mb-2">No Data Found</h3>
+          <p className="text-sm text-white max-w-md">
             No insights available for the selected date range and filters. Try adjusting your filters or selecting a different time period.
           </p>
         </motion.div>

@@ -1,3 +1,7 @@
+import { useState, useEffect } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { Calendar } from 'lucide-react'
+
 interface DateRangeFilterProps {
   startDate: Date
   endDate: Date
@@ -23,6 +27,8 @@ export default function DateRangeFilter({
   onPresetChange,
   activePreset,
 }: DateRangeFilterProps) {
+  const [isCustom, setIsCustom] = useState(false)
+  
   const handleDateChange = (type: 'start' | 'end', value: string) => {
     // Parse date as local time to avoid timezone issues
     const [year, month, day] = value.split('-').map(Number)
@@ -35,7 +41,17 @@ export default function DateRangeFilter({
       date.setHours(23, 59, 59, 999)
       onEndDateChange(date)
     }
+    
+    // Mark as custom when user manually changes dates
+    setIsCustom(true)
   }
+  
+  // Reset custom flag when a preset is selected
+  useEffect(() => {
+    if (activePreset && activePreset !== 'custom') {
+      setIsCustom(false)
+    }
+  }, [activePreset])
   
   // Helper to format date for input without timezone conversion
   const formatDateForInput = (date: Date): string => {
@@ -52,12 +68,15 @@ export default function DateRangeFilter({
         {presets.map((preset) => (
           <button
             key={preset.id}
-            onClick={() => onPresetChange(preset.id)}
+            onClick={() => {
+              onPresetChange(preset.id)
+              setIsCustom(false)
+            }}
             className={`
               px-3 py-1.5 text-xs font-medium rounded-lg transition-all duration-200
-              ${activePreset === preset.id
-                ? 'bg-rillation-card-hover text-rillation-text border border-rillation-border'
-                : 'text-rillation-text-muted hover:text-rillation-text hover:bg-rillation-card-hover'
+              ${activePreset === preset.id && !isCustom
+                ? 'bg-rillation-card-hover text-white border border-rillation-border'
+                : 'text-white/80 hover:text-white hover:bg-rillation-card-hover'
               }
             `}
           >
@@ -68,18 +87,33 @@ export default function DateRangeFilter({
       
       {/* Custom Date Range */}
       <div className="flex items-center gap-2">
+        {/* Custom indicator */}
+        <AnimatePresence>
+          {isCustom && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8, x: -10 }}
+              animate={{ opacity: 1, scale: 1, x: 0 }}
+              exit={{ opacity: 0, scale: 0.8, x: -10 }}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-violet-500/20 text-violet-300 border border-violet-500/30"
+            >
+              <Calendar size={12} />
+              <span className="text-xs font-medium">Custom</span>
+            </motion.div>
+          )}
+        </AnimatePresence>
+        
         <input
           type="date"
           value={formatDateForInput(startDate)}
           onChange={(e) => handleDateChange('start', e.target.value)}
-          className="px-3 py-1.5 text-xs bg-rillation-card border border-rillation-border rounded-lg text-rillation-text focus:outline-none focus:border-rillation-text"
+          className="px-3 py-1.5 text-xs bg-rillation-card border border-rillation-border rounded-lg text-white focus:outline-none focus:border-white"
         />
-        <span className="text-rillation-text-muted text-xs">to</span>
+        <span className="text-white text-xs">to</span>
         <input
           type="date"
           value={formatDateForInput(endDate)}
           onChange={(e) => handleDateChange('end', e.target.value)}
-          className="px-3 py-1.5 text-xs bg-rillation-card border border-rillation-border rounded-lg text-rillation-text focus:outline-none focus:border-rillation-text"
+          className="px-3 py-1.5 text-xs bg-rillation-card border border-rillation-border rounded-lg text-white focus:outline-none focus:border-white"
         />
       </div>
     </div>

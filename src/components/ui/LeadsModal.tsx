@@ -51,16 +51,15 @@ export default function LeadsModal({
       const offset = (currentPage - 1) * PAGE_SIZE
 
       try {
-        // Handle replies stages
+        // Handle replies stages - show UNIQUE leads only
         if (stageName === 'Real Replies' || stageName === 'Total Sent' || stageName === 'Total Replies') {
-          // Fetch from replies table
+          // Fetch ALL replies to deduplicate (we need to do this client-side for proper deduplication)
           let query = supabase
             .from('replies')
-            .select('*', { count: 'exact' })
+            .select('*')
             .gte('date_received', startStr)
             .lte('date_received', endStr)
             .order('date_received', { ascending: false })
-            .range(offset, offset + PAGE_SIZE - 1)
 
           // Filter by client if provided
           if (client) query = query.eq('client', client)
@@ -72,12 +71,29 @@ export default function LeadsModal({
               .not('category', 'ilike', '%ooo%')
           }
 
-          const { data, count, error } = await query
+          const { data, error } = await query
 
           if (error) throw error
 
+          // Deduplicate by lead_id or from_email, keeping the most recent reply per lead
+          const seenLeads = new Map<string, any>()
+          ;(data || []).forEach((reply: any) => {
+            const uniqueKey = reply.lead_id || reply.from_email || ''
+            if (!uniqueKey) return
+            
+            // Only keep if we haven't seen this lead yet (first occurrence is most recent due to ordering)
+            if (!seenLeads.has(uniqueKey)) {
+              seenLeads.set(uniqueKey, reply)
+            }
+          })
+
+          // Convert to array and apply pagination
+          const uniqueReplies = Array.from(seenLeads.values())
+          const totalUniqueCount = uniqueReplies.length
+          const paginatedReplies = uniqueReplies.slice(offset, offset + PAGE_SIZE)
+
           // Transform replies data to match Lead interface
-          const transformedLeads = (data || []).map((reply: any) => ({
+          const transformedLeads = paginatedReplies.map((reply: any) => ({
             id: reply.id,
             first_name: '',
             last_name: '',
@@ -91,7 +107,7 @@ export default function LeadsModal({
           }))
 
           setLeads(transformedLeads)
-          setTotalCount(count || 0)
+          setTotalCount(totalUniqueCount)
           return
         }
 

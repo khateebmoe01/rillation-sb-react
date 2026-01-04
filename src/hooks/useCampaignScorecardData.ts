@@ -66,7 +66,7 @@ export function useCampaignScorecardData({ startDate, endDate, client }: UseCamp
         }
       }
 
-      // Fetch replies data
+      // Fetch replies data with lead_id and from_email for deduplication
       let allRepliesData: any[] = []
       let repliesOffset = 0
       let hasMoreReplies = true
@@ -74,7 +74,7 @@ export function useCampaignScorecardData({ startDate, endDate, client }: UseCamp
       while (hasMoreReplies) {
         const { data: pageData, error: repliesError } = await supabase
           .from('replies')
-          .select('campaign_id, category, date_received')
+          .select('campaign_id, category, date_received, lead_id, from_email')
           .eq('client', client)
           .gte('date_received', startStr)
           .lt('date_received', endStrNextDay)
@@ -191,28 +191,61 @@ export function useCampaignScorecardData({ startDate, endDate, client }: UseCamp
         point.positiveReplies += row.interested || 0
       })
 
-      // Process replies
+      // Process replies - count UNIQUE leads per campaign
+      // Track unique leads per campaign for total and real replies
+      const uniqueLeadsByCampaign = new Map<string, { all: Set<string>, real: Set<string>, dailyReal: Map<string, Set<string>> }>()
+      
       allRepliesData.forEach((reply: any) => {
         if (!reply.campaign_id) return
 
         const key = reply.campaign_id
         const campaign = campaignMap.get(key)
         if (!campaign) return
-
-        campaign.totals.totalReplies += 1
+        
+        // Initialize tracking for this campaign if needed
+        if (!uniqueLeadsByCampaign.has(key)) {
+          uniqueLeadsByCampaign.set(key, { all: new Set(), real: new Set(), dailyReal: new Map() })
+        }
+        
+        const uniqueKey = reply.lead_id || reply.from_email || ''
+        if (!uniqueKey) return
+        
+        const tracking = uniqueLeadsByCampaign.get(key)!
         const cat = (reply.category || '').toLowerCase()
         const isOOO = cat.includes('out of office') || cat.includes('ooo')
+        
+        // Track unique lead for total replies
+        tracking.all.add(uniqueKey)
+        
+        // Track unique lead for real replies (excluding OOO)
         if (!isOOO) {
-          campaign.totals.realReplies += 1
-        }
-
-        // Daily data
-        const dateStr = reply.date_received?.split('T')[0]
-        if (dateStr && campaign.dailyData.has(dateStr)) {
-          if (!isOOO) {
-            campaign.dailyData.get(dateStr)!.replied += 1
+          tracking.real.add(uniqueKey)
+          
+          // Track unique leads per day for chart
+          const dateStr = reply.date_received?.split('T')[0]
+          if (dateStr && campaign.dailyData.has(dateStr)) {
+            if (!tracking.dailyReal.has(dateStr)) {
+              tracking.dailyReal.set(dateStr, new Set())
+            }
+            tracking.dailyReal.get(dateStr)!.add(uniqueKey)
           }
         }
+      })
+      
+      // Apply unique counts to campaign totals and daily data
+      uniqueLeadsByCampaign.forEach((tracking, key) => {
+        const campaign = campaignMap.get(key)
+        if (!campaign) return
+        
+        campaign.totals.totalReplies = tracking.all.size
+        campaign.totals.realReplies = tracking.real.size
+        
+        // Update daily data with unique counts
+        tracking.dailyReal.forEach((uniqueLeads, dateStr) => {
+          if (campaign.dailyData.has(dateStr)) {
+            campaign.dailyData.get(dateStr)!.replied = uniqueLeads.size
+          }
+        })
       })
 
       // Process meetings
