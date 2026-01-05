@@ -12,6 +12,8 @@ import {
 import { formatNumber, formatPercentage } from '../../lib/supabase'
 import type { QuickViewMetrics, ChartDataPoint } from '../../types/database'
 
+export type CampaignStatus = 'active' | 'paused' | 'completed'
+
 interface MiniScorecardProps {
   clientName: string
   metrics: QuickViewMetrics
@@ -25,6 +27,32 @@ interface MiniScorecardProps {
   }
   dateRange?: { start: Date; end: Date }
   onClick?: () => void
+  status?: CampaignStatus
+}
+
+// Status color configurations
+const statusConfig = {
+  active: {
+    border: 'border-emerald-500/50',
+    shadow: 'shadow-emerald-500/20',
+    hoverBorder: 'hover:border-emerald-400/70',
+    dot: 'bg-emerald-400',
+    glow: 'shadow-[0_0_15px_rgba(16,185,129,0.15)]',
+  },
+  paused: {
+    border: 'border-amber-500/50',
+    shadow: 'shadow-amber-500/20',
+    hoverBorder: 'hover:border-amber-400/70',
+    dot: 'bg-amber-400',
+    glow: 'shadow-[0_0_15px_rgba(245,158,11,0.15)]',
+  },
+  completed: {
+    border: 'border-slate-500/40',
+    shadow: 'shadow-slate-500/10',
+    hoverBorder: 'hover:border-slate-400/60',
+    dot: 'bg-slate-500',
+    glow: '',
+  },
 }
 
 type MetricType = 'sent' | 'prospects' | 'real' | 'interested' | 'meetings' | null
@@ -47,7 +75,7 @@ function getTargetColorHex(actual: number, target: number): string {
   return '#ef4444' // red
 }
 
-export default function MiniScorecard({ clientName, metrics, chartData, targets, dateRange, onClick }: MiniScorecardProps) {
+export default function MiniScorecard({ clientName, metrics, chartData, targets, dateRange, onClick, status }: MiniScorecardProps) {
   const [selectedMetric, setSelectedMetric] = useState<MetricType>(null)
 
   // Calculate number of days for daily target calculation
@@ -122,9 +150,19 @@ export default function MiniScorecard({ clientName, metrics, chartData, targets,
     return null
   }
 
+  // Get status-specific styles
+  const statusStyles = status ? statusConfig[status] : null
+
   return (
     <motion.div
-      className="relative overflow-hidden rounded-xl p-6 border border-slate-700/60 bg-gradient-to-b from-slate-900/90 to-slate-900/70 hover:border-rillation-text hover:shadow-xl transition-all cursor-pointer"
+      className={`
+        relative overflow-hidden rounded-xl p-6 border bg-gradient-to-b from-slate-900/90 to-slate-900/70 
+        transition-all cursor-pointer
+        ${statusStyles 
+          ? `${statusStyles.border} ${statusStyles.hoverBorder} ${statusStyles.glow} hover:shadow-xl` 
+          : 'border-slate-700/60 hover:border-rillation-text hover:shadow-xl'
+        }
+      `}
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ type: 'spring', stiffness: 300, damping: 25 }}
@@ -141,8 +179,16 @@ export default function MiniScorecard({ clientName, metrics, chartData, targets,
         }}
       />
 
-      {/* Client Name */}
-      <h3 className="text-lg font-semibold text-rillation-text mb-6">{clientName}</h3>
+      {/* Client/Campaign Name with Status Badge */}
+      <div className="flex items-center gap-2.5 mb-6">
+        {status && (
+          <span 
+            className={`w-2.5 h-2.5 rounded-full ${statusStyles?.dot} shrink-0`}
+            title={status.charAt(0).toUpperCase() + status.slice(1)}
+          />
+        )}
+        <h3 className="text-lg font-semibold text-rillation-text">{clientName}</h3>
+      </div>
       
       {/* Metrics Grid - Horizontal layout, 6 metrics */}
       <div className="grid grid-cols-6 gap-6 mb-6 px-2">

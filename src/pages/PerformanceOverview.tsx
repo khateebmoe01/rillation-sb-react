@@ -1,21 +1,15 @@
 import { useState } from 'react'
-import { Settings, Search, ChevronDown, ArrowLeft, Sparkles } from 'lucide-react'
+import { Settings, Search, ArrowLeft, Sparkles } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import Button from '../components/ui/Button'
 import MiniScorecard from '../components/ui/MiniScorecard'
 import ConfigureTargetsModal from '../components/ui/ConfigureTargetsModal'
+import StatusFilter from '../components/ui/StatusFilter'
 import { usePerformanceData } from '../hooks/usePerformanceData'
 import { useCampaignScorecardData, type CampaignStatus } from '../hooks/useCampaignScorecardData'
 import { useFilters } from '../contexts/FilterContext'
 import type { ClientBubbleData } from '../types/database'
-
-const STATUS_OPTIONS: { value: CampaignStatus | 'all'; label: string; color: string }[] = [
-  { value: 'all', label: 'All Statuses', color: 'text-slate-400' },
-  { value: 'active', label: 'Active', color: 'text-green-400' },
-  { value: 'paused', label: 'Paused', color: 'text-yellow-400' },
-  { value: 'completed', label: 'Completed', color: 'text-slate-500' },
-]
 
 // Component to display individual client scorecard
 function ClientScorecard({ 
@@ -70,11 +64,13 @@ function CampaignScorecard({
   metrics,
   chartData,
   dateRange,
+  status,
 }: { 
   campaignName: string
   metrics: any
   chartData: any[]
   dateRange: { start: Date; end: Date }
+  status?: 'active' | 'paused' | 'completed'
 }) {
   return (
     <MiniScorecard
@@ -82,6 +78,7 @@ function CampaignScorecard({
       metrics={metrics}
       chartData={chartData}
       dateRange={dateRange}
+      status={status}
     />
   )
 }
@@ -95,7 +92,6 @@ export default function PerformanceOverview() {
   const [clientSearchQuery, setClientSearchQuery] = useState('')
   const [campaignSearchQuery, setCampaignSearchQuery] = useState('')
   const [selectedStatus, setSelectedStatus] = useState<CampaignStatus | 'all'>('all')
-  const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false)
   const [isConfigureModalOpen, setIsConfigureModalOpen] = useState(false)
   
   // Determine if we're in client view mode
@@ -145,10 +141,9 @@ export default function PerformanceOverview() {
     setSelectedStatus('all')
   }
 
-  // Handle client click - navigate to client detail view
+  // Handle client click - show campaign scorecards for this client
   const handleClientClick = (client: ClientBubbleData) => {
-    const encodedClientName = encodeURIComponent(client.client)
-    navigate(`/performance/${encodedClientName}`)
+    setSelectedClient(client.client)
   }
 
   // Handle view client insights click
@@ -188,59 +183,21 @@ export default function PerformanceOverview() {
             {isClientView && (
               <>
                 {/* Status Filter Dropdown */}
-                <div className="relative">
-                  <button
-                    onClick={() => setIsStatusDropdownOpen(!isStatusDropdownOpen)}
-                    className="flex items-center gap-2 px-3 py-1.5 text-xs bg-rillation-card border border-rillation-border rounded-lg text-rillation-text hover:border-rillation-text transition-colors"
-                  >
-                    <span className={STATUS_OPTIONS.find(s => s.value === selectedStatus)?.color}>
-                      {STATUS_OPTIONS.find(s => s.value === selectedStatus)?.label}
-                    </span>
-                    <span className="text-slate-500">
-                      ({statusCounts[selectedStatus]})
-                    </span>
-                    <ChevronDown size={14} className={`transition-transform ${isStatusDropdownOpen ? 'rotate-180' : ''}`} />
-                  </button>
-                  
-                  <AnimatePresence>
-                    {isStatusDropdownOpen && (
-                      <motion.div
-                        initial={{ opacity: 0, y: -8 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -8 }}
-                        className="absolute top-full left-0 mt-1 bg-rillation-card border border-rillation-border rounded-lg shadow-xl z-50 min-w-[160px] overflow-hidden"
-                      >
-                        {STATUS_OPTIONS.map((option) => (
-                          <button
-                            key={option.value}
-                            onClick={() => {
-                              setSelectedStatus(option.value)
-                              setIsStatusDropdownOpen(false)
-                            }}
-                            className={`w-full flex items-center justify-between px-3 py-2 text-xs hover:bg-rillation-bg transition-colors ${
-                              selectedStatus === option.value ? 'bg-rillation-bg' : ''
-                            }`}
-                          >
-                            <span className={option.color}>{option.label}</span>
-                            <span className="text-slate-500">
-                              {statusCounts[option.value]}
-                            </span>
-                          </button>
-                        ))}
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
+                <StatusFilter
+                  selectedStatus={selectedStatus}
+                  onChange={setSelectedStatus}
+                  statusCounts={statusCounts}
+                />
                 
                 {/* Campaign Search */}
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-white" size={16} />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-white/50" size={16} />
                   <input
                     type="text"
                     placeholder="Search campaigns..."
                     value={campaignSearchQuery}
                     onChange={(e) => setCampaignSearchQuery(e.target.value)}
-                    className="pl-10 pr-4 py-1.5 text-xs bg-rillation-card border border-rillation-border rounded-lg text-white focus:outline-none focus:border-white w-48"
+                    className="pl-10 pr-4 py-2 text-sm bg-slate-800/80 backdrop-blur-sm border border-slate-600/50 rounded-lg text-white placeholder:text-white/40 focus:outline-none focus:border-white/40 w-56"
                   />
                 </div>
               </>
@@ -406,6 +363,7 @@ export default function PerformanceOverview() {
                   metrics={campaign.metrics}
                   chartData={campaign.chartData}
                   dateRange={dateRange}
+                  status={campaign.status !== 'all' ? campaign.status : undefined}
                 />
               </motion.div>
             ))}

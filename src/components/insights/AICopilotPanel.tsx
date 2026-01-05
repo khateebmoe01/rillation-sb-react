@@ -105,7 +105,7 @@ function parseMarkdown(content: string) {
     if (match.index > lastIndex) {
       parts.push(content.slice(lastIndex, match.index))
     }
-    parts.push(<strong key={keyIndex++} className="text-white font-semibold">{match[1]}</strong>)
+    parts.push(<strong key={keyIndex++} className="text-black font-semibold">{match[1]}</strong>)
     lastIndex = match.index + match[0].length
   }
 
@@ -424,20 +424,18 @@ I have full access to your campaign performance data. Ask me about:
                       className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
                     >
                       <div
-                        className={`max-w-[90%] rounded-lg px-4 py-3 ${
+                        className={`max-w-[90%] rounded-lg px-4 py-3 bg-white text-black ${
                           message.role === 'user'
-                            ? 'bg-white text-black rounded-br-sm'
-                            : 'bg-white/5 border border-white/10 text-white/90 rounded-bl-sm'
+                            ? 'rounded-br-sm'
+                            : 'rounded-bl-sm'
                         }`}
                       >
-                        <div className={`text-sm whitespace-pre-wrap leading-relaxed ${
+                        <div className={`text-sm whitespace-pre-wrap leading-relaxed text-black ${
                           message.role === 'user' ? 'font-medium' : 'font-mono text-[13px]'
                         }`}>
                           {parseMarkdown(message.content)}
                         </div>
-                        <div className={`text-[10px] mt-2 font-mono ${
-                          message.role === 'user' ? 'text-black/40' : 'text-white/30'
-                        }`}>
+                        <div className="text-[10px] mt-2 font-mono text-black/40">
                           {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </div>
                       </div>
@@ -487,20 +485,20 @@ I have full access to your campaign performance data. Ask me about:
               animate={{ opacity: 1 }}
               transition={{ delay: 0.2 }}
             >
-              <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+              <div className="flex gap-2 overflow-x-auto scrollbar-hide">
                 {QUICK_PROMPTS.map((prompt, index) => (
                   <motion.button
                     key={prompt.id}
                     onClick={() => handleQuickPrompt(prompt.prompt)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 border border-white/10 hover:border-white/30 hover:bg-white/10 rounded text-[11px] font-mono text-white/70 hover:text-white whitespace-nowrap transition-all"
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.1 + index * 0.05 }}
+                    className="flex items-center gap-2 px-4 py-2 bg-white text-black rounded-lg text-xs font-medium whitespace-nowrap flex-shrink-0 hover:bg-white/90 transition-colors"
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.1 + index * 0.05, type: 'spring', stiffness: 300 }}
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                   >
-                    <prompt.icon size={11} />
-                    {prompt.label}
+                    <prompt.icon size={14} className="text-black/70" />
+                    <span>{prompt.label}</span>
                   </motion.button>
                 ))}
               </div>
@@ -508,13 +506,13 @@ I have full access to your campaign performance data. Ask me about:
 
             {/* Input */}
             <motion.div 
-              className="p-4 border-t border-white/10 bg-black/50"
+              className="p-4 border-t border-white/10"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.15 }}
             >
-              <div className="flex items-end gap-2">
-                <div className="flex-1 relative">
+              <div className="flex items-end gap-3">
+                <div className="flex-1">
                   <textarea
                     ref={textareaRef}
                     value={inputValue}
@@ -528,8 +526,8 @@ I have full access to your campaign performance data. Ask me about:
                         handleSend()
                       }
                     }}
-                    placeholder={chartContext ? "Query this data..." : "Enter query..."}
-                    className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/30 text-sm font-mono focus:outline-none focus:border-white/30 resize-none overflow-hidden min-h-[44px] max-h-[150px] transition-colors"
+                    placeholder={chartContext ? "Query this data..." : "Ask anything..."}
+                    className="w-full px-4 py-3 bg-white text-black placeholder-black/40 text-sm rounded-lg border-0 focus:outline-none focus:ring-2 focus:ring-white/30 resize-none overflow-hidden min-h-[48px] max-h-[150px] transition-all"
                     disabled={isAsking}
                     rows={1}
                   />
@@ -537,15 +535,12 @@ I have full access to your campaign performance data. Ask me about:
                 <motion.button
                   onClick={handleSend}
                   disabled={!inputValue.trim() || isAsking}
-                  className="p-3 bg-white text-black rounded-lg disabled:opacity-30 disabled:cursor-not-allowed flex-shrink-0"
-                  whileHover={{ scale: 1.05, backgroundColor: 'rgba(255,255,255,0.9)' }}
+                  className="p-3 bg-white text-black rounded-lg disabled:opacity-30 disabled:cursor-not-allowed flex-shrink-0 hover:bg-white/90 transition-colors"
+                  whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                 >
-                  <Send size={16} />
+                  <Send size={18} />
                 </motion.button>
-              </div>
-              <div className="text-[9px] font-mono text-white/20 mt-2 text-center uppercase tracking-wider">
-                Enter to send • Shift+Enter for new line
               </div>
             </motion.div>
           </motion.div>

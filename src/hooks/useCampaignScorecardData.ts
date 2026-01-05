@@ -127,7 +127,8 @@ export function useCampaignScorecardData({ startDate, endDate, client }: UseCamp
       if (campaignsStatusData) {
         ;(campaignsStatusData as any[]).forEach((campaign) => {
           if (campaign.campaign_id) {
-            campaignStatusMap.set(campaign.campaign_id, campaign.status || 'unknown')
+            // Store by campaign_id (as string) for lookup
+            campaignStatusMap.set(String(campaign.campaign_id), campaign.status || 'unknown')
           }
         })
       }
@@ -290,8 +291,9 @@ export function useCampaignScorecardData({ startDate, endDate, client }: UseCamp
           .sort((a, b) => a[0].localeCompare(b[0]))
           .map(([_, point]) => point)
 
-        // Get status from campaigns table
-        const dbStatus = (campaignStatusMap.get(campaign.campaignId) || '').toLowerCase().trim()
+        // Get status from campaigns table (convert to string for comparison)
+        const campaignIdStr = String(campaign.campaignId)
+        const dbStatus = (campaignStatusMap.get(campaignIdStr) || '').toLowerCase().trim()
         let status: CampaignStatus = 'active'
         
         // Map database status to our status type
