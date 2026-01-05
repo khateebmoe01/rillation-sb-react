@@ -43,3 +43,4 @@ CREATE TRIGGER update_client_opportunities_updated_at
 
 
 
+

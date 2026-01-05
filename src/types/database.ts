@@ -225,6 +225,7 @@ export interface Campaign {
   uuid: string
   client: string
   created_at: string
+  status?: string
 }
 
 // Aggregated Data Types for Dashboard

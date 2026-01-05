@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase, formatDateForQuery, formatDateForQueryEndOfDay } from '../lib/supabase'
 
+export type CampaignStatusType = 'active' | 'paused' | 'completed' | 'unknown'
+
 export interface CampaignStat {
   campaign_name: string
   campaign_id: string
@@ -13,7 +15,7 @@ export interface CampaignStat {
   bounces: number
   meetingsBooked: number
   // Status fields
-  status: 'active' | 'completed' | 'unknown'
+  status: CampaignStatusType
   lastActivityDate: string | null
   // Performance score (for sorting by winning campaigns)
   performanceScore: number
@@ -214,6 +216,26 @@ export function useCampaignStats({ startDate, endDate, client, page, pageSize }:
         client: string | null
       }
 
+      // Fetch campaign status from campaigns table
+      let campaignsStatusQuery = supabase
+        .from('Campaigns')
+        .select('campaign_id, client, status')
+      
+      if (client) campaignsStatusQuery = campaignsStatusQuery.eq('client', client)
+
+      const { data: campaignsStatusData, error: campaignsStatusError } = await campaignsStatusQuery
+      
+      // Create a map of campaign_id||client to status
+      const campaignStatusMap = new Map<string, string>()
+      if (!campaignsStatusError && campaignsStatusData) {
+        ;(campaignsStatusData as any[]).forEach((campaign) => {
+          if (campaign.campaign_id && campaign.client) {
+            const key = `${String(campaign.campaign_id)}||${campaign.client}`
+            campaignStatusMap.set(key, campaign.status || 'unknown')
+          }
+        })
+      }
+
       // Count meetings per campaign - match by campaign_id AND client using the new key structure
       ;(meetingsData as MeetingRow[] | null)?.forEach((meeting) => {
         const meetingCampaignId = meeting.campaign_id || ''
@@ -333,11 +355,7 @@ export function useCampaignStats({ startDate, endDate, client, page, pageSize }:
       }
       // #endregion
 
-      // Calculate performance score and determine status for each campaign
-      const today = new Date()
-      const tenDaysAgo = new Date(today)
-      tenDaysAgo.setDate(tenDaysAgo.getDate() - 10)
-      
+      // Calculate performance score and get status from campaigns table
       campaignStatsMap.forEach((stat) => {
         // Performance score: weighted combination of key metrics
         // Higher weight on meetings booked and positive replies
@@ -349,13 +367,20 @@ export function useCampaignStats({ startDate, endDate, client, page, pageSize }:
           (stat.positiveReplies * positiveWeight) +
           (stat.realReplies * replyWeight)
         
-        // Determine status based on activity
-        // A campaign is "completed" if it hasn't had activity in the last 10 days
-        // This is a heuristic - in reality, you'd want to check the actual campaign status from the source
-        const lastActivity = stat.lastActivityDate ? new Date(stat.lastActivityDate) : null
-        if (lastActivity && lastActivity < tenDaysAgo) {
+        // Get status from campaigns table
+        const key = `${String(stat.campaign_id)}||${stat.client}`
+        const dbStatus = (campaignStatusMap.get(key) || '').toLowerCase().trim()
+        
+        // Map database status to our status type
+        // Handle various possible status values from the Campaigns table
+        if (dbStatus.includes('active') || dbStatus.includes('running') || dbStatus.includes('in_progress') || dbStatus.includes('in progress')) {
+          stat.status = 'active'
+        } else if (dbStatus.includes('paused') || dbStatus.includes('pause') || dbStatus.includes('on_hold') || dbStatus.includes('on hold')) {
+          stat.status = 'paused'
+        } else if (dbStatus.includes('completed') || dbStatus.includes('complete') || dbStatus.includes('stopped') || dbStatus.includes('finished') || dbStatus.includes('done') || dbStatus.includes('ended')) {
           stat.status = 'completed'
-        } else if (stat.totalSent > 0) {
+        } else if (dbStatus) {
+          // If there's a status but we don't recognize it, default to active
           stat.status = 'active'
         } else {
           stat.status = 'unknown'

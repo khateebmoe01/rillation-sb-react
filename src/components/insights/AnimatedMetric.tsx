@@ -20,7 +20,7 @@ export default function AnimatedMetric({
   value,
   label,
   icon,
-  colorClass = 'text-rillation-purple',
+  colorClass = 'text-slate-400',
   suffix = '',
   prefix = '',
   decimals = 0,
@@ -82,8 +82,8 @@ export default function AnimatedMetric({
         relative overflow-hidden rounded-xl p-4 
         bg-rillation-card border border-rillation-border
         transition-all duration-300
-        ${onClick ? 'cursor-pointer hover:border-rillation-purple/50 hover:shadow-lg hover:shadow-rillation-purple/10' : ''}
-        ${isActive ? 'border-rillation-purple shadow-lg shadow-rillation-purple/20 ring-1 ring-rillation-purple/30' : ''}
+        ${onClick ? 'cursor-pointer hover:border-slate-400/50 hover:shadow-lg hover:shadow-slate-400/10' : ''}
+        ${isActive ? 'border-slate-400 shadow-lg shadow-slate-400/20 ring-1 ring-slate-400/30' : ''}
       `}
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
@@ -95,7 +95,7 @@ export default function AnimatedMetric({
       <motion.div
         className={`absolute inset-0 opacity-0 ${isActive ? 'opacity-100' : ''}`}
         style={{
-          background: 'radial-gradient(circle at 50% 0%, rgba(168, 85, 247, 0.1), transparent 70%)',
+          background: 'radial-gradient(circle at 50% 0%, rgba(148, 163, 184, 0.1), transparent 70%)',
         }}
         whileHover={{ opacity: 1 }}
         transition={{ duration: 0.3 }}
@@ -146,7 +146,7 @@ export default function AnimatedMetric({
       {/* Active indicator line */}
       {isActive && (
         <motion.div
-          className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-rillation-purple to-rillation-magenta"
+          className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-slate-400 to-slate-300"
           layoutId="activeIndicator"
           initial={{ scaleX: 0 }}
           animate={{ scaleX: 1 }}
@@ -156,6 +156,7 @@ export default function AnimatedMetric({
     </motion.div>
   )
 }
+
 
 
 

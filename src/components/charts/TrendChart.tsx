@@ -9,7 +9,9 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from 'recharts'
+import { Sparkles } from 'lucide-react'
 import type { ChartDataPoint } from '../../types/database'
+import { useAI } from '../../contexts/AIContext'
 
 interface TrendChartProps {
   data: ChartDataPoint[]
@@ -47,6 +49,18 @@ function getTargetColorHex(actual: number, target: number): string {
 }
 
 export default function TrendChart({ data, selectedMetric, targets, metrics }: TrendChartProps) {
+  const { askAboutChart } = useAI()
+
+  // Handle AI click
+  const handleAskAI = () => {
+    const metricLabel = selectedMetric ? METRIC_CONFIG[selectedMetric].label : 'All Metrics'
+    askAboutChart({
+      chartTitle: `Daily Trend: ${metricLabel}`,
+      chartType: 'line-chart',
+      data: data,
+    }, `Analyze this daily trend chart showing ${metricLabel.toLowerCase()}. What patterns do you see? Are there any concerning trends or opportunities?`)
+  }
+
   // Calculate daily targets for target lines
   const chartDataWithTargets = useMemo(() => {
     if (!targets || data.length === 0) return data
@@ -97,11 +111,22 @@ export default function TrendChart({ data, selectedMetric, targets, metrics }: T
 
   return (
     <motion.div 
-      className="bg-slate-800/60 rounded-xl border border-slate-700/50 p-4"
+      className="bg-slate-800/60 rounded-xl border border-slate-700/50 p-4 relative group"
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ type: 'spring', stiffness: 200, damping: 20 }}
     >
+      {/* AI Ask Button - appears on hover */}
+      <motion.button
+        onClick={handleAskAI}
+        className="absolute top-3 right-3 z-10 flex items-center gap-1.5 px-2.5 py-1.5 bg-black/80 border border-white/20 hover:border-white/40 hover:bg-black rounded text-white text-[11px] font-mono opacity-0 group-hover:opacity-100 transition-all backdrop-blur-sm"
+        whileHover={{ scale: 1.02 }}
+        whileTap={{ scale: 0.98 }}
+      >
+        <Sparkles size={11} />
+        ANALYZE
+      </motion.button>
+
       {/* Chart */}
       <AnimatePresence mode="wait">
         <motion.div

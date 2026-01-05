@@ -276,10 +276,10 @@ export default function PerformanceOverview() {
                 {/* Get Deeper Insights Button */}
                 <motion.button
                   onClick={handleViewClientInsights}
-                  className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-gradient-to-r from-violet-600 to-purple-600 text-white border border-violet-500/50 hover:from-violet-500 hover:to-purple-500 shadow-lg shadow-violet-500/20"
+                  className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-gradient-to-r from-slate-500 to-slate-600 text-white border border-slate-400/50 hover:from-slate-400 hover:to-slate-500 shadow-lg shadow-slate-500/20"
                   initial={{ opacity: 0, x: 20 }}
                   animate={{ opacity: 1, x: 0 }}
-                  whileHover={{ scale: 1.02, boxShadow: '0 0 20px rgba(139, 92, 246, 0.4)' }}
+                  whileHover={{ scale: 1.02, boxShadow: '0 0 20px rgba(148, 163, 184, 0.4)' }}
                   whileTap={{ scale: 0.98 }}
                   transition={{ type: 'spring', stiffness: 400, damping: 25 }}
                 >

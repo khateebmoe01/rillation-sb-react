@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { ArrowLeft, Settings, Sparkles } from 'lucide-react'
+import { ArrowLeft, Settings } from 'lucide-react'
 import MetricCard from '../components/ui/MetricCard'
 import ClickableMetricCard from '../components/ui/ClickableMetricCard'
 import TrendChart from '../components/charts/TrendChart'
@@ -11,11 +11,11 @@ import { useQuickViewData } from '../hooks/useQuickViewData'
 import { useCampaignStats } from '../hooks/useCampaignStats'
 import { useFirmographicInsights } from '../hooks/useFirmographicInsights'
 import { useFilters } from '../contexts/FilterContext'
+import { useAI } from '../contexts/AIContext'
 import { supabase } from '../lib/supabase'
 import FirmographicInsightsPanel from '../components/insights/FirmographicInsightsPanel'
 import CampaignFilter from '../components/ui/CampaignFilter'
 import MeetingsDrillDown from '../components/ui/MeetingsDrillDown'
-import AICopilotPanel from '../components/insights/AICopilotPanel'
 
 type ChartMetric = 'sent' | 'prospects' | 'replied' | 'positiveReplies' | 'meetings' | null
 
@@ -73,13 +73,15 @@ export default function ClientDetailView() {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [navigate])
 
+  // AI Context
+  const { setFirmographicData } = useAI()
+  
   // State
   const [selectedCampaigns, setSelectedCampaigns] = useState<string[]>([])
   const [tableCampaignSelection, setTableCampaignSelection] = useState<string[]>([])
   const [selectedChartMetric, setSelectedChartMetric] = useState<ChartMetric>(null)
   const [showConfigureTargets, setShowConfigureTargets] = useState(false)
   const [showMeetingsDrillDown, setShowMeetingsDrillDown] = useState(false)
-  const [showAICopilot, setShowAICopilot] = useState(false)
 
   // Combined campaigns for filtering (from both campaign filter and table selection)
   const effectiveCampaignFilter = tableCampaignSelection.length > 0 
@@ -151,6 +153,11 @@ export default function ClientDetailView() {
     client: decodedClientName || undefined,
     campaigns: effectiveCampaignFilter,
   })
+
+  // Sync firmographic data with AI context
+  useEffect(() => {
+    setFirmographicData(firmographicData)
+  }, [firmographicData, setFirmographicData])
 
   // Get client-specific campaigns from campaignStats
   const clientCampaigns = campaignStats.map(c => c.campaign_name).filter(Boolean) as string[]
@@ -242,24 +249,6 @@ export default function ClientDetailView() {
               selectedCampaigns={selectedCampaigns}
               onChange={setSelectedCampaigns}
             />
-            {/* Get Deeper Insights Button */}
-            <motion.button
-              onClick={() => navigate(`/deep-view/${encodeURIComponent(decodedClientName)}`)}
-              className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-gradient-to-r from-violet-600 to-purple-600 text-white border border-violet-500/50 hover:from-violet-500 hover:to-purple-500 shadow-lg shadow-violet-500/20"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              whileHover={{ scale: 1.02, boxShadow: '0 0 20px rgba(139, 92, 246, 0.4)' }}
-              whileTap={{ scale: 0.98 }}
-              transition={{ type: 'spring', stiffness: 400, damping: 25 }}
-            >
-              <motion.div
-                animate={{ rotate: [0, 15, -15, 0], scale: [1, 1.1, 1] }}
-                transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
-              >
-                <Sparkles size={16} />
-              </motion.div>
-              Get Deeper Insights
-            </motion.button>
             <button
               onClick={() => setShowConfigureTargets(true)}
               className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-700/50 border border-slate-600/50 rounded-lg text-xs text-white hover:bg-slate-600/50 transition-colors"
@@ -422,14 +411,6 @@ export default function ClientDetailView() {
           }
           fetchTargets()
         }}
-      />
-
-      {/* AI Co-Pilot Panel */}
-      <AICopilotPanel
-        isOpen={showAICopilot}
-        onToggle={() => setShowAICopilot(prev => !prev)}
-        firmographicData={firmographicData}
-        clientName={decodedClientName}
       />
     </motion.div>
   )

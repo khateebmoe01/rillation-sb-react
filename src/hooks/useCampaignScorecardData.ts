@@ -116,6 +116,22 @@ export function useCampaignScorecardData({ startDate, endDate, client }: UseCamp
         }
       }
 
+      // Fetch campaign status from campaigns table
+      const { data: campaignsStatusData } = await supabase
+        .from('Campaigns')
+        .select('campaign_id, status')
+        .eq('client', client)
+      
+      // Create a map of campaign_id to status
+      const campaignStatusMap = new Map<string, string>()
+      if (campaignsStatusData) {
+        ;(campaignsStatusData as any[]).forEach((campaign) => {
+          if (campaign.campaign_id) {
+            campaignStatusMap.set(campaign.campaign_id, campaign.status || 'unknown')
+          }
+        })
+      }
+
       // Group data by campaign
       const campaignMap = new Map<string, {
         campaignName: string
@@ -267,13 +283,6 @@ export function useCampaignScorecardData({ startDate, endDate, client }: UseCamp
 
       // Convert to array and build scorecards
       const scorecards: CampaignScorecardData[] = []
-      
-      // Determine campaign status based on activity
-      const today = new Date()
-      const sevenDaysAgo = new Date(today)
-      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
-      const thirtyDaysAgo = new Date(today)
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
 
       campaignMap.forEach((campaign) => {
         // Sort daily data by date and convert to array
@@ -281,20 +290,21 @@ export function useCampaignScorecardData({ startDate, endDate, client }: UseCamp
           .sort((a, b) => a[0].localeCompare(b[0]))
           .map(([_, point]) => point)
 
-        // Determine status based on last activity
+        // Get status from campaigns table
+        const dbStatus = (campaignStatusMap.get(campaign.campaignId) || '').toLowerCase().trim()
         let status: CampaignStatus = 'active'
-        const lastActivityStr = campaign.lastActivityDate
-        if (lastActivityStr) {
-          const lastActivity = new Date(lastActivityStr)
-          if (lastActivity < thirtyDaysAgo) {
-            status = 'completed' // No activity in 30+ days = completed
-          } else if (lastActivity < sevenDaysAgo) {
-            status = 'paused' // No activity in 7-30 days = paused
-          } else {
-            status = 'active' // Activity in last 7 days = active
-          }
-        } else {
-          status = 'completed' // No activity data = completed
+        
+        // Map database status to our status type
+        // Handle various possible status values from the Campaigns table
+        if (dbStatus.includes('active') || dbStatus.includes('running') || dbStatus.includes('in_progress') || dbStatus.includes('in progress')) {
+          status = 'active'
+        } else if (dbStatus.includes('paused') || dbStatus.includes('pause') || dbStatus.includes('on_hold') || dbStatus.includes('on hold')) {
+          status = 'paused'
+        } else if (dbStatus.includes('completed') || dbStatus.includes('complete') || dbStatus.includes('stopped') || dbStatus.includes('finished') || dbStatus.includes('done') || dbStatus.includes('ended')) {
+          status = 'completed'
+        } else if (dbStatus) {
+          // If there's a status but we don't recognize it, default to active
+          status = 'active'
         }
 
         scorecards.push({

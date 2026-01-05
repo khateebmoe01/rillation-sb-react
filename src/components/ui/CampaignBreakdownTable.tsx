@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ChevronDown, ChevronUp, ArrowUpDown, CheckCircle2, Activity, HelpCircle, ChevronRight } from 'lucide-react'
-import { useCampaignStats, CampaignStat } from '../../hooks/useCampaignStats'
+import { ChevronDown, ChevronUp, ArrowUpDown, CheckCircle2, Activity, HelpCircle, ChevronRight, Pause } from 'lucide-react'
+import { useCampaignStats, CampaignStat, CampaignStatusType } from '../../hooks/useCampaignStats'
 import { useSequenceStats, SequenceStat } from '../../hooks/useSequenceStats'
 import { useFilters } from '../../contexts/FilterContext'
 import { formatNumber } from '../../lib/supabase'
@@ -14,20 +14,25 @@ interface CampaignBreakdownTableProps {
 const PAGE_SIZE = 5
 
 type SortField = 'recent' | 'performance' | 'sent' | 'meetings'
-type StatusFilter = 'all' | 'completed' | 'active'
+type StatusFilter = 'all' | 'completed' | 'active' | 'paused'
 
 // Status badge component
-function StatusBadge({ status }: { status: 'active' | 'completed' | 'unknown' }) {
+function StatusBadge({ status }: { status: CampaignStatusType }) {
   const config = {
     active: { 
       icon: Activity, 
       label: 'Active', 
-      className: 'bg-blue-500/20 text-blue-400 border-blue-500/30' 
+      className: 'bg-green-500/20 text-green-400 border-green-500/30' 
+    },
+    paused: { 
+      icon: Pause, 
+      label: 'Paused', 
+      className: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' 
     },
     completed: { 
       icon: CheckCircle2, 
       label: 'Completed', 
-      className: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' 
+      className: 'bg-slate-500/20 text-slate-400 border-slate-500/30' 
     },
     unknown: { 
       icon: HelpCircle, 
@@ -339,6 +344,7 @@ export default function CampaignBreakdownTable({ client, onCampaignsSelected }: 
   const statusCounts = {
     all: allCampaigns.length,
     active: allCampaigns.filter(c => c.status === 'active').length,
+    paused: allCampaigns.filter(c => c.status === 'paused').length,
     completed: allCampaigns.filter(c => c.status === 'completed').length,
   }
 
@@ -358,7 +364,7 @@ export default function CampaignBreakdownTable({ client, onCampaignsSelected }: 
           <div className="flex items-center gap-2">
             <span className="text-xs text-white">Status:</span>
             <div className="flex gap-1">
-              {(['all', 'completed', 'active'] as StatusFilter[]).map((status) => (
+              {(['all', 'active', 'paused', 'completed'] as StatusFilter[]).map((status) => (
                 <motion.button
                   key={status}
                   onClick={() => setStatusFilter(status)}
@@ -377,8 +383,8 @@ export default function CampaignBreakdownTable({ client, onCampaignsSelected }: 
             </div>
           </div>
 
-          {/* Sort Controls */}
-          <div className="flex items-center gap-2">
+          {/* Sort Controls - Positioned on the right */}
+          <div className="flex items-center gap-2 ml-auto">
             <span className="text-xs text-white">Sort by:</span>
             <div className="flex gap-1">
               {[
@@ -391,7 +397,7 @@ export default function CampaignBreakdownTable({ client, onCampaignsSelected }: 
                   onClick={() => setSortField(field)}
                   className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
                     sortField === field
-                      ? 'bg-violet-600/30 text-violet-300 border border-violet-500/30'
+                      ? 'bg-slate-600/50 text-slate-200 border border-slate-500/30'
                       : 'bg-slate-800/50 text-slate-400 hover:bg-slate-700/50'
                   }`}
                   whileHover={{ scale: 1.02 }}
@@ -403,11 +409,6 @@ export default function CampaignBreakdownTable({ client, onCampaignsSelected }: 
               ))}
             </div>
           </div>
-
-          {/* Helper text */}
-          <span className="text-xs text-white/60 ml-auto">
-            Click a campaign to view sequence breakdown
-          </span>
         </div>
 
         {/* Table Header */}

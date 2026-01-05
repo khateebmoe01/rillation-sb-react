@@ -13,11 +13,13 @@ import {
   X,
   Sparkles,
   Expand,
-  CheckCircle
+  CheckCircle,
+  MessageSquare
 } from 'lucide-react'
 import { formatPercentage } from '../../lib/supabase'
 import type { FirmographicInsightsData, FirmographicDimensionData } from '../../hooks/useFirmographicInsights'
 import DimensionComparisonChart from './DimensionComparisonChart'
+import { useAI } from '../../contexts/AIContext'
 
 interface FirmographicInsightsPanelProps {
   data: FirmographicInsightsData | null
@@ -168,6 +170,7 @@ function DimensionTab({
   isLocked,
   onSelect,
   onExpand,
+  onAskAI,
   index
 }: {
   dimensionKey: DimensionKey
@@ -176,6 +179,7 @@ function DimensionTab({
   isLocked: boolean
   onSelect: () => void
   onExpand: () => void
+  onAskAI: () => void
   index: number
 }) {
   const config = DIMENSION_CONFIG[dimensionKey]
@@ -245,7 +249,7 @@ function DimensionTab({
           <AnimatePresence>
             {selectionIndex !== null && (
               <motion.div
-                className="w-6 h-6 rounded-full bg-violet-500 flex items-center justify-center text-white text-xs font-bold"
+                className="w-6 h-6 rounded-full bg-slate-400 flex items-center justify-center text-white text-xs font-bold"
                 initial={{ scale: 0, rotate: -180 }}
                 animate={{ scale: 1, rotate: 0 }}
                 exit={{ scale: 0, rotate: 180 }}
@@ -260,12 +264,26 @@ function DimensionTab({
           <motion.div
             className={`px-2 py-1 rounded-lg text-xs font-medium pointer-events-none ${
               isSelected
-                ? 'bg-violet-500/30 text-violet-300 border border-violet-500/50'
+                ? 'bg-slate-400/30 text-slate-200 border border-slate-400/50'
                 : 'bg-slate-700/50 text-white/60'
             }`}
           >
             {isSelected ? 'Selected' : isLocked ? 'Click to swap' : 'Click to compare'}
           </motion.div>
+          
+          {/* Ask AI button */}
+          <motion.button
+            onClick={(e) => {
+              e.stopPropagation()
+              onAskAI()
+            }}
+            className="p-1.5 rounded bg-black/60 border border-white/20 text-white/70 hover:border-white/40 hover:text-white transition-all"
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            title="Ask AI about this dimension"
+          >
+            <MessageSquare size={12} />
+          </motion.button>
           
           {/* Expand button */}
           <motion.button
@@ -672,6 +690,8 @@ function DimensionModal({
 }
 
 export default function FirmographicInsightsPanel({ data, loading, error }: FirmographicInsightsPanelProps) {
+  const { askAboutChart } = useAI()
+  
   // Selection state: ordered array of max 2 dimension keys
   const [selectedDimensions, setSelectedDimensions] = useState<DimensionKey[]>([])
   const [comparisonMetric, setComparisonMetric] = useState<'replyRate' | 'positiveRate' | 'bookingRate'>('bookingRate')
@@ -679,6 +699,19 @@ export default function FirmographicInsightsPanel({ data, loading, error }: Firm
   
   // Modal state for expanded dimension view
   const [expandedDimension, setExpandedDimension] = useState<DimensionKey | null>(null)
+
+  // Handle asking AI about a dimension
+  const handleAskAI = useCallback((key: DimensionKey) => {
+    const dimension = data?.[key]
+    if (!dimension) return
+    
+    const config = DIMENSION_CONFIG[key]
+    askAboutChart({
+      chartTitle: `${config.label} Performance`,
+      chartType: 'firmographic-dimension',
+      data: dimension.items,
+    }, `Analyze the ${config.shortLabel} performance data. Which ${config.shortLabel.toLowerCase()} segments are performing best and worst? What recommendations do you have?`)
+  }, [data, askAboutChart])
 
   // Handle dimension selection for comparison (max 2)
   const handleDimensionSelect = useCallback((key: DimensionKey) => {
@@ -864,6 +897,7 @@ export default function FirmographicInsightsPanel({ data, loading, error }: Firm
             isLocked={isLocked}
             onSelect={() => handleDimensionSelect(key)}
             onExpand={() => setExpandedDimension(key)}
+            onAskAI={() => handleAskAI(key)}
             index={index}
           />
         ))}
@@ -892,6 +926,8 @@ export default function FirmographicInsightsPanel({ data, loading, error }: Firm
                   metric: comparisonMetric,
                 }
                 setLockedCharts(prev => [...prev, newLocked])
+                // Clear selection so user can select next two dimensions
+                setSelectedDimensions([])
               }}
               isLocked={lockedCharts.some(
                 lc => lc.x === selectedDimensions[0] && lc.y === selectedDimensions[1]

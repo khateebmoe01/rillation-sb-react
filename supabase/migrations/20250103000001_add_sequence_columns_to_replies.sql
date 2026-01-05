@@ -39,3 +39,4 @@ COMMENT ON COLUMN replies.sequence_step_variant IS 'Variant identifier if this r
 CREATE INDEX IF NOT EXISTS idx_replies_sequence_step_id ON replies(sequence_step_id);
 CREATE INDEX IF NOT EXISTS idx_replies_sequence_step_order ON replies(sequence_step_order);
 
+

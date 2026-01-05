@@ -22,7 +22,7 @@ interface CompactSalesMetricsProps {
   dailyMetrics: SalesMetric[]
 }
 
-type MetricType = 'revenue' | 'avgValue' | 'winRate' | 'dealCount' | null
+type MetricTypeKey = 'revenue' | 'avgValue' | 'winRate' | 'dealCount'
 
 const METRIC_CONFIG = {
   revenue: {
@@ -64,8 +64,8 @@ const METRIC_CONFIG = {
 }
 
 export default function CompactSalesMetrics({ summary, dailyMetrics }: CompactSalesMetricsProps) {
-  const [expandedMetric, setExpandedMetric] = useState<MetricType>(null)
-  const [hoveredMetric, setHoveredMetric] = useState<MetricType>(null)
+  // Use Set to allow multiple charts open at once
+  const [expandedMetrics, setExpandedMetrics] = useState<Set<MetricTypeKey>>(new Set())
 
   const metrics = [
     { type: 'revenue' as const, value: summary.totalRevenue },
@@ -74,8 +74,24 @@ export default function CompactSalesMetrics({ summary, dailyMetrics }: CompactSa
     { type: 'dealCount' as const, value: summary.totalDeals, subtitle: `${summary.totalClosedWon} won, ${summary.totalClosedLost} lost` },
   ]
 
-  const handleCardClick = (type: MetricType) => {
-    setExpandedMetric(prev => prev === type ? null : type)
+  const handleCardClick = (type: MetricTypeKey) => {
+    setExpandedMetrics(prev => {
+      const next = new Set(prev)
+      if (next.has(type)) {
+        next.delete(type)
+      } else {
+        next.add(type)
+      }
+      return next
+    })
+  }
+
+  const handleCloseChart = (type: MetricTypeKey) => {
+    setExpandedMetrics(prev => {
+      const next = new Set(prev)
+      next.delete(type)
+      return next
+    })
   }
 
   // Sparkline component for mini charts
@@ -100,9 +116,8 @@ export default function CompactSalesMetrics({ summary, dailyMetrics }: CompactSa
     </ResponsiveContainer>
   )
 
-  // Expanded chart view
-  const ExpandedChart = ({ type }: { type: MetricType }) => {
-    if (!type) return null
+  // Expanded chart view component
+  const ExpandedChart = ({ type }: { type: MetricTypeKey }) => {
     const config = METRIC_CONFIG[type]
 
     const CustomTooltip = ({ active, payload, label }: any) => {
@@ -121,20 +136,20 @@ export default function CompactSalesMetrics({ summary, dailyMetrics }: CompactSa
 
     return (
       <motion.div
-        initial={{ opacity: 0, height: 0, y: -20 }}
-        animate={{ opacity: 1, height: 'auto', y: 0 }}
-        exit={{ opacity: 0, height: 0, y: -20 }}
-        transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -10 }}
+        transition={{ duration: 0.2 }}
         className="overflow-hidden"
       >
-        <div className={`bg-slate-800/60 rounded-xl border ${config.borderColor} p-4 mt-3`}>
+        <div className={`bg-slate-800/60 rounded-xl border ${config.borderColor} p-4`}>
           <div className="flex items-center justify-between mb-3">
             <h4 className="text-sm font-semibold text-white flex items-center gap-2">
               <config.icon size={16} style={{ color: config.color }} />
               {config.title} Trend
             </h4>
             <motion.button
-              onClick={() => setExpandedMetric(null)}
+              onClick={() => handleCloseChart(type)}
               className="p-1 rounded-lg hover:bg-slate-700/50 text-slate-400 hover:text-white transition-colors"
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
@@ -154,7 +169,7 @@ export default function CompactSalesMetrics({ summary, dailyMetrics }: CompactSa
             ) : type === 'revenue' ? (
               <AreaChart data={dailyMetrics} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
                 <defs>
-                  <linearGradient id="expandedGradient" x1="0" y1="0" x2="0" y2="1">
+                  <linearGradient id={`expandedGradient-${type}`} x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor={config.color} stopOpacity={0.3} />
                     <stop offset="95%" stopColor={config.color} stopOpacity={0} />
                   </linearGradient>
@@ -163,7 +178,7 @@ export default function CompactSalesMetrics({ summary, dailyMetrics }: CompactSa
                 <XAxis dataKey="date" stroke="#64748b" tick={{ fontSize: 10 }} />
                 <YAxis stroke="#64748b" tick={{ fontSize: 10 }} tickFormatter={(v) => `$${(v/1000).toFixed(0)}k`} />
                 <Tooltip content={<CustomTooltip />} />
-                <Area type="monotone" dataKey="revenue" stroke={config.color} fill="url(#expandedGradient)" strokeWidth={2} />
+                <Area type="monotone" dataKey="revenue" stroke={config.color} fill={`url(#expandedGradient-${type})`} strokeWidth={2} />
               </AreaChart>
             ) : (
               <LineChart data={dailyMetrics} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
@@ -185,6 +200,9 @@ export default function CompactSalesMetrics({ summary, dailyMetrics }: CompactSa
     )
   }
 
+  // Get expanded metrics as array for rendering
+  const expandedMetricsArray = Array.from(expandedMetrics)
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -196,78 +214,57 @@ export default function CompactSalesMetrics({ summary, dailyMetrics }: CompactSa
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {metrics.map((metric, index) => {
           const config = METRIC_CONFIG[metric.type]
-          const isExpanded = expandedMetric === metric.type
-          const isHovered = hoveredMetric === metric.type
+          const isExpanded = expandedMetrics.has(metric.type)
           const Icon = config.icon
 
           return (
             <motion.div
               key={metric.type}
               onClick={() => handleCardClick(metric.type)}
-              onHoverStart={() => setHoveredMetric(metric.type)}
-              onHoverEnd={() => setHoveredMetric(null)}
               initial={{ opacity: 0, y: 20, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
-              transition={{ delay: index * 0.05, type: 'spring', stiffness: 300, damping: 25 }}
-              whileHover={{ scale: 1.02, y: -2 }}
-              whileTap={{ scale: 0.98 }}
+              transition={{ delay: index * 0.05, duration: 0.3 }}
               className={`
                 relative overflow-hidden cursor-pointer
                 bg-gradient-to-br ${config.gradient} 
                 backdrop-blur-sm rounded-xl p-4 
                 border ${isExpanded ? config.borderColor : 'border-slate-700/50'}
                 ${isExpanded ? 'ring-1 ring-white/20' : ''}
-                transition-all duration-300
-                hover:border-slate-600
+                transition-all duration-200
+                hover:border-slate-600 hover:scale-[1.02]
               `}
             >
-              {/* Glow effect on hover */}
-              <AnimatePresence>
-                {isHovered && (
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    className="absolute inset-0 pointer-events-none"
-                    style={{
-                      background: `radial-gradient(circle at 50% 50%, ${config.color}15, transparent 70%)`,
-                    }}
-                  />
-                )}
-              </AnimatePresence>
+              {/* Animated white border when expanded */}
+              {isExpanded && (
+                <div
+                  className="absolute inset-0 rounded-xl pointer-events-none"
+                  style={{ border: '2px solid white' }}
+                />
+              )}
 
               {/* Header */}
               <div className="flex items-center justify-between mb-1 relative z-10">
                 <div className="flex items-center gap-2">
-                  <motion.div
-                    animate={{ rotate: isExpanded ? 180 : 0 }}
-                    transition={{ duration: 0.3 }}
-                    style={{ color: config.color }}
-                  >
+                  <div style={{ color: config.color }}>
                     <Icon size={16} />
-                  </motion.div>
+                  </div>
                   <span className="text-[10px] font-medium text-white/70 uppercase tracking-wider">
                     {config.title}
                   </span>
                 </div>
-                <motion.div
-                  animate={{ rotate: isExpanded ? 180 : 0, opacity: isHovered || isExpanded ? 1 : 0.3 }}
-                  transition={{ duration: 0.3 }}
-                  className="text-white/50"
+                <div
+                  className={`text-white/50 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
                 >
                   <ChevronUp size={12} />
-                </motion.div>
+                </div>
               </div>
 
               {/* Value */}
               <div className="relative z-10 flex items-end justify-between">
                 <div>
-                  <motion.span 
-                    className="text-xl font-bold text-white block"
-                    animate={{ scale: isHovered ? 1.02 : 1 }}
-                  >
+                  <span className="text-xl font-bold text-white block">
                     {config.formatter(metric.value)}
-                  </motion.span>
+                  </span>
                   {metric.subtitle && (
                     <span className="text-[10px] text-white/50">{metric.subtitle}</span>
                   )}
@@ -287,15 +284,23 @@ export default function CompactSalesMetrics({ summary, dailyMetrics }: CompactSa
         })}
       </div>
 
-      {/* Expanded Chart View */}
-      <AnimatePresence mode="wait">
-        {expandedMetric && (
-          <ExpandedChart type={expandedMetric} />
-        )}
-      </AnimatePresence>
+      {/* Expanded Chart Views - Multiple can be open, side by side */}
+      {expandedMetricsArray.length > 0 && (
+        <div
+          className={`grid gap-3 ${
+            expandedMetricsArray.length === 1 ? 'grid-cols-1' :
+            expandedMetricsArray.length === 2 ? 'grid-cols-1 lg:grid-cols-2' :
+            expandedMetricsArray.length === 3 ? 'grid-cols-1 lg:grid-cols-3' :
+            'grid-cols-1 lg:grid-cols-2'
+          }`}
+        >
+          <AnimatePresence mode="popLayout">
+            {expandedMetricsArray.map((type) => (
+              <ExpandedChart key={type} type={type} />
+            ))}
+          </AnimatePresence>
+        </div>
+      )}
     </motion.div>
   )
 }
-
-
-
