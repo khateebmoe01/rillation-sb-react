@@ -70,8 +70,8 @@ function TypingCursor() {
   return (
     <motion.span
       className="inline-block w-2 h-4 bg-white/80 ml-1"
-      animate={{ opacity: [1, 0] }}
-      transition={{ duration: 0.8, repeat: Infinity, ease: 'steps(2)' }}
+      animate={{ opacity: [1, 0, 1] }}
+      transition={{ duration: 1, repeat: Infinity, repeatType: 'loop', times: [0, 0.5, 1] }}
     />
   )
 }
@@ -130,7 +130,9 @@ const messageVariants = {
 export default function AICopilotPanel() {
   const { 
     askWithContext, 
-    isAsking, 
+    isAsking,
+    isLoadingData,
+    dashboardData,
     error, 
     clearError,
     chartContext,
@@ -196,6 +198,12 @@ export default function AICopilotPanel() {
   useEffect(() => {
     if (isPanelOpen && messages.length === 0) {
       const clientDisplay = selectedClient || 'all clients'
+      const dataStatus = isLoadingData 
+        ? '⏳ Loading dashboard data...'
+        : dashboardData 
+          ? `✅ ${dashboardData.campaigns?.length || 0} campaigns | ${dashboardData.aggregateMetrics?.total_meetings_booked || 0} meetings loaded`
+          : '⏳ Initializing data...'
+      
       setMessages([{
         id: 'welcome',
         role: 'assistant',
@@ -205,12 +213,17 @@ Current context loaded:
 • **Client:** ${clientDisplay}
 • **Date Range:** ${datePreset}
 • **Screen:** ${currentScreen}
+• **Data:** ${dataStatus}
 
-Ready to analyze your campaign data. Ask me anything or click a chart for specific insights.`,
+I have full access to your campaign performance data. Ask me about:
+- Top performing campaigns
+- Reply rates and meeting conversion
+- Which campaigns to scale or pause
+- Specific campaign metrics`,
         timestamp: new Date(),
       }])
     }
-  }, [isPanelOpen, selectedClient, datePreset, currentScreen, messages.length])
+  }, [isPanelOpen, selectedClient, datePreset, currentScreen, messages.length, isLoadingData, dashboardData])
 
   const handleSend = async () => {
     if (!inputValue.trim() || isAsking) return
