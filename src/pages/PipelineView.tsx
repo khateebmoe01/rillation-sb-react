@@ -27,13 +27,6 @@ function shiftWeekendDate(dateStr: string): string {
   return date.toISOString().split('T')[0]
 }
 
-// Helper to format date for display
-function formatDateDisplay(dateStr: string): string {
-  const [_year, month, day] = dateStr.split('-').map(Number)
-  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-  return `${monthNames[month - 1]} ${day}`
-}
-
 export default function PipelineView() {
   // Get current month/year
   const now = new Date()
