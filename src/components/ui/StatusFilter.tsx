@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ChevronDown, Check, Circle } from 'lucide-react'
+import { ChevronDown, Check } from 'lucide-react'
 
 export type CampaignStatus = 'active' | 'paused' | 'completed'
 
