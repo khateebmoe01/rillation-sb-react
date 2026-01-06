@@ -36,8 +36,11 @@ interface StageGroup {
 }
 
 // Pipeline stages we support in Configure Targets modal
-// Use all 6 stages from the ordered list
-const PIPELINE_STAGES = PIPELINE_STAGES_ORDERED
+// Include Meeting Booked plus all stages from engaged_leads
+const PIPELINE_STAGES = [
+  'Meeting Booked',
+  ...PIPELINE_STAGES_ORDERED
+]
 
 // stageToBooleanMap is now imported from pipeline-utils
 
@@ -179,6 +182,48 @@ export default function ConfigureTargetsModal({
         const groups: StageGroup[] = []
 
         for (const stage of PIPELINE_STAGES) {
+          // Handle Meeting Booked stage specially - comes from meetings_booked table
+          if (stage === 'Meeting Booked') {
+            const { data: meetingsData, error: meetingsError } = await supabase
+              .from('meetings_booked')
+              .select('*')
+              .eq('client', client!)
+              .gte('created_time', startStr)
+              .lte('created_time', endStr + 'T23:59:59')
+              .order('created_time', { ascending: false })
+
+            if (meetingsError) {
+              console.error('Error fetching meetings:', meetingsError)
+              continue
+            }
+
+            const leads: LeadWithOpportunity[] = (meetingsData || []).map((meeting: any) => {
+              const email = (meeting.email || '').toLowerCase()
+              const opportunity = email ? opportunityMap.get(email) : null
+
+              return {
+                id: meeting.id,
+                first_name: meeting.first_name,
+                last_name: meeting.last_name,
+                full_name: meeting.full_name || `${meeting.first_name || ''} ${meeting.last_name || ''}`.trim(),
+                company: meeting.company,
+                email: meeting.email,
+                title: meeting.title,
+                current_stage: 'Meeting Booked',
+                opportunityId: opportunity?.id,
+                estimatedValue: opportunity?.value || 0,
+                opportunityValue: opportunity?.value,
+              }
+            })
+
+            groups.push({
+              stage,
+              leads,
+              collapsed: false,
+            })
+            continue
+          }
+
           const booleanColumn = stageToBooleanMap[stage]
           if (!booleanColumn) continue
 

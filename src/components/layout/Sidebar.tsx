@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from 'react-router-dom'
-import { BarChart3, Wrench } from 'lucide-react'
+import { BarChart3, Wrench, Compass } from 'lucide-react'
 
 const sections = [
   {
@@ -7,6 +7,12 @@ const sections = [
     icon: BarChart3,
     label: 'Reporting',
     path: '/quick-view',
+  },
+  {
+    id: 'strategy',
+    icon: Compass,
+    label: 'Strategy',
+    path: '/strategy',
   },
   {
     id: 'infrastructure',
@@ -23,12 +29,14 @@ export default function Sidebar() {
     <aside className="w-16 bg-rillation-card border-r border-rillation-border flex flex-col items-center py-4 gap-2">
       {sections.map((section) => {
         const Icon = section.icon
-        // Reporting is active if we're on any reporting page (not infrastructure)
+        // Determine active state based on section
         const isActive = section.id === 'infrastructure'
           ? location.pathname === '/infrastructure'
-          : location.pathname.startsWith('/quick-view') || 
-            location.pathname.startsWith('/performance') || 
-            location.pathname.startsWith('/pipeline')
+          : section.id === 'strategy'
+            ? location.pathname.startsWith('/strategy')
+            : location.pathname.startsWith('/quick-view') || 
+              location.pathname.startsWith('/performance') || 
+              location.pathname.startsWith('/pipeline')
         
         return (
           <NavLink

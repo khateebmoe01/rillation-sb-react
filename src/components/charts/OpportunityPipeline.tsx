@@ -1,7 +1,9 @@
+import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { Settings } from 'lucide-react'
 import { formatNumber } from '../../lib/supabase'
 import type { OpportunityStage } from '../../hooks/useOpportunities'
+import OpportunityStageDropdown from '../ui/OpportunityStageDropdown'
 
 interface OpportunityPipelineProps {
   stages: OpportunityStage[]
@@ -9,14 +11,29 @@ interface OpportunityPipelineProps {
   error?: string | null
   onStageClick?: (stageName: string, stageIndex: number) => void
   onSetEstimatedValue?: () => void
+  client?: string
+  startDate?: Date
+  endDate?: Date
+  onOpportunitySaved?: () => void
 }
 
-export default function OpportunityPipeline({ stages, loading, error, onStageClick, onSetEstimatedValue }: OpportunityPipelineProps) {
+export default function OpportunityPipeline({ 
+  stages, 
+  loading, 
+  error, 
+  onStageClick, 
+  onSetEstimatedValue,
+  client,
+  startDate,
+  endDate,
+  onOpportunitySaved,
+}: OpportunityPipelineProps) {
+  const [expandedStages, setExpandedStages] = useState<Set<string>>(new Set())
 
   if (loading) {
     return (
       <div className="bg-rillation-card rounded-xl p-6 border border-rillation-border w-full">
-        <h3 className="text-lg font-semibold text-rillation-text mb-6">Estimated Pipeline Value</h3>
+        <h3 className="text-lg font-semibold text-rillation-text mb-6">Current Pipeline Value</h3>
         <div className="flex items-center justify-center py-8">
           <div className="w-6 h-6 border-2 border-rillation-purple border-t-transparent rounded-full animate-spin" />
         </div>
@@ -27,7 +44,7 @@ export default function OpportunityPipeline({ stages, loading, error, onStageCli
   if (error) {
     return (
       <div className="bg-rillation-card rounded-xl p-6 border border-rillation-border w-full">
-        <h3 className="text-lg font-semibold text-rillation-text mb-6">Estimated Pipeline Value</h3>
+        <h3 className="text-lg font-semibold text-rillation-text mb-6">Current Pipeline Value</h3>
         <div className="text-sm text-red-400">{error}</div>
       </div>
     )
@@ -89,7 +106,7 @@ export default function OpportunityPipeline({ stages, loading, error, onStageCli
   return (
     <div className="bg-rillation-card rounded-xl p-4 sm:p-6 border border-rillation-border w-full h-full flex flex-col">
       <div className="flex items-center justify-between mb-4 flex-shrink-0">
-        <h3 className="text-lg font-semibold text-rillation-text">Estimated Pipeline Value</h3>
+        <h3 className="text-lg font-semibold text-rillation-text">Current Pipeline Value</h3>
         {onSetEstimatedValue && (
           <button
             onClick={onSetEstimatedValue}
@@ -101,9 +118,9 @@ export default function OpportunityPipeline({ stages, loading, error, onStageCli
         )}
       </div>
       
-      {/* Unified Enhanced Cards with 3D Perspective */}
+      {/* Unified Enhanced Cards with Inline Dropdowns */}
       <motion.div
-        className="flex flex-col gap-1.5 flex-1 justify-evenly"
+        className="flex flex-col gap-1.5 flex-1"
         style={{ perspective: '1000px' }}
         variants={containerVariants}
         initial="hidden"
@@ -113,6 +130,39 @@ export default function OpportunityPipeline({ stages, loading, error, onStageCli
           // Calculate progress percentage for progress bar
           const progressPercent = maxValue > 0 ? (stage.value / maxValue) * 100 : 0
 
+          // Use dropdown if we have the necessary props
+          if (client && startDate && endDate) {
+            return (
+              <motion.div
+                key={stage.stage}
+                variants={cardVariants}
+              >
+                <OpportunityStageDropdown
+                  stageName={stage.stage}
+                  stageValue={stage.value}
+                  stageCount={stage.count}
+                  isExpanded={expandedStages.has(stage.stage)}
+                  onToggle={() => {
+                    setExpandedStages(prev => {
+                      const newSet = new Set(prev)
+                      if (newSet.has(stage.stage)) {
+                        newSet.delete(stage.stage)
+                      } else {
+                        newSet.add(stage.stage)
+                      }
+                      return newSet
+                    })
+                  }}
+                  client={client}
+                  startDate={startDate}
+                  endDate={endDate}
+                  onSave={onOpportunitySaved}
+                />
+              </motion.div>
+            )
+          }
+
+          // Fallback to original card behavior
           return (
             <motion.div
               key={stage.stage}

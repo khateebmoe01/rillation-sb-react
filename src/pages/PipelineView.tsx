@@ -3,7 +3,6 @@ import FunnelChart from '../components/charts/FunnelChart'
 import OpportunityPipeline from '../components/charts/OpportunityPipeline'
 import InlineLeadsTable from '../components/ui/InlineLeadsTable'
 import ConfigureTargetsModal from '../components/ui/ConfigureTargetsModal'
-import OpportunityStageModal from '../components/ui/OpportunityStageModal'
 import CompactSalesMetrics from '../components/ui/CompactSalesMetrics'
 import PipelineMetricsSection from '../components/ui/PipelineMetricsSection'
 import { usePipelineData } from '../hooks/usePipelineData'
@@ -42,8 +41,7 @@ export default function PipelineView() {
   // Configure targets modal state
   const [isConfigureModalOpen, setIsConfigureModalOpen] = useState(false)
   
-  // Opportunity stage modal state
-  const [selectedOpportunityStage, setSelectedOpportunityStage] = useState<string | null>(null)
+  // Note: Opportunity stage modal replaced with inline dropdowns in OpportunityPipeline
   
   // Fetch data using global date range
   const { funnelStages, loading, error, refetch } = usePipelineData({
@@ -53,8 +51,12 @@ export default function PipelineView() {
     year: selectedYear,
   })
 
-  // Fetch opportunities with refetch capability
-  const { stages: opportunityStages, loading: opportunitiesLoading, error: opportunitiesError, refetch: refetchOpportunities } = useOpportunities({ client: 'Rillation Revenue' })
+  // Fetch opportunities with refetch capability - pass date range for filtering
+  const { stages: opportunityStages, loading: opportunitiesLoading, error: opportunitiesError, refetch: refetchOpportunities } = useOpportunities({ 
+    client: 'Rillation Revenue',
+    startDate: dateRange.start,
+    endDate: dateRange.end,
+  })
 
   // Fetch sales metrics
   const { dailyMetrics, summary, loading: salesLoading, error: salesError } = useSalesMetrics({
@@ -70,7 +72,7 @@ export default function PipelineView() {
     client: 'Rillation Revenue',
   })
 
-  // State for actual daily pipeline data
+  // State for actual daily pipeline data - keyed by display date format
   const [dailyPipelineData, setDailyPipelineData] = useState<Map<string, {
     meetingsBooked: number
     showedUp: number
@@ -79,6 +81,12 @@ export default function PipelineView() {
     proposalSent: number
     closed: number
   }>>(new Map())
+
+  // Helper to format date to display format (matches useQuickViewData format)
+  const formatDateDisplay = (dateStr: string): string => {
+    const date = new Date(dateStr + 'T12:00:00')
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  }
 
   // Fetch actual daily data for meetings_booked and engaged_leads
   useEffect(() => {
@@ -103,7 +111,7 @@ export default function PipelineView() {
           .lte('date_created', formatDateForQuery(dateRange.end))
           .eq('client', 'Rillation Revenue')
 
-        // Group by date with weekend shifting
+        // Group by DISPLAY date format (to match performanceChartData)
         const dailyMap = new Map<string, {
           meetingsBooked: number
           showedUp: number
@@ -118,22 +126,24 @@ export default function PipelineView() {
           if (!meeting.created_time) return
           const rawDate = meeting.created_time.split('T')[0]
           const shiftedDate = shiftWeekendDate(rawDate)
+          const displayDate = formatDateDisplay(shiftedDate)
           
-          if (!dailyMap.has(shiftedDate)) {
-            dailyMap.set(shiftedDate, { meetingsBooked: 0, showedUp: 0, qualified: 0, demo: 0, proposalSent: 0, closed: 0 })
+          if (!dailyMap.has(displayDate)) {
+            dailyMap.set(displayDate, { meetingsBooked: 0, showedUp: 0, qualified: 0, demo: 0, proposalSent: 0, closed: 0 })
           }
-          dailyMap.get(shiftedDate)!.meetingsBooked += 1
+          dailyMap.get(displayDate)!.meetingsBooked += 1
         })
 
         // Process engaged_leads by their stage on that date
         ;(engagedData || []).forEach((lead: any) => {
           if (!lead.date_created) return
           const shiftedDate = shiftWeekendDate(lead.date_created)
+          const displayDate = formatDateDisplay(shiftedDate)
           
-          if (!dailyMap.has(shiftedDate)) {
-            dailyMap.set(shiftedDate, { meetingsBooked: 0, showedUp: 0, qualified: 0, demo: 0, proposalSent: 0, closed: 0 })
+          if (!dailyMap.has(displayDate)) {
+            dailyMap.set(displayDate, { meetingsBooked: 0, showedUp: 0, qualified: 0, demo: 0, proposalSent: 0, closed: 0 })
           }
-          const entry = dailyMap.get(shiftedDate)!
+          const entry = dailyMap.get(displayDate)!
           
           // Count based on stage flags
           if (lead.closed) entry.closed += 1
@@ -156,12 +166,9 @@ export default function PipelineView() {
   // Build pipeline chart data with actual daily values (non-cumulative)
   const pipelineChartData = useMemo(() => {
     // Use the performance chart data dates as a template
+    // performanceChartData uses display format like "Dec 1", "Jan 15"
     return performanceChartData.map((point) => {
-      // Parse date from display format or use raw date
-      // performanceChartData uses format like "Jan 1"
-      // We need to match this to our dailyPipelineData keys which are YYYY-MM-DD
-      
-      // Get the daily data for this date
+      // Get the daily data for this date (using display date format)
       const dailyData = dailyPipelineData.get(point.date) || {
         meetingsBooked: 0,
         showedUp: 0,
@@ -207,21 +214,7 @@ export default function PipelineView() {
     setSelectedStage(null)
   }
 
-  // Handle opportunity stage click
-  const handleOpportunityStageClick = (stageName: string, _stageIndex: number) => {
-    setSelectedOpportunityStage(stageName)
-  }
-
-  // Handle opportunity modal close
-  const handleOpportunityModalClose = () => {
-    setSelectedOpportunityStage(null)
-  }
-
-  // Handle opportunity modal save - refetch opportunities
-  const handleOpportunityModalSave = () => {
-    setSelectedOpportunityStage(null)
-    refetchOpportunities()
-  }
+  // Note: Opportunity stage click now handled by inline dropdowns in OpportunityPipeline
 
   return (
     <div className="space-y-4 sm:space-y-6 fade-in">
@@ -264,13 +257,16 @@ export default function PipelineView() {
               selectedStageName={selectedStage}
             />
             
-            {/* Dollar-based Opportunity Pipeline */}
+            {/* Dollar-based Opportunity Pipeline with Inline Dropdowns */}
             <OpportunityPipeline 
               stages={opportunityStages}
               loading={opportunitiesLoading}
               error={opportunitiesError}
-              onStageClick={handleOpportunityStageClick}
               onSetEstimatedValue={() => setIsConfigureModalOpen(true)}
+              client="Rillation Revenue"
+              startDate={dateRange.start}
+              endDate={dateRange.end}
+              onOpportunitySaved={refetchOpportunities}
             />
           </div>
           
@@ -298,18 +294,6 @@ export default function PipelineView() {
         mode="pipeline"
       />
       
-      {/* Opportunity Stage Modal */}
-      {selectedOpportunityStage && (
-        <OpportunityStageModal
-          isOpen={!!selectedOpportunityStage}
-          onClose={handleOpportunityModalClose}
-          stageName={selectedOpportunityStage}
-          client="Rillation Revenue"
-          startDate={dateRange.start}
-          endDate={dateRange.end}
-          onSave={handleOpportunityModalSave}
-        />
-      )}
     </div>
   )
 }

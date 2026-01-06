@@ -95,6 +95,22 @@ interface DashboardData {
   clientList: string[];
 }
 
+interface ScreenshotContext {
+  id: string;
+  dataUrl: string;
+  elementInfo: string;
+  timestamp: string;
+}
+
+interface IterationLogEntry {
+  id: number;
+  client: string;
+  action_type: string;
+  description: string;
+  created_by: string;
+  created_at: string;
+}
+
 interface AIContext {
   filters: {
     client: string;
@@ -109,6 +125,8 @@ interface AIContext {
   chartContext: ChartContext | null;
   firmographicData: FirmographicData | null;
   dashboardData: DashboardData | null;
+  screenshots: ScreenshotContext[];
+  iterationLogs: IterationLogEntry[];
 }
 
 interface RequestBody {
@@ -246,9 +264,29 @@ function formatDashboardData(data: DashboardData | null): string {
   return text;
 }
 
+// Format iteration logs into readable text
+function formatIterationLogs(logs: IterationLogEntry[] | null | undefined): string {
+  if (!logs || logs.length === 0) return "";
+
+  let text = `\n## Iteration Log (Recent Strategy Changes & Updates)\n\n`;
+  text += `The following changes have been made to this client's campaigns:\n\n`;
+
+  logs.slice(0, 20).forEach((log, idx) => {
+    const date = new Date(log.created_at).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
+    text += `${idx + 1}. **[${log.action_type}]** - ${date} (by ${log.created_by})\n`;
+    text += `   ${log.description}\n\n`;
+  });
+
+  return text;
+}
+
 // Build the system prompt with full context
 function buildSystemPrompt(context: AIContext): string {
-  const { filters, screenName, chartContext, firmographicData, dashboardData } = context;
+  const { filters, screenName, chartContext, firmographicData, dashboardData, iterationLogs } = context;
 
   // Format date range nicely
   const startDate = new Date(filters.dateRange.start).toLocaleDateString("en-US", {
@@ -270,6 +308,7 @@ function buildSystemPrompt(context: AIContext): string {
 **Selected Client:** ${filters.client}
 **Date Range:** ${filters.datePreset} (${startDate} - ${endDate})
 ${formatDashboardData(dashboardData)}
+${formatIterationLogs(iterationLogs)}
 ${formatFirmographicData(firmographicData)}
 ${formatChartContext(chartContext)}
 
@@ -280,6 +319,7 @@ ${formatChartContext(chartContext)}
 3. **Calculate Metrics**: Reply rates, meeting rates, conversion metrics
 4. **Provide Recommendations**: Suggest which campaigns to scale, pause, or improve
 5. **Answer Specific Questions**: About any campaign, client, or metric you can see above
+6. **Review Iteration History**: You can see recent strategy changes, copy updates, and targeting adjustments made to campaigns
 
 ## Response Guidelines
 
@@ -289,6 +329,8 @@ ${formatChartContext(chartContext)}
 - If asked about something not in the data, say so honestly
 - Be concise but thorough
 - For recommendations, be specific (e.g., "Scale campaign X because it has 3 meetings from only 500 sends")
+- **IMPORTANT: Do NOT use markdown headers (# or ##) in your responses.** Instead, use **bold text** for section titles (e.g., "**Recommendation:**" instead of "## Recommendation")
+- Use numbered lists and bullet points for structure, not headers
 
 ## Metrics Definitions
 
@@ -340,8 +382,13 @@ Deno.serve(async (req) => {
 
     console.log(`AI Ask: "${question.substring(0, 100)}..." | Screen: ${context?.screenName} | Client: ${context?.filters?.client}`);
     console.log(`Dashboard data available: ${context?.dashboardData ? 'YES' : 'NO'}`);
+    console.log(`Screenshots attached: ${context?.screenshots?.length || 0}`);
+    console.log(`Iteration logs: ${context?.iterationLogs?.length || 0}`);
     if (context?.dashboardData) {
       console.log(`Campaigns: ${context.dashboardData.campaigns?.length || 0}, Meetings: ${context.dashboardData.aggregateMetrics?.total_meetings_booked || 0}`);
+    }
+    if (context?.iterationLogs?.length > 0) {
+      console.log(`First iteration log: ${context.iterationLogs[0]?.action_type} - ${context.iterationLogs[0]?.description?.substring(0, 50)}`);
     }
 
     // Initialize Anthropic client
@@ -352,6 +399,43 @@ Deno.serve(async (req) => {
     // Build system prompt with context
     const systemPrompt = buildSystemPrompt(context);
 
+    // Build message content - include screenshots if provided
+    const messageContent: (Anthropic.TextBlockParam | Anthropic.ImageBlockParam)[] = [];
+    
+    // Add screenshots if present
+    const screenshots = context?.screenshots || [];
+    if (screenshots.length > 0) {
+      for (const screenshot of screenshots) {
+        // Extract base64 data from data URL
+        const base64Match = screenshot.dataUrl.match(/^data:image\/(png|jpeg|gif|webp);base64,(.+)$/);
+        if (base64Match) {
+          const mediaType = base64Match[1] as "png" | "jpeg" | "gif" | "webp";
+          const base64Data = base64Match[2];
+          
+          messageContent.push({
+            type: "image",
+            source: {
+              type: "base64",
+              media_type: `image/${mediaType}`,
+              data: base64Data,
+            },
+          });
+          
+          // Add context about the screenshot
+          messageContent.push({
+            type: "text",
+            text: `[Screenshot of: ${screenshot.elementInfo}]`,
+          });
+        }
+      }
+    }
+    
+    // Add the question
+    messageContent.push({
+      type: "text",
+      text: question,
+    });
+
     // Call Claude
     const message = await anthropic.messages.create({
       model: "claude-sonnet-4-20250514",
@@ -360,7 +444,7 @@ Deno.serve(async (req) => {
       messages: [
         {
           role: "user",
-          content: question,
+          content: messageContent,
         },
       ],
     });

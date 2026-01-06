@@ -6,6 +6,7 @@ import QuickView from './pages/QuickView'
 import PerformanceOverview from './pages/PerformanceOverview'
 import PipelineView from './pages/PipelineView'
 import Infrastructure from './pages/Infrastructure'
+import StrategyView from './pages/StrategyView'
 import DebugView from './pages/DebugView'
 import ClientDetailView from './pages/ClientDetailView'
 import CustomVariablesDiscovery from './pages/CustomVariablesDiscovery'
@@ -48,6 +49,7 @@ function App() {
           <Route path="/performance" element={<PageTransition><PerformanceOverview /></PageTransition>} />
           <Route path="/performance/:clientName" element={<PageTransition><ClientDetailView /></PageTransition>} />
           <Route path="/pipeline" element={<PageTransition><PipelineView /></PageTransition>} />
+          <Route path="/strategy" element={<PageTransition><StrategyView /></PageTransition>} />
           <Route path="/infrastructure" element={<PageTransition><Infrastructure /></PageTransition>} />
           <Route path="/admin/variables" element={<PageTransition><CustomVariablesDiscovery /></PageTransition>} />
           <Route path="/debug" element={<PageTransition><DebugView /></PageTransition>} />

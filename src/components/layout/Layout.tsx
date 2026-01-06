@@ -13,8 +13,9 @@ interface LayoutProps {
 
 export default function Layout({ children }: LayoutProps) {
   const location = useLocation()
-  const { isPanelOpen } = useAI()
+  const { isPanelOpen, panelWidth } = useAI()
   const isInfrastructurePage = location.pathname === '/infrastructure'
+  const isStrategyPage = location.pathname.startsWith('/strategy')
   
   return (
     <div className="min-h-screen flex overflow-hidden">
@@ -27,7 +28,7 @@ export default function Layout({ children }: LayoutProps) {
       {/* Spacer that expands when AI panel is open */}
       <motion.div
         className="flex-shrink-0"
-        animate={{ width: isPanelOpen ? 380 : 0 }}
+        animate={{ width: isPanelOpen ? panelWidth : 0 }}
         transition={{ type: 'spring', stiffness: 300, damping: 30 }}
       />
       
@@ -40,7 +41,7 @@ export default function Layout({ children }: LayoutProps) {
         <Header />
         
         {/* Tab Navigation - Only show for reporting pages */}
-        {!isInfrastructurePage && <TabNavigation />}
+        {!isInfrastructurePage && !isStrategyPage && <TabNavigation />}
         
         {/* Page Content */}
         <main className="flex-1 p-6 overflow-auto">

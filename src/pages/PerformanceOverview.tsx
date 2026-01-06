@@ -167,7 +167,7 @@ export default function PerformanceOverview() {
       {/* Filter Bar */}
       <div className="bg-rillation-card rounded-xl p-4 border border-rillation-border">
         <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="flex flex-wrap items-center gap-4">
+          <div className="flex flex-wrap items-center gap-3">
             {!isClientView && (
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-white/50" size={18} />
@@ -182,6 +182,25 @@ export default function PerformanceOverview() {
             )}
             {isClientView && (
               <>
+                {/* Get Deeper Insights Button - Leftmost, sleek white design */}
+                <motion.button
+                  onClick={handleViewClientInsights}
+                  className="flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg bg-white text-slate-900 hover:bg-slate-100 shadow-lg shadow-white/20 border border-white/80"
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  whileHover={{ scale: 1.02, boxShadow: '0 0 20px rgba(255, 255, 255, 0.4)' }}
+                  whileTap={{ scale: 0.98 }}
+                  transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+                >
+                  <motion.div
+                    animate={{ rotate: [0, 10, -10, 0], scale: [1, 1.1, 1] }}
+                    transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
+                  >
+                    <Sparkles size={16} className="text-slate-700" />
+                  </motion.div>
+                  Get Deeper Insights
+                </motion.button>
+
                 {/* Status Filter Dropdown */}
                 <StatusFilter
                   selectedStatus={selectedStatus}
@@ -228,25 +247,6 @@ export default function PerformanceOverview() {
                     <ArrowLeft size={16} />
                   </motion.div>
                   Back to All Clients
-                </motion.button>
-
-                {/* Get Deeper Insights Button */}
-                <motion.button
-                  onClick={handleViewClientInsights}
-                  className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-gradient-to-r from-slate-500 to-slate-600 text-white border border-slate-400/50 hover:from-slate-400 hover:to-slate-500 shadow-lg shadow-slate-500/20"
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  whileHover={{ scale: 1.02, boxShadow: '0 0 20px rgba(148, 163, 184, 0.4)' }}
-                  whileTap={{ scale: 0.98 }}
-                  transition={{ type: 'spring', stiffness: 400, damping: 25 }}
-                >
-                  <motion.div
-                    animate={{ rotate: [0, 15, -15, 0], scale: [1, 1.1, 1] }}
-                    transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
-                  >
-                    <Sparkles size={16} />
-                  </motion.div>
-                  Get Deeper Insights
                 </motion.button>
               </>
             )}

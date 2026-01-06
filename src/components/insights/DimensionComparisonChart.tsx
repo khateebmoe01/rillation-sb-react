@@ -208,20 +208,20 @@ export default function DimensionComparisonChart({
       </div>
 
       {/* Chart */}
-      <div className="h-[350px]">
+      <div className="h-[450px]">
         <ResponsiveContainer width="100%" height="100%">
           <ScatterChart
-            margin={{ top: 20, right: 20, bottom: 60, left: 60 }}
+            margin={{ top: 20, right: 20, bottom: 60, left: 20 }}
           >
-            <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+            <CartesianGrid strokeDasharray="3 3" stroke="#475569" />
             <XAxis
               type="number"
               dataKey="x"
               domain={[-0.5, xValues.length - 0.5]}
-              tick={{ fontSize: 10, fill: '#94a3b8' }}
+              tick={{ fontSize: 11, fill: '#ffffff' }}
               tickFormatter={(value) => xValues[Math.round(value)]?.slice(0, 12) || ''}
-              tickLine={{ stroke: '#334155' }}
-              axisLine={{ stroke: '#334155' }}
+              tickLine={{ stroke: '#64748b' }}
+              axisLine={{ stroke: '#64748b' }}
               angle={-45}
               textAnchor="end"
               height={60}
@@ -229,23 +229,24 @@ export default function DimensionComparisonChart({
                 value: xLabel, 
                 position: 'bottom', 
                 offset: 40,
-                style: { fill: '#94a3b8', fontSize: 12 }
+                style: { fill: '#ffffff', fontSize: 13, fontWeight: 500 }
               }}
             />
             <YAxis
               type="number"
               dataKey="y"
               domain={[-0.5, yValues.length - 0.5]}
-              tick={{ fontSize: 10, fill: '#94a3b8' }}
-              tickFormatter={(value) => yValues[Math.round(value)]?.slice(0, 15) || ''}
-              tickLine={{ stroke: '#334155' }}
-              axisLine={{ stroke: '#334155' }}
-              width={80}
+              tick={{ fontSize: 11, fill: '#ffffff' }}
+              tickFormatter={(value) => yValues[Math.round(value)]?.slice(0, 20) || ''}
+              tickLine={{ stroke: '#64748b' }}
+              axisLine={{ stroke: '#64748b' }}
+              width={110}
               label={{ 
                 value: yLabel, 
                 angle: -90, 
                 position: 'insideLeft',
-                style: { fill: '#94a3b8', fontSize: 12 }
+                offset: -5,
+                style: { fill: '#ffffff', fontSize: 13, fontWeight: 500 }
               }}
             />
             <ZAxis type="number" dataKey="size" range={[50, 400]} />

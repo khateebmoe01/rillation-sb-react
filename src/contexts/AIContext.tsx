@@ -3,6 +3,7 @@ import { useFilters } from './FilterContext'
 import { useLocation } from 'react-router-dom'
 import { supabase, formatDateForQuery, formatDateForQueryEndOfDay } from '../lib/supabase'
 import type { FirmographicInsightsData } from '../hooks/useFirmographicInsights'
+import type { IterationLogEntry } from '../hooks/useIterationLog'
 
 // Types for chart context
 export interface ChartContext {
@@ -60,6 +61,14 @@ interface AIDataContext {
   clientList: string[]
 }
 
+// Screenshot capture context
+export interface ScreenshotContext {
+  id: string
+  dataUrl: string
+  elementInfo: string
+  timestamp: Date
+}
+
 // Full context sent to Claude
 export interface AIFullContext {
   filters: {
@@ -75,6 +84,8 @@ export interface AIFullContext {
   chartContext: ChartContext | null
   firmographicData: FirmographicInsightsData | null
   dashboardData: AIDataContext | null
+  screenshots: ScreenshotContext[]
+  iterationLogs: IterationLogEntry[]
 }
 
 interface AIContextType {
@@ -91,6 +102,16 @@ interface AIContextType {
   
   // Dashboard data
   dashboardData: AIDataContext | null
+  
+  // Iteration logs for AI context
+  iterationLogs: IterationLogEntry[]
+  setIterationLogs: (logs: IterationLogEntry[]) => void
+  
+  // Screenshot context
+  screenshots: ScreenshotContext[]
+  addScreenshot: (dataUrl: string, elementInfo: string) => void
+  removeScreenshot: (id: string) => void
+  clearScreenshots: () => void
   
   // Build full context for Claude
   buildContext: () => AIFullContext
@@ -120,6 +141,14 @@ interface AIContextType {
   
   // Refresh dashboard data
   refreshDashboardData: () => Promise<void>
+  
+  // Element picker state
+  isElementPickerActive: boolean
+  setElementPickerActive: (active: boolean) => void
+  
+  // Panel dimensions
+  panelWidth: number
+  setPanelWidth: (width: number) => void
 }
 
 const AIContext = createContext<AIContextType | undefined>(undefined)
@@ -150,11 +179,40 @@ export function AIProvider({ children }: { children: ReactNode }) {
   const [chartContext, setChartContext] = useState<ChartContext | null>(null)
   const [firmographicData, setFirmographicData] = useState<FirmographicInsightsData | null>(null)
   const [dashboardData, setDashboardData] = useState<AIDataContext | null>(null)
+  const [iterationLogs, setIterationLogs] = useState<IterationLogEntry[]>([])
+  const [screenshots, setScreenshots] = useState<ScreenshotContext[]>([])
   const [isAsking, setIsAsking] = useState(false)
   const [isLoadingData, setIsLoadingData] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isPanelOpen, setIsPanelOpen] = useState(false)
   const [pendingQuestion, setPendingQuestion] = useState<string | null>(null)
+  const [isElementPickerActive, setElementPickerActive] = useState(false)
+  const [panelWidth, setPanelWidth] = useState(620) // Default width - wider for better readability
+
+  // Screenshot management
+  const addScreenshot = useCallback((dataUrl: string, elementInfo: string) => {
+    const newScreenshot: ScreenshotContext = {
+      id: Date.now().toString(),
+      dataUrl,
+      elementInfo,
+      timestamp: new Date(),
+    }
+    setScreenshots(prev => {
+      // Limit to 5 screenshots
+      const updated = [...prev, newScreenshot]
+      return updated.slice(-5)
+    })
+    // Deactivate picker after capture
+    setElementPickerActive(false)
+  }, [])
+
+  const removeScreenshot = useCallback((id: string) => {
+    setScreenshots(prev => prev.filter(s => s.id !== id))
+  }, [])
+
+  const clearScreenshots = useCallback(() => {
+    setScreenshots([])
+  }, [])
 
   // Fetch comprehensive dashboard data for AI
   const fetchDashboardData = useCallback(async (): Promise<AIDataContext | null> => {
@@ -435,8 +493,10 @@ export function AIProvider({ children }: { children: ReactNode }) {
       chartContext,
       firmographicData,
       dashboardData,
+      screenshots,
+      iterationLogs,
     }
-  }, [selectedClient, dateRange, datePreset, location.pathname, chartContext, firmographicData, dashboardData])
+  }, [selectedClient, dateRange, datePreset, location.pathname, chartContext, firmographicData, dashboardData, screenshots, iterationLogs])
 
   const askWithContext = useCallback(async (question: string): Promise<string> => {
     setIsAsking(true)
@@ -526,6 +586,12 @@ export function AIProvider({ children }: { children: ReactNode }) {
       firmographicData,
       setFirmographicData,
       dashboardData,
+      iterationLogs,
+      setIterationLogs,
+      screenshots,
+      addScreenshot,
+      removeScreenshot,
+      clearScreenshots,
       buildContext,
       askWithContext,
       askAboutChart,
@@ -539,6 +605,10 @@ export function AIProvider({ children }: { children: ReactNode }) {
       pendingQuestion,
       setPendingQuestion,
       refreshDashboardData,
+      isElementPickerActive,
+      setElementPickerActive,
+      panelWidth,
+      setPanelWidth,
     }}>
       {children}
     </AIContext.Provider>

@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase, formatDateForQuery, formatDateForQueryEndOfDay } from '../lib/supabase'
 import { dataCache, DataCache } from '../lib/cache'
-import { getDeepestStage } from '../lib/pipeline-utils'
 import type { FunnelStage, FunnelForecast } from '../types/database'
 
 interface UsePipelineDataParams {
@@ -132,8 +131,8 @@ export function usePipelineData({ startDate, endDate, month, year }: UsePipeline
       const salesHandoff = meetingsData.length || 0
       const meetingsBooked = meetingsData.length || 0
 
-      // Count leads by their DEEPEST stage only (a lead only counts in their most advanced stage)
-      // This prevents a closed lead from also counting in Demo Booked, etc.
+      // Count leads CUMULATIVELY - a lead counts in every stage they've reached
+      // This shows total pipeline generated at each stage
       let showedUpToDisco = 0
       let qualified = 0
       let demoBooked = 0
@@ -142,27 +141,13 @@ export function usePipelineData({ startDate, endDate, month, year }: UsePipeline
       let closed = 0
 
       ;(engagedLeadsData || []).forEach((lead: any) => {
-        const deepestStage = getDeepestStage(lead)
-        switch (deepestStage) {
-          case 'Showed Up to Disco':
-            showedUpToDisco++
-            break
-          case 'Qualified':
-            qualified++
-            break
-          case 'Demo Booked':
-            demoBooked++
-            break
-          case 'Showed Up to Demo':
-            showedUpToDemo++
-            break
-          case 'Proposal Sent':
-            proposalSent++
-            break
-          case 'Closed':
-            closed++
-            break
-        }
+        // Count in each stage the lead has reached (cumulative)
+        if (lead.showed_up_to_disco) showedUpToDisco++
+        if (lead.qualified) qualified++
+        if (lead.demo_booked) demoBooked++
+        if (lead.showed_up_to_demo) showedUpToDemo++
+        if (lead.proposal_sent) proposalSent++
+        if (lead.closed) closed++
       })
       
       console.log('Engaged leads counts:', { showedUpToDisco, qualified, demoBooked, showedUpToDemo, proposalSent, closed })

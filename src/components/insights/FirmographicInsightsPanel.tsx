@@ -206,7 +206,7 @@ function DimensionTab({
     <motion.div
       onClick={handleCardClick}
       className={`
-        relative w-full flex flex-col p-5 rounded-xl border-2 text-left overflow-hidden cursor-pointer
+        relative w-full flex flex-col p-4 rounded-xl border-2 text-left overflow-hidden cursor-pointer
         ${isSelected 
           ? 'bg-slate-800 border-white shadow-[0_0_30px_rgba(255,255,255,0.2)]' 
           : 'bg-slate-800/40 border-slate-700/50 hover:border-white/50'
@@ -794,7 +794,7 @@ export default function FirmographicInsightsPanel({ data, loading, error }: Firm
 
   return (
     <motion.div 
-      className="space-y-4"
+      className="space-y-3"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.5 }}
@@ -874,7 +874,7 @@ export default function FirmographicInsightsPanel({ data, loading, error }: Firm
 
       {/* Dimension Cards - 3 per row with top-3 preview */}
       <motion.div 
-        className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
+        className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3"
         initial="hidden"
         animate="visible"
         variants={{
@@ -941,7 +941,7 @@ export default function FirmographicInsightsPanel({ data, loading, error }: Firm
       <AnimatePresence>
         {lockedCharts.length > 0 && data && (
           <motion.div 
-            className="space-y-4"
+            className="space-y-3"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
@@ -963,7 +963,7 @@ export default function FirmographicInsightsPanel({ data, loading, error }: Firm
                 Clear all
               </motion.button>
             </div>
-            <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-3 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
               {lockedCharts.map((chart, idx) => (
                 <motion.div
                   key={`${chart.x}-${chart.y}-${idx}`}

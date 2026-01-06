@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence, useMotionValue, useTransform, animate } from 'framer-motion'
 import { 
   Send, 
@@ -13,16 +13,22 @@ import {
   X,
   AlertCircle,
   BarChart2,
-  Cpu
+  Cpu,
+  Maximize2,
+  Minimize2,
+  Crosshair,
+  Image as ImageIcon
 } from 'lucide-react'
 import { useAI } from '../../contexts/AIContext'
 import { useFilters } from '../../contexts/FilterContext'
+import ElementPickerOverlay from './ElementPickerOverlay'
 
 interface Message {
   id: string
   role: 'user' | 'assistant'
   content: string
   timestamp: Date
+  screenshots?: { dataUrl: string; elementInfo: string }[]
 }
 
 interface QuickPrompt {
@@ -105,7 +111,7 @@ function parseMarkdown(content: string) {
     if (match.index > lastIndex) {
       parts.push(content.slice(lastIndex, match.index))
     }
-    parts.push(<strong key={keyIndex++} className="text-black font-semibold">{match[1]}</strong>)
+    parts.push(<strong key={keyIndex++} className="text-violet-400 font-semibold">{match[1]}</strong>)
     lastIndex = match.index + match[0].length
   }
 
@@ -127,6 +133,14 @@ const messageVariants = {
   },
 }
 
+// Panel mode type
+type PanelMode = 'sidebar' | 'popup'
+
+// Default dimensions
+const DEFAULT_SIDEBAR_WIDTH = 620
+const MIN_WIDTH = 450
+const MAX_WIDTH_RATIO = 0.9
+
 export default function AICopilotPanel() {
   const { 
     askWithContext, 
@@ -141,15 +155,34 @@ export default function AICopilotPanel() {
     setPendingQuestion,
     isPanelOpen,
     togglePanel,
-    currentScreen
+    currentScreen,
+    screenshots,
+    addScreenshot,
+    removeScreenshot,
+    clearScreenshots,
+    isElementPickerActive,
+    setElementPickerActive,
+    panelWidth: contextPanelWidth,
+    setPanelWidth: setContextPanelWidth
   } = useAI()
   
   const { selectedClient, datePreset } = useFilters()
   
   const [messages, setMessages] = useState<Message[]>([])
   const [inputValue, setInputValue] = useState('')
+  const [panelMode, setPanelMode] = useState<PanelMode>('sidebar')
+  const [isResizing, setIsResizing] = useState(false)
+  const [isChatFocused, setIsChatFocused] = useState(false)
+  
+  // Use context panel width and sync changes
+  const panelWidth = contextPanelWidth
+  const setPanelWidth = setContextPanelWidth
+  
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const panelRef = useRef<HTMLDivElement>(null)
+  const resizeStartX = useRef(0)
+  const resizeStartWidth = useRef(0)
   
   // Animated progress for thinking state
   const progress = useMotionValue(0)
@@ -163,6 +196,57 @@ export default function AICopilotPanel() {
       textarea.style.height = `${Math.min(textarea.scrollHeight, 150)}px`
     }
   }
+
+  // Handle resize start
+  const handleResizeStart = useCallback((e: React.MouseEvent) => {
+    e.preventDefault()
+    setIsResizing(true)
+    resizeStartX.current = e.clientX
+    resizeStartWidth.current = panelWidth
+  }, [panelWidth])
+
+  // Handle resize move
+  useEffect(() => {
+    if (!isResizing) return
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const maxWidth = window.innerWidth * MAX_WIDTH_RATIO
+      const delta = e.clientX - resizeStartX.current
+      const newWidth = Math.min(
+        Math.max(resizeStartWidth.current + delta, MIN_WIDTH),
+        maxWidth
+      )
+      setPanelWidth(newWidth)
+    }
+
+    const handleMouseUp = () => {
+      setIsResizing(false)
+    }
+
+    document.addEventListener('mousemove', handleMouseMove)
+    document.addEventListener('mouseup', handleMouseUp)
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove)
+      document.removeEventListener('mouseup', handleMouseUp)
+    }
+  }, [isResizing])
+
+  // Toggle popup mode
+  const togglePopupMode = useCallback(() => {
+    if (panelMode === 'sidebar') {
+      setPanelMode('popup')
+      setPanelWidth(Math.min(720, window.innerWidth * 0.6))
+    } else {
+      setPanelMode('sidebar')
+      setPanelWidth(DEFAULT_SIDEBAR_WIDTH)
+    }
+  }, [panelMode])
+
+  // Handle element picker capture
+  const handleElementCapture = useCallback((dataUrl: string, elementInfo: string) => {
+    addScreenshot(dataUrl, elementInfo)
+  }, [addScreenshot])
 
   // Auto-scroll to bottom
   useEffect(() => {
@@ -194,51 +278,34 @@ export default function AICopilotPanel() {
     }
   }, [isAsking, progress])
 
-  // Add welcome message on first open
-  useEffect(() => {
-    if (isPanelOpen && messages.length === 0) {
-      const clientDisplay = selectedClient || 'all clients'
-      const dataStatus = isLoadingData 
-        ? '⏳ Loading dashboard data...'
-        : dashboardData 
-          ? `✅ ${dashboardData.campaigns?.length || 0} campaigns | ${dashboardData.aggregateMetrics?.total_meetings_booked || 0} meetings loaded`
-          : '⏳ Initializing data...'
-      
-      setMessages([{
-        id: 'welcome',
-        role: 'assistant',
-        content: `SYSTEM INITIALIZED
-
-Current context loaded:
-• **Client:** ${clientDisplay}
-• **Date Range:** ${datePreset}
-• **Screen:** ${currentScreen}
-• **Data:** ${dataStatus}
-
-I have full access to your campaign performance data. Ask me about:
-- Top performing campaigns
-- Reply rates and meeting conversion
-- Which campaigns to scale or pause
-- Specific campaign metrics`,
-        timestamp: new Date(),
-      }])
-    }
-  }, [isPanelOpen, selectedClient, datePreset, currentScreen, messages.length, isLoadingData, dashboardData])
+  // No welcome message - start with blank chat as requested
 
   const handleSend = async () => {
     if (!inputValue.trim() || isAsking) return
+
+    // Include screenshots with message
+    const currentScreenshots = screenshots.map(s => ({
+      dataUrl: s.dataUrl,
+      elementInfo: s.elementInfo
+    }))
 
     const userMessage: Message = {
       id: Date.now().toString(),
       role: 'user',
       content: inputValue.trim(),
       timestamp: new Date(),
+      screenshots: currentScreenshots.length > 0 ? currentScreenshots : undefined,
     }
 
     setMessages(prev => [...prev, userMessage])
     const questionToAsk = inputValue.trim()
     setInputValue('')
     clearError()
+    
+    // Clear screenshots after sending
+    if (currentScreenshots.length > 0) {
+      clearScreenshots()
+    }
     
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto'
@@ -273,8 +340,31 @@ I have full access to your campaign performance data. Ask me about:
     setInputValue('')
   }
 
+  // Handle focus/blur for element picker
+  const handleChatFocus = () => {
+    setIsChatFocused(true)
+  }
+
+  const handleChatBlur = () => {
+    // Delay to allow element picker button click
+    setTimeout(() => {
+      setIsChatFocused(false)
+    }, 200)
+  }
+
+  // Get current width for layout
+  const currentWidth = isPanelOpen ? panelWidth : 0
+
   return (
     <>
+      {/* Element Picker Overlay - Only when panel open AND chat focused */}
+      <ElementPickerOverlay
+        isActive={isElementPickerActive && isPanelOpen && isChatFocused}
+        onCapture={handleElementCapture}
+        onCancel={() => setElementPickerActive(false)}
+        panelWidth={currentWidth}
+      />
+
       {/* Toggle Button - Sleek minimal design */}
       <AnimatePresence>
         {!isPanelOpen && (
@@ -301,12 +391,25 @@ I have full access to your campaign performance data. Ask me about:
       <AnimatePresence>
         {isPanelOpen && (
           <motion.div
+            ref={panelRef}
+            data-ai-panel
             initial={{ x: -400, opacity: 0 }}
             animate={{ x: 0, opacity: 1 }}
             exit={{ x: -400, opacity: 0 }}
             transition={{ type: 'spring', stiffness: 400, damping: 35 }}
-            className="fixed left-0 top-0 bottom-0 w-[380px] bg-black/95 backdrop-blur-xl border-r border-white/10 z-40 flex flex-col"
+            className={`fixed left-0 top-0 bottom-0 bg-black/95 backdrop-blur-xl border-r border-white/10 z-40 flex flex-col ${
+              panelMode === 'popup' ? 'shadow-2xl' : ''
+            }`}
+            style={{ width: panelWidth }}
           >
+            {/* Resize handle on right edge */}
+            <div
+              className="absolute right-0 top-0 bottom-0 w-2 cursor-ew-resize hover:bg-white/10 transition-colors z-50"
+              onMouseDown={handleResizeStart}
+            >
+              <div className="absolute right-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-white/20 rounded-full" />
+            </div>
+
             {/* Subtle grid pattern background */}
             <div 
               className="absolute inset-0 opacity-[0.02] pointer-events-none"
@@ -343,14 +446,30 @@ I have full access to your campaign performance data. Ask me about:
                   </div>
                 </div>
               </div>
-              <motion.button
-                onClick={togglePanel}
-                className="p-2 rounded-lg border border-transparent hover:border-white/20 hover:bg-white/5 transition-all"
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                <ChevronLeft size={18} className="text-white/50" />
-              </motion.button>
+              <div className="flex items-center gap-1">
+                {/* Popup/Minimize toggle */}
+                <motion.button
+                  onClick={togglePopupMode}
+                  className="p-2 rounded-lg border border-transparent hover:border-white/20 hover:bg-white/5 transition-all"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  title={panelMode === 'sidebar' ? 'Expand' : 'Minimize'}
+                >
+                  {panelMode === 'sidebar' ? (
+                    <Maximize2 size={16} className="text-white/50" />
+                  ) : (
+                    <Minimize2 size={16} className="text-white/50" />
+                  )}
+                </motion.button>
+                <motion.button
+                  onClick={togglePanel}
+                  className="p-2 rounded-lg border border-transparent hover:border-white/20 hover:bg-white/5 transition-all"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  <ChevronLeft size={18} className="text-white/50" />
+                </motion.button>
+              </div>
             </motion.div>
 
             {/* Chart Context Indicator */}
@@ -378,6 +497,49 @@ I have full access to your campaign performance data. Ask me about:
                     >
                       <X size={12} className="text-white/40 hover:text-white" />
                     </motion.button>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Screenshot Attachments Indicator */}
+            <AnimatePresence>
+              {screenshots.length > 0 && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                  className="px-5 py-3 bg-white/5 border-b border-white/10 overflow-hidden"
+                >
+                  <div className="flex items-center gap-2 mb-2">
+                    <ImageIcon size={14} className="text-white/60" />
+                    <span className="text-xs font-mono text-white/60">
+                      {screenshots.length} screenshot{screenshots.length > 1 ? 's' : ''} attached
+                    </span>
+                    <button
+                      onClick={clearScreenshots}
+                      className="ml-auto text-[10px] text-white/40 hover:text-white transition-colors"
+                    >
+                      Clear all
+                    </button>
+                  </div>
+                  <div className="flex gap-2 overflow-x-auto">
+                    {screenshots.map(screenshot => (
+                      <div key={screenshot.id} className="relative group flex-shrink-0">
+                        <img
+                          src={screenshot.dataUrl}
+                          alt={screenshot.elementInfo}
+                          className="h-12 w-auto rounded border border-white/20 object-cover"
+                        />
+              <button
+                          onClick={() => removeScreenshot(screenshot.id)}
+                          className="absolute -top-1 -right-1 w-4 h-4 bg-black border border-white/20 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+              >
+                          <X size={10} className="text-white/80" />
+              </button>
+            </div>
+                    ))}
                   </div>
                 </motion.div>
               )}
@@ -414,33 +576,46 @@ I have full access to your campaign performance data. Ask me about:
             <div className="flex-1 overflow-y-auto p-5 space-y-4">
               <div className="space-y-4">
                 <AnimatePresence mode="popLayout">
-                  {messages.map((message) => (
-                    <motion.div
-                      key={message.id}
+              {messages.map((message) => (
+                <motion.div
+                  key={message.id}
                       variants={messageVariants}
                       initial="initial"
                       animate="animate"
                       layout
-                      className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                    >
-                      <div
-                        className={`max-w-[90%] rounded-lg px-4 py-3 bg-white text-black ${
-                          message.role === 'user'
-                            ? 'rounded-br-sm'
-                            : 'rounded-bl-sm'
+                  className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                >
+                  <div
+                        className={`max-w-[90%] rounded-lg px-4 py-3 ${
+                      message.role === 'user'
+                            ? 'bg-violet-600/80 text-white rounded-br-sm'
+                            : 'bg-slate-800/90 text-white/90 border border-slate-700/50 rounded-bl-sm'
                         }`}
                       >
-                        <div className={`text-sm whitespace-pre-wrap leading-relaxed text-black ${
-                          message.role === 'user' ? 'font-medium' : 'font-mono text-[13px]'
+                        {/* Show screenshots in message */}
+                        {message.screenshots && message.screenshots.length > 0 && (
+                          <div className="flex gap-2 mb-2 overflow-x-auto">
+                            {message.screenshots.map((screenshot, idx) => (
+                              <img
+                                key={idx}
+                                src={screenshot.dataUrl}
+                                alt={screenshot.elementInfo}
+                                className="h-16 w-auto rounded border border-white/20 object-cover"
+                              />
+                            ))}
+                          </div>
+                        )}
+                        <div className={`whitespace-pre-wrap leading-relaxed ${
+                          message.role === 'user' ? 'text-base font-medium text-white' : 'text-base font-mono text-white/90'
                         }`}>
                           {parseMarkdown(message.content)}
-                        </div>
-                        <div className="text-[10px] mt-2 font-mono text-black/40">
-                          {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </div>
-                      </div>
-                    </motion.div>
-                  ))}
+                    </div>
+                        <div className="text-[10px] mt-2 font-mono text-white/40">
+                      {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
                 </AnimatePresence>
               </div>
 
@@ -454,7 +629,7 @@ I have full access to your campaign performance data. Ask me about:
                     className="space-y-2"
                   >
                     <div className="flex items-center gap-2">
-                      <motion.div
+                <motion.div
                         animate={{ rotate: 360 }}
                         transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
                       >
@@ -470,9 +645,9 @@ I have full access to your campaign performance data. Ask me about:
                         className="h-full bg-white/40"
                         style={{ width: progressWidth }}
                       />
-                    </div>
-                  </motion.div>
-                )}
+                  </div>
+                </motion.div>
+              )}
               </AnimatePresence>
 
               <div ref={messagesEndRef} />
@@ -490,14 +665,14 @@ I have full access to your campaign performance data. Ask me about:
                   <motion.button
                     key={prompt.id}
                     onClick={() => handleQuickPrompt(prompt.prompt)}
-                    className="flex items-center gap-2 px-4 py-2 bg-white text-black rounded-lg text-xs font-medium whitespace-nowrap flex-shrink-0 hover:bg-white/90 transition-colors"
+                    className="flex items-center gap-2 px-4 py-2 bg-slate-800/80 text-white border border-slate-700/50 rounded-lg text-sm font-medium whitespace-nowrap flex-shrink-0 hover:bg-slate-700/80 hover:border-slate-600/50 transition-colors"
                     initial={{ opacity: 0, x: -10 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: 0.1 + index * 0.05, type: 'spring', stiffness: 300 }}
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                   >
-                    <prompt.icon size={14} className="text-black/70" />
+                    <prompt.icon size={14} className="text-violet-400" />
                     <span>{prompt.label}</span>
                   </motion.button>
                 ))}
@@ -511,11 +686,26 @@ I have full access to your campaign performance data. Ask me about:
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.15 }}
             >
-              <div className="flex items-end gap-3">
+              <div className="flex items-end gap-2">
+                {/* Element picker button */}
+                <motion.button
+                  onClick={() => setElementPickerActive(!isElementPickerActive)}
+                  className={`p-3 rounded-lg border transition-all flex-shrink-0 ${
+                    isElementPickerActive
+                      ? 'bg-violet-600 text-white border-violet-500'
+                      : 'bg-slate-800/80 text-white/60 border-slate-700/50 hover:bg-slate-700/80 hover:border-slate-600/50'
+                  }`}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  title="Capture screen element"
+                >
+                  <Crosshair size={18} />
+                </motion.button>
+
                 <div className="flex-1">
                   <textarea
                     ref={textareaRef}
-                    value={inputValue}
+                  value={inputValue}
                     onChange={(e) => {
                       setInputValue(e.target.value)
                       adjustTextareaHeight()
@@ -526,8 +716,16 @@ I have full access to your campaign performance data. Ask me about:
                         handleSend()
                       }
                     }}
-                    placeholder={chartContext ? "Query this data..." : "Ask anything..."}
-                    className="w-full px-4 py-3 bg-white text-black placeholder-black/40 text-sm rounded-lg border-0 focus:outline-none focus:ring-2 focus:ring-white/30 resize-none overflow-hidden min-h-[48px] max-h-[150px] transition-all"
+                    onFocus={handleChatFocus}
+                    onBlur={handleChatBlur}
+                    placeholder={
+                      isElementPickerActive 
+                        ? "Click an element to capture, then ask about it..." 
+                        : chartContext 
+                          ? "Query this data..." 
+                          : "Ask anything..."
+                    }
+                    className="w-full px-4 py-3 bg-slate-800/80 text-white placeholder-white/40 text-base rounded-lg border border-slate-700/50 focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500/50 resize-none overflow-hidden min-h-[48px] max-h-[150px] transition-all"
                     disabled={isAsking}
                     rows={1}
                   />
@@ -535,13 +733,33 @@ I have full access to your campaign performance data. Ask me about:
                 <motion.button
                   onClick={handleSend}
                   disabled={!inputValue.trim() || isAsking}
-                  className="p-3 bg-white text-black rounded-lg disabled:opacity-30 disabled:cursor-not-allowed flex-shrink-0 hover:bg-white/90 transition-colors"
+                  className="p-3 bg-violet-600 text-white rounded-lg disabled:opacity-30 disabled:cursor-not-allowed flex-shrink-0 hover:bg-violet-500 transition-colors"
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                 >
                   <Send size={18} />
                 </motion.button>
               </div>
+              
+              {/* Element picker active indicator */}
+              <AnimatePresence>
+                {isElementPickerActive && isChatFocused && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -5 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -5 }}
+                    className="mt-2 flex items-center gap-2 text-xs font-mono text-white/60"
+                  >
+                    <motion.div
+                      animate={{ scale: [1, 1.2, 1] }}
+                      transition={{ duration: 1, repeat: Infinity }}
+                    >
+                      <Crosshair size={12} />
+                    </motion.div>
+                    <span>Element picker active — click any element on screen</span>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </motion.div>
           </motion.div>
         )}

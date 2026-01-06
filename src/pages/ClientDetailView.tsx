@@ -1,15 +1,17 @@
 import { useEffect, useState, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { ArrowLeft, Settings } from 'lucide-react'
+import { ArrowLeft, Settings, FileText } from 'lucide-react'
 import MetricCard from '../components/ui/MetricCard'
 import ClickableMetricCard from '../components/ui/ClickableMetricCard'
 import TrendChart from '../components/charts/TrendChart'
 import CampaignBreakdownTable from '../components/ui/CampaignBreakdownTable'
 import ConfigureTargetsModal from '../components/ui/ConfigureTargetsModal'
+import IterationLogModal from '../components/ui/IterationLogModal'
 import { useQuickViewData } from '../hooks/useQuickViewData'
 import { useCampaignStats } from '../hooks/useCampaignStats'
 import { useFirmographicInsights } from '../hooks/useFirmographicInsights'
+import { useIterationLog } from '../hooks/useIterationLog'
 import { useFilters } from '../contexts/FilterContext'
 import { useAI } from '../contexts/AIContext'
 import { supabase } from '../lib/supabase'
@@ -74,7 +76,7 @@ export default function ClientDetailView() {
   }, [navigate])
 
   // AI Context
-  const { setFirmographicData } = useAI()
+  const { setFirmographicData, setIterationLogs } = useAI()
   
   // State
   const [selectedCampaigns, setSelectedCampaigns] = useState<string[]>([])
@@ -82,6 +84,10 @@ export default function ClientDetailView() {
   const [selectedChartMetric, setSelectedChartMetric] = useState<ChartMetric>(null)
   const [showConfigureTargets, setShowConfigureTargets] = useState(false)
   const [showMeetingsDrillDown, setShowMeetingsDrillDown] = useState(false)
+  const [showIterationLog, setShowIterationLog] = useState(false)
+  
+  // Fetch iteration logs for AI context
+  const { logs: iterationLogs } = useIterationLog({ client: decodedClientName || undefined })
 
   // Combined campaigns for filtering (from both campaign filter and table selection)
   const effectiveCampaignFilter = tableCampaignSelection.length > 0 
@@ -158,6 +164,11 @@ export default function ClientDetailView() {
   useEffect(() => {
     setFirmographicData(firmographicData)
   }, [firmographicData, setFirmographicData])
+
+  // Sync iteration logs with AI context
+  useEffect(() => {
+    setIterationLogs(iterationLogs)
+  }, [iterationLogs, setIterationLogs])
 
   // Get client-specific campaigns from campaignStats
   const clientCampaigns = campaignStats.map(c => c.campaign_name).filter(Boolean) as string[]
@@ -249,6 +260,13 @@ export default function ClientDetailView() {
               selectedCampaigns={selectedCampaigns}
               onChange={setSelectedCampaigns}
             />
+            <button
+              onClick={() => setShowIterationLog(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600/80 border border-emerald-500/50 rounded-lg text-xs text-white hover:bg-emerald-500/80 transition-colors"
+            >
+              <FileText size={14} />
+              Iteration Log
+            </button>
             <button
               onClick={() => setShowConfigureTargets(true)}
               className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-700/50 border border-slate-600/50 rounded-lg text-xs text-white hover:bg-slate-600/50 transition-colors"
@@ -411,6 +429,13 @@ export default function ClientDetailView() {
           }
           fetchTargets()
         }}
+      />
+
+      {/* Iteration Log Modal */}
+      <IterationLogModal
+        isOpen={showIterationLog}
+        onClose={() => setShowIterationLog(false)}
+        client={decodedClientName}
       />
     </motion.div>
   )

@@ -16,8 +16,9 @@ const tabs = [
 export default function TabNavigation() {
   const location = useLocation()
   const isInfrastructurePage = location.pathname === '/infrastructure'
+  const isStrategyPage = location.pathname.startsWith('/strategy')
   const isPipelinePage = location.pathname === '/pipeline'
-  const shouldShowFilters = !isInfrastructurePage
+  const shouldShowFilters = !isInfrastructurePage && !isStrategyPage
   
   const { clients } = useClients()
   const {
@@ -35,7 +36,7 @@ export default function TabNavigation() {
     setDateRange(getDateRange(preset))
   }
   
-  if (isInfrastructurePage) {
+  if (isInfrastructurePage || isStrategyPage) {
     return null
   }
   

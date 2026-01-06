@@ -18,9 +18,9 @@ export default function FunnelChart({
 }: FunnelChartProps) {
   const [hoveredStage, setHoveredStage] = useState<number | null>(null)
   
-  // Sales Hand-Off index
-  const salesHandoffIndex = stages.findIndex((s) => 
-    s.name === 'Showed Up to Disco' || s.name === 'Showed Up to Discovery'
+  // Index where stages turn green (after Interested)
+  const greenStageIndex = stages.findIndex((s) => 
+    s.name === 'Meetings Booked'
   )
 
   // Container animation
@@ -63,7 +63,7 @@ export default function FunnelChart({
           backgroundSize: '20px 20px'
         }}
       />
-      <h3 className="text-lg font-semibold text-rillation-text mb-4 relative z-10">Pipeline Funnel</h3>
+      <h3 className="text-lg font-semibold text-rillation-text mb-4 relative z-10">Pipeline Generated</h3>
       
       {/* Funnel Visualization - True Funnel Shape */}
       <motion.div 
@@ -86,7 +86,7 @@ export default function FunnelChart({
           const clipLeft = (widthDiff / widthPercent) * 100
           const clipRight = 100 - clipLeft
           
-          const isAfterHandoff = salesHandoffIndex > 0 && index >= salesHandoffIndex
+          const isGreenStage = greenStageIndex > 0 && index >= greenStageIndex
           const isClickable = onStageClick && index >= clickableFromIndex
           const isHovered = hoveredStage === index
           const isSelected = selectedStageName === stage.name
@@ -97,30 +97,12 @@ export default function FunnelChart({
               className="w-full flex flex-col items-center"
               variants={stageVariants}
             >
-              {/* Sales Hand-Off divider */}
-              <AnimatePresence>
-                {index === salesHandoffIndex && (
-                  <motion.div 
-                    className="w-full flex items-center justify-center my-2"
-                    initial={{ opacity: 0, scaleX: 0 }}
-                    animate={{ opacity: 1, scaleX: 1 }}
-                    transition={{ duration: 0.4 }}
-                  >
-                    <div className="flex-1 border-t border-dashed border-rillation-orange/50" />
-                    <span className="px-3 text-xs text-rillation-orange whitespace-nowrap font-medium">
-                      Sales Hand-Off
-                    </span>
-                    <div className="flex-1 border-t border-dashed border-rillation-orange/50" />
-                  </motion.div>
-                )}
-              </AnimatePresence>
-              
               {/* Funnel Stage - Trapezoid shape */}
               <div className="w-full flex justify-center overflow-hidden">
                 <motion.div
                   className={`
                     relative py-2 sm:py-2.5 flex items-center justify-center transition-all duration-200 rounded-lg
-                    ${isAfterHandoff 
+                    ${isGreenStage 
                       ? 'bg-gradient-to-r from-green-600 to-green-500' 
                       : 'bg-gradient-to-r from-rillation-purple-dark to-rillation-purple'
                     }
