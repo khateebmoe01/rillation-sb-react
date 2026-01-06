@@ -77,20 +77,7 @@ export default function MeetingsDrillDown({
 
         let query = supabase
           .from('meetings_booked')
-          .select(`
-            id,
-            email,
-            first_name,
-            last_name,
-            company,
-            title,
-            campaign_name,
-            campaign_id,
-            created_time,
-            industry,
-            company_size,
-            annual_revenue
-          `)
+          .select('*')
           .gte('created_time', startStr)
           .lt('created_time', endStrNextDay)
           .eq('client', client)
