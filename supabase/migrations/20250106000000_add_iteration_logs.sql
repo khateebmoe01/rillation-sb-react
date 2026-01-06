@@ -38,3 +38,4 @@ COMMENT ON COLUMN client_iteration_logs.description IS 'Description of the chang
 COMMENT ON COLUMN client_iteration_logs.created_by IS 'Name of the person who made the change';
 COMMENT ON COLUMN client_iteration_logs.created_at IS 'Timestamp when the log was created';
 
+

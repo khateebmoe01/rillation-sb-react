@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, ChevronDown, ChevronUp, User, Building2, Mail, Calendar, Target, Briefcase } from 'lucide-react'
+import { X, ChevronDown, ChevronUp, User, Building2, Calendar, Target, Briefcase } from 'lucide-react'
 import { supabase, formatDateForQuery, formatDateForQueryEndOfDay } from '../../lib/supabase'
 
 interface Meeting {
@@ -8,16 +8,15 @@ interface Meeting {
   email: string
   first_name: string
   last_name: string
-  company_name: string
-  job_title: string
+  company: string
+  title: string
   campaign_name: string
   campaign_id: string
   created_time: string
-  sequence_step: number
   pipeline_stage: string
   industry?: string
-  employee_count?: string
-  revenue_range?: string
+  company_size?: string
+  annual_revenue?: string
 }
 
 interface MeetingsDrillDownProps {
@@ -83,15 +82,14 @@ export default function MeetingsDrillDown({
             email,
             first_name,
             last_name,
-            company_name,
-            job_title,
+            company,
+            title,
             campaign_name,
             campaign_id,
             created_time,
-            sequence_step,
             industry,
-            employee_count,
-            revenue_range
+            company_size,
+            annual_revenue
           `)
           .gte('created_time', startStr)
           .lt('created_time', endStrNextDay)
@@ -112,16 +110,15 @@ export default function MeetingsDrillDown({
           email: m.email || '',
           first_name: m.first_name || '',
           last_name: m.last_name || '',
-          company_name: m.company_name || '',
-          job_title: m.job_title || 'Unknown',
+          company: m.company || '',
+          title: m.title || 'Unknown',
           campaign_name: m.campaign_name || '',
           campaign_id: m.campaign_id || '',
           created_time: m.created_time || '',
-          sequence_step: m.sequence_step || 1,
           pipeline_stage: 'Meetings Booked', // Default, would need join with engaged_leads for actual stage
           industry: m.industry,
-          employee_count: m.employee_count,
-          revenue_range: m.revenue_range,
+          company_size: m.company_size,
+          annual_revenue: m.annual_revenue,
         }))
 
         setMeetings(meetingsData)
@@ -253,7 +250,7 @@ export default function MeetingsDrillDown({
                           </div>
                           <div className="text-xs text-slate-400 truncate flex items-center gap-1">
                             <Briefcase size={10} />
-                            {meeting.job_title}
+                            {meeting.title}
                           </div>
                         </div>
                       </div>
@@ -262,19 +259,13 @@ export default function MeetingsDrillDown({
                       <div className="hidden md:flex items-center gap-2 min-w-0">
                         <Building2 size={14} className="text-slate-500 shrink-0" />
                         <span className="text-sm text-slate-300 truncate">
-                          {meeting.company_name}
+                          {meeting.company}
                         </span>
                       </div>
                     </div>
 
                     {/* Right side info */}
                     <div className="flex items-center gap-4 shrink-0">
-                      {/* Email step */}
-                      <div className="hidden sm:flex items-center gap-1 text-xs text-slate-400">
-                        <Mail size={12} />
-                        Step {meeting.sequence_step}
-                      </div>
-
                       {/* Pipeline stage */}
                       <StageBadge stage={meeting.pipeline_stage} />
 
@@ -323,11 +314,11 @@ export default function MeetingsDrillDown({
                               </div>
                             </div>
                           )}
-                          {meeting.revenue_range && (
+                          {meeting.annual_revenue && (
                             <div>
                               <div className="text-xs text-slate-500 mb-1">Revenue</div>
                               <div className="text-sm text-slate-300 truncate">
-                                {meeting.revenue_range}
+                                {meeting.annual_revenue}
                               </div>
                             </div>
                           )}
@@ -358,6 +349,7 @@ export default function MeetingsDrillDown({
     </AnimatePresence>
   )
 }
+
 
 
 
