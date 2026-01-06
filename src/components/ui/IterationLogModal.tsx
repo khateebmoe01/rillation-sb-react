@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, Plus, Trash2, Clock, User, Tag, FileText, Loader2 } from 'lucide-react'
-import { useIterationLog, ACTION_TYPES, type IterationLogEntry } from '../../hooks/useIterationLog'
+import { useIterationLog, ACTION_TYPES } from '../../hooks/useIterationLog'
 import Button from './Button'
 import ModalPortal from './ModalPortal'
 

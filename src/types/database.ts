@@ -53,6 +53,16 @@ export interface Database {
         Insert: Partial<Campaign>
         Update: Partial<Campaign>
       }
+      client_iteration_logs: {
+        Row: ClientIterationLog
+        Insert: Partial<ClientIterationLog>
+        Update: Partial<ClientIterationLog>
+      }
+      engaged_leads: {
+        Row: EngagedLead
+        Insert: Partial<EngagedLead>
+        Update: Partial<EngagedLead>
+      }
     }
   }
 }
@@ -226,6 +236,39 @@ export interface Campaign {
   client: string
   created_at: string
   status?: string
+}
+
+export interface ClientIterationLog {
+  id?: number
+  client: string
+  action_type: string
+  description: string
+  created_by: string
+  created_at?: string
+}
+
+export interface EngagedLead {
+  id?: number
+  client: string
+  email: string
+  first_name?: string
+  last_name?: string
+  full_name?: string
+  company?: string
+  title?: string
+  industry?: string
+  annual_revenue?: string
+  date_created?: string
+  current_stage?: string
+  meeting_booked?: boolean
+  replied?: boolean
+  interested?: boolean
+  qualified?: boolean
+  proposal_sent?: boolean
+  negotiation?: boolean
+  closed_won?: boolean
+  closed_lost?: boolean
+  created_at?: string
 }
 
 // Aggregated Data Types for Dashboard

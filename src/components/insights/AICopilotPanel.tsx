@@ -20,7 +20,6 @@ import {
   Image as ImageIcon
 } from 'lucide-react'
 import { useAI } from '../../contexts/AIContext'
-import { useFilters } from '../../contexts/FilterContext'
 import ElementPickerOverlay from './ElementPickerOverlay'
 
 interface Message {
@@ -145,8 +144,6 @@ export default function AICopilotPanel() {
   const { 
     askWithContext, 
     isAsking,
-    isLoadingData,
-    dashboardData,
     error, 
     clearError,
     chartContext,
@@ -155,7 +152,6 @@ export default function AICopilotPanel() {
     setPendingQuestion,
     isPanelOpen,
     togglePanel,
-    currentScreen,
     screenshots,
     addScreenshot,
     removeScreenshot,
@@ -165,8 +161,6 @@ export default function AICopilotPanel() {
     panelWidth: contextPanelWidth,
     setPanelWidth: setContextPanelWidth
   } = useAI()
-  
-  const { selectedClient, datePreset } = useFilters()
   
   const [messages, setMessages] = useState<Message[]>([])
   const [inputValue, setInputValue] = useState('')

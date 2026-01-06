@@ -314,18 +314,21 @@ export default function OpportunityStageDropdown({
       }
 
       // Upsert opportunities
+      // Use type assertion to bypass strict Supabase typing for this table
+      const opportunitiesTable = supabase.from('client_opportunities') as any
+      
       for (const opp of upsertData) {
         console.log('Processing opp:', opp)
         if (opp.id !== undefined && opp.id !== null) {
           console.log('Updating existing opportunity:', opp.id)
-          const { error, data } = await supabase
-            .from('client_opportunities')
-            .update({
-              value: opp.value,
-              stage: opp.stage,
-              opportunity_name: opp.opportunity_name,
-              contact_name: opp.contact_name,
-            })
+          const updateData = {
+            value: opp.value,
+            stage: opp.stage,
+            opportunity_name: opp.opportunity_name,
+            contact_name: opp.contact_name,
+          }
+          const { error, data } = await opportunitiesTable
+            .update(updateData)
             .eq('id', opp.id)
             .select()
           
@@ -336,19 +339,17 @@ export default function OpportunityStageDropdown({
           console.log('Updated opportunity result:', data)
         } else {
           console.log('Inserting new opportunity')
-          const insertData: Record<string, any> = {
+          const insertData = {
             client: opp.client,
             opportunity_name: opp.opportunity_name,
             stage: opp.stage,
             value: opp.value,
             contact_name: opp.contact_name,
-          }
-          if (opp.contact_email) {
-            insertData.contact_email = opp.contact_email
+            contact_email: opp.contact_email || null,
           }
           console.log('Insert data:', insertData)
           
-          const { error, data } = await supabase.from('client_opportunities').insert(insertData).select()
+          const { error, data } = await opportunitiesTable.insert(insertData).select()
           if (error) {
             console.error('Error inserting opportunity:', insertData, error)
             throw error

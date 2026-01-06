@@ -110,14 +110,15 @@ export function useIterationLog({ client }: UseIterationLogParams = {}) {
     setError(null)
 
     try {
+      const insertData = {
+        client: entry.client,
+        action_type: entry.action_type,
+        description: entry.description,
+        created_by: entry.created_by,
+      }
       const { error: insertError } = await supabase
         .from('client_iteration_logs')
-        .insert({
-          client: entry.client,
-          action_type: entry.action_type,
-          description: entry.description,
-          created_by: entry.created_by,
-        })
+        .insert(insertData as any)
 
       if (insertError) throw insertError
 
