@@ -10,6 +10,7 @@ import StrategyView from './pages/StrategyView'
 import DebugView from './pages/DebugView'
 import ClientDetailView from './pages/ClientDetailView'
 import CustomVariablesDiscovery from './pages/CustomVariablesDiscovery'
+import CRMView from './pages/CRMView'
 import { getSupabaseConfigError } from './lib/supabase'
 
 // Redirect component that properly handles URL params
@@ -49,6 +50,7 @@ function App() {
           <Route path="/performance" element={<PageTransition><PerformanceOverview /></PageTransition>} />
           <Route path="/performance/:clientName" element={<PageTransition><ClientDetailView /></PageTransition>} />
           <Route path="/pipeline" element={<PageTransition><PipelineView /></PageTransition>} />
+          <Route path="/crm" element={<PageTransition><CRMView /></PageTransition>} />
           <Route path="/strategy" element={<PageTransition><StrategyView /></PageTransition>} />
           <Route path="/infrastructure" element={<PageTransition><Infrastructure /></PageTransition>} />
           <Route path="/admin/variables" element={<PageTransition><CustomVariablesDiscovery /></PageTransition>} />

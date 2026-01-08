@@ -145,4 +145,3 @@ export function normalizeProviderName(provider: string | null | undefined): stri
   // Return original with first letter capitalized if no match
   return provider.charAt(0).toUpperCase() + provider.slice(1).replace(/_/g, ' ')
 }
-
