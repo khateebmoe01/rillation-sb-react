@@ -21,6 +21,7 @@ import {
   CheckSquare,
 } from 'lucide-react'
 import { CRM_STAGES, LEAD_SOURCES, type CRMContact } from '../../types/crm'
+import AnimatedSelect from '../ui/AnimatedSelect'
 
 // LocalStorage key for section collapse state
 const SECTION_STATE_KEY = 'crm-detail-sections'
@@ -417,19 +418,16 @@ export default function ContactDetailPanel({ contact, onClose, onUpdate, onDelet
               currentStage={contact.stage}
               onSave={(stage) => handleFieldSave('stage', stage)}
             />
-            <div>
-              <label className="text-xs text-rillation-text-muted mb-1 block">Lead Source</label>
-              <select
-                value={contact.lead_source || ''}
-                onChange={(e) => handleFieldSave('lead_source', e.target.value || null)}
-                className="w-full px-3 py-2 bg-rillation-card-hover border border-rillation-border rounded-lg text-sm text-rillation-text focus:outline-none focus:border-rillation-text-muted"
-              >
-                <option value="">Select source...</option>
-                {LEAD_SOURCES.map((source) => (
-                  <option key={source} value={source}>{source}</option>
-                ))}
-              </select>
-            </div>
+            <AnimatedSelect
+              label="Lead Source"
+              value={contact.lead_source || ''}
+              onChange={(val) => handleFieldSave('lead_source', val || null)}
+              placeholder="Select source..."
+              options={[
+                { value: '', label: 'Select source...' },
+                ...LEAD_SOURCES.map(source => ({ value: source, label: source }))
+              ]}
+            />
           </div>
 
           {/* Pipeline Progress - Collapsible */}

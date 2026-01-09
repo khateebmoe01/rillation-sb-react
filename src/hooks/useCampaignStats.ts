@@ -144,10 +144,6 @@ export function useCampaignStats({ startDate, endDate, client, page, pageSize }:
       let repliesOffset = 0
       let hasMoreReplies = true
 
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/9428b436-58ef-4c72-b9f2-dfdc5784cfa8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'useCampaignStats.ts:130',message:'Replies query params',data:{startStr,endStrNextDay,client:client||'none',batchSize},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-      // #endregion
-      
       while (hasMoreReplies) {
         // Try to select campaign_name, but handle if it doesn't exist in the table
         // If campaign_name column doesn't exist, we'll use campaign_id for matching

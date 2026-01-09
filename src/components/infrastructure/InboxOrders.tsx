@@ -6,6 +6,7 @@ import { useClients } from '../../hooks/useClients'
 import { orderInboxesBulk } from '../../lib/infrastructure-api'
 import Button from '../ui/Button'
 import ClientFilter from '../ui/ClientFilter'
+import AnimatedSelect from '../ui/AnimatedSelect'
 
 const PROVIDERS = ['Mission Inbox', 'InboxKit']
 const MIN_QUANTITY = 100
@@ -59,23 +60,16 @@ export default function InboxOrders() {
         </h3>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-rillation-text-muted mb-2">
-              Provider *
-            </label>
-            <select
-              value={provider}
-              onChange={(e) => setProvider(e.target.value)}
-              className="w-full px-4 py-2 bg-rillation-bg border border-rillation-border rounded-lg text-rillation-text focus:outline-none focus:border-rillation-purple"
-            >
-              <option value="">Select Provider</option>
-              {PROVIDERS.map((p) => (
-                <option key={p} value={p}>
-                  {p}
-                </option>
-              ))}
-            </select>
-          </div>
+          <AnimatedSelect
+            label="Provider *"
+            value={provider}
+            onChange={setProvider}
+            placeholder="Select Provider"
+            options={[
+              { value: '', label: 'Select Provider' },
+              ...PROVIDERS.map(p => ({ value: p, label: p }))
+            ]}
+          />
 
           <div>
             <label className="block text-sm font-medium text-rillation-text-muted mb-2">
@@ -91,23 +85,16 @@ export default function InboxOrders() {
             />
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-rillation-text-muted mb-2">
-              Domain (Optional)
-            </label>
-            <select
-              value={selectedDomain}
-              onChange={(e) => setSelectedDomain(e.target.value)}
-              className="w-full px-4 py-2 bg-rillation-bg border border-rillation-border rounded-lg text-rillation-text focus:outline-none focus:border-rillation-purple"
-            >
-              <option value="">Select Domain</option>
-              {domains.map((domain) => (
-                <option key={domain.id} value={domain.domain}>
-                  {domain.domain}
-                </option>
-              ))}
-            </select>
-          </div>
+          <AnimatedSelect
+            label="Domain (Optional)"
+            value={selectedDomain}
+            onChange={setSelectedDomain}
+            placeholder="Select Domain"
+            options={[
+              { value: '', label: 'Select Domain' },
+              ...domains.map(domain => ({ value: domain.domain, label: domain.domain }))
+            ]}
+          />
 
           <div>
             <label className="block text-sm font-medium text-rillation-text-muted mb-2">

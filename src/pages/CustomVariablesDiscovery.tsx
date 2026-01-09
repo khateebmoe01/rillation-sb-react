@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Search, RefreshCw, Database, TrendingUp, AlertCircle, ChevronRight, Copy, Check } from 'lucide-react'
 import { supabase } from '../lib/supabase'
+import AnimatedSelect from '../components/ui/AnimatedSelect'
 
 interface VariableStats {
   name: string
@@ -194,14 +195,17 @@ export default function CustomVariablesDiscovery() {
             className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
-        <select
-          value={sortBy}
-          onChange={(e) => setSortBy(e.target.value as 'count' | 'name')}
-          className="px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-        >
-          <option value="count">Sort by Count</option>
-          <option value="name">Sort by Name</option>
-        </select>
+        <div className="min-w-[150px]">
+          <AnimatedSelect
+            value={sortBy}
+            onChange={(val) => setSortBy(val as 'count' | 'name')}
+            showCheck={false}
+            options={[
+              { value: 'count', label: 'Sort by Count' },
+              { value: 'name', label: 'Sort by Name' }
+            ]}
+          />
+        </div>
       </div>
 
       {error && (

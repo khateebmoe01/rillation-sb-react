@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { ArrowLeft, Settings, FileText } from 'lucide-react'
 import MetricCard from '../components/ui/MetricCard'
@@ -24,6 +24,7 @@ type ChartMetric = 'sent' | 'prospects' | 'replied' | 'positiveReplies' | 'meeti
 export default function ClientDetailView() {
   const { clientName } = useParams<{ clientName: string }>()
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const { dateRange, setSelectedClient, selectedClient } = useFilters()
   
   // Decode client name from URL
@@ -88,6 +89,16 @@ export default function ClientDetailView() {
   
   // Fetch iteration logs for AI context
   const { logs: iterationLogs } = useIterationLog({ client: decodedClientName || undefined })
+
+  // Handle URL parameter to open iteration log modal (e.g., from Slack link)
+  useEffect(() => {
+    if (searchParams.get('showIterationLog') === 'true') {
+      setShowIterationLog(true)
+      // Remove the parameter from URL after opening
+      searchParams.delete('showIterationLog')
+      setSearchParams(searchParams, { replace: true })
+    }
+  }, [searchParams, setSearchParams])
 
   // Combined campaigns for filtering (from both campaign filter and table selection)
   const effectiveCampaignFilter = tableCampaignSelection.length > 0 

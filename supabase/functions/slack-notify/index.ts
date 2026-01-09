@@ -21,85 +21,147 @@ interface NotificationPayload {
   mentioned_users: MentionedUser[];
 }
 
-// Build Slack Block Kit message
+// Get action type emoji
+function getActionTypeEmoji(actionType: string): string {
+  const emojiMap: Record<string, string> = {
+    'Strategy Change': '🎯',
+    'Copy Update': '✏️',
+    'Targeting Adjustment': '🎪',
+    'Sequence Modification': '🔄',
+    'Campaign Pause': '⏸️',
+    'Campaign Launch': '🚀',
+    'A/B Test Started': '🧪',
+    'Performance Review': '📊',
+    'Client Feedback': '💬',
+    'Other': '📝',
+  };
+  return emojiMap[actionType] || '📝';
+}
+
+// Build Slack Block Kit message with improved formatting
 function buildSlackMessage(payload: NotificationPayload): object {
   const { client, campaign_name, action_type, description, created_by, mentioned_users = [] } = payload;
 
-  // Build mention string with proper Slack user ID format
-  console.log('Building Slack message with mentioned_users:', JSON.stringify(mentioned_users, null, 2));
-  const mentionString = mentioned_users.length > 0
-    ? mentioned_users.map(u => {
-        console.log(`Mapping user: ${u.display_name} -> <@${u.slack_id}>`);
-        return `<@${u.slack_id}>`;
-      }).join(" ")
-    : "";
-  
-  console.log('Final mention string:', mentionString);
+  // Get app base URL for the "View in App" button
+  const appBaseUrl = Deno.env.get("APP_BASE_URL") || "http://localhost:5173";
+  const iterationLogUrl = `${appBaseUrl}/client/${encodeURIComponent(client)}?showIterationLog=true`;
 
-  // Build the blocks
+  // Build mention string with proper Slack user ID format
+  const mentionString = mentioned_users.length > 0
+    ? mentioned_users.map(u => `<@${u.slack_id}>`).join(" ")
+    : "";
+
+  const actionEmoji = getActionTypeEmoji(action_type);
+
+  // Build the blocks with improved spacing and visual hierarchy
   const blocks: object[] = [
+    // Header with emoji
     {
       type: "header",
       text: {
         type: "plain_text",
-        text: "New Iteration Log Entry",
+        text: `${actionEmoji} New Iteration Log`,
         emoji: true,
       },
     },
+    // Divider after header
+    {
+      type: "divider",
+    },
+    // Company and Campaign info - first row
     {
       type: "section",
       fields: [
         {
           type: "mrkdwn",
-          text: `*Company:*\n${client}`,
+          text: `*🏢 Company*\n${client}`,
         },
         {
           type: "mrkdwn",
-          text: `*Campaign:*\n${campaign_name || "General"}`,
+          text: `*📢 Campaign*\n${campaign_name || "_General_"}`,
+        },
+      ],
+    },
+    // Category and Author - second row
+    {
+      type: "section",
+      fields: [
+        {
+          type: "mrkdwn",
+          text: `*🏷️ Category*\n${action_type}`,
         },
         {
           type: "mrkdwn",
-          text: `*Category:*\n${action_type}`,
-        },
-        {
-          type: "mrkdwn",
-          text: `*Author:*\n${created_by}`,
+          text: `*👤 Author*\n${created_by}`,
         },
       ],
     },
   ];
 
-  // Add mentions section if there are mentioned users
+  // Add mentions section if there are mentioned users (with visual separator)
   if (mentionString) {
     blocks.push({
       type: "section",
       text: {
         type: "mrkdwn",
-        text: `*Mentioned:* ${mentionString}`,
+        text: `*🔔 Notifying:* ${mentionString}`,
       },
     });
   }
 
-  // Add description
+  // Divider before description
   blocks.push({
     type: "divider",
   });
 
+  // Description with quote-style formatting
+  const formattedDescription = description.length > 2800 
+    ? description.substring(0, 2800) + "..." 
+    : description;
+  
   blocks.push({
     type: "section",
     text: {
       type: "mrkdwn",
-      text: description.length > 2900 ? description.substring(0, 2900) + "..." : description,
+      text: `*📄 Details*\n>>> ${formattedDescription}`,
     },
   });
 
-  // Add timestamp footer
+  // Spacer context block
   blocks.push({
     type: "context",
     elements: [
       {
         type: "mrkdwn",
-        text: `Posted at <!date^${Math.floor(Date.now() / 1000)}^{date_short_pretty} at {time}|${new Date().toISOString()}>`,
+        text: " ",
+      },
+    ],
+  });
+
+  // Action button to view in app
+  blocks.push({
+    type: "actions",
+    elements: [
+      {
+        type: "button",
+        text: {
+          type: "plain_text",
+          text: "📋 View Iteration Log",
+          emoji: true,
+        },
+        url: iterationLogUrl,
+        style: "primary",
+      },
+    ],
+  });
+
+  // Timestamp footer
+  blocks.push({
+    type: "context",
+    elements: [
+      {
+        type: "mrkdwn",
+        text: `⏰ Posted <!date^${Math.floor(Date.now() / 1000)}^{date_short_pretty} at {time}|${new Date().toISOString()}>`,
       },
     ],
   });
@@ -107,7 +169,7 @@ function buildSlackMessage(payload: NotificationPayload): object {
   return {
     blocks,
     // Fallback text for notifications
-    text: `New Iteration Log: [${action_type}] for ${client}${campaign_name ? ` - ${campaign_name}` : ""} by ${created_by}`,
+    text: `${actionEmoji} New Iteration: [${action_type}] for ${client}${campaign_name ? ` - ${campaign_name}` : ""} by ${created_by}`,
   };
 }
 
@@ -155,7 +217,7 @@ Deno.serve(async (req) => {
     }
 
     console.log(`Sending Slack notification for ${client} - ${action_type} by ${created_by}`);
-    console.log(`Mentioned users: ${mentioned_users?.length || 0}`, JSON.stringify(mentioned_users, null, 2));
+    console.log(`Mentioned users: ${mentioned_users?.length || 0}`);
 
     // Build and send Slack message
     const slackMessage = buildSlackMessage(payload);

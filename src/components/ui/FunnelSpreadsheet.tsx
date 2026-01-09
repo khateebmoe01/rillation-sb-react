@@ -1,5 +1,6 @@
 import { formatNumber, formatPercentage, formatCurrency } from '../../lib/supabase'
 import type { FunnelForecast } from '../../types/database'
+import AnimatedSelect from './AnimatedSelect'
 
 interface FunnelSpreadsheetProps {
   data: FunnelForecast[]
@@ -61,11 +62,15 @@ export default function FunnelSpreadsheet({ data, month, year }: FunnelSpreadshe
     <div className="bg-rillation-card rounded-lg border border-rillation-border overflow-hidden">
       <div className="px-3 py-2 border-b border-rillation-border flex items-center justify-between">
         <h3 className="text-sm font-semibold text-rillation-text">Overall Funnel Breakdown</h3>
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 min-w-[80px]">
           <span className="text-xs text-rillation-text-muted">Year:</span>
-          <select className="bg-rillation-bg border border-rillation-border rounded px-1.5 py-0.5 text-xs text-rillation-text">
-            <option value={year}>{year}</option>
-          </select>
+          <AnimatedSelect
+            value={String(year)}
+            onChange={() => {}}
+            size="sm"
+            showCheck={false}
+            options={[{ value: String(year), label: String(year) }]}
+          />
         </div>
       </div>
       

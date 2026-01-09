@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
-import { Save, Loader2, ChevronDown } from 'lucide-react'
+import { Save, Loader2 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import Button from './Button'
+import AnimatedSelect from './AnimatedSelect'
 
 interface FunnelForecastRow {
   id?: number
@@ -193,26 +194,27 @@ export default function EditableFunnelSpreadsheet({
             <h3 className="text-sm font-semibold text-rillation-text">Funnel Breakdown</h3>
             
             {/* Stage Filter Dropdown */}
-            <div className="relative">
-              <select
+            <div className="min-w-[120px]">
+              <AnimatedSelect
                 value={selectedStage}
-                onChange={(e) => setSelectedStage(e.target.value)}
-                className="appearance-none pl-2 pr-6 py-1 text-xs bg-rillation-bg border border-rillation-border rounded text-rillation-text focus:outline-none focus:border-rillation-purple cursor-pointer"
-              >
-                {stageFilters.map(filter => (
-                  <option key={filter.key} value={filter.key}>{filter.label}</option>
-                ))}
-              </select>
-              <ChevronDown size={12} className="absolute right-1.5 top-1/2 -translate-y-1/2 text-rillation-text-muted pointer-events-none" />
+                onChange={setSelectedStage}
+                size="sm"
+                showCheck={false}
+                options={stageFilters.map(filter => ({ value: filter.key, label: filter.label }))}
+              />
             </div>
           </div>
           
           <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1.5 min-w-[80px]">
               <span className="text-xs text-rillation-text-muted">Year:</span>
-              <select className="bg-rillation-bg border border-rillation-border rounded px-1.5 py-0.5 text-xs text-rillation-text">
-                <option value={year}>{year}</option>
-              </select>
+              <AnimatedSelect
+                value={String(year)}
+                onChange={() => {}}
+                size="sm"
+                showCheck={false}
+                options={[{ value: String(year), label: String(year) }]}
+              />
             </div>
             {hasChanges && (
               <Button 

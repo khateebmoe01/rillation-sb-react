@@ -6,6 +6,7 @@ import { useCampaignStats } from '../../hooks/useCampaignStats'
 import Button from './Button'
 import ModalPortal from './ModalPortal'
 import MentionInput from './MentionInput'
+import AnimatedSelect from './AnimatedSelect'
 
 interface IterationLogModalProps {
   isOpen: boolean
@@ -169,23 +170,13 @@ export default function IterationLogModal({ isOpen, onClose, client }: Iteration
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   {/* Action Type */}
-                  <div>
-                    <label className="block text-sm font-medium text-white/70 mb-1.5">
-                      <Tag size={14} className="inline mr-1.5" />
-                      Action Type
-                    </label>
-                    <select
-                      value={actionType}
-                      onChange={(e) => setActionType(e.target.value)}
-                      className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm focus:outline-none focus:border-violet-500"
-                    >
-                      {ACTION_TYPES.map((type) => (
-                        <option key={type} value={type}>
-                          {type}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                  <AnimatedSelect
+                    label="Action Type"
+                    labelIcon={<Tag size={14} />}
+                    value={actionType}
+                    onChange={setActionType}
+                    options={ACTION_TYPES.map(type => ({ value: type, label: type }))}
+                  />
 
                   {/* Created By */}
                   <div>
@@ -205,24 +196,17 @@ export default function IterationLogModal({ isOpen, onClose, client }: Iteration
                 </div>
 
                 {/* Campaign Selector (Optional) */}
-                <div>
-                  <label className="block text-sm font-medium text-white/70 mb-1.5">
-                    <Megaphone size={14} className="inline mr-1.5" />
-                    Campaign <span className="text-white/40">(optional)</span>
-                  </label>
-                  <select
-                    value={campaignName}
-                    onChange={(e) => setCampaignName(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm focus:outline-none focus:border-violet-500"
-                  >
-                    <option value="">General (No specific campaign)</option>
-                    {campaignNames.map((name) => (
-                      <option key={name} value={name}>
-                        {name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                <AnimatedSelect
+                  label="Campaign"
+                  labelIcon={<Megaphone size={14} />}
+                  value={campaignName}
+                  onChange={setCampaignName}
+                  placeholder="General (No specific campaign)"
+                  options={[
+                    { value: '', label: 'General (No specific campaign)' },
+                    ...campaignNames.map(name => ({ value: name, label: name }))
+                  ]}
+                />
 
                 {/* Description with @mentions */}
                 <div>

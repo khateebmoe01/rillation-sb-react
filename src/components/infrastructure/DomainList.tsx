@@ -5,6 +5,7 @@ import { useClients } from '../../hooks/useClients'
 import { syncDomainsPorkbun } from '../../lib/infrastructure-api'
 import Button from '../ui/Button'
 import ClientFilter from '../ui/ClientFilter'
+import AnimatedSelect from '../ui/AnimatedSelect'
 
 export default function DomainList() {
   const [selectedClient, setSelectedClient] = useState('')
@@ -42,20 +43,18 @@ export default function DomainList() {
               selectedClient={selectedClient}
               onChange={setSelectedClient}
             />
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-rillation-text-muted">Provider:</span>
-              <select
+            <div className="flex items-center gap-2 min-w-[160px]">
+              <AnimatedSelect
                 value={selectedProvider}
-                onChange={(e) => setSelectedProvider(e.target.value)}
-                className="appearance-none px-3 py-1.5 text-xs bg-rillation-card border border-rillation-border rounded-lg text-rillation-text focus:outline-none focus:border-rillation-purple cursor-pointer"
-              >
-                <option value="">All Providers</option>
-                {providers.map((provider) => (
-                  <option key={provider} value={provider}>
-                    {provider}
-                  </option>
-                ))}
-              </select>
+                onChange={setSelectedProvider}
+                placeholder="All Providers"
+                size="sm"
+                showCheck={false}
+                options={[
+                  { value: '', label: 'All Providers' },
+                  ...providers.map(provider => ({ value: provider, label: provider }))
+                ]}
+              />
             </div>
           </div>
           <Button variant="primary" size="sm" onClick={handleSync} disabled={syncing}>

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { X, Save, Loader2, ChevronDown, ChevronUp, AlertCircle, CheckCircle } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import type { MeetingBooked } from '../../types/database'
+import AnimatedSelect from './AnimatedSelect'
 
 interface MeetingsBookedEditorProps {
   isOpen: boolean
@@ -179,15 +180,17 @@ export default function MeetingsBookedEditor({
       return (
         <div key={field} className="flex items-center gap-3">
           <label className="text-sm font-medium text-gray-600 w-32">{label}</label>
-          <select
-            value={value === true ? 'true' : value === false ? 'false' : ''}
-            onChange={(e) => handleFieldChange(field, e.target.value === '' ? null : e.target.value === 'true')}
-            className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="">Unknown</option>
-            <option value="true">Yes</option>
-            <option value="false">No</option>
-          </select>
+          <div className="flex-1">
+            <AnimatedSelect
+              value={value === true ? 'true' : value === false ? 'false' : ''}
+              onChange={(val) => handleFieldChange(field, val === '' ? null : val === 'true')}
+              options={[
+                { value: '', label: 'Unknown' },
+                { value: 'true', label: 'Yes' },
+                { value: 'false', label: 'No' }
+              ]}
+            />
+          </div>
         </div>
       )
     }

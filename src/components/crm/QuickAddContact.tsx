@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { X, Loader2, User, Mail, Building2, Phone } from 'lucide-react'
 import { CRM_STAGES, LEAD_SOURCES, type CRMContact } from '../../types/crm'
+import AnimatedSelect from '../ui/AnimatedSelect'
 
 interface QuickAddContactProps {
   onClose: () => void
@@ -165,35 +166,22 @@ export default function QuickAddContact({ onClose, onCreate }: QuickAddContactPr
 
           {/* Stage & Source */}
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="text-xs text-rillation-text-muted mb-1.5 block">Stage</label>
-              <select
-                value={formData.stage}
-                onChange={(e) => handleChange('stage', e.target.value)}
-                className="w-full px-3 py-2.5 bg-rillation-bg border border-rillation-border rounded-lg text-sm text-rillation-text focus:outline-none focus:border-rillation-text-muted transition-colors"
-              >
-                {CRM_STAGES.map((stage) => (
-                  <option key={stage.id} value={stage.id}>
-                    {stage.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="text-xs text-rillation-text-muted mb-1.5 block">Lead Source</label>
-              <select
-                value={formData.lead_source}
-                onChange={(e) => handleChange('lead_source', e.target.value)}
-                className="w-full px-3 py-2.5 bg-rillation-bg border border-rillation-border rounded-lg text-sm text-rillation-text focus:outline-none focus:border-rillation-text-muted transition-colors"
-              >
-                <option value="">Select source...</option>
-                {LEAD_SOURCES.map((source) => (
-                  <option key={source} value={source}>
-                    {source}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <AnimatedSelect
+              label="Stage"
+              value={formData.stage}
+              onChange={(val) => handleChange('stage', val)}
+              options={CRM_STAGES.map(stage => ({ value: stage.id, label: stage.label }))}
+            />
+            <AnimatedSelect
+              label="Lead Source"
+              value={formData.lead_source}
+              onChange={(val) => handleChange('lead_source', val)}
+              placeholder="Select source..."
+              options={[
+                { value: '', label: 'Select source...' },
+                ...LEAD_SOURCES.map(source => ({ value: source, label: source }))
+              ]}
+            />
           </div>
 
           {/* Actions */}
