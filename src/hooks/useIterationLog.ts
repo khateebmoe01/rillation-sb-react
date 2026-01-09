@@ -143,7 +143,8 @@ export function useIterationLog({ client }: UseIterationLogParams = {}) {
       // If columns don't exist yet (migration not applied), retry without new columns
       if (insertError && (insertError.message.includes('column "campaign_name"') || insertError.message.includes('column "mentioned_users"'))) {
         console.warn('New columns not found, inserting without them. Please run the migration!')
-        const fallbackData = {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const fallbackData: any = {
           client: entry.client,
           action_type: entry.action_type,
           description: entry.description,

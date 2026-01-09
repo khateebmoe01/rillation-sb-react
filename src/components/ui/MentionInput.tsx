@@ -81,12 +81,13 @@ export default function MentionInput({
         user = users.find(u => {
           const displayName = (u.display_name || '').trim().toLowerCase()
           const realName = (u.real_name || '').trim().toLowerCase()
-          const name = (u.name || '').trim().toLowerCase()
+          const userName = (u.name || '').trim().toLowerCase()
           
           // Check if the first word matches
           const firstName = displayName.split(/\s+/)[0] || displayName
           const realFirstName = realName.split(/\s+/)[0] || realName
-          return firstName === mentionNameLower || realFirstName === mentionNameLower
+          const userFirstName = userName.split(/\s+/)[0] || userName
+          return firstName === mentionNameLower || realFirstName === mentionNameLower || userFirstName === mentionNameLower
         })
       }
       
