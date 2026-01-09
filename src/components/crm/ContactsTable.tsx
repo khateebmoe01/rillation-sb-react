@@ -41,49 +41,49 @@ interface ColumnDef {
   link?: boolean
 }
 
-// Pipeline progress stages with labels
+// Pipeline progress stages with labels and colors
 const PIPELINE_STAGES = [
-  { key: 'meeting_booked' as const, label: 'Meeting Booked', timestampKey: 'meeting_booked_at' as const },
-  { key: 'showed_up_to_disco' as const, label: 'Disco Show', timestampKey: 'showed_up_to_disco_at' as const },
-  { key: 'qualified' as const, label: 'Qualified', timestampKey: 'qualified_at' as const },
-  { key: 'demo_booked' as const, label: 'Demo Booked', timestampKey: 'demo_booked_at' as const },
-  { key: 'showed_up_to_demo' as const, label: 'Demo Show', timestampKey: 'showed_up_to_demo_at' as const },
-  { key: 'proposal_sent' as const, label: 'Proposal Sent', timestampKey: 'proposal_sent_at' as const },
-  { key: 'closed' as const, label: 'Closed', timestampKey: 'closed_at' as const },
+  { key: 'meeting_booked' as const, label: 'Meeting Booked', timestampKey: 'meeting_booked_at' as const, color: '#3b82f6', bgColor: 'bg-blue-500/20', textColor: 'text-blue-400' },
+  { key: 'showed_up_to_disco' as const, label: 'Disco Show', timestampKey: 'showed_up_to_disco_at' as const, color: '#8b5cf6', bgColor: 'bg-violet-500/20', textColor: 'text-violet-400' },
+  { key: 'qualified' as const, label: 'Qualified', timestampKey: 'qualified_at' as const, color: '#06b6d4', bgColor: 'bg-cyan-500/20', textColor: 'text-cyan-400' },
+  { key: 'demo_booked' as const, label: 'Demo Booked', timestampKey: 'demo_booked_at' as const, color: '#f59e0b', bgColor: 'bg-amber-500/20', textColor: 'text-amber-400' },
+  { key: 'showed_up_to_demo' as const, label: 'Demo Show', timestampKey: 'showed_up_to_demo_at' as const, color: '#ec4899', bgColor: 'bg-pink-500/20', textColor: 'text-pink-400' },
+  { key: 'proposal_sent' as const, label: 'Proposal Sent', timestampKey: 'proposal_sent_at' as const, color: '#f97316', bgColor: 'bg-orange-500/20', textColor: 'text-orange-400' },
+  { key: 'closed' as const, label: 'Closed', timestampKey: 'closed_at' as const, color: '#22c55e', bgColor: 'bg-green-500/20', textColor: 'text-green-400' },
 ]
 
-// Default column widths in pixels (mapped from Tailwind classes)
+// Default column widths in pixels - increased for better spacing
 const DEFAULT_COLUMN_WIDTHS: Record<string, number> = {
-  'full_name': 176,        // w-44 = 11rem = 176px
-  'company': 160,          // w-40 = 10rem = 160px
-  'stage': 128,            // w-32 = 8rem = 128px
-  'pipeline_progress': 176, // w-44 = 11rem = 176px
-  'lead_phone': 128,       // w-32 = 8rem = 128px
-  'company_phone': 128,    // w-32 = 8rem = 128px
-  'linkedin_url': 112,     // w-28 = 7rem = 112px
-  'context': 192,          // w-48 = 12rem = 192px
-  'next_touchpoint': 128,  // w-32 = 8rem = 128px
-  'lead_source': 112,      // w-28 = 7rem = 112px
-  'industry': 128,         // w-32 = 8rem = 128px
-  'created_at': 128,       // w-32 = 8rem = 128px
-  'company_website': 144,  // w-36 = 9rem = 144px
+  'full_name': 200,        // Lead name needs space
+  'company': 180,          // Organization
+  'stage': 140,            // Stage dropdown
+  'pipeline_progress': 160, // Pipeline progress
+  'lead_phone': 140,       // Phone numbers
+  'company_phone': 140,    // Phone numbers
+  'linkedin_url': 100,     // LinkedIn link
+  'context': 200,          // Context notes
+  'next_touchpoint': 140,  // Date
+  'lead_source': 130,      // Source tag
+  'industry': 150,         // Industry
+  'created_at': 120,       // Date
+  'company_website': 120,  // Website link
 }
 
-// Column definitions - Lead Name first, removed assignee, combined checkboxes into Pipeline Progress
+// Column definitions with emojis
 const COLUMNS: ColumnDef[] = [
-  { key: 'full_name', label: 'Lead Name', width: 'w-44', sortable: true },
-  { key: 'company', label: 'Organization', width: 'w-40', sortable: true },
-  { key: 'stage', label: 'Stage', width: 'w-32', sortable: true },
-  { key: 'pipeline_progress', label: 'Pipeline Progress', width: 'w-44', sortable: false, dropdown: true },
-  { key: 'lead_phone', label: 'Lead Phone', width: 'w-32', sortable: true },
-  { key: 'company_phone', label: 'Company Phone', width: 'w-32', sortable: true },
-  { key: 'linkedin_url', label: 'LinkedIn', width: 'w-28', sortable: false, link: true },
-  { key: 'context', label: 'Context', width: 'w-48', sortable: false },
-  { key: 'next_touchpoint', label: 'Next Touchpoint', width: 'w-32', sortable: true },
-  { key: 'lead_source', label: 'Lead Source', width: 'w-28', sortable: true },
-  { key: 'industry', label: 'Industry', width: 'w-32', sortable: true },
-  { key: 'created_at', label: 'Created Time', width: 'w-32', sortable: true },
-  { key: 'company_website', label: 'Company Website', width: 'w-36', sortable: false, link: true },
+  { key: 'full_name', label: '👤 Lead Name', width: 'w-44', sortable: true },
+  { key: 'company', label: '🏢 Organization', width: 'w-40', sortable: true },
+  { key: 'stage', label: '📊 Stage', width: 'w-32', sortable: true },
+  { key: 'pipeline_progress', label: '🚀 Pipeline', width: 'w-44', sortable: false, dropdown: true },
+  { key: 'lead_phone', label: '📱 Lead Phone', width: 'w-32', sortable: true },
+  { key: 'company_phone', label: '☎️ Company Phone', width: 'w-32', sortable: true },
+  { key: 'linkedin_url', label: '💼 LinkedIn', width: 'w-28', sortable: false, link: true },
+  { key: 'context', label: '📝 Context', width: 'w-48', sortable: false },
+  { key: 'next_touchpoint', label: '📅 Next Touch', width: 'w-32', sortable: true },
+  { key: 'lead_source', label: '🎯 Source', width: 'w-28', sortable: true },
+  { key: 'industry', label: '🏭 Industry', width: 'w-32', sortable: true },
+  { key: 'created_at', label: '🕐 Created', width: 'w-32', sortable: true },
+  { key: 'company_website', label: '🌐 Website', width: 'w-36', sortable: false, link: true },
 ]
 
 // Pipeline Progress dropdown component
@@ -122,16 +122,20 @@ const PipelineProgressCell = memo(({ contact, onSave }: PipelineProgressCellProp
     <div className="relative flex justify-center" onClick={(e) => e.stopPropagation()}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-1.5 px-2 py-1 rounded-lg text-sm transition-none hover:bg-rillation-card-hover"
+        className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs transition-none ${
+          deepestStage 
+            ? `${deepestStage.bgColor} ${deepestStage.textColor}` 
+            : 'bg-rillation-card-hover text-rillation-text-muted'
+        }`}
       >
         {deepestStage ? (
-          <span className="text-xs text-rillation-text truncate max-w-[100px]">
+          <span className="truncate max-w-[90px] font-medium">
             {deepestStage.label}
           </span>
         ) : (
-          <span className="text-xs text-rillation-text-muted">—</span>
+          <span>—</span>
         )}
-        <ChevronDown size={12} className="text-rillation-text-muted flex-shrink-0" />
+        <ChevronDown size={11} className="flex-shrink-0 opacity-70" />
       </button>
 
       {isOpen && (
@@ -595,13 +599,13 @@ function LinkCell({ url, label }: { url?: string | null; label?: string }) {
   )
 }
 
-// Format date for display
+// Format date for display - full year
 function formatDate(dateStr?: string | null): string {
   if (!dateStr) return '-'
   return new Date(dateStr).toLocaleDateString('en-US', {
     month: 'short',
     day: 'numeric',
-    year: '2-digit',
+    year: 'numeric',
   })
 }
 

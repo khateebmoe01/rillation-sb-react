@@ -152,19 +152,19 @@ export default function CRMView() {
   }, [contacts.length])
 
   return (
-    <div className="h-full flex flex-col bg-crm-bg">
+    <div className="h-full flex flex-col" style={{ backgroundColor: '#0c1929' }}>
       {/* Top Bar - Airtable Style */}
-      <div className="flex-shrink-0 bg-rillation-card border-b border-rillation-border">
+      <div className="flex-shrink-0 bg-[#0f2847] border-b border-[#1e3a5f] mt-2 mx-4 rounded-xl">
         {/* Primary Row */}
-        <div className="flex items-center h-11 px-4">
+        <div className="flex items-center h-12 px-5 gap-4">
           {/* View Tabs */}
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1 bg-[#0c1929] rounded-lg p-1">
             <button
               onClick={() => setViewMode('list')}
               className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-md transition-none ${
                 viewMode === 'list'
-                  ? 'bg-rillation-card-hover text-rillation-text'
-                  : 'text-rillation-text-muted hover:text-rillation-text hover:bg-rillation-card-hover/50'
+                  ? 'bg-blue-500/20 text-blue-300'
+                  : 'text-blue-300/50 hover:text-blue-300 hover:bg-blue-500/10'
               }`}
             >
               <List size={15} />
@@ -174,8 +174,8 @@ export default function CRMView() {
               onClick={() => setViewMode('kanban')}
               className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-md transition-none ${
                 viewMode === 'kanban'
-                  ? 'bg-rillation-card-hover text-rillation-text'
-                  : 'text-rillation-text-muted hover:text-rillation-text hover:bg-rillation-card-hover/50'
+                  ? 'bg-blue-500/20 text-blue-300'
+                  : 'text-blue-300/50 hover:text-blue-300 hover:bg-blue-500/10'
               }`}
             >
               <LayoutGrid size={15} />
@@ -184,7 +184,7 @@ export default function CRMView() {
           </div>
 
           {/* Divider */}
-          <div className="w-px h-5 bg-rillation-border mx-3" />
+          <div className="w-px h-6 bg-[#1e3a5f]" />
 
           {/* Filters */}
           <CRMFilters
@@ -198,40 +198,41 @@ export default function CRMView() {
 
           {/* Search */}
           <div className="relative flex items-center">
-            <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-rillation-text-muted" />
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-blue-300/50" />
             <input
               ref={searchInputRef}
               type="text"
-              placeholder="Find a record"
+              placeholder="🔍 Find a record..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-8 pr-3 py-1 bg-rillation-bg border border-rillation-border rounded-md text-sm text-rillation-text placeholder:text-rillation-text-muted/60 focus:outline-none focus:border-rillation-text-muted w-44 transition-none"
+              className="pl-9 pr-3 py-1.5 bg-[#0c1929] border border-[#1e3a5f] rounded-lg text-sm text-rillation-text placeholder:text-blue-300/40 focus:outline-none focus:border-blue-400/50 w-48 transition-none"
             />
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery('')}
-                className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 hover:bg-rillation-card-hover rounded"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 hover:bg-blue-500/20 rounded"
               >
-                <X size={12} className="text-rillation-text-muted" />
+                <X size={12} className="text-blue-300/60" />
               </button>
             )}
           </div>
 
           {/* Record Count */}
-          <span className="ml-3 text-xs text-rillation-text-muted">
+          <span className="text-xs text-blue-300/60 font-medium">
             {contacts.length} records
           </span>
 
           {/* Divider */}
-          <div className="w-px h-5 bg-rillation-border mx-3" />
+          <div className="w-px h-6 bg-[#1e3a5f]" />
 
           {/* Add Button */}
           <button
             onClick={() => setIsAddModalOpen(true)}
-            className="flex items-center gap-1 px-2.5 py-1 bg-rillation-green text-white text-sm font-medium rounded-md hover:bg-rillation-green/90 transition-none"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-500 text-white text-sm font-medium rounded-lg hover:bg-blue-600 transition-none"
             title="Press 'n' to add a new contact"
           >
-            <Plus size={15} />
+            <Plus size={16} />
+            <span>Add</span>
           </button>
         </div>
       </div>
@@ -246,13 +247,13 @@ export default function CRMView() {
       {/* Loading State */}
       {loading && (
         <div className="flex-1 flex items-center justify-center">
-          <div className="w-8 h-8 border-2 border-rillation-text border-t-transparent rounded-full animate-spin" />
+          <div className="w-8 h-8 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
         </div>
       )}
 
       {/* Main Content */}
       {!loading && (
-        <div className="flex-1 min-h-0 overflow-hidden p-4">
+        <div className="flex-1 min-h-0 overflow-hidden px-4 pt-4 pb-4">
           {viewMode === 'kanban' ? (
             <div className="h-full">
               <KanbanBoard
