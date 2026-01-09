@@ -161,11 +161,11 @@ export function useCampaignScorecardData({ startDate, endDate, client }: UseCamp
       allCampaignRows.forEach((row: any) => {
         if (!row.campaign_id || !row.campaign_name) return
 
-        const key = row.campaign_id
+        const key = String(row.campaign_id)
         if (!campaignMap.has(key)) {
           campaignMap.set(key, {
             campaignName: row.campaign_name,
-            campaignId: row.campaign_id,
+            campaignId: String(row.campaign_id),
             dailyData: new Map(),
             totals: {
               totalEmailsSent: 0,
@@ -215,7 +215,7 @@ export function useCampaignScorecardData({ startDate, endDate, client }: UseCamp
       allRepliesData.forEach((reply: any) => {
         if (!reply.campaign_id) return
 
-        const key = reply.campaign_id
+        const key = String(reply.campaign_id)
         const campaign = campaignMap.get(key)
         if (!campaign) return
         
@@ -275,9 +275,10 @@ export function useCampaignScorecardData({ startDate, endDate, client }: UseCamp
       allMeetingsData.forEach((meeting: any) => {
         let key: string | null = null
         
-        // Try to match by campaign_id first (if it exists in campaignMap)
-        if (meeting.campaign_id && campaignMap.has(meeting.campaign_id)) {
-          key = meeting.campaign_id
+        // Try to match by campaign_id first (convert to string for consistent matching)
+        const meetingCampaignId = meeting.campaign_id ? String(meeting.campaign_id) : null
+        if (meetingCampaignId && campaignMap.has(meetingCampaignId)) {
+          key = meetingCampaignId
         }
         
         // If no match by campaign_id, try matching by campaign_name
