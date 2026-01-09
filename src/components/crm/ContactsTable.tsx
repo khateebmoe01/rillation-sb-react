@@ -482,21 +482,15 @@ export default function ContactsTable({
   onSortChange,
 }: ContactsTableProps) {
   return (
-    <div className="h-full overflow-auto bg-crm-card rounded-xl border border-crm-border">
-      <table className="w-full" style={{ minWidth: '2000px' }}>
-        <thead>
-          <tr>
+    <div className="h-full flex flex-col bg-crm-card rounded-xl border border-crm-border overflow-hidden">
+      {/* Fixed Header */}
+      <div className="flex-shrink-0 overflow-x-auto" style={{ backgroundColor: '#0d1117' }}>
+        <div style={{ minWidth: '2000px' }}>
+          <div className="flex border-b border-crm-border">
             {COLUMNS.map((column) => (
-              <th
+              <div
                 key={column.key}
-                className={`text-left px-3 py-3 text-xs font-medium text-crm-text-muted uppercase tracking-wider ${column.width} whitespace-nowrap border-b border-crm-border`}
-                style={{ 
-                  position: 'sticky', 
-                  top: 0,
-                  backgroundColor: '#0d1117', // crm-bg color - explicit for sticky to work
-                  zIndex: 30,
-                  boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.3)'
-                }}
+                className={`flex-shrink-0 text-left px-3 py-3 text-xs font-medium text-crm-text-muted uppercase tracking-wider ${column.width} whitespace-nowrap`}
               >
                 <SortableHeader
                   label={column.label}
@@ -505,40 +499,42 @@ export default function ContactsTable({
                   currentSort={sort}
                   onSort={onSortChange}
                 />
-              </th>
+              </div>
             ))}
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-crm-border/50">
+          </div>
+        </div>
+      </div>
+      
+      {/* Scrollable Body */}
+      <div className="flex-1 overflow-auto">
+        <div style={{ minWidth: '2000px' }}>
           {contacts.length === 0 ? (
-            <tr>
-              <td colSpan={COLUMNS.length} className="px-4 py-12 text-center text-crm-text-muted">
-                No contacts found
-              </td>
-            </tr>
+            <div className="px-4 py-12 text-center text-crm-text-muted">
+              No contacts found
+            </div>
           ) : (
             contacts.map((contact, index) => (
-              <motion.tr
+              <motion.div
                 key={contact.id}
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: Math.min(index * 0.01, 0.5) }}
-                className="group hover:bg-crm-card-hover/50 transition-colors cursor-pointer"
+                className="flex group hover:bg-crm-card-hover/50 transition-colors cursor-pointer border-b border-crm-border/50"
                 onClick={() => onContactSelect(contact)}
               >
                 {COLUMNS.map((column) => (
-                  <td
+                  <div
                     key={column.key}
-                    className={`px-3 py-4 text-sm text-crm-text ${column.width}`}
+                    className={`flex-shrink-0 px-3 py-4 text-sm text-crm-text ${column.width}`}
                   >
                     {getCellValue(contact, column, onContactUpdate, () => onContactSelect(contact))}
-                  </td>
+                  </div>
                 ))}
-              </motion.tr>
+              </motion.div>
             ))
           )}
-        </tbody>
-      </table>
+        </div>
+      </div>
     </div>
   )
 }
