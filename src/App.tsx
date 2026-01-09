@@ -2,7 +2,6 @@ import { Routes, Route, Navigate, useLocation, useParams } from 'react-router-do
 import { AnimatePresence, motion } from 'framer-motion'
 import Layout from './components/layout/Layout'
 import ConfigError from './components/ui/ConfigError'
-import QuickView from './pages/QuickView'
 import PerformanceOverview from './pages/PerformanceOverview'
 import PipelineView from './pages/PipelineView'
 import Infrastructure from './pages/Infrastructure'
@@ -45,8 +44,7 @@ function App() {
     <Layout>
       <AnimatePresence mode="wait">
         <Routes location={location} key={location.pathname}>
-          <Route path="/" element={<Navigate to="/quick-view" replace />} />
-          <Route path="/quick-view" element={<PageTransition><QuickView /></PageTransition>} />
+          <Route path="/" element={<Navigate to="/crm" replace />} />
           <Route path="/performance" element={<PageTransition><PerformanceOverview /></PageTransition>} />
           <Route path="/performance/:clientName" element={<PageTransition><ClientDetailView /></PageTransition>} />
           <Route path="/pipeline" element={<PageTransition><PipelineView /></PageTransition>} />
@@ -57,6 +55,7 @@ function App() {
           <Route path="/debug" element={<PageTransition><DebugView /></PageTransition>} />
           {/* Legacy routes - redirect to new structure */}
           <Route path="/gtm-scoreboard" element={<Navigate to="/performance" replace />} />
+          <Route path="/quick-view" element={<Navigate to="/crm" replace />} />
           <Route path="/client-detail/:clientName" element={<ClientDetailRedirect />} />
         </Routes>
       </AnimatePresence>

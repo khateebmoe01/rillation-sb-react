@@ -1,6 +1,6 @@
 import { useState, memo, useRef, useCallback, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ChevronDown, ChevronUp, Check, Loader2, ExternalLink, Calendar, GripVertical, Mail, Phone, Copy, ChevronRight, Columns, Eye, EyeOff } from 'lucide-react'
+import { ChevronDown, ChevronUp, Check, Loader2, ExternalLink, Calendar, GripVertical, Mail, Phone, Copy, ChevronRight, Columns, Eye, EyeOff, Minus, Maximize2 } from 'lucide-react'
 import { CRM_STAGES, type CRMContact, type CRMSort } from '../../types/crm'
 import ContactHoverCard from './ContactHoverCard'
 import {
@@ -473,9 +473,11 @@ interface DraggableColumnHeaderProps {
   onSortChange?: (sort: CRMSort | undefined) => void
   width: number
   onResize: (columnKey: string, newWidth: number) => void
+  isMinimized: boolean
+  onToggleMinimize: (columnKey: string) => void
 }
 
-function DraggableColumnHeader({ column, sort, onSortChange, width, onResize }: DraggableColumnHeaderProps) {
+function DraggableColumnHeader({ column, sort, onSortChange, width, onResize, isMinimized, onToggleMinimize }: DraggableColumnHeaderProps) {
   const {
     attributes,
     listeners,
@@ -490,12 +492,36 @@ function DraggableColumnHeader({ column, sort, onSortChange, width, onResize }: 
     onResize(column.key, newWidth)
   }, [width, onResize, column.key])
 
+  const handleDoubleClick = useCallback(() => {
+    // Don't allow minimizing the name column
+    if (column.key !== 'full_name') {
+      onToggleMinimize(column.key)
+    }
+  }, [column.key, onToggleMinimize])
+
+  const displayWidth = isMinimized ? MINIMIZED_WIDTH : width
+
   const style = {
     transform: CSS.Transform.toString(transform),
     transition: isDragging ? transition : undefined,
     zIndex: isDragging ? 50 : undefined,
     opacity: isDragging ? 0.8 : 1,
-    width: `${width}px`,
+    width: `${displayWidth}px`,
+  }
+
+  // Minimized view - just show expand icon
+  if (isMinimized) {
+    return (
+      <div
+        ref={setNodeRef}
+        style={style}
+        className={`group flex-shrink-0 flex items-center justify-center py-3 cursor-pointer hover:bg-crm-card-hover transition-colors ${isDragging ? 'bg-crm-card-hover rounded' : ''}`}
+        onClick={handleDoubleClick}
+        title={`Expand ${column.label}`}
+      >
+        <Maximize2 size={12} className="text-crm-text-muted" />
+      </div>
+    )
   }
 
   return (
@@ -503,6 +529,8 @@ function DraggableColumnHeader({ column, sort, onSortChange, width, onResize }: 
       ref={setNodeRef}
       style={style}
       className={`group flex-shrink-0 text-left px-3 py-3 text-xs font-medium text-crm-text tracking-wide whitespace-nowrap flex items-center gap-1 relative ${isDragging ? 'bg-crm-card-hover rounded' : ''}`}
+      onDoubleClick={handleDoubleClick}
+      title={column.key !== 'full_name' ? 'Double-click to minimize' : undefined}
     >
       <div
         {...attributes}
@@ -518,6 +546,19 @@ function DraggableColumnHeader({ column, sort, onSortChange, width, onResize }: 
         currentSort={sort}
         onSort={onSortChange}
       />
+      {/* Minimize button - show on hover */}
+      {column.key !== 'full_name' && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation()
+            onToggleMinimize(column.key)
+          }}
+          className="opacity-0 group-hover:opacity-100 p-0.5 hover:bg-crm-card-hover rounded transition-opacity ml-auto"
+          title="Minimize column"
+        >
+          <Minus size={10} className="text-crm-text-muted" />
+        </button>
+      )}
       <ColumnResizeHandle onResize={handleResize} />
     </div>
   )
@@ -797,6 +838,10 @@ function getCellValue(
 const COLUMN_ORDER_KEY = 'crm-column-order'
 const COLUMN_WIDTHS_KEY = 'crm-column-widths'
 const COLUMN_VISIBILITY_KEY = 'crm-column-visibility'
+const COLUMN_MINIMIZED_KEY = 'crm-column-minimized'
+
+// Minimized column width
+const MINIMIZED_WIDTH = 40
 
 // Default visible columns (smart defaults - most useful columns)
 const DEFAULT_VISIBLE_COLUMNS = new Set([
@@ -819,6 +864,19 @@ function getInitialColumnVisibility(): Set<string> {
     // Ignore
   }
   return new Set(DEFAULT_VISIBLE_COLUMNS)
+}
+
+// Get initial minimized columns from localStorage
+function getInitialMinimizedColumns(): Set<string> {
+  try {
+    const saved = localStorage.getItem(COLUMN_MINIMIZED_KEY)
+    if (saved) {
+      return new Set(JSON.parse(saved))
+    }
+  } catch (e) {
+    // Ignore
+  }
+  return new Set()
 }
 
 // Get initial column order from localStorage or use default
@@ -875,6 +933,9 @@ export default function ContactsTable({
   // Column visibility state with localStorage persistence
   const [visibleColumns, setVisibleColumns] = useState<Set<string>>(getInitialColumnVisibility)
   const [showColumnPicker, setShowColumnPicker] = useState(false)
+  
+  // Minimized columns state with localStorage persistence
+  const [minimizedColumns, setMinimizedColumns] = useState<Set<string>>(getInitialMinimizedColumns)
 
   // Hover card state
   const [hoveredContact, setHoveredContact] = useState<CRMContact | null>(null)
@@ -952,6 +1013,27 @@ export default function ContactsTable({
       if (next.has(columnKey)) {
         // Don't allow hiding the first column (full_name)
         if (columnKey === 'full_name') return prev
+        next.delete(columnKey)
+      } else {
+        next.add(columnKey)
+      }
+      return next
+    })
+  }, [])
+
+  // Save minimized columns to localStorage
+  useEffect(() => {
+    localStorage.setItem(COLUMN_MINIMIZED_KEY, JSON.stringify([...minimizedColumns]))
+  }, [minimizedColumns])
+
+  // Toggle column minimized state
+  const toggleColumnMinimized = useCallback((columnKey: string) => {
+    // Don't allow minimizing the first column (full_name)
+    if (columnKey === 'full_name') return
+    
+    setMinimizedColumns(prev => {
+      const next = new Set(prev)
+      if (next.has(columnKey)) {
         next.delete(columnKey)
       } else {
         next.add(columnKey)
@@ -1125,6 +1207,8 @@ export default function ContactsTable({
                   onSortChange={onSortChange}
                   width={firstColumnWidth}
                   onResize={handleColumnResize}
+                  isMinimized={false}
+                  onToggleMinimize={toggleColumnMinimized}
                 />
               </SortableContext>
             </DndContext>
@@ -1154,6 +1238,8 @@ export default function ContactsTable({
                     onSortChange={onSortChange}
                     width={columnWidths[column.key] || DEFAULT_COLUMN_WIDTHS[column.key] || 128}
                     onResize={handleColumnResize}
+                    isMinimized={minimizedColumns.has(column.key)}
+                    onToggleMinimize={toggleColumnMinimized}
                   />
                 ))}
               </div>
@@ -1235,14 +1321,20 @@ export default function ContactsTable({
                 {/* Scrollable columns cells */}
                 <div className="flex" style={{ minWidth: '1800px' }}>
                   {scrollableColumns.map((column) => {
-                    const width = columnWidths[column.key] || DEFAULT_COLUMN_WIDTHS[column.key] || 128
+                    const isMinimized = minimizedColumns.has(column.key)
+                    const width = isMinimized ? MINIMIZED_WIDTH : (columnWidths[column.key] || DEFAULT_COLUMN_WIDTHS[column.key] || 128)
                     return (
                       <div
                         key={column.key}
-                        className="flex-shrink-0 px-3 py-4 text-sm text-crm-text"
+                        className={`flex-shrink-0 text-sm text-crm-text ${isMinimized ? 'px-1 py-4' : 'px-3 py-4'}`}
                         style={{ width: `${width}px` }}
+                        title={isMinimized ? column.label : undefined}
                       >
-                        {getCellValue(contact, column, onContactUpdate, () => onContactSelect(contact), index, contacts.length)}
+                        {isMinimized ? (
+                          <span className="text-crm-text-muted text-xs">•</span>
+                        ) : (
+                          getCellValue(contact, column, onContactUpdate, () => onContactSelect(contact), index, contacts.length)
+                        )}
                       </div>
                     )
                   })}

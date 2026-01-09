@@ -5,16 +5,16 @@ import { motion } from 'framer-motion'
 
 const sections = [
   {
-    id: 'reporting',
-    icon: BarChart3,
-    label: 'Analytics',
-    path: '/quick-view',
-  },
-  {
     id: 'crm',
     icon: Users,
     label: 'CRM',
     path: '/crm',
+  },
+  {
+    id: 'reporting',
+    icon: BarChart3,
+    label: 'Analytics',
+    path: '/performance',
   },
   {
     id: 'strategy',
@@ -52,9 +52,9 @@ export default function Sidebar() {
             ? location.pathname.startsWith('/strategy')
             : section.id === 'crm'
               ? location.pathname.startsWith('/crm')
-              : location.pathname.startsWith('/quick-view') || 
-                location.pathname.startsWith('/performance') || 
-                location.pathname.startsWith('/pipeline')
+              : section.id === 'reporting'
+                ? location.pathname.startsWith('/performance') || location.pathname.startsWith('/pipeline')
+                : false
         
         return (
           <NavLink
