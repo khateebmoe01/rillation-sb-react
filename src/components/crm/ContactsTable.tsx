@@ -1,7 +1,24 @@
-import { useState, memo, useRef, useCallback } from 'react'
+import { useState, memo, useRef, useCallback, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { ChevronDown, ChevronUp, Check, Loader2, ExternalLink, Calendar } from 'lucide-react'
+import { ChevronDown, ChevronUp, Check, Loader2, ExternalLink, Calendar, GripVertical } from 'lucide-react'
 import { CRM_STAGES, type CRMContact, type CRMSort } from '../../types/crm'
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core'
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  horizontalListSortingStrategy,
+  useSortable,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 
 interface ContactsTableProps {
   contacts: CRMContact[]
@@ -367,6 +384,54 @@ function SortableHeader({ label, field, sortable, currentSort, onSort }: Sortabl
   )
 }
 
+// Draggable column header component
+interface DraggableColumnHeaderProps {
+  column: ColumnDef
+  sort?: CRMSort
+  onSortChange?: (sort: CRMSort | undefined) => void
+}
+
+function DraggableColumnHeader({ column, sort, onSortChange }: DraggableColumnHeaderProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: column.key })
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 50 : undefined,
+    opacity: isDragging ? 0.8 : 1,
+  }
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`flex-shrink-0 text-left px-3 py-3 text-xs font-medium text-crm-text tracking-wide ${column.width} whitespace-nowrap flex items-center gap-1 ${isDragging ? 'bg-crm-card-hover rounded' : ''}`}
+    >
+      <div
+        {...attributes}
+        {...listeners}
+        className="cursor-grab active:cursor-grabbing p-0.5 -ml-1 hover:bg-crm-card-hover rounded opacity-40 hover:opacity-100 transition-opacity"
+      >
+        <GripVertical size={12} />
+      </div>
+      <SortableHeader
+        label={column.label}
+        field={column.key}
+        sortable={column.sortable}
+        currentSort={sort}
+        onSort={onSortChange}
+      />
+    </div>
+  )
+}
+
 // Link cell component
 function LinkCell({ url, label }: { url?: string | null; label?: string }) {
   if (!url) return <span className="text-crm-text-muted">-</span>
@@ -511,6 +576,27 @@ function getCellValue(
   }
 }
 
+// LocalStorage key for column order
+const COLUMN_ORDER_KEY = 'crm-column-order'
+
+// Get initial column order from localStorage or use default
+function getInitialColumnOrder(): string[] {
+  try {
+    const saved = localStorage.getItem(COLUMN_ORDER_KEY)
+    if (saved) {
+      const parsed = JSON.parse(saved) as string[]
+      // Validate that all saved columns still exist and add any new ones
+      const validKeys = new Set(COLUMNS.map(c => c.key))
+      const savedKeys = parsed.filter(key => validKeys.has(key))
+      const newKeys = COLUMNS.map(c => c.key).filter(key => !savedKeys.includes(key))
+      return [...savedKeys, ...newKeys]
+    }
+  } catch (e) {
+    // Ignore errors
+  }
+  return COLUMNS.map(c => c.key)
+}
+
 export default function ContactsTable({ 
   contacts, 
   onContactSelect, 
@@ -520,6 +606,44 @@ export default function ContactsTable({
 }: ContactsTableProps) {
   const headerRef = useRef<HTMLDivElement>(null)
   const bodyRef = useRef<HTMLDivElement>(null)
+  
+  // Column order state with localStorage persistence
+  const [columnOrder, setColumnOrder] = useState<string[]>(getInitialColumnOrder)
+  
+  // Get ordered columns
+  const orderedColumns = columnOrder
+    .map(key => COLUMNS.find(c => c.key === key))
+    .filter((c): c is ColumnDef => c !== undefined)
+
+  // Save column order to localStorage
+  useEffect(() => {
+    localStorage.setItem(COLUMN_ORDER_KEY, JSON.stringify(columnOrder))
+  }, [columnOrder])
+
+  // DnD sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 5,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  )
+
+  // Handle column drag end
+  const handleDragEnd = useCallback((event: DragEndEvent) => {
+    const { active, over } = event
+    
+    if (over && active.id !== over.id) {
+      setColumnOrder((items) => {
+        const oldIndex = items.indexOf(active.id as string)
+        const newIndex = items.indexOf(over.id as string)
+        return arrayMove(items, oldIndex, newIndex)
+      })
+    }
+  }, [])
 
   // Sync horizontal scroll between header and body
   const handleBodyScroll = useCallback(() => {
@@ -536,22 +660,27 @@ export default function ContactsTable({
         className="flex-shrink-0 border-b border-crm-border overflow-x-hidden"
         style={{ backgroundColor: '#0d1117' }}
       >
-        <div className="flex" style={{ minWidth: '2000px' }}>
-          {COLUMNS.map((column) => (
-            <div
-              key={column.key}
-              className={`flex-shrink-0 text-left px-3 py-3 text-xs font-medium text-crm-text tracking-wide ${column.width} whitespace-nowrap`}
-            >
-              <SortableHeader
-                label={column.label}
-                field={column.key}
-                sortable={column.sortable}
-                currentSort={sort}
-                onSort={onSortChange}
-              />
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
+        >
+          <SortableContext
+            items={columnOrder}
+            strategy={horizontalListSortingStrategy}
+          >
+            <div className="flex" style={{ minWidth: '2000px' }}>
+              {orderedColumns.map((column) => (
+                <DraggableColumnHeader
+                  key={column.key}
+                  column={column}
+                  sort={sort}
+                  onSortChange={onSortChange}
+                />
+              ))}
             </div>
-          ))}
-        </div>
+          </SortableContext>
+        </DndContext>
       </div>
       
       {/* Scrollable Body */}
@@ -575,7 +704,7 @@ export default function ContactsTable({
                 className="flex group hover:bg-crm-card-hover/50 transition-colors cursor-pointer border-b border-crm-border/50"
                 onClick={() => onContactSelect(contact)}
               >
-                {COLUMNS.map((column) => (
+                {orderedColumns.map((column) => (
                   <div
                     key={column.key}
                     className={`flex-shrink-0 px-3 py-4 text-sm text-crm-text ${column.width}`}
