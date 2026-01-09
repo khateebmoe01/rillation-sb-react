@@ -52,22 +52,22 @@ const PIPELINE_STAGES = [
   { key: 'closed' as const, label: 'Closed', timestampKey: 'closed_at' as const, color: '#22c55e', bgColor: 'bg-green-500/20', textColor: 'text-green-400' },
 ]
 
-// Default column widths in pixels - increased for better spacing
+// Default column widths in pixels - generous spacing to prevent overlap
 const DEFAULT_COLUMN_WIDTHS: Record<string, number> = {
-  'full_name': 200,        // Lead name needs space
-  'company': 180,          // Organization
-  'stage': 140,            // Stage dropdown
-  'pipeline_progress': 160, // Pipeline progress
-  'estimated_value': 130,  // Pipeline value
-  'lead_phone': 140,       // Phone numbers
-  'company_phone': 140,    // Phone numbers
-  'linkedin_url': 100,     // LinkedIn link
-  'context': 200,          // Context notes
-  'next_touchpoint': 140,  // Date
-  'lead_source': 130,      // Source tag
-  'industry': 150,         // Industry
-  'created_at': 120,       // Date
-  'company_website': 120,  // Website link
+  'full_name': 220,        // Lead name needs space
+  'company': 200,          // Organization
+  'stage': 160,            // Stage dropdown
+  'pipeline_progress': 180, // Pipeline progress
+  'estimated_value': 150,  // Pipeline value
+  'lead_phone': 160,       // Phone numbers
+  'company_phone': 170,    // Phone numbers
+  'linkedin_url': 130,     // LinkedIn link
+  'context': 220,          // Context notes
+  'next_touchpoint': 160,  // Date
+  'lead_source': 150,      // Source tag
+  'industry': 180,         // Industry
+  'created_at': 150,       // Date
+  'company_website': 150,  // Website link
 }
 
 // Column definitions with emojis
@@ -1316,7 +1316,7 @@ export default function ContactsTable({
               items={scrollableColumns.map(c => c.key)}
               strategy={horizontalListSortingStrategy}
             >
-              <div className="flex" style={{ minWidth: '1800px' }}>
+              <div className="flex" style={{ minWidth: '2400px' }}>
                 {scrollableColumns.map((column) => (
                   <DraggableColumnHeader
                     key={column.key}
@@ -1390,7 +1390,7 @@ export default function ContactsTable({
                 )}
                 
                 {/* Scrollable columns cells */}
-                <div className="flex" style={{ minWidth: '1800px' }}>
+                <div className="flex" style={{ minWidth: '2400px' }}>
                   {scrollableColumns.map((column) => {
                     const isMinimized = minimizedColumns.has(column.key)
                     const width = isMinimized ? MINIMIZED_WIDTH : (columnWidths[column.key] || DEFAULT_COLUMN_WIDTHS[column.key] || 128)
