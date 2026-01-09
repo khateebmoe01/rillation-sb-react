@@ -155,16 +155,20 @@ interface EditableCellProps {
   contactId: string
   field: keyof CRMContact
   onSave: (id: string, updates: Partial<CRMContact>) => Promise<boolean>
+  rowIndex: number
+  totalRows: number
 }
 
-const EditableCell = memo(({ value, contactId, field, onSave }: EditableCellProps) => {
+const EditableCell = memo(({ value, contactId, field, onSave, rowIndex, totalRows }: EditableCellProps) => {
   const [isEditing, setIsEditing] = useState(false)
   const [editValue, setEditValue] = useState(value)
   const [isSaving, setIsSaving] = useState(false)
+  const inputRef = useRef<HTMLInputElement>(null)
 
-  const handleSave = async () => {
+  const handleSave = async (moveToNext = false) => {
     if (editValue === value) {
       setIsEditing(false)
+      if (moveToNext) focusNextRow()
       return
     }
 
@@ -174,8 +178,23 @@ const EditableCell = memo(({ value, contactId, field, onSave }: EditableCellProp
     
     if (success) {
       setIsEditing(false)
+      if (moveToNext) focusNextRow()
     } else {
       setEditValue(value)
+    }
+  }
+
+  const focusNextRow = () => {
+    if (rowIndex < totalRows - 1) {
+      // Find the next row's cell with the same field and click it
+      setTimeout(() => {
+        const nextCell = document.querySelector(
+          `[data-editable-cell][data-row="${rowIndex + 1}"][data-field="${field}"]`
+        ) as HTMLElement
+        if (nextCell) {
+          nextCell.click()
+        }
+      }, 50)
     }
   }
 
@@ -186,7 +205,8 @@ const EditableCell = memo(({ value, contactId, field, onSave }: EditableCellProp
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
-      handleSave()
+      e.preventDefault()
+      handleSave(true) // Save and move to next row
     } else if (e.key === 'Escape') {
       handleCancel()
     }
@@ -196,11 +216,12 @@ const EditableCell = memo(({ value, contactId, field, onSave }: EditableCellProp
     return (
       <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
         <input
+          ref={inputRef}
           type="text"
           value={editValue}
           onChange={(e) => setEditValue(e.target.value)}
           onKeyDown={handleKeyDown}
-          onBlur={handleSave}
+          onBlur={() => handleSave(false)}
           autoFocus
           className="w-full px-2 py-1 bg-crm-bg border border-crm-text-muted rounded text-sm text-crm-text focus:outline-none"
         />
@@ -211,6 +232,9 @@ const EditableCell = memo(({ value, contactId, field, onSave }: EditableCellProp
 
   return (
     <span
+      data-editable-cell
+      data-row={rowIndex}
+      data-field={field}
       onClick={(e) => {
         e.stopPropagation()
         setIsEditing(true)
@@ -375,7 +399,14 @@ function formatDate(dateStr?: string | null): string {
 }
 
 // Get cell value for rendering
-function getCellValue(contact: CRMContact, column: ColumnDef, onSave: (id: string, updates: Partial<CRMContact>) => Promise<boolean>, onSelect: () => void) {
+function getCellValue(
+  contact: CRMContact, 
+  column: ColumnDef, 
+  onSave: (id: string, updates: Partial<CRMContact>) => Promise<boolean>, 
+  onSelect: () => void,
+  rowIndex: number,
+  totalRows: number
+) {
   const key = column.key
 
   // Pipeline Progress dropdown
@@ -419,6 +450,8 @@ function getCellValue(contact: CRMContact, column: ColumnDef, onSave: (id: strin
           contactId={contact.id}
           field="company"
           onSave={onSave}
+          rowIndex={rowIndex}
+          totalRows={totalRows}
         />
       )
     
@@ -433,6 +466,8 @@ function getCellValue(contact: CRMContact, column: ColumnDef, onSave: (id: strin
           contactId={contact.id}
           field={key}
           onSave={onSave}
+          rowIndex={rowIndex}
+          totalRows={totalRows}
         />
       )
     
@@ -466,6 +501,8 @@ function getCellValue(contact: CRMContact, column: ColumnDef, onSave: (id: strin
           contactId={contact.id}
           field="industry"
           onSave={onSave}
+          rowIndex={rowIndex}
+          totalRows={totalRows}
         />
       )
     
@@ -543,7 +580,7 @@ export default function ContactsTable({
                     key={column.key}
                     className={`flex-shrink-0 px-3 py-4 text-sm text-crm-text ${column.width}`}
                   >
-                    {getCellValue(contact, column, onContactUpdate, () => onContactSelect(contact))}
+                    {getCellValue(contact, column, onContactUpdate, () => onContactSelect(contact), index, contacts.length)}
                   </div>
                 ))}
               </motion.div>
