@@ -1,6 +1,6 @@
 import { useState, memo } from 'react'
 import { motion } from 'framer-motion'
-import { ChevronDown, ChevronUp, Check, Loader2, ExternalLink } from 'lucide-react'
+import { ChevronDown, ChevronUp, Check, Loader2, ExternalLink, Calendar } from 'lucide-react'
 import { CRM_STAGES, type CRMContact, type CRMSort } from '../../types/crm'
 
 interface ContactsTableProps {
@@ -17,22 +17,27 @@ interface ColumnDef {
   label: string
   width: string
   sortable: boolean
-  checkbox?: boolean
+  dropdown?: boolean
   link?: boolean
 }
 
-// Column definitions
+// Pipeline progress stages with labels
+const PIPELINE_STAGES = [
+  { key: 'meeting_booked' as const, label: 'Meeting Booked', timestampKey: 'meeting_booked_at' as const },
+  { key: 'showed_up_to_disco' as const, label: 'Disco Show', timestampKey: 'showed_up_to_disco_at' as const },
+  { key: 'qualified' as const, label: 'Qualified', timestampKey: 'qualified_at' as const },
+  { key: 'demo_booked' as const, label: 'Demo Booked', timestampKey: 'demo_booked_at' as const },
+  { key: 'showed_up_to_demo' as const, label: 'Demo Show', timestampKey: 'showed_up_to_demo_at' as const },
+  { key: 'proposal_sent' as const, label: 'Proposal Sent', timestampKey: 'proposal_sent_at' as const },
+  { key: 'closed' as const, label: 'Closed', timestampKey: 'closed_at' as const },
+]
+
+// Column definitions - Lead Name first, removed assignee, combined checkboxes into Pipeline Progress
 const COLUMNS: ColumnDef[] = [
-  { key: 'company', label: 'Organization', width: 'w-40', sortable: true },
   { key: 'full_name', label: 'Lead Name', width: 'w-44', sortable: true },
+  { key: 'company', label: 'Organization', width: 'w-40', sortable: true },
   { key: 'stage', label: 'Stage', width: 'w-32', sortable: true },
-  { key: 'meeting_booked', label: 'Meeting Booked?', width: 'w-36', sortable: true, checkbox: true },
-  { key: 'showed_up_to_disco', label: 'Disco Show?', width: 'w-32', sortable: true, checkbox: true },
-  { key: 'qualified', label: 'Qualified?', width: 'w-28', sortable: true, checkbox: true },
-  { key: 'demo_booked', label: 'Demo Booked?', width: 'w-32', sortable: true, checkbox: true },
-  { key: 'showed_up_to_demo', label: 'Demo Show?', width: 'w-28', sortable: true, checkbox: true },
-  { key: 'proposal_sent', label: 'Proposal Sent?', width: 'w-32', sortable: true, checkbox: true },
-  { key: 'closed', label: 'Closed?', width: 'w-28', sortable: true, checkbox: true },
+  { key: 'pipeline_progress', label: 'Pipeline Progress', width: 'w-44', sortable: false, dropdown: true },
   { key: 'lead_phone', label: 'Lead Phone', width: 'w-32', sortable: true },
   { key: 'company_phone', label: 'Company Phone', width: 'w-32', sortable: true },
   { key: 'linkedin_url', label: 'LinkedIn', width: 'w-28', sortable: false, link: true },
@@ -41,64 +46,108 @@ const COLUMNS: ColumnDef[] = [
   { key: 'lead_source', label: 'Lead Source', width: 'w-28', sortable: true },
   { key: 'industry', label: 'Industry', width: 'w-32', sortable: true },
   { key: 'created_at', label: 'Created Time', width: 'w-32', sortable: true },
-  { key: 'assignee', label: 'Assignee', width: 'w-28', sortable: true },
   { key: 'company_website', label: 'Company Website', width: 'w-36', sortable: false, link: true },
 ]
 
-// Checkbox cell component with timestamp
-interface CheckboxCellProps {
+// Pipeline Progress dropdown component
+interface PipelineProgressCellProps {
   contact: CRMContact
-  field: 'meeting_booked' | 'showed_up_to_disco' | 'qualified' | 'demo_booked' | 'showed_up_to_demo' | 'proposal_sent' | 'closed'
-  timestampField: 'meeting_booked_at' | 'showed_up_to_disco_at' | 'qualified_at' | 'demo_booked_at' | 'showed_up_to_demo_at' | 'proposal_sent_at' | 'closed_at'
   onSave: (id: string, updates: Partial<CRMContact>) => Promise<boolean>
 }
 
-const CheckboxCell = memo(({ contact, field, timestampField, onSave }: CheckboxCellProps) => {
-  const [isSaving, setIsSaving] = useState(false)
-  const isChecked = Boolean(contact[field])
-  const timestamp = contact[timestampField] as string | undefined
+const PipelineProgressCell = memo(({ contact, onSave }: PipelineProgressCellProps) => {
+  const [isOpen, setIsOpen] = useState(false)
+  const [isSaving, setIsSaving] = useState<string | null>(null)
 
-  const handleToggle = async (e: React.MouseEvent) => {
-    e.stopPropagation()
-    setIsSaving(true)
+  // Count how many are checked
+  const checkedCount = PIPELINE_STAGES.filter(stage => Boolean(contact[stage.key])).length
+
+  const handleToggle = async (stage: typeof PIPELINE_STAGES[number]) => {
+    setIsSaving(stage.key)
+    const currentValue = Boolean(contact[stage.key])
+    const newValue = !currentValue
     
-    const newValue = !isChecked
-    const updates: Partial<CRMContact> = {
-      [field]: newValue,
-      [timestampField]: newValue ? new Date().toISOString() : null,
-    }
+    await onSave(contact.id, {
+      [stage.key]: newValue,
+      [stage.timestampKey]: newValue ? new Date().toISOString() : null,
+    })
     
-    await onSave(contact.id, updates)
-    setIsSaving(false)
+    setIsSaving(null)
   }
 
   return (
-    <div className="flex flex-col items-start gap-0.5" onClick={(e) => e.stopPropagation()}>
+    <div className="relative" onClick={(e) => e.stopPropagation()}>
       <button
-        onClick={handleToggle}
-        disabled={isSaving}
-        className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${
-          isChecked 
-            ? 'bg-crm-checkbox border-crm-checkbox hover:bg-crm-checkbox-hover' 
-            : 'border-crm-border hover:border-crm-text-muted bg-crm-card'
-        }`}
+        onClick={() => setIsOpen(!isOpen)}
+        className="flex items-center gap-2 px-2 py-1 rounded-lg text-sm transition-colors hover:bg-crm-card-hover text-crm-text"
       >
-        {isSaving ? (
-          <Loader2 size={12} className="animate-spin text-white" />
-        ) : isChecked ? (
-          <Check size={14} className="text-white" />
-        ) : null}
-      </button>
-      {isChecked && timestamp && (
-        <span className="text-[10px] text-crm-text-muted whitespace-nowrap">
-          {new Date(timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+        <span className="text-xs text-crm-text-muted">
+          {checkedCount}/{PIPELINE_STAGES.length}
         </span>
+        <ChevronDown size={14} className="text-crm-text-muted" />
+      </button>
+
+      {isOpen && (
+        <>
+          <div
+            className="fixed inset-0 z-40"
+            onClick={() => setIsOpen(false)}
+          />
+          <div className="absolute top-full left-0 mt-1 w-72 bg-crm-card border border-crm-border rounded-lg shadow-xl z-50 py-2 max-h-96 overflow-y-auto">
+            <div className="px-3 pb-2 border-b border-crm-border mb-2">
+              <h4 className="text-xs font-semibold text-crm-text-muted uppercase tracking-wider">Pipeline Progress</h4>
+            </div>
+            {PIPELINE_STAGES.map((stage) => {
+              const isChecked = Boolean(contact[stage.key])
+              const timestamp = contact[stage.timestampKey] as string | undefined
+              const isLoading = isSaving === stage.key
+
+              return (
+                <button
+                  key={stage.key}
+                  onClick={() => handleToggle(stage)}
+                  disabled={isLoading}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-crm-card-hover transition-colors text-left"
+                >
+                  <div
+                    className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all flex-shrink-0 ${
+                      isChecked
+                        ? 'bg-crm-checkbox border-crm-checkbox'
+                        : 'border-crm-border hover:border-crm-text-muted bg-crm-card'
+                    }`}
+                  >
+                    {isLoading ? (
+                      <Loader2 size={14} className="animate-spin text-white" />
+                    ) : isChecked ? (
+                      <Check size={14} className="text-white" />
+                    ) : null}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm text-crm-text">{stage.label}</div>
+                    {isChecked && timestamp && (
+                      <div className="text-xs text-crm-text-muted flex items-center gap-1 mt-0.5">
+                        <Calendar size={11} />
+                        {new Date(timestamp).toLocaleDateString('en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric',
+                          hour: 'numeric',
+                          minute: '2-digit',
+                        })}
+                      </div>
+                    )}
+                  </div>
+                </button>
+              )
+            })}
+          </div>
+        </>
       )}
     </div>
   )
 })
 
-CheckboxCell.displayName = 'CheckboxCell'
+PipelineProgressCell.displayName = 'PipelineProgressCell'
 
 // Editable cell for inline editing
 interface EditableCellProps {
@@ -329,17 +378,9 @@ function formatDate(dateStr?: string | null): string {
 function getCellValue(contact: CRMContact, column: ColumnDef, onSave: (id: string, updates: Partial<CRMContact>) => Promise<boolean>, onSelect: () => void) {
   const key = column.key
 
-  // Checkbox columns
-  if (column.checkbox) {
-    const timestampField = `${key}_at` as 'meeting_booked_at' | 'showed_up_to_disco_at' | 'qualified_at' | 'demo_booked_at' | 'showed_up_to_demo_at' | 'proposal_sent_at' | 'closed_at'
-    return (
-      <CheckboxCell
-        contact={contact}
-        field={key as 'meeting_booked' | 'showed_up_to_disco' | 'qualified' | 'demo_booked' | 'showed_up_to_demo' | 'proposal_sent' | 'closed'}
-        timestampField={timestampField}
-        onSave={onSave}
-      />
-    )
+  // Pipeline Progress dropdown
+  if (column.dropdown && key === 'pipeline_progress') {
+    return <PipelineProgressCell contact={contact} onSave={onSave} />
   }
 
   // Link columns
@@ -350,20 +391,10 @@ function getCellValue(contact: CRMContact, column: ColumnDef, onSave: (id: strin
   }
 
   switch (key) {
-    case 'company':
-      return (
-        <EditableCell
-          value={contact.company || ''}
-          contactId={contact.id}
-          field="company"
-          onSave={onSave}
-        />
-      )
-    
     case 'full_name':
       return (
         <div className="flex items-center gap-2">
-          <div className="w-7 h-7 bg-crm-card-hover border border-crm-border rounded-full flex items-center justify-center flex-shrink-0">
+          <div className="w-8 h-8 bg-crm-card-hover border border-crm-border rounded-full flex items-center justify-center flex-shrink-0">
             <span className="text-xs font-medium text-crm-text-muted">
               {contact.first_name?.[0] || contact.full_name?.[0] || '?'}
               {contact.last_name?.[0] || ''}
@@ -374,11 +405,21 @@ function getCellValue(contact: CRMContact, column: ColumnDef, onSave: (id: strin
               e.stopPropagation()
               onSelect()
             }}
-            className="text-left hover:text-blue-400 transition-colors truncate"
+            className="text-left hover:text-blue-400 transition-colors truncate text-crm-text"
           >
             {contact.full_name || contact.email}
           </button>
         </div>
+      )
+    
+    case 'company':
+      return (
+        <EditableCell
+          value={contact.company || ''}
+          contactId={contact.id}
+          field="company"
+          onSave={onSave}
+        />
       )
     
     case 'stage':
@@ -428,16 +469,6 @@ function getCellValue(contact: CRMContact, column: ColumnDef, onSave: (id: strin
         />
       )
     
-    case 'assignee':
-      return (
-        <EditableCell
-          value={contact.assignee || ''}
-          contactId={contact.id}
-          field="assignee"
-          onSave={onSave}
-        />
-      )
-    
     default:
       return <span className="text-crm-text-muted truncate">-</span>
   }
@@ -452,7 +483,7 @@ export default function ContactsTable({
 }: ContactsTableProps) {
   return (
     <div className="h-full overflow-auto bg-crm-card rounded-xl border border-crm-border">
-      <table className="w-full" style={{ minWidth: '2400px' }}>
+      <table className="w-full" style={{ minWidth: '2000px' }}>
         <thead className="sticky top-0 bg-crm-bg z-10">
           <tr>
             {COLUMNS.map((column) => (
@@ -491,7 +522,7 @@ export default function ContactsTable({
                 {COLUMNS.map((column) => (
                   <td
                     key={column.key}
-                    className={`px-3 py-2.5 text-sm text-crm-text ${column.width}`}
+                    className={`px-3 py-4 text-sm text-crm-text ${column.width}`}
                   >
                     {getCellValue(contact, column, onContactUpdate, () => onContactSelect(contact))}
                   </td>
