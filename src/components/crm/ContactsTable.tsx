@@ -122,13 +122,15 @@ const PipelineProgressCell = memo(({ contact, onSave }: PipelineProgressCellProp
 
   return (
     <div className="relative flex justify-center" onClick={(e) => e.stopPropagation()}>
-      <button
+      <motion.button
         onClick={() => setIsOpen(!isOpen)}
-        className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs transition-none ${
+        className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs ${
           deepestStage 
             ? `${deepestStage.bgColor} ${deepestStage.textColor}` 
-            : 'bg-rillation-card-hover text-rillation-text-muted'
+            : 'bg-slate-700/50 text-white/50'
         }`}
+        whileHover={{ scale: 1.05 }}
+        whileTap={{ scale: 0.95 }}
       >
         {deepestStage ? (
           <span className="truncate max-w-[90px] font-medium">
@@ -137,65 +139,81 @@ const PipelineProgressCell = memo(({ contact, onSave }: PipelineProgressCellProp
         ) : (
           <span>—</span>
         )}
-        <ChevronDown size={11} className="flex-shrink-0 opacity-70" />
-      </button>
+        <motion.div animate={{ rotate: isOpen ? 180 : 0 }} transition={{ duration: 0.2 }}>
+          <ChevronDown size={11} className="flex-shrink-0 opacity-70" />
+        </motion.div>
+      </motion.button>
 
-      {isOpen && (
-        <>
-          <div
-            className="fixed inset-0 z-40"
-            onClick={() => setIsOpen(false)}
-          />
-          <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1 w-72 bg-rillation-card border border-rillation-border rounded-lg shadow-xl z-50 py-2 max-h-96 overflow-y-auto">
-            <div className="px-3 pb-2 border-b border-rillation-border mb-2">
-              <h4 className="text-xs font-semibold text-rillation-text tracking-wide">Pipeline Progress</h4>
-            </div>
-            {PIPELINE_STAGES.map((stage) => {
-              const isChecked = Boolean(contact[stage.key])
-              const timestamp = contact[stage.timestampKey] as string | undefined
-              const isLoading = isSaving === stage.key
+      <AnimatePresence>
+        {isOpen && (
+          <>
+            <div
+              className="fixed inset-0 z-40"
+              onClick={() => setIsOpen(false)}
+            />
+            <motion.div
+              initial={{ opacity: 0, y: -10, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -10, scale: 0.95 }}
+              transition={{ duration: 0.15, ease: 'easeOut' }}
+              className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-72 z-50"
+            >
+              <div className="bg-slate-900/95 backdrop-blur-xl border border-slate-600/50 rounded-xl shadow-2xl overflow-hidden">
+                <div className="px-3 py-2 border-b border-slate-700/50">
+                  <span className="text-xs font-medium text-white/60 uppercase tracking-wider">Pipeline Progress</span>
+                </div>
+                <div className="max-h-80 overflow-y-auto py-1">
+                  {PIPELINE_STAGES.map((stage, index) => {
+                    const isChecked = Boolean(contact[stage.key])
+                    const timestamp = contact[stage.timestampKey] as string | undefined
+                    const isLoading = isSaving === stage.key
 
-              return (
-                <button
-                  key={stage.key}
-                  onClick={() => handleToggle(stage)}
-                  disabled={isLoading}
-                  className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-rillation-card-hover transition-colors text-left"
-                >
-                  <div
-                    className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all flex-shrink-0 ${
-                      isChecked
-                        ? 'bg-rillation-green border-rillation-green'
-                        : 'border-rillation-border hover:border-rillation-text-muted bg-rillation-card'
-                    }`}
-                  >
-                    {isLoading ? (
-                      <Loader2 size={14} className="animate-spin text-white" />
-                    ) : isChecked ? (
-                      <Check size={14} className="text-white" />
-                    ) : null}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm text-rillation-text">{stage.label}</div>
-                    {isChecked && timestamp && (
-                      <div className="text-xs text-rillation-text-muted flex items-center gap-1 mt-0.5">
-                        <Calendar size={11} />
-                        {new Date(timestamp).toLocaleDateString('en-US', {
-                          month: 'short',
-                          day: 'numeric',
-                          year: 'numeric',
-                          hour: 'numeric',
-                          minute: '2-digit',
-                        })}
-                      </div>
-                    )}
-                  </div>
-                </button>
-              )
-            })}
-          </div>
-        </>
-      )}
+                    return (
+                      <motion.button
+                        key={stage.key}
+                        onClick={() => handleToggle(stage)}
+                        disabled={isLoading}
+                        className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-white/5 transition-colors text-left"
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: index * 0.02 }}
+                        whileHover={{ x: 2 }}
+                      >
+                        <div
+                          className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 ${
+                            isChecked
+                              ? 'bg-emerald-400 border-emerald-400'
+                              : 'border-slate-500 hover:border-slate-400'
+                          }`}
+                        >
+                          {isLoading ? (
+                            <Loader2 size={12} className="animate-spin text-white" />
+                          ) : isChecked ? (
+                            <Check size={12} className="text-white" />
+                          ) : null}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm text-white/90">{stage.label}</div>
+                          {isChecked && timestamp && (
+                            <div className="text-xs text-white/40 flex items-center gap-1 mt-0.5">
+                              <Calendar size={10} />
+                              {new Date(timestamp).toLocaleDateString('en-US', {
+                                month: 'short',
+                                day: 'numeric',
+                                year: 'numeric',
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      </motion.button>
+                    )
+                  })}
+                </div>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   )
 })
@@ -322,51 +340,74 @@ const StageCell = memo(({ contact, onSave }: StageCellProps) => {
 
   return (
     <div className="relative" onClick={(e) => e.stopPropagation()}>
-      <button
+      <motion.button
         onClick={() => setIsOpen(!isOpen)}
         disabled={isSaving}
-        className="flex items-center gap-2 px-2 py-1 rounded-lg text-sm transition-colors hover:bg-rillation-card-hover"
+        className="flex items-center gap-2 px-2.5 py-1 rounded-lg text-sm hover:bg-white/5"
+        whileHover={{ scale: 1.02 }}
+        whileTap={{ scale: 0.98 }}
       >
         <div
-          className="w-2 h-2 rounded-full flex-shrink-0"
+          className="w-2.5 h-2.5 rounded-full flex-shrink-0"
           style={{ backgroundColor: currentStage.color }}
         />
         <span className="text-rillation-text truncate">{currentStage.label}</span>
         {isSaving ? (
           <Loader2 size={12} className="animate-spin flex-shrink-0" />
         ) : (
-          <ChevronDown size={12} className="text-rillation-text-muted flex-shrink-0" />
+          <motion.div animate={{ rotate: isOpen ? 180 : 0 }} transition={{ duration: 0.2 }}>
+            <ChevronDown size={12} className="text-rillation-text-muted flex-shrink-0" />
+          </motion.div>
         )}
-      </button>
+      </motion.button>
 
-      {isOpen && (
-        <>
-          <div
-            className="fixed inset-0 z-40"
-            onClick={() => setIsOpen(false)}
-          />
-          <div className="absolute top-full left-0 mt-1 w-44 bg-rillation-card border border-rillation-border rounded-lg shadow-xl z-50 py-1 max-h-64 overflow-y-auto">
-            {CRM_STAGES.map((stage) => (
-              <button
-                key={stage.id}
-                onClick={() => handleStageChange(stage.id)}
-                className={`w-full flex items-center gap-2 px-3 py-2 text-sm text-left hover:bg-rillation-card-hover transition-colors ${
-                  stage.id === contact.stage ? 'bg-rillation-card-hover' : ''
-                }`}
-              >
-                <div
-                  className="w-2 h-2 rounded-full flex-shrink-0"
-                  style={{ backgroundColor: stage.color }}
-                />
-                <span className="text-rillation-text">{stage.label}</span>
-                {stage.id === contact.stage && (
-                  <Check size={14} className="ml-auto text-rillation-green" />
-                )}
-              </button>
-            ))}
-          </div>
-        </>
-      )}
+      <AnimatePresence>
+        {isOpen && (
+          <>
+            <div
+              className="fixed inset-0 z-40"
+              onClick={() => setIsOpen(false)}
+            />
+            <motion.div
+              initial={{ opacity: 0, y: -10, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -10, scale: 0.95 }}
+              transition={{ duration: 0.15, ease: 'easeOut' }}
+              className="absolute top-full left-0 mt-2 w-48 z-50"
+            >
+              <div className="bg-slate-900/95 backdrop-blur-xl border border-slate-600/50 rounded-xl shadow-2xl overflow-hidden">
+                <div className="px-3 py-2 border-b border-slate-700/50">
+                  <span className="text-xs font-medium text-white/60 uppercase tracking-wider">Select Stage</span>
+                </div>
+                <div className="max-h-64 overflow-y-auto py-1">
+                  {CRM_STAGES.map((stage, index) => (
+                    <motion.button
+                      key={stage.id}
+                      onClick={() => handleStageChange(stage.id)}
+                      className={`w-full flex items-center gap-3 px-3 py-2.5 text-sm text-left transition-colors ${
+                        stage.id === contact.stage ? 'bg-white/10 text-white' : 'text-white/70 hover:bg-white/5'
+                      }`}
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: index * 0.02 }}
+                      whileHover={{ x: 2 }}
+                    >
+                      <div
+                        className="w-3 h-3 rounded-full flex-shrink-0"
+                        style={{ backgroundColor: stage.color }}
+                      />
+                      <span className="flex-1">{stage.label}</span>
+                      {stage.id === contact.stage && (
+                        <Check size={14} className="text-emerald-400" />
+                      )}
+                    </motion.button>
+                  ))}
+                </div>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   )
 })
@@ -1166,60 +1207,65 @@ export default function ContactsTable({
                   onClick={() => setShowColumnPicker(false)} 
                 />
                 <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.05 }}
-                  className="absolute top-full left-0 mt-1 w-56 bg-rillation-card border border-rillation-border rounded-xl shadow-2xl z-50 py-2 max-h-80 overflow-y-auto"
+                  initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                  transition={{ duration: 0.15, ease: 'easeOut' }}
+                  className="absolute top-full left-0 mt-2 w-60 z-50"
                 >
-                  <div className="px-3 py-2 border-b border-rillation-border/50 mb-1">
-                    <p className="text-xs font-medium text-rillation-text">Show Columns</p>
-                    <p className="text-xs text-rillation-text-muted mt-0.5">
-                      {visibleColumns.size} of {COLUMNS.length} visible
-                    </p>
-                  </div>
-                  {COLUMNS.map((col) => {
-                    const isVisible = visibleColumns.has(col.key)
-                    const isLocked = col.key === 'full_name' // Can't hide name column
-                    return (
-                      <button
-                        key={col.key}
-                        onClick={() => !isLocked && toggleColumnVisibility(col.key)}
-                        disabled={isLocked}
-                        className={`w-full flex items-center gap-2 px-3 py-2 text-sm text-left transition-colors ${
-                          isLocked 
-                            ? 'opacity-50 cursor-not-allowed' 
-                            : 'hover:bg-rillation-card-hover'
-                        }`}
+                  <div className="bg-slate-900/95 backdrop-blur-xl border border-slate-600/50 rounded-xl shadow-2xl overflow-hidden">
+                    <div className="px-3 py-2 border-b border-slate-700/50">
+                      <span className="text-xs font-medium text-white/60 uppercase tracking-wider">Show Columns</span>
+                      <p className="text-xs text-white/40 mt-0.5">
+                        {visibleColumns.size} of {COLUMNS.length} visible
+                      </p>
+                    </div>
+                    <div className="max-h-72 overflow-y-auto py-1">
+                      {COLUMNS.map((col, index) => {
+                        const isVisible = visibleColumns.has(col.key)
+                        const isLocked = col.key === 'full_name'
+                        return (
+                          <motion.button
+                            key={col.key}
+                            onClick={() => !isLocked && toggleColumnVisibility(col.key)}
+                            disabled={isLocked}
+                            className={`w-full flex items-center gap-3 px-3 py-2.5 text-sm text-left transition-colors ${
+                              isLocked ? 'opacity-50 cursor-not-allowed' : 'hover:bg-white/5'
+                            }`}
+                            initial={{ opacity: 0, x: -10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: index * 0.015 }}
+                            whileHover={isLocked ? {} : { x: 2 }}
+                          >
+                            <div className={`w-4 h-4 rounded border-2 flex items-center justify-center ${
+                              isVisible ? 'bg-emerald-400 border-emerald-400' : 'border-slate-500'
+                            }`}>
+                              {isVisible && <Check size={10} className="text-white" />}
+                            </div>
+                            {isVisible ? (
+                              <Eye size={14} className="text-white/60" />
+                            ) : (
+                              <EyeOff size={14} className="text-white/30" />
+                            )}
+                            <span className={isVisible ? 'text-white/90 flex-1' : 'text-white/50 flex-1'}>
+                              {col.label}
+                            </span>
+                            {isLocked && (
+                              <span className="text-xs text-white/30">Required</span>
+                            )}
+                          </motion.button>
+                        )
+                      })}
+                    </div>
+                    <div className="px-3 py-2 border-t border-slate-700/50">
+                      <motion.button
+                        onClick={() => setVisibleColumns(new Set(DEFAULT_VISIBLE_COLUMNS))}
+                        className="text-xs text-white/50 hover:text-white transition-colors"
+                        whileHover={{ x: 2 }}
                       >
-                        <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${
-                          isVisible 
-                            ? 'bg-rillation-green border-rillation-green' 
-                            : 'border-rillation-border'
-                        }`}>
-                          {isVisible && <Check size={12} className="text-white" />}
-                        </div>
-                        {isVisible ? (
-                          <Eye size={14} className="text-rillation-text-muted" />
-                        ) : (
-                          <EyeOff size={14} className="text-rillation-text-muted/50" />
-                        )}
-                        <span className={isVisible ? 'text-rillation-text' : 'text-rillation-text-muted'}>
-                          {col.label}
-                        </span>
-                        {isLocked && (
-                          <span className="ml-auto text-xs text-rillation-text-muted">Required</span>
-                        )}
-                      </button>
-                    )
-                  })}
-                  <div className="px-3 py-2 border-t border-rillation-border/50 mt-1">
-                    <button
-                      onClick={() => setVisibleColumns(new Set(DEFAULT_VISIBLE_COLUMNS))}
-                      className="text-xs text-rillation-text-muted hover:text-rillation-text transition-colors"
-                    >
-                      Reset to defaults
-                    </button>
+                        Reset to defaults
+                      </motion.button>
+                    </div>
                   </div>
                 </motion.div>
               </>
