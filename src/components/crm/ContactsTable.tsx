@@ -484,12 +484,19 @@ export default function ContactsTable({
   return (
     <div className="h-full overflow-auto bg-crm-card rounded-xl border border-crm-border">
       <table className="w-full" style={{ minWidth: '2000px' }}>
-        <thead className="sticky top-0 bg-crm-bg z-20 shadow-sm">
+        <thead>
           <tr>
             {COLUMNS.map((column) => (
               <th
                 key={column.key}
                 className={`text-left px-3 py-3 text-xs font-medium text-crm-text-muted uppercase tracking-wider ${column.width} whitespace-nowrap border-b border-crm-border`}
+                style={{ 
+                  position: 'sticky', 
+                  top: 0,
+                  backgroundColor: '#0d1117', // crm-bg color - explicit for sticky to work
+                  zIndex: 30,
+                  boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.3)'
+                }}
               >
                 <SortableHeader
                   label={column.label}

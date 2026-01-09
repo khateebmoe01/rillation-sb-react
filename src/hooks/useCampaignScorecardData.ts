@@ -99,7 +99,7 @@ export function useCampaignScorecardData({ startDate, endDate, client }: UseCamp
       while (hasMoreMeetings) {
         const { data: pageData, error: meetingsError } = await supabase
           .from('meetings_booked')
-          .select('campaign_id, created_time')
+          .select('campaign_id, campaign_name, created_time')
           .eq('client', client)
           .gte('created_time', startStr)
           .lt('created_time', endStrNextDay)
@@ -266,18 +266,49 @@ export function useCampaignScorecardData({ startDate, endDate, client }: UseCamp
       })
 
       // Process meetings
-      allMeetingsData.forEach((meeting: any) => {
-        if (!meeting.campaign_id) return
+      // First, create a map of campaign_name to campaign_id for lookup
+      const campaignNameToIdMap = new Map<string, string>()
+      campaignMap.forEach((campaign, campaignId) => {
+        campaignNameToIdMap.set(campaign.campaignName, campaignId)
+      })
 
-        const key = meeting.campaign_id
-        const campaign = campaignMap.get(key)
-        if (!campaign) return
+      allMeetingsData.forEach((meeting: any) => {
+        let key: string | null = null
+        
+        // Try to match by campaign_id first (if it exists in campaignMap)
+        if (meeting.campaign_id && campaignMap.has(meeting.campaign_id)) {
+          key = meeting.campaign_id
+        }
+        
+        // If no match by campaign_id, try matching by campaign_name
+        if (!key && meeting.campaign_name) {
+          const matchedId = campaignNameToIdMap.get(meeting.campaign_name)
+          if (matchedId && campaignMap.has(matchedId)) {
+            key = matchedId
+          }
+        }
+        
+        // Skip if we can't match this meeting to any campaign
+        if (!key) return
+
+        const campaign = campaignMap.get(key)!
 
         campaign.totals.meetingsBooked += 1
 
         // Daily data
         const dateStr = meeting.created_time?.split('T')[0]
-        if (dateStr && campaign.dailyData.has(dateStr)) {
+        if (dateStr) {
+          // Create daily data entry if it doesn't exist
+          if (!campaign.dailyData.has(dateStr)) {
+            campaign.dailyData.set(dateStr, {
+              date: formatDateDisplay(dateStr),
+              sent: 0,
+              prospects: 0,
+              replied: 0,
+              positiveReplies: 0,
+              meetings: 0,
+            })
+          }
           campaign.dailyData.get(dateStr)!.meetings += 1
         }
       })
