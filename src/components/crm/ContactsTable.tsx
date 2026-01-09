@@ -1351,17 +1351,13 @@ export default function ContactsTable({
                 key={contact.id}
                 initial={false}
                 animate={{ 
-                  backgroundColor: isSelected ? 'rgba(34, 197, 94, 0.2)' : 'transparent'
+                  backgroundColor: 'transparent'
                 }}
                 whileHover={{ 
-                  backgroundColor: isSelected 
-                    ? 'rgba(34, 197, 94, 0.25)' 
-                    : 'rgba(255, 255, 255, 0.03)'
+                  backgroundColor: 'rgba(255, 255, 255, 0.03)'
                 }}
                 transition={{ duration: 0 }}
-                className={`flex group cursor-pointer border-b border-slate-700/50 relative ${
-                  isSelected ? 'ring-1 ring-inset ring-emerald-500/50' : ''
-                }`}
+                className="flex group cursor-pointer border-b border-slate-700/50 relative"
                 onClick={() => {
                   onSelectedRowChange?.(index)
                   onContactSelect(contact)
@@ -1386,11 +1382,7 @@ export default function ContactsTable({
                 {/* Sticky first column cell */}
                 {firstColumn && (
                   <div
-                    className={`flex-shrink-0 sticky left-0 z-10 px-3 py-4 text-sm text-white transition-all ${
-                      isSelected 
-                        ? 'bg-emerald-500/20' 
-                        : 'bg-slate-800 group-hover:bg-slate-700/50'
-                    } ${isScrolled ? 'shadow-[4px_0_8px_-2px_rgba(0,0,0,0.4)]' : ''}`}
+                    className={`flex-shrink-0 sticky left-0 z-10 px-3 py-4 text-sm text-white transition-all bg-slate-800 group-hover:bg-slate-700/50 ${isScrolled ? 'shadow-[4px_0_8px_-2px_rgba(0,0,0,0.4)]' : ''}`}
                     style={{ width: `${firstColumnWidth}px` }}
                   >
                     {getCellValue(contact, firstColumn, onContactUpdate, () => onContactSelect(contact), index, contacts.length, onEstimatedValueUpdate)}
