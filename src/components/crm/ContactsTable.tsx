@@ -842,14 +842,21 @@ const COLUMN_MINIMIZED_KEY = 'crm-column-minimized'
 // Minimized column width
 const MINIMIZED_WIDTH = 40
 
-// Default visible columns (smart defaults - most useful columns)
+// Default visible columns - show all columns
 const DEFAULT_VISIBLE_COLUMNS = new Set([
   'full_name',
   'company',
   'stage',
   'pipeline_progress',
   'lead_phone',
+  'company_phone',
+  'linkedin_url',
+  'context',
   'next_touchpoint',
+  'lead_source',
+  'industry',
+  'created_at',
+  'company_website',
 ])
 
 // Get initial column visibility from localStorage or use defaults
@@ -1303,6 +1310,10 @@ export default function ContactsTable({
                   onSave={onContactUpdate}
                   onSelect={() => onContactSelect(contact)}
                 />
+                {/* Spacer to align with column picker button in header */}
+                <div className="flex-shrink-0 px-2 py-2 flex items-center border-r border-rillation-border/50">
+                  <div className="p-2 w-4" />
+                </div>
                 {/* Sticky first column cell */}
                 {firstColumn && (
                   <div
