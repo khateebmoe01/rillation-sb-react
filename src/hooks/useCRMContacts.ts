@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { supabase } from '../lib/supabase'
 import type { CRMContact, CRMFilters, CRMSort } from '../types/crm'
 
@@ -30,7 +30,6 @@ export function useCRMContacts(options: UseCRMContactsOptions = {}): UseCRMConta
   const [contacts, setContacts] = useState<CRMContact[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const fetchedRef = useRef(false)
 
   // Serialize filters and sort for stable dependency
   const filterKey = useMemo(() => JSON.stringify({

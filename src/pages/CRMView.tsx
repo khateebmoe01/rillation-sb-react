@@ -7,14 +7,15 @@ import ContactsTable from '../components/crm/ContactsTable'
 import ContactDetailPanel from '../components/crm/ContactDetailPanel'
 import QuickAddContact from '../components/crm/QuickAddContact'
 import CRMFilters from '../components/crm/CRMFilters'
-import type { CRMContact, CRMViewMode, CRMFilters as CRMFiltersType } from '../types/crm'
+import type { CRMContact, CRMViewMode, CRMFilters as CRMFiltersType, CRMSort } from '../types/crm'
 
 export default function CRMView() {
-  const [viewMode, setViewMode] = useState<CRMViewMode>('kanban')
+  const [viewMode, setViewMode] = useState<CRMViewMode>('list')
   const [selectedContact, setSelectedContact] = useState<CRMContact | null>(null)
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
   const [filters, setFilters] = useState<CRMFiltersType>({})
   const [searchQuery, setSearchQuery] = useState('')
+  const [sort, setSort] = useState<CRMSort | undefined>(undefined)
 
   // Memoize active filters to prevent infinite re-renders
   const activeFilters = useMemo(() => ({
@@ -32,7 +33,7 @@ export default function CRMView() {
     updateStage,
     contactsByStage,
     uniqueAssignees,
-  } = useCRMContacts({ filters: activeFilters })
+  } = useCRMContacts({ filters: activeFilters, sort })
 
   // Handle contact selection
   const handleContactSelect = useCallback((contact: CRMContact) => {
@@ -69,13 +70,13 @@ export default function CRMView() {
   }, [updateStage])
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="h-full flex flex-col bg-crm-bg -m-6 p-6">
       {/* Header */}
       <div className="flex-shrink-0 mb-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-rillation-text">CRM</h1>
-            <p className="text-sm text-rillation-text-muted mt-1">
+            <h1 className="text-2xl font-bold text-crm-text">CRM</h1>
+            <p className="text-sm text-crm-text-muted mt-1">
               {contacts.length} contacts • Rillation Revenue
             </p>
           </div>
@@ -83,32 +84,32 @@ export default function CRMView() {
           <div className="flex items-center gap-3">
             {/* Search */}
             <div className="relative">
-              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-rillation-text-muted" />
+              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-crm-text-muted" />
               <input
                 type="text"
                 placeholder="Search contacts..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9 pr-8 py-2 bg-rillation-card border border-rillation-border rounded-lg text-sm text-rillation-text placeholder:text-rillation-text-muted focus:outline-none focus:border-rillation-text/30 w-48 sm:w-64 transition-colors"
+                className="pl-9 pr-8 py-2 bg-crm-card border border-crm-border rounded-lg text-sm text-crm-text placeholder:text-crm-text-muted focus:outline-none focus:border-crm-text-muted w-48 sm:w-64 transition-colors"
               />
               {searchQuery && (
                 <button
                   onClick={() => setSearchQuery('')}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1 hover:bg-rillation-card-hover rounded"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1 hover:bg-crm-card-hover rounded"
                 >
-                  <X size={14} className="text-rillation-text-muted" />
+                  <X size={14} className="text-crm-text-muted" />
                 </button>
               )}
             </div>
 
             {/* View Toggle */}
-            <div className="flex items-center bg-rillation-card border border-rillation-border rounded-lg p-1">
+            <div className="flex items-center bg-crm-card border border-crm-border rounded-lg p-1">
               <button
                 onClick={() => setViewMode('kanban')}
                 className={`p-2 rounded-md transition-all ${
                   viewMode === 'kanban'
-                    ? 'bg-rillation-card-hover text-rillation-text'
-                    : 'text-rillation-text-muted hover:text-rillation-text'
+                    ? 'bg-crm-card-hover text-crm-text'
+                    : 'text-crm-text-muted hover:text-crm-text'
                 }`}
                 title="Kanban view"
               >
@@ -118,8 +119,8 @@ export default function CRMView() {
                 onClick={() => setViewMode('list')}
                 className={`p-2 rounded-md transition-all ${
                   viewMode === 'list'
-                    ? 'bg-rillation-card-hover text-rillation-text'
-                    : 'text-rillation-text-muted hover:text-rillation-text'
+                    ? 'bg-crm-card-hover text-crm-text'
+                    : 'text-crm-text-muted hover:text-crm-text'
                 }`}
                 title="List view"
               >
@@ -132,7 +133,7 @@ export default function CRMView() {
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               onClick={() => setIsAddModalOpen(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-white text-black font-medium rounded-lg hover:bg-gray-100 transition-colors"
+              className="flex items-center gap-2 px-4 py-2 bg-crm-checkbox text-white font-medium rounded-lg hover:bg-crm-checkbox-hover transition-colors"
             >
               <Plus size={18} />
               <span className="hidden sm:inline">Add Contact</span>
@@ -158,7 +159,7 @@ export default function CRMView() {
       {/* Loading State */}
       {loading && (
         <div className="flex-1 flex items-center justify-center">
-          <div className="w-8 h-8 border-2 border-rillation-text border-t-transparent rounded-full animate-spin" />
+          <div className="w-8 h-8 border-2 border-crm-text border-t-transparent rounded-full animate-spin" />
         </div>
       )}
 
@@ -194,6 +195,8 @@ export default function CRMView() {
                   contacts={contacts}
                   onContactSelect={handleContactSelect}
                   onContactUpdate={handleContactUpdate}
+                  sort={sort}
+                  onSortChange={setSort}
                 />
               </motion.div>
             )}

@@ -28,8 +28,8 @@ export default function StageColumn({ stage, contacts, onContactSelect }: StageC
             className="w-3 h-3 rounded-full"
             style={{ backgroundColor: stage.color }}
           />
-          <h3 className="font-medium text-rillation-text">{stage.label}</h3>
-          <span className="ml-auto text-sm text-rillation-text-muted bg-rillation-card-hover px-2 py-0.5 rounded-full">
+          <h3 className="font-medium text-crm-text">{stage.label}</h3>
+          <span className="ml-auto text-sm text-crm-text-muted bg-crm-card-hover px-2 py-0.5 rounded-full">
             {contacts.length}
           </span>
         </div>
@@ -40,10 +40,10 @@ export default function StageColumn({ stage, contacts, onContactSelect }: StageC
         ref={setNodeRef}
         className={`
           flex-1 min-h-0 overflow-y-auto rounded-xl p-2 transition-colors duration-200
-          ${isOver ? 'bg-rillation-card-hover/50 ring-2 ring-rillation-text/20' : 'bg-rillation-bg'}
+          ${isOver ? 'bg-crm-card-hover/50 ring-2 ring-crm-text-muted/20' : 'bg-crm-bg/50'}
         `}
         animate={{
-          backgroundColor: isOver ? 'rgba(26, 26, 26, 0.5)' : 'rgba(0, 0, 0, 0)',
+          backgroundColor: isOver ? 'rgba(28, 33, 40, 0.5)' : 'rgba(13, 17, 23, 0.5)',
         }}
       >
         <SortableContext
@@ -52,7 +52,7 @@ export default function StageColumn({ stage, contacts, onContactSelect }: StageC
         >
           <div className="space-y-2">
             {contacts.length === 0 ? (
-              <div className="text-center py-8 text-rillation-text-muted text-sm">
+              <div className="text-center py-8 text-crm-text-muted text-sm">
                 No contacts
               </div>
             ) : (

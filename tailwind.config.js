@@ -26,6 +26,17 @@ export default {
           'yellow': '#eab308', // Use for neutral/caution states
           'text': '#ffffff',
           'text-muted': '#888888',
+        },
+        // CRM-specific dark blue theme
+        'crm': {
+          'bg': '#0d1117',
+          'card': '#161b22',
+          'card-hover': '#1c2128',
+          'border': '#30363d',
+          'text': '#f0f6fc',
+          'text-muted': '#8b949e',
+          'checkbox': '#238636',
+          'checkbox-hover': '#2ea043',
         }
       },
       fontFamily: {

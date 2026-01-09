@@ -61,16 +61,16 @@ export default function QuickAddContact({ onClose, onCreate }: QuickAddContactPr
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 20 }}
         transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-        className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md bg-rillation-card border border-rillation-border rounded-2xl z-50 overflow-hidden"
+        className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md bg-crm-card border border-crm-border rounded-2xl z-50 overflow-hidden"
       >
         {/* Header */}
-        <div className="px-6 py-4 border-b border-rillation-border flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-rillation-text">Add New Contact</h2>
+        <div className="px-6 py-4 border-b border-crm-border flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-crm-text">Add New Contact</h2>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-rillation-card-hover rounded-lg transition-colors"
+            className="p-2 hover:bg-crm-card-hover rounded-lg transition-colors"
           >
-            <X size={20} className="text-rillation-text-muted" />
+            <X size={20} className="text-crm-text-muted" />
           </button>
         </div>
 
@@ -79,59 +79,59 @@ export default function QuickAddContact({ onClose, onCreate }: QuickAddContactPr
           {/* Name Row */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="text-xs text-rillation-text-muted mb-1.5 block">First Name</label>
+              <label className="text-xs text-crm-text-muted mb-1.5 block">First Name</label>
               <div className="relative">
-                <User size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-rillation-text-muted" />
+                <User size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-crm-text-muted" />
                 <input
                   type="text"
                   value={formData.first_name}
                   onChange={(e) => handleChange('first_name', e.target.value)}
                   placeholder="John"
-                  className="w-full pl-10 pr-3 py-2.5 bg-rillation-bg border border-rillation-border rounded-lg text-sm text-rillation-text placeholder:text-rillation-text-muted/50 focus:outline-none focus:border-rillation-text/30 transition-colors"
+                  className="w-full pl-10 pr-3 py-2.5 bg-crm-bg border border-crm-border rounded-lg text-sm text-crm-text placeholder:text-crm-text-muted/50 focus:outline-none focus:border-crm-text-muted transition-colors"
                 />
               </div>
             </div>
             <div>
-              <label className="text-xs text-rillation-text-muted mb-1.5 block">Last Name</label>
+              <label className="text-xs text-crm-text-muted mb-1.5 block">Last Name</label>
               <input
                 type="text"
                 value={formData.last_name}
                 onChange={(e) => handleChange('last_name', e.target.value)}
                 placeholder="Doe"
-                className="w-full px-3 py-2.5 bg-rillation-bg border border-rillation-border rounded-lg text-sm text-rillation-text placeholder:text-rillation-text-muted/50 focus:outline-none focus:border-rillation-text/30 transition-colors"
+                className="w-full px-3 py-2.5 bg-crm-bg border border-crm-border rounded-lg text-sm text-crm-text placeholder:text-crm-text-muted/50 focus:outline-none focus:border-crm-text-muted transition-colors"
               />
             </div>
           </div>
 
           {/* Email */}
           <div>
-            <label className="text-xs text-rillation-text-muted mb-1.5 block">
+            <label className="text-xs text-crm-text-muted mb-1.5 block">
               Email <span className="text-red-400">*</span>
             </label>
             <div className="relative">
-              <Mail size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-rillation-text-muted" />
+              <Mail size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-crm-text-muted" />
               <input
                 type="email"
                 value={formData.email}
                 onChange={(e) => handleChange('email', e.target.value)}
                 placeholder="john@company.com"
                 required
-                className="w-full pl-10 pr-3 py-2.5 bg-rillation-bg border border-rillation-border rounded-lg text-sm text-rillation-text placeholder:text-rillation-text-muted/50 focus:outline-none focus:border-rillation-text/30 transition-colors"
+                className="w-full pl-10 pr-3 py-2.5 bg-crm-bg border border-crm-border rounded-lg text-sm text-crm-text placeholder:text-crm-text-muted/50 focus:outline-none focus:border-crm-text-muted transition-colors"
               />
             </div>
           </div>
 
           {/* Company */}
           <div>
-            <label className="text-xs text-rillation-text-muted mb-1.5 block">Company</label>
+            <label className="text-xs text-crm-text-muted mb-1.5 block">Company</label>
             <div className="relative">
-              <Building2 size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-rillation-text-muted" />
+              <Building2 size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-crm-text-muted" />
               <input
                 type="text"
                 value={formData.company}
                 onChange={(e) => handleChange('company', e.target.value)}
                 placeholder="Acme Inc."
-                className="w-full pl-10 pr-3 py-2.5 bg-rillation-bg border border-rillation-border rounded-lg text-sm text-rillation-text placeholder:text-rillation-text-muted/50 focus:outline-none focus:border-rillation-text/30 transition-colors"
+                className="w-full pl-10 pr-3 py-2.5 bg-crm-bg border border-crm-border rounded-lg text-sm text-crm-text placeholder:text-crm-text-muted/50 focus:outline-none focus:border-crm-text-muted transition-colors"
               />
             </div>
           </div>
@@ -139,26 +139,26 @@ export default function QuickAddContact({ onClose, onCreate }: QuickAddContactPr
           {/* Phone & Job Title */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="text-xs text-rillation-text-muted mb-1.5 block">Phone</label>
+              <label className="text-xs text-crm-text-muted mb-1.5 block">Phone</label>
               <div className="relative">
-                <Phone size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-rillation-text-muted" />
+                <Phone size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-crm-text-muted" />
                 <input
                   type="tel"
                   value={formData.lead_phone}
                   onChange={(e) => handleChange('lead_phone', e.target.value)}
                   placeholder="(555) 123-4567"
-                  className="w-full pl-10 pr-3 py-2.5 bg-rillation-bg border border-rillation-border rounded-lg text-sm text-rillation-text placeholder:text-rillation-text-muted/50 focus:outline-none focus:border-rillation-text/30 transition-colors"
+                  className="w-full pl-10 pr-3 py-2.5 bg-crm-bg border border-crm-border rounded-lg text-sm text-crm-text placeholder:text-crm-text-muted/50 focus:outline-none focus:border-crm-text-muted transition-colors"
                 />
               </div>
             </div>
             <div>
-              <label className="text-xs text-rillation-text-muted mb-1.5 block">Job Title</label>
+              <label className="text-xs text-crm-text-muted mb-1.5 block">Job Title</label>
               <input
                 type="text"
                 value={formData.job_title}
                 onChange={(e) => handleChange('job_title', e.target.value)}
                 placeholder="CEO"
-                className="w-full px-3 py-2.5 bg-rillation-bg border border-rillation-border rounded-lg text-sm text-rillation-text placeholder:text-rillation-text-muted/50 focus:outline-none focus:border-rillation-text/30 transition-colors"
+                className="w-full px-3 py-2.5 bg-crm-bg border border-crm-border rounded-lg text-sm text-crm-text placeholder:text-crm-text-muted/50 focus:outline-none focus:border-crm-text-muted transition-colors"
               />
             </div>
           </div>
@@ -166,11 +166,11 @@ export default function QuickAddContact({ onClose, onCreate }: QuickAddContactPr
           {/* Stage & Source */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="text-xs text-rillation-text-muted mb-1.5 block">Stage</label>
+              <label className="text-xs text-crm-text-muted mb-1.5 block">Stage</label>
               <select
                 value={formData.stage}
                 onChange={(e) => handleChange('stage', e.target.value)}
-                className="w-full px-3 py-2.5 bg-rillation-bg border border-rillation-border rounded-lg text-sm text-rillation-text focus:outline-none focus:border-rillation-text/30 transition-colors"
+                className="w-full px-3 py-2.5 bg-crm-bg border border-crm-border rounded-lg text-sm text-crm-text focus:outline-none focus:border-crm-text-muted transition-colors"
               >
                 {CRM_STAGES.map((stage) => (
                   <option key={stage.id} value={stage.id}>
@@ -180,11 +180,11 @@ export default function QuickAddContact({ onClose, onCreate }: QuickAddContactPr
               </select>
             </div>
             <div>
-              <label className="text-xs text-rillation-text-muted mb-1.5 block">Lead Source</label>
+              <label className="text-xs text-crm-text-muted mb-1.5 block">Lead Source</label>
               <select
                 value={formData.lead_source}
                 onChange={(e) => handleChange('lead_source', e.target.value)}
-                className="w-full px-3 py-2.5 bg-rillation-bg border border-rillation-border rounded-lg text-sm text-rillation-text focus:outline-none focus:border-rillation-text/30 transition-colors"
+                className="w-full px-3 py-2.5 bg-crm-bg border border-crm-border rounded-lg text-sm text-crm-text focus:outline-none focus:border-crm-text-muted transition-colors"
               >
                 <option value="">Select source...</option>
                 {LEAD_SOURCES.map((source) => (
@@ -201,7 +201,7 @@ export default function QuickAddContact({ onClose, onCreate }: QuickAddContactPr
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-sm text-rillation-text-muted hover:text-rillation-text transition-colors"
+              className="px-4 py-2 text-sm text-crm-text-muted hover:text-crm-text transition-colors"
             >
               Cancel
             </button>
@@ -210,7 +210,7 @@ export default function QuickAddContact({ onClose, onCreate }: QuickAddContactPr
               disabled={isCreating || !formData.email.trim()}
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
-              className="px-6 py-2 bg-white text-black font-medium rounded-lg text-sm hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              className="px-6 py-2 bg-crm-checkbox text-white font-medium rounded-lg text-sm hover:bg-crm-checkbox-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             >
               {isCreating && <Loader2 size={16} className="animate-spin" />}
               {isCreating ? 'Creating...' : 'Create Contact'}

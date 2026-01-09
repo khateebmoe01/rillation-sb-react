@@ -1,14 +1,106 @@
 import { useState, memo } from 'react'
 import { motion } from 'framer-motion'
-import { ChevronDown, Check, Loader2 } from 'lucide-react'
-import { CRM_STAGES, type CRMContact } from '../../types/crm'
+import { ChevronDown, ChevronUp, Check, Loader2, ExternalLink } from 'lucide-react'
+import { CRM_STAGES, type CRMContact, type CRMSort } from '../../types/crm'
 
 interface ContactsTableProps {
   contacts: CRMContact[]
   onContactSelect: (contact: CRMContact) => void
   onContactUpdate: (id: string, updates: Partial<CRMContact>) => Promise<boolean>
+  sort?: CRMSort
+  onSortChange?: (sort: CRMSort | undefined) => void
 }
 
+// Column definition interface
+interface ColumnDef {
+  key: string
+  label: string
+  width: string
+  sortable: boolean
+  checkbox?: boolean
+  link?: boolean
+}
+
+// Column definitions
+const COLUMNS: ColumnDef[] = [
+  { key: 'company', label: 'Organization', width: 'w-40', sortable: true },
+  { key: 'full_name', label: 'Lead Name', width: 'w-44', sortable: true },
+  { key: 'stage', label: 'Stage', width: 'w-32', sortable: true },
+  { key: 'meeting_booked', label: 'Meeting Booked?', width: 'w-36', sortable: true, checkbox: true },
+  { key: 'showed_up_to_disco', label: 'Disco Show?', width: 'w-32', sortable: true, checkbox: true },
+  { key: 'qualified', label: 'Qualified?', width: 'w-28', sortable: true, checkbox: true },
+  { key: 'demo_booked', label: 'Demo Booked?', width: 'w-32', sortable: true, checkbox: true },
+  { key: 'showed_up_to_demo', label: 'Demo Show?', width: 'w-28', sortable: true, checkbox: true },
+  { key: 'proposal_sent', label: 'Proposal Sent?', width: 'w-32', sortable: true, checkbox: true },
+  { key: 'closed', label: 'Closed?', width: 'w-28', sortable: true, checkbox: true },
+  { key: 'lead_phone', label: 'Lead Phone', width: 'w-32', sortable: true },
+  { key: 'company_phone', label: 'Company Phone', width: 'w-32', sortable: true },
+  { key: 'linkedin_url', label: 'LinkedIn', width: 'w-28', sortable: false, link: true },
+  { key: 'context', label: 'Context', width: 'w-48', sortable: false },
+  { key: 'next_touchpoint', label: 'Next Touchpoint', width: 'w-32', sortable: true },
+  { key: 'lead_source', label: 'Lead Source', width: 'w-28', sortable: true },
+  { key: 'industry', label: 'Industry', width: 'w-32', sortable: true },
+  { key: 'created_at', label: 'Created Time', width: 'w-32', sortable: true },
+  { key: 'assignee', label: 'Assignee', width: 'w-28', sortable: true },
+  { key: 'company_website', label: 'Company Website', width: 'w-36', sortable: false, link: true },
+]
+
+// Checkbox cell component with timestamp
+interface CheckboxCellProps {
+  contact: CRMContact
+  field: 'meeting_booked' | 'showed_up_to_disco' | 'qualified' | 'demo_booked' | 'showed_up_to_demo' | 'proposal_sent' | 'closed'
+  timestampField: 'meeting_booked_at' | 'showed_up_to_disco_at' | 'qualified_at' | 'demo_booked_at' | 'showed_up_to_demo_at' | 'proposal_sent_at' | 'closed_at'
+  onSave: (id: string, updates: Partial<CRMContact>) => Promise<boolean>
+}
+
+const CheckboxCell = memo(({ contact, field, timestampField, onSave }: CheckboxCellProps) => {
+  const [isSaving, setIsSaving] = useState(false)
+  const isChecked = Boolean(contact[field])
+  const timestamp = contact[timestampField] as string | undefined
+
+  const handleToggle = async (e: React.MouseEvent) => {
+    e.stopPropagation()
+    setIsSaving(true)
+    
+    const newValue = !isChecked
+    const updates: Partial<CRMContact> = {
+      [field]: newValue,
+      [timestampField]: newValue ? new Date().toISOString() : null,
+    }
+    
+    await onSave(contact.id, updates)
+    setIsSaving(false)
+  }
+
+  return (
+    <div className="flex flex-col items-start gap-0.5" onClick={(e) => e.stopPropagation()}>
+      <button
+        onClick={handleToggle}
+        disabled={isSaving}
+        className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${
+          isChecked 
+            ? 'bg-crm-checkbox border-crm-checkbox hover:bg-crm-checkbox-hover' 
+            : 'border-crm-border hover:border-crm-text-muted bg-crm-card'
+        }`}
+      >
+        {isSaving ? (
+          <Loader2 size={12} className="animate-spin text-white" />
+        ) : isChecked ? (
+          <Check size={14} className="text-white" />
+        ) : null}
+      </button>
+      {isChecked && timestamp && (
+        <span className="text-[10px] text-crm-text-muted whitespace-nowrap">
+          {new Date(timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+        </span>
+      )}
+    </div>
+  )
+})
+
+CheckboxCell.displayName = 'CheckboxCell'
+
+// Editable cell for inline editing
 interface EditableCellProps {
   value: string
   contactId: string
@@ -53,7 +145,7 @@ const EditableCell = memo(({ value, contactId, field, onSave }: EditableCellProp
 
   if (isEditing) {
     return (
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
         <input
           type="text"
           value={editValue}
@@ -61,17 +153,20 @@ const EditableCell = memo(({ value, contactId, field, onSave }: EditableCellProp
           onKeyDown={handleKeyDown}
           onBlur={handleSave}
           autoFocus
-          className="w-full px-2 py-1 bg-rillation-bg border border-rillation-text/30 rounded text-sm text-rillation-text focus:outline-none"
+          className="w-full px-2 py-1 bg-crm-bg border border-crm-text-muted rounded text-sm text-crm-text focus:outline-none"
         />
-        {isSaving && <Loader2 size={14} className="animate-spin text-rillation-text-muted" />}
+        {isSaving && <Loader2 size={14} className="animate-spin text-crm-text-muted" />}
       </div>
     )
   }
 
   return (
     <span
-      onClick={() => setIsEditing(true)}
-      className="cursor-text hover:bg-rillation-card-hover px-2 py-1 -mx-2 -my-1 rounded transition-colors"
+      onClick={(e) => {
+        e.stopPropagation()
+        setIsEditing(true)
+      }}
+      className="cursor-text hover:bg-crm-card-hover px-2 py-1 -mx-2 -my-1 rounded transition-colors truncate block"
     >
       {value || '-'}
     </span>
@@ -80,6 +175,7 @@ const EditableCell = memo(({ value, contactId, field, onSave }: EditableCellProp
 
 EditableCell.displayName = 'EditableCell'
 
+// Stage cell with dropdown
 interface StageCellProps {
   contact: CRMContact
   onSave: (id: string, updates: Partial<CRMContact>) => Promise<boolean>
@@ -99,21 +195,21 @@ const StageCell = memo(({ contact, onSave }: StageCellProps) => {
   }
 
   return (
-    <div className="relative">
+    <div className="relative" onClick={(e) => e.stopPropagation()}>
       <button
         onClick={() => setIsOpen(!isOpen)}
         disabled={isSaving}
-        className="flex items-center gap-2 px-2 py-1 rounded-lg text-sm transition-colors hover:bg-rillation-card-hover"
+        className="flex items-center gap-2 px-2 py-1 rounded-lg text-sm transition-colors hover:bg-crm-card-hover"
       >
         <div
-          className="w-2 h-2 rounded-full"
+          className="w-2 h-2 rounded-full flex-shrink-0"
           style={{ backgroundColor: currentStage.color }}
         />
-        <span className="text-rillation-text">{currentStage.label}</span>
+        <span className="text-crm-text truncate">{currentStage.label}</span>
         {isSaving ? (
-          <Loader2 size={12} className="animate-spin" />
+          <Loader2 size={12} className="animate-spin flex-shrink-0" />
         ) : (
-          <ChevronDown size={12} className="text-rillation-text-muted" />
+          <ChevronDown size={12} className="text-crm-text-muted flex-shrink-0" />
         )}
       </button>
 
@@ -123,22 +219,22 @@ const StageCell = memo(({ contact, onSave }: StageCellProps) => {
             className="fixed inset-0 z-40"
             onClick={() => setIsOpen(false)}
           />
-          <div className="absolute top-full left-0 mt-1 w-40 bg-rillation-card border border-rillation-border rounded-lg shadow-xl z-50 py-1">
+          <div className="absolute top-full left-0 mt-1 w-44 bg-crm-card border border-crm-border rounded-lg shadow-xl z-50 py-1 max-h-64 overflow-y-auto">
             {CRM_STAGES.map((stage) => (
               <button
                 key={stage.id}
                 onClick={() => handleStageChange(stage.id)}
-                className={`w-full flex items-center gap-2 px-3 py-2 text-sm text-left hover:bg-rillation-card-hover transition-colors ${
-                  stage.id === contact.stage ? 'bg-rillation-card-hover' : ''
+                className={`w-full flex items-center gap-2 px-3 py-2 text-sm text-left hover:bg-crm-card-hover transition-colors ${
+                  stage.id === contact.stage ? 'bg-crm-card-hover' : ''
                 }`}
               >
                 <div
-                  className="w-2 h-2 rounded-full"
+                  className="w-2 h-2 rounded-full flex-shrink-0"
                   style={{ backgroundColor: stage.color }}
                 />
-                <span className="text-rillation-text">{stage.label}</span>
+                <span className="text-crm-text">{stage.label}</span>
                 {stage.id === contact.stage && (
-                  <Check size={14} className="ml-auto text-rillation-green" />
+                  <Check size={14} className="ml-auto text-crm-checkbox" />
                 )}
               </button>
             ))}
@@ -151,39 +247,234 @@ const StageCell = memo(({ contact, onSave }: StageCellProps) => {
 
 StageCell.displayName = 'StageCell'
 
-export default function ContactsTable({ contacts, onContactSelect, onContactUpdate }: ContactsTableProps) {
+// Sortable header component
+interface SortableHeaderProps {
+  label: string
+  field: string
+  sortable: boolean
+  currentSort?: CRMSort
+  onSort?: (sort: CRMSort | undefined) => void
+}
+
+function SortableHeader({ label, field, sortable, currentSort, onSort }: SortableHeaderProps) {
+  if (!sortable || !onSort) {
+    return <span>{label}</span>
+  }
+
+  const isActive = currentSort?.field === field
+  const direction = isActive ? currentSort.direction : null
+
+  const handleClick = () => {
+    if (!isActive) {
+      onSort({ field: field as keyof CRMContact, direction: 'asc' })
+    } else if (direction === 'asc') {
+      onSort({ field: field as keyof CRMContact, direction: 'desc' })
+    } else {
+      onSort(undefined)
+    }
+  }
+
   return (
-    <div className="h-full overflow-auto bg-rillation-card rounded-xl border border-rillation-border">
-      <table className="w-full min-w-[900px]">
-        <thead className="sticky top-0 bg-rillation-card-hover z-10">
+    <button
+      onClick={handleClick}
+      className="flex items-center gap-1 hover:text-crm-text transition-colors group"
+    >
+      <span>{label}</span>
+      <div className="flex flex-col">
+        <ChevronUp 
+          size={10} 
+          className={`-mb-1 ${isActive && direction === 'asc' ? 'text-crm-text' : 'text-crm-text-muted/50 group-hover:text-crm-text-muted'}`} 
+        />
+        <ChevronDown 
+          size={10} 
+          className={`${isActive && direction === 'desc' ? 'text-crm-text' : 'text-crm-text-muted/50 group-hover:text-crm-text-muted'}`} 
+        />
+      </div>
+    </button>
+  )
+}
+
+// Link cell component
+function LinkCell({ url, label }: { url?: string | null; label?: string }) {
+  if (!url) return <span className="text-crm-text-muted">-</span>
+
+  const href = url.startsWith('http') ? url : `https://${url}`
+  const displayText = label || (url.includes('linkedin') ? 'Profile' : new URL(href).hostname.replace('www.', ''))
+
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      onClick={(e) => e.stopPropagation()}
+      className="text-blue-400 hover:text-blue-300 hover:underline flex items-center gap-1 truncate"
+    >
+      <span className="truncate">{displayText}</span>
+      <ExternalLink size={12} className="flex-shrink-0" />
+    </a>
+  )
+}
+
+// Format date for display
+function formatDate(dateStr?: string | null): string {
+  if (!dateStr) return '-'
+  return new Date(dateStr).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: '2-digit',
+  })
+}
+
+// Get cell value for rendering
+function getCellValue(contact: CRMContact, column: ColumnDef, onSave: (id: string, updates: Partial<CRMContact>) => Promise<boolean>, onSelect: () => void) {
+  const key = column.key
+
+  // Checkbox columns
+  if (column.checkbox) {
+    const timestampField = `${key}_at` as 'meeting_booked_at' | 'showed_up_to_disco_at' | 'qualified_at' | 'demo_booked_at' | 'showed_up_to_demo_at' | 'proposal_sent_at' | 'closed_at'
+    return (
+      <CheckboxCell
+        contact={contact}
+        field={key as 'meeting_booked' | 'showed_up_to_disco' | 'qualified' | 'demo_booked' | 'showed_up_to_demo' | 'proposal_sent' | 'closed'}
+        timestampField={timestampField}
+        onSave={onSave}
+      />
+    )
+  }
+
+  // Link columns
+  if (column.link) {
+    const linkValue = key === 'linkedin_url' ? contact.linkedin_url : 
+                      key === 'company_website' ? contact.company_website : undefined
+    return <LinkCell url={linkValue} />
+  }
+
+  switch (key) {
+    case 'company':
+      return (
+        <EditableCell
+          value={contact.company || ''}
+          contactId={contact.id}
+          field="company"
+          onSave={onSave}
+        />
+      )
+    
+    case 'full_name':
+      return (
+        <div className="flex items-center gap-2">
+          <div className="w-7 h-7 bg-crm-card-hover border border-crm-border rounded-full flex items-center justify-center flex-shrink-0">
+            <span className="text-xs font-medium text-crm-text-muted">
+              {contact.first_name?.[0] || contact.full_name?.[0] || '?'}
+              {contact.last_name?.[0] || ''}
+            </span>
+          </div>
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              onSelect()
+            }}
+            className="text-left hover:text-blue-400 transition-colors truncate"
+          >
+            {contact.full_name || contact.email}
+          </button>
+        </div>
+      )
+    
+    case 'stage':
+      return <StageCell contact={contact} onSave={onSave} />
+    
+    case 'lead_phone':
+    case 'company_phone':
+      return (
+        <EditableCell
+          value={contact[key] || ''}
+          contactId={contact.id}
+          field={key}
+          onSave={onSave}
+        />
+      )
+    
+    case 'context':
+      const contextValue = contact.context || ''
+      return (
+        <span className="text-crm-text-muted truncate block max-w-[180px]" title={contextValue}>
+          {contextValue || '-'}
+        </span>
+      )
+    
+    case 'next_touchpoint':
+      return <span className="text-crm-text-muted">{formatDate(contact.next_touchpoint)}</span>
+    
+    case 'created_at':
+      return <span className="text-crm-text-muted">{formatDate(contact.created_at)}</span>
+    
+    case 'lead_source':
+      return contact.lead_source ? (
+        <span className="text-xs px-2 py-1 bg-crm-card-hover rounded-full text-crm-text-muted">
+          {contact.lead_source}
+        </span>
+      ) : (
+        <span className="text-crm-text-muted">-</span>
+      )
+    
+    case 'industry':
+      return (
+        <EditableCell
+          value={contact.industry || ''}
+          contactId={contact.id}
+          field="industry"
+          onSave={onSave}
+        />
+      )
+    
+    case 'assignee':
+      return (
+        <EditableCell
+          value={contact.assignee || ''}
+          contactId={contact.id}
+          field="assignee"
+          onSave={onSave}
+        />
+      )
+    
+    default:
+      return <span className="text-crm-text-muted truncate">-</span>
+  }
+}
+
+export default function ContactsTable({ 
+  contacts, 
+  onContactSelect, 
+  onContactUpdate,
+  sort,
+  onSortChange,
+}: ContactsTableProps) {
+  return (
+    <div className="h-full overflow-auto bg-crm-card rounded-xl border border-crm-border">
+      <table className="w-full" style={{ minWidth: '2400px' }}>
+        <thead className="sticky top-0 bg-crm-bg z-10">
           <tr>
-            <th className="text-left px-4 py-3 text-xs font-medium text-rillation-text-muted uppercase tracking-wider">
-              Contact
-            </th>
-            <th className="text-left px-4 py-3 text-xs font-medium text-rillation-text-muted uppercase tracking-wider">
-              Company
-            </th>
-            <th className="text-left px-4 py-3 text-xs font-medium text-rillation-text-muted uppercase tracking-wider">
-              Stage
-            </th>
-            <th className="text-left px-4 py-3 text-xs font-medium text-rillation-text-muted uppercase tracking-wider">
-              Email
-            </th>
-            <th className="text-left px-4 py-3 text-xs font-medium text-rillation-text-muted uppercase tracking-wider">
-              Phone
-            </th>
-            <th className="text-left px-4 py-3 text-xs font-medium text-rillation-text-muted uppercase tracking-wider">
-              Next Touchpoint
-            </th>
-            <th className="text-left px-4 py-3 text-xs font-medium text-rillation-text-muted uppercase tracking-wider">
-              Source
-            </th>
+            {COLUMNS.map((column) => (
+              <th
+                key={column.key}
+                className={`text-left px-3 py-3 text-xs font-medium text-crm-text-muted uppercase tracking-wider ${column.width} whitespace-nowrap border-b border-crm-border`}
+              >
+                <SortableHeader
+                  label={column.label}
+                  field={column.key}
+                  sortable={column.sortable}
+                  currentSort={sort}
+                  onSort={onSortChange}
+                />
+              </th>
+            ))}
           </tr>
         </thead>
-        <tbody className="divide-y divide-rillation-border/30">
+        <tbody className="divide-y divide-crm-border/50">
           {contacts.length === 0 ? (
             <tr>
-              <td colSpan={7} className="px-4 py-12 text-center text-rillation-text-muted">
+              <td colSpan={COLUMNS.length} className="px-4 py-12 text-center text-crm-text-muted">
                 No contacts found
               </td>
             </tr>
@@ -191,74 +482,20 @@ export default function ContactsTable({ contacts, onContactSelect, onContactUpda
             contacts.map((contact, index) => (
               <motion.tr
                 key={contact.id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.02 }}
-                className="group hover:bg-rillation-card-hover/50 transition-colors cursor-pointer"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: Math.min(index * 0.01, 0.5) }}
+                className="group hover:bg-crm-card-hover/50 transition-colors cursor-pointer"
                 onClick={() => onContactSelect(contact)}
               >
-                <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-rillation-card-hover border border-rillation-border rounded-full flex items-center justify-center flex-shrink-0">
-                      <span className="text-xs font-medium text-rillation-text-muted">
-                        {contact.first_name?.[0] || contact.full_name?.[0] || '?'}
-                        {contact.last_name?.[0] || ''}
-                      </span>
-                    </div>
-                    <div>
-                      <EditableCell
-                        value={contact.full_name || ''}
-                        contactId={contact.id}
-                        field="full_name"
-                        onSave={onContactUpdate}
-                      />
-                      {contact.job_title && (
-                        <div className="text-xs text-rillation-text-muted mt-0.5">
-                          {contact.job_title}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </td>
-                <td className="px-4 py-3 text-sm text-rillation-text" onClick={(e) => e.stopPropagation()}>
-                  <EditableCell
-                    value={contact.company || ''}
-                    contactId={contact.id}
-                    field="company"
-                    onSave={onContactUpdate}
-                  />
-                </td>
-                <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
-                  <StageCell contact={contact} onSave={onContactUpdate} />
-                </td>
-                <td className="px-4 py-3 text-sm text-rillation-text-muted">
-                  {contact.email}
-                </td>
-                <td className="px-4 py-3 text-sm text-rillation-text-muted" onClick={(e) => e.stopPropagation()}>
-                  <EditableCell
-                    value={contact.lead_phone || ''}
-                    contactId={contact.id}
-                    field="lead_phone"
-                    onSave={onContactUpdate}
-                  />
-                </td>
-                <td className="px-4 py-3 text-sm text-rillation-text-muted">
-                  {contact.next_touchpoint
-                    ? new Date(contact.next_touchpoint).toLocaleDateString('en-US', {
-                        month: 'short',
-                        day: 'numeric',
-                      })
-                    : '-'}
-                </td>
-                <td className="px-4 py-3">
-                  {contact.lead_source ? (
-                    <span className="text-xs px-2 py-1 bg-rillation-card-hover rounded-full text-rillation-text-muted">
-                      {contact.lead_source}
-                    </span>
-                  ) : (
-                    <span className="text-rillation-text-muted">-</span>
-                  )}
-                </td>
+                {COLUMNS.map((column) => (
+                  <td
+                    key={column.key}
+                    className={`px-3 py-2.5 text-sm text-crm-text ${column.width}`}
+                  >
+                    {getCellValue(contact, column, onContactUpdate, () => onContactSelect(contact))}
+                  </td>
+                ))}
               </motion.tr>
             ))
           )}
