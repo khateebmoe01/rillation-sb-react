@@ -2,7 +2,6 @@ import { useState, memo, useRef, useCallback, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ChevronDown, ChevronUp, Check, Loader2, ExternalLink, Calendar, GripVertical, Mail, Phone, Copy, ChevronRight, Columns, Eye, EyeOff, Minus, Maximize2 } from 'lucide-react'
 import { CRM_STAGES, type CRMContact, type CRMSort } from '../../types/crm'
-import ContactHoverCard from './ContactHoverCard'
 import {
   DndContext,
   closestCenter,
@@ -1037,54 +1036,7 @@ export default function ContactsTable({
   // Minimized columns state with localStorage persistence
   const [minimizedColumns, setMinimizedColumns] = useState<Set<string>>(getInitialMinimizedColumns)
 
-  // Hover card state
-  const [hoveredContact, setHoveredContact] = useState<CRMContact | null>(null)
-  const [hoverPosition, setHoverPosition] = useState<{ top: number; left: number }>({ top: 0, left: 0 })
-  const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null)
-
-  // Handle row hover with delay
-  const handleRowMouseEnter = useCallback((contact: CRMContact, event: React.MouseEvent) => {
-    const rowElement = event.currentTarget as HTMLElement
-    const rect = rowElement.getBoundingClientRect()
-    
-    // Clear any existing timeout
-    if (hoverTimeoutRef.current) {
-      clearTimeout(hoverTimeoutRef.current)
-    }
-    
-    // Set a delay before showing the hover card
-    hoverTimeoutRef.current = setTimeout(() => {
-      // Position the card to the right of the viewport, or to the left if not enough space
-      const cardWidth = 320
-      const viewportWidth = window.innerWidth
-      const left = rect.right + 10 + cardWidth > viewportWidth 
-        ? Math.max(10, rect.left - cardWidth - 10)
-        : rect.right + 10
-      
-      setHoverPosition({
-        top: Math.max(10, Math.min(rect.top, window.innerHeight - 400)),
-        left,
-      })
-      setHoveredContact(contact)
-    }, 150) // Quick 150ms delay
-  }, [])
-
-  const handleRowMouseLeave = useCallback(() => {
-    if (hoverTimeoutRef.current) {
-      clearTimeout(hoverTimeoutRef.current)
-      hoverTimeoutRef.current = null
-    }
-    setHoveredContact(null)
-  }, [])
-
-  // Cleanup timeout on unmount
-  useEffect(() => {
-    return () => {
-      if (hoverTimeoutRef.current) {
-        clearTimeout(hoverTimeoutRef.current)
-      }
-    }
-  }, [])
+  // Hover card disabled - was causing glitchy behavior
   
   // Get ordered and visible columns
   const orderedColumns = columnOrder
@@ -1380,8 +1332,6 @@ export default function ContactsTable({
                   onSelectedRowChange?.(index)
                   onContactSelect(contact)
                 }}
-                onMouseEnter={(e) => handleRowMouseEnter(contact, e)}
-                onMouseLeave={handleRowMouseLeave}
                 ref={(el) => {
                   // Scroll selected row into view
                   if (isSelected && el) {
@@ -1440,19 +1390,6 @@ export default function ContactsTable({
         )}
       </div>
 
-      {/* Hover Card Portal */}
-      <AnimatePresence>
-        {hoveredContact && (
-          <ContactHoverCard
-            contact={hoveredContact}
-            position={hoverPosition}
-            onOpenDetail={() => {
-              setHoveredContact(null)
-              onContactSelect(hoveredContact)
-            }}
-          />
-        )}
-      </AnimatePresence>
     </div>
   )
 }
