@@ -843,23 +843,15 @@ function getCellValue(
   switch (key) {
     case 'full_name':
       return (
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-rillation-card-hover border border-rillation-border rounded-full flex items-center justify-center flex-shrink-0">
-            <span className="text-xs font-medium text-rillation-text-muted">
-              {contact.first_name?.[0] || contact.full_name?.[0] || '?'}
-              {contact.last_name?.[0] || ''}
-            </span>
-          </div>
-          <button
-            onClick={(e) => {
-              e.stopPropagation()
-              onSelect()
-            }}
-            className="text-left hover:text-blue-400 transition-colors truncate text-rillation-text"
-          >
-            {contact.full_name || contact.email}
-          </button>
-        </div>
+        <button
+          onClick={(e) => {
+            e.stopPropagation()
+            onSelect()
+          }}
+          className="text-left hover:text-blue-400 transition-none truncate text-rillation-text"
+        >
+          {contact.full_name || contact.email}
+        </button>
       )
     
     case 'company':
