@@ -174,7 +174,7 @@ export default function CRMView() {
             <input
               ref={searchInputRef}
               type="text"
-              placeholder="🔍 Find a record..."
+              placeholder="Find a record..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-9 pr-3 py-1.5 bg-slate-900 border border-slate-700 rounded-lg text-sm text-white placeholder:text-blue-300/40 focus:outline-none focus:border-blue-400/50 w-48 transition-none"
