@@ -294,9 +294,9 @@ const EditableCell = memo(({ value, contactId, field, onSave, rowIndex, totalRow
           onKeyDown={handleKeyDown}
           onBlur={() => handleSave(false)}
           autoFocus
-          className="w-full px-2 py-1 bg-rillation-bg border border-rillation-text-muted rounded text-sm text-rillation-text focus:outline-none"
+          className="w-full px-2 py-1 bg-slate-900 border border-slate-600 rounded text-sm text-white focus:outline-none"
         />
-        {isSaving && <Loader2 size={14} className="animate-spin text-rillation-text-muted" />}
+        {isSaving && <Loader2 size={14} className="animate-spin text-slate-300" />}
       </div>
     )
   }
@@ -310,7 +310,7 @@ const EditableCell = memo(({ value, contactId, field, onSave, rowIndex, totalRow
         e.stopPropagation()
         setIsEditing(true)
       }}
-      className="cursor-text hover:bg-rillation-card-hover px-2 py-1 -mx-2 -my-1 rounded transition-colors truncate block"
+      className="cursor-text hover:bg-slate-700/50 px-2 py-1 -mx-2 -my-1 rounded transition-colors truncate block"
     >
       {value || '-'}
     </span>
@@ -351,12 +351,12 @@ const StageCell = memo(({ contact, onSave }: StageCellProps) => {
           className="w-2.5 h-2.5 rounded-full flex-shrink-0"
           style={{ backgroundColor: currentStage.color }}
         />
-        <span className="text-rillation-text truncate">{currentStage.label}</span>
+        <span className="text-white truncate">{currentStage.label}</span>
         {isSaving ? (
           <Loader2 size={12} className="animate-spin flex-shrink-0" />
         ) : (
           <motion.div animate={{ rotate: isOpen ? 180 : 0 }} transition={{ duration: 0.2 }}>
-            <ChevronDown size={12} className="text-rillation-text-muted flex-shrink-0" />
+            <ChevronDown size={12} className="text-slate-300 flex-shrink-0" />
           </motion.div>
         )}
       </motion.button>
@@ -444,17 +444,17 @@ function SortableHeader({ label, field, sortable, currentSort, onSort }: Sortabl
   return (
     <button
       onClick={handleClick}
-      className="flex items-center gap-1 text-rillation-text hover:opacity-80 transition-opacity group"
+      className="flex items-center gap-1 text-white hover:opacity-80 transition-opacity group"
     >
       <span>{label}</span>
       <div className="flex flex-col">
         <ChevronUp 
           size={10} 
-          className={`-mb-1 ${isActive && direction === 'asc' ? 'text-rillation-text' : 'text-rillation-text/40 group-hover:text-rillation-text/60'}`} 
+          className={`-mb-1 ${isActive && direction === 'asc' ? 'text-white' : 'text-white/40 group-hover:text-white/60'}`} 
         />
         <ChevronDown 
           size={10} 
-          className={`${isActive && direction === 'desc' ? 'text-rillation-text' : 'text-rillation-text/40 group-hover:text-rillation-text/60'}`} 
+          className={`${isActive && direction === 'desc' ? 'text-white' : 'text-white/40 group-hover:text-white/60'}`} 
         />
       </div>
     </button>
@@ -512,8 +512,8 @@ function ColumnResizeHandle({ onResize }: ColumnResizeHandleProps) {
       onMouseDown={handleMouseDown}
       className={`absolute right-0 top-0 bottom-0 w-1 cursor-col-resize transition-colors ${
         isResizing 
-          ? 'bg-rillation-text-muted' 
-          : 'hover:bg-rillation-text-muted/50 group-hover:bg-rillation-text-muted/30'
+          ? 'bg-slate-400' 
+          : 'hover:bg-slate-500/50 group-hover:bg-slate-500/30'
       }`}
       style={{ zIndex: 10 }}
     >
@@ -572,11 +572,11 @@ function DraggableColumnHeader({ column, sort, onSortChange, width, onResize, is
       <div
         ref={setNodeRef}
         style={style}
-        className={`group flex-shrink-0 flex items-center justify-center py-3 cursor-pointer hover:bg-rillation-card-hover transition-colors ${isDragging ? 'bg-rillation-card-hover rounded' : ''}`}
+        className={`group flex-shrink-0 flex items-center justify-center py-3 cursor-pointer hover:bg-slate-700/50 transition-colors ${isDragging ? 'bg-slate-700/50 rounded' : ''}`}
         onClick={handleDoubleClick}
         title={`Expand ${column.label}`}
       >
-        <Maximize2 size={12} className="text-rillation-text-muted" />
+        <Maximize2 size={12} className="text-slate-300" />
       </div>
     )
   }
@@ -585,14 +585,14 @@ function DraggableColumnHeader({ column, sort, onSortChange, width, onResize, is
     <div
       ref={setNodeRef}
       style={style}
-      className={`group flex-shrink-0 text-left px-3 py-3 text-xs font-medium text-rillation-text tracking-wide whitespace-nowrap flex items-center gap-1 relative ${isDragging ? 'bg-rillation-card-hover rounded' : ''}`}
+      className={`group flex-shrink-0 text-left px-3 py-3 text-xs font-medium text-white tracking-wide whitespace-nowrap flex items-center gap-1 relative ${isDragging ? 'bg-slate-700/50 rounded' : ''}`}
       onDoubleClick={handleDoubleClick}
       title={column.key !== 'full_name' ? 'Double-click to minimize' : undefined}
     >
       <div
         {...attributes}
         {...listeners}
-        className="cursor-grab active:cursor-grabbing p-0.5 -ml-1 hover:bg-rillation-card-hover rounded opacity-40 hover:opacity-100 transition-opacity"
+        className="cursor-grab active:cursor-grabbing p-0.5 -ml-1 hover:bg-slate-700/50 rounded opacity-40 hover:opacity-100 transition-opacity"
       >
         <GripVertical size={12} />
       </div>
@@ -610,10 +610,10 @@ function DraggableColumnHeader({ column, sort, onSortChange, width, onResize, is
             e.stopPropagation()
             onToggleMinimize(column.key)
           }}
-          className="opacity-0 group-hover:opacity-100 p-0.5 hover:bg-rillation-card-hover rounded transition-opacity ml-auto"
+          className="opacity-0 group-hover:opacity-100 p-0.5 hover:bg-slate-700/50 rounded transition-opacity ml-auto"
           title="Minimize column"
         >
-          <Minus size={10} className="text-rillation-text-muted" />
+          <Minus size={10} className="text-slate-300" />
         </button>
       )}
       <ColumnResizeHandle onResize={handleResize} />
@@ -623,7 +623,7 @@ function DraggableColumnHeader({ column, sort, onSortChange, width, onResize, is
 
 // Link cell component
 function LinkCell({ url, label }: { url?: string | null; label?: string }) {
-  if (!url) return <span className="text-rillation-text-muted">-</span>
+  if (!url) return <span className="text-slate-300">-</span>
 
   const href = url.startsWith('http') ? url : `https://${url}`
   const displayText = label || (url.includes('linkedin') ? 'Profile' : new URL(href).hostname.replace('www.', ''))
@@ -687,7 +687,7 @@ const RowQuickActions = memo(({ contact, onSave, onSelect }: RowQuickActionsProp
 
   return (
     <div 
-      className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-rillation-card/90 backdrop-blur-sm rounded-lg px-1 py-0.5 border border-rillation-border shadow-lg"
+      className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-900/90 backdrop-blur-sm rounded-lg px-1 py-0.5 border border-slate-700 shadow-lg"
       onClick={(e) => e.stopPropagation()}
     >
       {/* Copy Email */}
@@ -695,13 +695,13 @@ const RowQuickActions = memo(({ contact, onSave, onSelect }: RowQuickActionsProp
           <motion.button
             whileTap={{ scale: 0.95 }}
             onClick={handleCopyEmail}
-            className="p-1.5 rounded-md hover:bg-rillation-card-hover transition-none"
+            className="p-1.5 rounded-md hover:bg-slate-700/50 transition-none"
             title={isCopied ? 'Copied!' : 'Copy email'}
           >
           {isCopied ? (
             <Check size={14} className="text-green-400" />
           ) : (
-            <Copy size={14} className="text-rillation-text-muted" />
+            <Copy size={14} className="text-slate-300" />
           )}
         </motion.button>
       )}
@@ -712,10 +712,10 @@ const RowQuickActions = memo(({ contact, onSave, onSelect }: RowQuickActionsProp
           href={`mailto:${contact.email}`}
           whileTap={{ scale: 0.95 }}
           onClick={(e) => e.stopPropagation()}
-          className="p-1.5 rounded-md hover:bg-rillation-card-hover transition-none"
+          className="p-1.5 rounded-md hover:bg-slate-700/50 transition-none"
           title="Send email"
         >
-          <Mail size={14} className="text-rillation-text-muted" />
+          <Mail size={14} className="text-slate-300" />
         </motion.a>
       )}
 
@@ -725,10 +725,10 @@ const RowQuickActions = memo(({ contact, onSave, onSelect }: RowQuickActionsProp
           href={`tel:${contact.lead_phone}`}
           whileTap={{ scale: 0.95 }}
           onClick={(e) => e.stopPropagation()}
-          className="p-1.5 rounded-md hover:bg-rillation-card-hover transition-none"
+          className="p-1.5 rounded-md hover:bg-slate-700/50 transition-none"
           title="Call"
         >
-          <Phone size={14} className="text-rillation-text-muted" />
+          <Phone size={14} className="text-slate-300" />
         </motion.a>
       )}
 
@@ -738,18 +738,18 @@ const RowQuickActions = memo(({ contact, onSave, onSelect }: RowQuickActionsProp
           whileTap={{ scale: 0.95 }}
           onClick={handleAdvanceStage}
           disabled={isUpdating}
-          className="flex items-center gap-1 px-2 py-1 rounded-md hover:bg-rillation-card-hover transition-none text-xs"
+          className="flex items-center gap-1 px-2 py-1 rounded-md hover:bg-slate-700/50 transition-none text-xs"
           title={`Move to ${nextStage.label}`}
         >
           {isUpdating ? (
-            <Loader2 size={12} className="animate-spin text-rillation-text-muted" />
+            <Loader2 size={12} className="animate-spin text-slate-300" />
           ) : (
             <>
               <div 
                 className="w-2 h-2 rounded-full"
                 style={{ backgroundColor: nextStage.color }}
               />
-              <ChevronRight size={12} className="text-rillation-text-muted" />
+              <ChevronRight size={12} className="text-slate-300" />
             </>
           )}
         </motion.button>
@@ -762,7 +762,7 @@ const RowQuickActions = memo(({ contact, onSave, onSelect }: RowQuickActionsProp
           e.stopPropagation()
           onSelect()
         }}
-        className="px-2 py-1 rounded-md bg-rillation-green/20 hover:bg-rillation-green/30 transition-none text-xs text-rillation-text"
+        className="px-2 py-1 rounded-md bg-emerald-500/20 hover:bg-emerald-500/30 transition-none text-xs text-white"
       >
         View
       </motion.button>
@@ -830,7 +830,7 @@ const EstimatedValueCell = memo(({ contact, onSave }: EstimatedValueCellProps) =
           onBlur={handleSave}
           autoFocus
           placeholder="0"
-          className="w-20 px-1 py-0.5 bg-rillation-bg border border-green-500/50 rounded text-sm text-green-400 focus:outline-none"
+          className="w-20 px-1 py-0.5 bg-slate-900 border border-green-500/50 rounded text-sm text-green-400 focus:outline-none"
         />
         {isSaving && <Loader2 size={12} className="animate-spin text-green-400" />}
       </div>
@@ -845,8 +845,8 @@ const EstimatedValueCell = memo(({ contact, onSave }: EstimatedValueCellProps) =
         setEditValue(String(value || ''))
         setIsEditing(true)
       }}
-      className={`cursor-text px-2 py-1 -mx-2 -my-1 rounded transition-none hover:bg-rillation-card-hover ${
-        value > 0 ? 'text-green-400 font-medium' : 'text-rillation-text-muted'
+      className={`cursor-text px-2 py-1 -mx-2 -my-1 rounded transition-none hover:bg-slate-700/50 ${
+        value > 0 ? 'text-green-400 font-medium' : 'text-slate-300'
       }`}
     >
       {formatCurrency(value)}
@@ -888,7 +888,7 @@ function getCellValue(
             e.stopPropagation()
             onSelect()
           }}
-          className="text-left hover:text-blue-400 transition-none truncate text-rillation-text"
+          className="text-left hover:text-blue-400 transition-none truncate text-white"
         >
           {contact.full_name || contact.email}
         </button>
@@ -925,27 +925,27 @@ function getCellValue(
     case 'context':
       const contextValue = contact.context || ''
       return (
-        <span className="text-rillation-text-muted truncate block max-w-[180px]" title={contextValue}>
+        <span className="text-slate-300 truncate block max-w-[180px]" title={contextValue}>
           {contextValue || '-'}
         </span>
       )
     
     case 'next_touchpoint':
-      return <span className="text-rillation-text-muted">{formatDate(contact.next_touchpoint)}</span>
+      return <span className="text-slate-300">{formatDate(contact.next_touchpoint)}</span>
     
     case 'created_at':
-      return <span className="text-rillation-text-muted">{formatDate(contact.created_at)}</span>
+      return <span className="text-slate-300">{formatDate(contact.created_at)}</span>
     
     case 'estimated_value':
       return <EstimatedValueCell contact={contact} onSave={onEstimatedValueUpdate} />
     
     case 'lead_source':
       return contact.lead_source ? (
-        <span className="text-xs px-2 py-1 bg-rillation-card-hover rounded-full text-rillation-text-muted">
+        <span className="text-xs px-2 py-1 bg-slate-700/50 rounded-full text-slate-300">
           {contact.lead_source}
         </span>
       ) : (
-        <span className="text-rillation-text-muted">-</span>
+        <span className="text-slate-300">-</span>
       )
     
     case 'industry':
@@ -1177,21 +1177,20 @@ export default function ContactsTable({
   const firstColumnWidth = firstColumn ? (columnWidths[firstColumn.key] || DEFAULT_COLUMN_WIDTHS[firstColumn.key] || 176) : 176
 
   return (
-    <div className="h-full min-h-0 bg-rillation-card rounded-xl border border-rillation-border overflow-auto">
+    <div className="h-full min-h-0 bg-slate-800 rounded-xl border border-slate-700/50 overflow-auto">
       {/* Sticky Header - stays at top when scrolling vertically */}
       <div 
-        className="sticky top-0 z-30 border-b border-rillation-border flex"
-        style={{ backgroundColor: '#0d1117' }}
+        className="sticky top-0 z-30 border-b border-slate-700/50 flex bg-slate-900"
       >
         {/* Column Picker Button */}
-        <div className="flex-shrink-0 px-2 py-2 flex items-center border-r border-rillation-border/50 relative">
+        <div className="flex-shrink-0 px-2 py-2 flex items-center border-r border-slate-700/50 relative">
           <motion.button
             whileTap={{ scale: 0.95 }}
             onClick={() => setShowColumnPicker(!showColumnPicker)}
             className={`p-2 rounded-lg transition-none ${
               showColumnPicker 
-                ? 'bg-rillation-green/20 text-rillation-green' 
-                : 'hover:bg-rillation-card-hover text-rillation-text-muted hover:text-rillation-text'
+                ? 'bg-emerald-500/20 text-emerald-400' 
+                : 'hover:bg-slate-700/50 text-slate-300 hover:text-white'
             }`}
             title="Toggle columns"
           >
@@ -1274,8 +1273,8 @@ export default function ContactsTable({
         </div>
         {/* Sticky first column header */}
         {firstColumn && (
-          <div 
-            className={`flex-shrink-0 sticky left-0 z-20 bg-[#0d1117] transition-shadow ${
+          <div
+            className={`flex-shrink-0 sticky left-0 z-20 bg-slate-900 transition-shadow ${
               isScrolled ? 'shadow-[4px_0_8px_-2px_rgba(0,0,0,0.4)]' : ''
             }`}
             style={{ width: `${firstColumnWidth}px` }}
@@ -1360,8 +1359,8 @@ export default function ContactsTable({
                     : 'rgba(255, 255, 255, 0.03)'
                 }}
                 transition={{ duration: 0 }}
-                className={`flex group cursor-pointer border-b border-rillation-border/50 relative ${
-                  isSelected ? 'ring-1 ring-inset ring-rillation-green/50' : ''
+                className={`flex group cursor-pointer border-b border-slate-700/50 relative ${
+                  isSelected ? 'ring-1 ring-inset ring-emerald-500/50' : ''
                 }`}
                 onClick={() => {
                   onSelectedRowChange?.(index)
@@ -1381,16 +1380,16 @@ export default function ContactsTable({
                   onSelect={() => onContactSelect(contact)}
                 />
                 {/* Spacer to align with column picker button in header */}
-                <div className="flex-shrink-0 px-2 py-2 flex items-center border-r border-rillation-border/50">
+                <div className="flex-shrink-0 px-2 py-2 flex items-center border-r border-slate-700/50">
                   <div className="p-2 w-4" />
                 </div>
                 {/* Sticky first column cell */}
                 {firstColumn && (
                   <div
-                    className={`flex-shrink-0 sticky left-0 z-10 px-3 py-4 text-sm text-rillation-text transition-all ${
+                    className={`flex-shrink-0 sticky left-0 z-10 px-3 py-4 text-sm text-white transition-all ${
                       isSelected 
-                        ? 'bg-rillation-green/20' 
-                        : 'bg-rillation-card group-hover:bg-rillation-card-hover/50'
+                        ? 'bg-emerald-500/20' 
+                        : 'bg-slate-800 group-hover:bg-slate-700/50'
                     } ${isScrolled ? 'shadow-[4px_0_8px_-2px_rgba(0,0,0,0.4)]' : ''}`}
                     style={{ width: `${firstColumnWidth}px` }}
                   >
@@ -1406,7 +1405,7 @@ export default function ContactsTable({
                     return (
                       <div
                         key={column.key}
-                        className={`flex-shrink-0 text-sm text-rillation-text ${isMinimized ? 'px-1 py-4' : 'px-3 py-4'}`}
+                        className={`flex-shrink-0 text-sm text-white ${isMinimized ? 'px-1 py-4' : 'px-3 py-4'}`}
                         style={{ width: `${width}px` }}
                         title={isMinimized ? column.label : undefined}
                       >

@@ -153,7 +153,7 @@ export default function CRMView() {
   }, [contacts.length])
 
   return (
-    <div className="h-full flex flex-col" style={{ backgroundColor: '#0c1929' }}>
+    <div className="h-full flex flex-col bg-black">
       {/* Top Bar - Airtable Style */}
       <div className="flex-shrink-0 bg-[#0f2847] border-b border-[#1e3a5f] mt-2 mx-4 rounded-xl">
         {/* Primary Row */}
@@ -177,7 +177,7 @@ export default function CRMView() {
               placeholder="🔍 Find a record..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9 pr-3 py-1.5 bg-[#0c1929] border border-[#1e3a5f] rounded-lg text-sm text-rillation-text placeholder:text-blue-300/40 focus:outline-none focus:border-blue-400/50 w-48 transition-none"
+              className="pl-9 pr-3 py-1.5 bg-slate-900 border border-slate-700 rounded-lg text-sm text-white placeholder:text-blue-300/40 focus:outline-none focus:border-blue-400/50 w-48 transition-none"
             />
             {searchQuery && (
               <button
