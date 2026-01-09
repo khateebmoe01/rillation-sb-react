@@ -152,32 +152,32 @@ export default function CRMView() {
   }, [contacts.length])
 
   return (
-    <div className="h-full flex flex-col bg-crm-bg p-6">
+    <div className="h-full flex flex-col bg-rillation-bg p-6">
       {/* Header - Single Row */}
       <div className="flex-shrink-0 mb-4 flex flex-wrap items-center gap-3">
         {/* Title */}
-        <h1 className="text-xl font-bold text-crm-text mr-2">CRM</h1>
+        <h1 className="text-xl font-bold text-rillation-text mr-2">CRM</h1>
 
         {/* Search with count */}
         <div className="relative flex items-center">
-          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-crm-text-muted" />
+          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-rillation-text-muted" />
           <input
             ref={searchInputRef}
             type="text"
             placeholder="Search..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9 pr-3 py-1.5 bg-crm-card border border-crm-border rounded-lg text-sm text-crm-text placeholder:text-crm-text-muted focus:outline-none focus:border-crm-text-muted w-36 sm:w-48 transition-colors"
+            className="pl-9 pr-3 py-1.5 bg-rillation-card border border-rillation-border rounded-lg text-sm text-rillation-text placeholder:text-rillation-text-muted focus:outline-none focus:border-rillation-text-muted w-36 sm:w-48 transition-colors"
           />
           {searchQuery && (
             <button
               onClick={() => setSearchQuery('')}
-              className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 hover:bg-crm-card-hover rounded"
+              className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 hover:bg-rillation-card-hover rounded"
             >
-              <X size={12} className="text-crm-text-muted" />
+              <X size={12} className="text-rillation-text-muted" />
             </button>
           )}
-          <span className="ml-2 text-sm text-crm-text-muted whitespace-nowrap">
+          <span className="ml-2 text-sm text-rillation-text-muted whitespace-nowrap">
             {contacts.length} contacts
           </span>
         </div>
@@ -193,13 +193,13 @@ export default function CRMView() {
         <div className="flex-1" />
 
         {/* View Toggle */}
-        <div className="flex items-center bg-crm-card border border-crm-border rounded-lg p-0.5">
+        <div className="flex items-center bg-rillation-card border border-rillation-border rounded-lg p-0.5">
           <button
             onClick={() => setViewMode('kanban')}
             className={`p-1.5 rounded-md transition-all ${
               viewMode === 'kanban'
-                ? 'bg-crm-card-hover text-crm-text'
-                : 'text-crm-text-muted hover:text-crm-text'
+                ? 'bg-rillation-card-hover text-rillation-text'
+                : 'text-rillation-text-muted hover:text-rillation-text'
             }`}
             title="Kanban view"
           >
@@ -209,8 +209,8 @@ export default function CRMView() {
             onClick={() => setViewMode('list')}
             className={`p-1.5 rounded-md transition-all ${
               viewMode === 'list'
-                ? 'bg-crm-card-hover text-crm-text'
-                : 'text-crm-text-muted hover:text-crm-text'
+                ? 'bg-rillation-card-hover text-rillation-text'
+                : 'text-rillation-text-muted hover:text-rillation-text'
             }`}
             title="List view"
           >
@@ -223,7 +223,7 @@ export default function CRMView() {
           whileHover={{ scale: 1.03, boxShadow: '0 4px 20px rgba(34, 197, 94, 0.3)' }}
           whileTap={{ scale: 0.97 }}
           onClick={() => setIsAddModalOpen(true)}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-crm-checkbox text-white font-medium rounded-lg hover:bg-crm-checkbox-hover transition-colors text-sm"
+          className="flex items-center gap-1.5 px-3 py-1.5 bg-rillation-green text-white font-medium rounded-lg hover:bg-rillation-green/80 transition-colors text-sm"
           title="Press 'n' to add a new contact"
         >
           <motion.div
@@ -247,7 +247,7 @@ export default function CRMView() {
       {/* Loading State */}
       {loading && (
         <div className="flex-1 flex items-center justify-center">
-          <div className="w-8 h-8 border-2 border-crm-text border-t-transparent rounded-full animate-spin" />
+          <div className="w-8 h-8 border-2 border-rillation-text border-t-transparent rounded-full animate-spin" />
         </div>
       )}
 

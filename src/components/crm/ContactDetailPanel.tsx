@@ -61,20 +61,20 @@ interface CollapsibleSectionProps {
 
 function CollapsibleSection({ id, title, icon, isOpen, onToggle, children, badge }: CollapsibleSectionProps) {
   return (
-    <div className="border border-crm-border/50 rounded-xl overflow-hidden">
+    <div className="border border-rillation-border/50 rounded-xl overflow-hidden">
       <motion.button
         onClick={() => onToggle(id)}
-        className="w-full flex items-center gap-2 px-4 py-3 bg-crm-bg/30 hover:bg-crm-bg/50 transition-colors text-left"
+        className="w-full flex items-center gap-2 px-4 py-3 bg-rillation-bg/30 hover:bg-rillation-bg/50 transition-colors text-left"
         whileTap={{ scale: 0.995 }}
       >
         <motion.div
           animate={{ rotate: isOpen ? 90 : 0 }}
           transition={{ duration: 0.2 }}
         >
-          <ChevronRight size={16} className="text-crm-text-muted" />
+          <ChevronRight size={16} className="text-rillation-text-muted" />
         </motion.div>
-        <span className="text-crm-text-muted">{icon}</span>
-        <span className="text-sm font-medium text-crm-text flex-1">{title}</span>
+        <span className="text-rillation-text-muted">{icon}</span>
+        <span className="text-sm font-medium text-rillation-text flex-1">{title}</span>
         {badge}
       </motion.button>
       
@@ -86,7 +86,7 @@ function CollapsibleSection({ id, title, icon, isOpen, onToggle, children, badge
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.2 }}
           >
-            <div className="p-4 border-t border-crm-border/50">
+            <div className="p-4 border-t border-rillation-border/50">
               {children}
             </div>
           </motion.div>
@@ -138,9 +138,9 @@ function EditableField({ label, value, field, type = 'text', icon, onSave }: Edi
 
   return (
     <div className="group">
-      <label className="text-xs text-crm-text-muted mb-1 block">{label}</label>
+      <label className="text-xs text-rillation-text-muted mb-1 block">{label}</label>
       <div className="flex items-start gap-2">
-        {icon && <span className="text-crm-text-muted mt-1">{icon}</span>}
+        {icon && <span className="text-rillation-text-muted mt-1">{icon}</span>}
         {isEditing ? (
           type === 'textarea' ? (
             <textarea
@@ -150,7 +150,7 @@ function EditableField({ label, value, field, type = 'text', icon, onSave }: Edi
               onKeyDown={handleKeyDown}
               autoFocus
               rows={4}
-              className="flex-1 px-3 py-2 bg-crm-bg border border-crm-text-muted rounded-lg text-sm text-crm-text focus:outline-none resize-none"
+              className="flex-1 px-3 py-2 bg-rillation-bg border border-rillation-text-muted rounded-lg text-sm text-rillation-text focus:outline-none resize-none"
             />
           ) : (
             <input
@@ -160,13 +160,13 @@ function EditableField({ label, value, field, type = 'text', icon, onSave }: Edi
               onBlur={handleSave}
               onKeyDown={handleKeyDown}
               autoFocus
-              className="flex-1 px-3 py-2 bg-crm-bg border border-crm-text-muted rounded-lg text-sm text-crm-text focus:outline-none"
+              className="flex-1 px-3 py-2 bg-rillation-bg border border-rillation-text-muted rounded-lg text-sm text-rillation-text focus:outline-none"
             />
           )
         ) : (
           <div
             onClick={() => setIsEditing(true)}
-            className="flex-1 px-3 py-2 rounded-lg cursor-text hover:bg-crm-card-hover transition-colors text-sm min-h-[38px]"
+            className="flex-1 px-3 py-2 rounded-lg cursor-text hover:bg-rillation-card-hover transition-colors text-sm min-h-[38px]"
           >
             {value ? (
               type === 'url' && typeof value === 'string' ? (
@@ -181,10 +181,10 @@ function EditableField({ label, value, field, type = 'text', icon, onSave }: Edi
                   <ExternalLink size={12} />
                 </a>
               ) : (
-                <span className="text-crm-text whitespace-pre-wrap">{value}</span>
+                <span className="text-rillation-text whitespace-pre-wrap">{value}</span>
               )
             ) : (
-              <span className="text-crm-text-muted">Add {label.toLowerCase()}...</span>
+              <span className="text-rillation-text-muted">Add {label.toLowerCase()}...</span>
             )}
           </div>
         )}
@@ -204,22 +204,22 @@ function StageSelect({ currentStage, onSave }: StageSelectProps) {
 
   return (
     <div className="relative">
-      <label className="text-xs text-crm-text-muted mb-1 block">Stage</label>
+      <label className="text-xs text-rillation-text-muted mb-1 block">Stage</label>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center justify-between gap-2 px-3 py-2 bg-crm-card-hover border border-crm-border rounded-lg text-sm hover:border-crm-text-muted transition-colors"
+        className="w-full flex items-center justify-between gap-2 px-3 py-2 bg-rillation-card-hover border border-rillation-border rounded-lg text-sm hover:border-rillation-text-muted transition-colors"
       >
         <div className="flex items-center gap-2">
           <div className="w-3 h-3 rounded-full" style={{ backgroundColor: stage.color }} />
-          <span className="text-crm-text">{stage.label}</span>
+          <span className="text-rillation-text">{stage.label}</span>
         </div>
-        <ChevronDown size={16} className="text-crm-text-muted" />
+        <ChevronDown size={16} className="text-rillation-text-muted" />
       </button>
 
       {isOpen && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)} />
-          <div className="absolute top-full left-0 right-0 mt-1 bg-crm-card border border-crm-border rounded-lg shadow-xl z-50 py-1 max-h-64 overflow-y-auto">
+          <div className="absolute top-full left-0 right-0 mt-1 bg-rillation-card border border-rillation-border rounded-lg shadow-xl z-50 py-1 max-h-64 overflow-y-auto">
             {CRM_STAGES.map((s) => (
               <button
                 key={s.id}
@@ -227,13 +227,13 @@ function StageSelect({ currentStage, onSave }: StageSelectProps) {
                   onSave(s.id)
                   setIsOpen(false)
                 }}
-                className={`w-full flex items-center gap-2 px-3 py-2 text-sm text-left hover:bg-crm-card-hover transition-colors ${
-                  s.id === currentStage ? 'bg-crm-card-hover' : ''
+                className={`w-full flex items-center gap-2 px-3 py-2 text-sm text-left hover:bg-rillation-card-hover transition-colors ${
+                  s.id === currentStage ? 'bg-rillation-card-hover' : ''
                 }`}
               >
                 <div className="w-3 h-3 rounded-full" style={{ backgroundColor: s.color }} />
-                <span className="text-crm-text">{s.label}</span>
-                {s.id === currentStage && <Check size={14} className="ml-auto text-crm-checkbox" />}
+                <span className="text-rillation-text">{s.label}</span>
+                {s.id === currentStage && <Check size={14} className="ml-auto text-rillation-green" />}
               </button>
             ))}
           </div>
@@ -262,8 +262,8 @@ function TrackingCheckbox({ label, checked, timestamp, onToggle }: TrackingCheck
       <motion.div
         className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
           checked
-            ? 'bg-crm-checkbox border-crm-checkbox'
-            : 'border-crm-border hover:border-crm-text-muted'
+            ? 'bg-rillation-green border-rillation-green'
+            : 'border-rillation-border hover:border-rillation-text-muted'
         }`}
         animate={checked ? { scale: [1, 1.2, 1] } : { scale: 1 }}
         transition={{ duration: 0.2 }}
@@ -282,14 +282,14 @@ function TrackingCheckbox({ label, checked, timestamp, onToggle }: TrackingCheck
         </AnimatePresence>
       </motion.div>
       <div className="flex-1 text-left">
-        <span className="text-sm text-crm-text">{label}</span>
+        <span className="text-sm text-rillation-text">{label}</span>
         <AnimatePresence>
           {checked && timestamp && (
             <motion.p
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
-              className="text-xs text-crm-text-muted mt-0.5"
+              className="text-xs text-rillation-text-muted mt-0.5"
             >
               {new Date(timestamp).toLocaleDateString('en-US', {
                 month: 'short',
@@ -379,33 +379,33 @@ export default function ContactDetailPanel({ contact, onClose, onUpdate, onDelet
         animate={{ x: 0 }}
         exit={{ x: '100%' }}
         transition={{ type: 'spring', damping: 30, stiffness: 350 }}
-        className="fixed top-0 right-0 h-full w-full max-w-xl bg-crm-card border-l border-crm-border z-50 overflow-y-auto"
+        className="fixed top-0 right-0 h-full w-full max-w-xl bg-rillation-card border-l border-rillation-border z-50 overflow-y-auto"
       >
         {/* Header */}
-        <div className="sticky top-0 bg-crm-card border-b border-crm-border px-6 py-4 flex items-center justify-between z-10">
+        <div className="sticky top-0 bg-rillation-card border-b border-rillation-border px-6 py-4 flex items-center justify-between z-10">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-crm-card-hover border border-crm-border rounded-full flex items-center justify-center">
-              <span className="text-lg font-medium text-crm-text-muted">
+            <div className="w-12 h-12 bg-rillation-card-hover border border-rillation-border rounded-full flex items-center justify-center">
+              <span className="text-lg font-medium text-rillation-text-muted">
                 {contact.first_name?.[0] || contact.full_name?.[0] || '?'}
                 {contact.last_name?.[0] || ''}
               </span>
             </div>
             <div>
-              <h2 className="text-xl font-semibold text-crm-text">
+              <h2 className="text-xl font-semibold text-rillation-text">
                 {contact.full_name || contact.email}
               </h2>
               {contact.job_title && (
-                <p className="text-sm text-crm-text-muted">{contact.job_title}</p>
+                <p className="text-sm text-rillation-text-muted">{contact.job_title}</p>
               )}
             </div>
           </div>
           <div className="flex items-center gap-2">
-            {isSaving && <Loader2 size={16} className="animate-spin text-crm-text-muted" />}
+            {isSaving && <Loader2 size={16} className="animate-spin text-rillation-text-muted" />}
             <button
               onClick={onClose}
-              className="p-2 hover:bg-crm-card-hover rounded-lg transition-colors"
+              className="p-2 hover:bg-rillation-card-hover rounded-lg transition-colors"
             >
-              <X size={20} className="text-crm-text-muted" />
+              <X size={20} className="text-rillation-text-muted" />
             </button>
           </div>
         </div>
@@ -419,11 +419,11 @@ export default function ContactDetailPanel({ contact, onClose, onUpdate, onDelet
               onSave={(stage) => handleFieldSave('stage', stage)}
             />
             <div>
-              <label className="text-xs text-crm-text-muted mb-1 block">Lead Source</label>
+              <label className="text-xs text-rillation-text-muted mb-1 block">Lead Source</label>
               <select
                 value={contact.lead_source || ''}
                 onChange={(e) => handleFieldSave('lead_source', e.target.value || null)}
-                className="w-full px-3 py-2 bg-crm-card-hover border border-crm-border rounded-lg text-sm text-crm-text focus:outline-none focus:border-crm-text-muted"
+                className="w-full px-3 py-2 bg-rillation-card-hover border border-rillation-border rounded-lg text-sm text-rillation-text focus:outline-none focus:border-rillation-text-muted"
               >
                 <option value="">Select source...</option>
                 {LEAD_SOURCES.map((source) => (
@@ -441,7 +441,7 @@ export default function ContactDetailPanel({ contact, onClose, onUpdate, onDelet
             isOpen={sectionState.pipeline}
             onToggle={toggleSection}
             badge={
-              <span className="text-xs px-2 py-0.5 rounded-full bg-crm-checkbox/20 text-crm-checkbox">
+              <span className="text-xs px-2 py-0.5 rounded-full bg-rillation-green/20 text-rillation-green">
                 {pipelineCount}/7
               </span>
             }
@@ -549,7 +549,7 @@ export default function ContactDetailPanel({ contact, onClose, onUpdate, onDelet
             isOpen={sectionState.organization}
             onToggle={toggleSection}
             badge={contact.company ? (
-              <span className="text-xs text-crm-text-muted truncate max-w-[100px]">
+              <span className="text-xs text-rillation-text-muted truncate max-w-[100px]">
                 {contact.company}
               </span>
             ) : undefined}
@@ -616,7 +616,7 @@ export default function ContactDetailPanel({ contact, onClose, onUpdate, onDelet
             isOpen={sectionState.scheduling}
             onToggle={toggleSection}
             badge={contact.next_touchpoint ? (
-              <span className="text-xs text-crm-text-muted">
+              <span className="text-xs text-rillation-text-muted">
                 Next: {new Date(contact.next_touchpoint).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
               </span>
             ) : undefined}
@@ -691,10 +691,10 @@ export default function ContactDetailPanel({ contact, onClose, onUpdate, onDelet
           </CollapsibleSection>
 
           {/* Delete */}
-          <div className="pt-4 border-t border-crm-border">
+          <div className="pt-4 border-t border-rillation-border">
             {showDeleteConfirm ? (
               <div className="flex items-center gap-3">
-                <span className="text-sm text-crm-text-muted">Delete this contact?</span>
+                <span className="text-sm text-rillation-text-muted">Delete this contact?</span>
                 <button
                   onClick={handleDelete}
                   disabled={isDeleting}
@@ -705,7 +705,7 @@ export default function ContactDetailPanel({ contact, onClose, onUpdate, onDelet
                 </button>
                 <button
                   onClick={() => setShowDeleteConfirm(false)}
-                  className="px-3 py-1.5 text-crm-text-muted text-sm hover:text-crm-text transition-colors"
+                  className="px-3 py-1.5 text-rillation-text-muted text-sm hover:text-rillation-text transition-colors"
                 >
                   Cancel
                 </button>
@@ -713,7 +713,7 @@ export default function ContactDetailPanel({ contact, onClose, onUpdate, onDelet
             ) : (
               <button
                 onClick={() => setShowDeleteConfirm(true)}
-                className="flex items-center gap-2 text-sm text-crm-text-muted hover:text-red-400 transition-colors"
+                className="flex items-center gap-2 text-sm text-rillation-text-muted hover:text-red-400 transition-colors"
               >
                 <Trash2 size={14} />
                 Delete Contact
@@ -722,7 +722,7 @@ export default function ContactDetailPanel({ contact, onClose, onUpdate, onDelet
           </div>
 
           {/* Meta Info */}
-          <div className="pt-4 border-t border-crm-border text-xs text-crm-text-muted space-y-1">
+          <div className="pt-4 border-t border-rillation-border text-xs text-rillation-text-muted space-y-1">
             <p>Created: {contact.created_at ? new Date(contact.created_at).toLocaleString() : '-'}</p>
             <p>Updated: {contact.updated_at ? new Date(contact.updated_at).toLocaleString() : '-'}</p>
             {contact.campaign_name && <p>Campaign: {contact.campaign_name}</p>}

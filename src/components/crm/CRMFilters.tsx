@@ -61,8 +61,8 @@ export default function CRMFilters({ filters, onFiltersChange, uniqueAssignees }
           className={`
             flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg border transition-colors
             ${filters.stage?.length
-              ? 'bg-crm-card-hover border-crm-text-muted text-crm-text'
-              : 'bg-crm-card border-crm-border text-crm-text-muted hover:text-crm-text'
+              ? 'bg-rillation-card-hover border-rillation-text-muted text-rillation-text'
+              : 'bg-rillation-card border-rillation-border text-rillation-text-muted hover:text-rillation-text'
             }
           `}
         >
@@ -72,18 +72,18 @@ export default function CRMFilters({ filters, onFiltersChange, uniqueAssignees }
         </button>
 
         {openDropdown === 'stage' && (
-          <div className="absolute top-full left-0 mt-1 w-48 bg-crm-card border border-crm-border rounded-lg shadow-xl z-50 py-1 max-h-64 overflow-y-auto">
+          <div className="absolute top-full left-0 mt-1 w-48 bg-rillation-card border border-rillation-border rounded-lg shadow-xl z-50 py-1 max-h-64 overflow-y-auto">
             {CRM_STAGES.map((stage) => (
               <button
                 key={stage.id}
                 onClick={() => handleStageToggle(stage.id)}
-                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-left hover:bg-crm-card-hover transition-colors"
+                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-left hover:bg-rillation-card-hover transition-colors"
               >
                 <div
                   className={`w-4 h-4 rounded border flex items-center justify-center ${
                     filters.stage?.includes(stage.id)
-                      ? 'bg-crm-checkbox border-crm-checkbox'
-                      : 'border-crm-border'
+                      ? 'bg-rillation-green border-rillation-green'
+                      : 'border-rillation-border'
                   }`}
                 >
                   {filters.stage?.includes(stage.id) && (
@@ -96,7 +96,7 @@ export default function CRMFilters({ filters, onFiltersChange, uniqueAssignees }
                   className="w-2 h-2 rounded-full"
                   style={{ backgroundColor: stage.color }}
                 />
-                <span className="text-crm-text">{stage.label}</span>
+                <span className="text-rillation-text">{stage.label}</span>
               </button>
             ))}
           </div>
@@ -110,8 +110,8 @@ export default function CRMFilters({ filters, onFiltersChange, uniqueAssignees }
           className={`
             flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg border transition-colors
             ${filters.assignee
-              ? 'bg-crm-card-hover border-crm-text-muted text-crm-text'
-              : 'bg-crm-card border-crm-border text-crm-text-muted hover:text-crm-text'
+              ? 'bg-rillation-card-hover border-rillation-text-muted text-rillation-text'
+              : 'bg-rillation-card border-rillation-border text-rillation-text-muted hover:text-rillation-text'
             }
           `}
         >
@@ -120,10 +120,10 @@ export default function CRMFilters({ filters, onFiltersChange, uniqueAssignees }
         </button>
 
         {openDropdown === 'assignee' && (
-          <div className="absolute top-full left-0 mt-1 w-48 bg-crm-card border border-crm-border rounded-lg shadow-xl z-50 py-1">
+          <div className="absolute top-full left-0 mt-1 w-48 bg-rillation-card border border-rillation-border rounded-lg shadow-xl z-50 py-1">
             <button
               onClick={() => handleAssigneeChange(undefined)}
-              className="w-full px-3 py-2 text-sm text-left text-crm-text-muted hover:bg-crm-card-hover transition-colors"
+              className="w-full px-3 py-2 text-sm text-left text-rillation-text-muted hover:bg-rillation-card-hover transition-colors"
             >
               All Assignees
             </button>
@@ -131,15 +131,15 @@ export default function CRMFilters({ filters, onFiltersChange, uniqueAssignees }
               <button
                 key={assignee}
                 onClick={() => handleAssigneeChange(assignee)}
-                className={`w-full px-3 py-2 text-sm text-left hover:bg-crm-card-hover transition-colors ${
-                  filters.assignee === assignee ? 'text-white bg-crm-card-hover' : 'text-crm-text'
+                className={`w-full px-3 py-2 text-sm text-left hover:bg-rillation-card-hover transition-colors ${
+                  filters.assignee === assignee ? 'text-white bg-rillation-card-hover' : 'text-rillation-text'
                 }`}
               >
                 {assignee}
               </button>
             ))}
             {uniqueAssignees.length === 0 && (
-              <div className="px-3 py-2 text-sm text-crm-text-muted">
+              <div className="px-3 py-2 text-sm text-rillation-text-muted">
                 No assignees yet
               </div>
             )}
@@ -154,8 +154,8 @@ export default function CRMFilters({ filters, onFiltersChange, uniqueAssignees }
           className={`
             flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg border transition-colors
             ${filters.leadSource
-              ? 'bg-crm-card-hover border-crm-text-muted text-crm-text'
-              : 'bg-crm-card border-crm-border text-crm-text-muted hover:text-crm-text'
+              ? 'bg-rillation-card-hover border-rillation-text-muted text-rillation-text'
+              : 'bg-rillation-card border-rillation-border text-rillation-text-muted hover:text-rillation-text'
             }
           `}
         >
@@ -164,10 +164,10 @@ export default function CRMFilters({ filters, onFiltersChange, uniqueAssignees }
         </button>
 
         {openDropdown === 'source' && (
-          <div className="absolute top-full left-0 mt-1 w-48 bg-crm-card border border-crm-border rounded-lg shadow-xl z-50 py-1">
+          <div className="absolute top-full left-0 mt-1 w-48 bg-rillation-card border border-rillation-border rounded-lg shadow-xl z-50 py-1">
             <button
               onClick={() => handleLeadSourceChange(undefined)}
-              className="w-full px-3 py-2 text-sm text-left text-crm-text-muted hover:bg-crm-card-hover transition-colors"
+              className="w-full px-3 py-2 text-sm text-left text-rillation-text-muted hover:bg-rillation-card-hover transition-colors"
             >
               All Sources
             </button>
@@ -175,8 +175,8 @@ export default function CRMFilters({ filters, onFiltersChange, uniqueAssignees }
               <button
                 key={source}
                 onClick={() => handleLeadSourceChange(source)}
-                className={`w-full px-3 py-2 text-sm text-left hover:bg-crm-card-hover transition-colors ${
-                  filters.leadSource === source ? 'text-white bg-crm-card-hover' : 'text-crm-text'
+                className={`w-full px-3 py-2 text-sm text-left hover:bg-rillation-card-hover transition-colors ${
+                  filters.leadSource === source ? 'text-white bg-rillation-card-hover' : 'text-rillation-text'
                 }`}
               >
                 {source}
@@ -190,7 +190,7 @@ export default function CRMFilters({ filters, onFiltersChange, uniqueAssignees }
       {hasFilters && (
         <button
           onClick={clearFilters}
-          className="flex items-center gap-1 px-2 py-1.5 text-sm text-crm-text-muted hover:text-crm-text transition-colors"
+          className="flex items-center gap-1 px-2 py-1.5 text-sm text-rillation-text-muted hover:text-rillation-text transition-colors"
         >
           <X size={14} />
           Clear

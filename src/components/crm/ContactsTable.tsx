@@ -116,12 +116,12 @@ const PipelineProgressCell = memo(({ contact, onSave }: PipelineProgressCellProp
     <div className="relative" onClick={(e) => e.stopPropagation()}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 px-2 py-1 rounded-lg text-sm transition-colors hover:bg-crm-card-hover text-crm-text"
+        className="flex items-center gap-2 px-2 py-1 rounded-lg text-sm transition-colors hover:bg-rillation-card-hover text-rillation-text"
       >
-        <span className="text-xs text-crm-text-muted">
+        <span className="text-xs text-rillation-text-muted">
           {checkedCount}/{PIPELINE_STAGES.length}
         </span>
-        <ChevronDown size={14} className="text-crm-text-muted" />
+        <ChevronDown size={14} className="text-rillation-text-muted" />
       </button>
 
       {isOpen && (
@@ -130,9 +130,9 @@ const PipelineProgressCell = memo(({ contact, onSave }: PipelineProgressCellProp
             className="fixed inset-0 z-40"
             onClick={() => setIsOpen(false)}
           />
-          <div className="absolute top-full left-0 mt-1 w-72 bg-crm-card border border-crm-border rounded-lg shadow-xl z-50 py-2 max-h-96 overflow-y-auto">
-            <div className="px-3 pb-2 border-b border-crm-border mb-2">
-              <h4 className="text-xs font-semibold text-crm-text tracking-wide">Pipeline Progress</h4>
+          <div className="absolute top-full left-0 mt-1 w-72 bg-rillation-card border border-rillation-border rounded-lg shadow-xl z-50 py-2 max-h-96 overflow-y-auto">
+            <div className="px-3 pb-2 border-b border-rillation-border mb-2">
+              <h4 className="text-xs font-semibold text-rillation-text tracking-wide">Pipeline Progress</h4>
             </div>
             {PIPELINE_STAGES.map((stage) => {
               const isChecked = Boolean(contact[stage.key])
@@ -144,13 +144,13 @@ const PipelineProgressCell = memo(({ contact, onSave }: PipelineProgressCellProp
                   key={stage.key}
                   onClick={() => handleToggle(stage)}
                   disabled={isLoading}
-                  className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-crm-card-hover transition-colors text-left"
+                  className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-rillation-card-hover transition-colors text-left"
                 >
                   <div
                     className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all flex-shrink-0 ${
                       isChecked
-                        ? 'bg-crm-checkbox border-crm-checkbox'
-                        : 'border-crm-border hover:border-crm-text-muted bg-crm-card'
+                        ? 'bg-rillation-green border-rillation-green'
+                        : 'border-rillation-border hover:border-rillation-text-muted bg-rillation-card'
                     }`}
                   >
                     {isLoading ? (
@@ -160,9 +160,9 @@ const PipelineProgressCell = memo(({ contact, onSave }: PipelineProgressCellProp
                     ) : null}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="text-sm text-crm-text">{stage.label}</div>
+                    <div className="text-sm text-rillation-text">{stage.label}</div>
                     {isChecked && timestamp && (
-                      <div className="text-xs text-crm-text-muted flex items-center gap-1 mt-0.5">
+                      <div className="text-xs text-rillation-text-muted flex items-center gap-1 mt-0.5">
                         <Calendar size={11} />
                         {new Date(timestamp).toLocaleDateString('en-US', {
                           month: 'short',
@@ -260,9 +260,9 @@ const EditableCell = memo(({ value, contactId, field, onSave, rowIndex, totalRow
           onKeyDown={handleKeyDown}
           onBlur={() => handleSave(false)}
           autoFocus
-          className="w-full px-2 py-1 bg-crm-bg border border-crm-text-muted rounded text-sm text-crm-text focus:outline-none"
+          className="w-full px-2 py-1 bg-rillation-bg border border-rillation-text-muted rounded text-sm text-rillation-text focus:outline-none"
         />
-        {isSaving && <Loader2 size={14} className="animate-spin text-crm-text-muted" />}
+        {isSaving && <Loader2 size={14} className="animate-spin text-rillation-text-muted" />}
       </div>
     )
   }
@@ -276,7 +276,7 @@ const EditableCell = memo(({ value, contactId, field, onSave, rowIndex, totalRow
         e.stopPropagation()
         setIsEditing(true)
       }}
-      className="cursor-text hover:bg-crm-card-hover px-2 py-1 -mx-2 -my-1 rounded transition-colors truncate block"
+      className="cursor-text hover:bg-rillation-card-hover px-2 py-1 -mx-2 -my-1 rounded transition-colors truncate block"
     >
       {value || '-'}
     </span>
@@ -309,17 +309,17 @@ const StageCell = memo(({ contact, onSave }: StageCellProps) => {
       <button
         onClick={() => setIsOpen(!isOpen)}
         disabled={isSaving}
-        className="flex items-center gap-2 px-2 py-1 rounded-lg text-sm transition-colors hover:bg-crm-card-hover"
+        className="flex items-center gap-2 px-2 py-1 rounded-lg text-sm transition-colors hover:bg-rillation-card-hover"
       >
         <div
           className="w-2 h-2 rounded-full flex-shrink-0"
           style={{ backgroundColor: currentStage.color }}
         />
-        <span className="text-crm-text truncate">{currentStage.label}</span>
+        <span className="text-rillation-text truncate">{currentStage.label}</span>
         {isSaving ? (
           <Loader2 size={12} className="animate-spin flex-shrink-0" />
         ) : (
-          <ChevronDown size={12} className="text-crm-text-muted flex-shrink-0" />
+          <ChevronDown size={12} className="text-rillation-text-muted flex-shrink-0" />
         )}
       </button>
 
@@ -329,22 +329,22 @@ const StageCell = memo(({ contact, onSave }: StageCellProps) => {
             className="fixed inset-0 z-40"
             onClick={() => setIsOpen(false)}
           />
-          <div className="absolute top-full left-0 mt-1 w-44 bg-crm-card border border-crm-border rounded-lg shadow-xl z-50 py-1 max-h-64 overflow-y-auto">
+          <div className="absolute top-full left-0 mt-1 w-44 bg-rillation-card border border-rillation-border rounded-lg shadow-xl z-50 py-1 max-h-64 overflow-y-auto">
             {CRM_STAGES.map((stage) => (
               <button
                 key={stage.id}
                 onClick={() => handleStageChange(stage.id)}
-                className={`w-full flex items-center gap-2 px-3 py-2 text-sm text-left hover:bg-crm-card-hover transition-colors ${
-                  stage.id === contact.stage ? 'bg-crm-card-hover' : ''
+                className={`w-full flex items-center gap-2 px-3 py-2 text-sm text-left hover:bg-rillation-card-hover transition-colors ${
+                  stage.id === contact.stage ? 'bg-rillation-card-hover' : ''
                 }`}
               >
                 <div
                   className="w-2 h-2 rounded-full flex-shrink-0"
                   style={{ backgroundColor: stage.color }}
                 />
-                <span className="text-crm-text">{stage.label}</span>
+                <span className="text-rillation-text">{stage.label}</span>
                 {stage.id === contact.stage && (
-                  <Check size={14} className="ml-auto text-crm-checkbox" />
+                  <Check size={14} className="ml-auto text-rillation-green" />
                 )}
               </button>
             ))}
@@ -387,17 +387,17 @@ function SortableHeader({ label, field, sortable, currentSort, onSort }: Sortabl
   return (
     <button
       onClick={handleClick}
-      className="flex items-center gap-1 text-crm-text hover:opacity-80 transition-opacity group"
+      className="flex items-center gap-1 text-rillation-text hover:opacity-80 transition-opacity group"
     >
       <span>{label}</span>
       <div className="flex flex-col">
         <ChevronUp 
           size={10} 
-          className={`-mb-1 ${isActive && direction === 'asc' ? 'text-crm-text' : 'text-crm-text/40 group-hover:text-crm-text/60'}`} 
+          className={`-mb-1 ${isActive && direction === 'asc' ? 'text-rillation-text' : 'text-rillation-text/40 group-hover:text-rillation-text/60'}`} 
         />
         <ChevronDown 
           size={10} 
-          className={`${isActive && direction === 'desc' ? 'text-crm-text' : 'text-crm-text/40 group-hover:text-crm-text/60'}`} 
+          className={`${isActive && direction === 'desc' ? 'text-rillation-text' : 'text-rillation-text/40 group-hover:text-rillation-text/60'}`} 
         />
       </div>
     </button>
@@ -455,8 +455,8 @@ function ColumnResizeHandle({ onResize }: ColumnResizeHandleProps) {
       onMouseDown={handleMouseDown}
       className={`absolute right-0 top-0 bottom-0 w-1 cursor-col-resize transition-colors ${
         isResizing 
-          ? 'bg-crm-text-muted' 
-          : 'hover:bg-crm-text-muted/50 group-hover:bg-crm-text-muted/30'
+          ? 'bg-rillation-text-muted' 
+          : 'hover:bg-rillation-text-muted/50 group-hover:bg-rillation-text-muted/30'
       }`}
       style={{ zIndex: 10 }}
     >
@@ -515,11 +515,11 @@ function DraggableColumnHeader({ column, sort, onSortChange, width, onResize, is
       <div
         ref={setNodeRef}
         style={style}
-        className={`group flex-shrink-0 flex items-center justify-center py-3 cursor-pointer hover:bg-crm-card-hover transition-colors ${isDragging ? 'bg-crm-card-hover rounded' : ''}`}
+        className={`group flex-shrink-0 flex items-center justify-center py-3 cursor-pointer hover:bg-rillation-card-hover transition-colors ${isDragging ? 'bg-rillation-card-hover rounded' : ''}`}
         onClick={handleDoubleClick}
         title={`Expand ${column.label}`}
       >
-        <Maximize2 size={12} className="text-crm-text-muted" />
+        <Maximize2 size={12} className="text-rillation-text-muted" />
       </div>
     )
   }
@@ -528,14 +528,14 @@ function DraggableColumnHeader({ column, sort, onSortChange, width, onResize, is
     <div
       ref={setNodeRef}
       style={style}
-      className={`group flex-shrink-0 text-left px-3 py-3 text-xs font-medium text-crm-text tracking-wide whitespace-nowrap flex items-center gap-1 relative ${isDragging ? 'bg-crm-card-hover rounded' : ''}`}
+      className={`group flex-shrink-0 text-left px-3 py-3 text-xs font-medium text-rillation-text tracking-wide whitespace-nowrap flex items-center gap-1 relative ${isDragging ? 'bg-rillation-card-hover rounded' : ''}`}
       onDoubleClick={handleDoubleClick}
       title={column.key !== 'full_name' ? 'Double-click to minimize' : undefined}
     >
       <div
         {...attributes}
         {...listeners}
-        className="cursor-grab active:cursor-grabbing p-0.5 -ml-1 hover:bg-crm-card-hover rounded opacity-40 hover:opacity-100 transition-opacity"
+        className="cursor-grab active:cursor-grabbing p-0.5 -ml-1 hover:bg-rillation-card-hover rounded opacity-40 hover:opacity-100 transition-opacity"
       >
         <GripVertical size={12} />
       </div>
@@ -553,10 +553,10 @@ function DraggableColumnHeader({ column, sort, onSortChange, width, onResize, is
             e.stopPropagation()
             onToggleMinimize(column.key)
           }}
-          className="opacity-0 group-hover:opacity-100 p-0.5 hover:bg-crm-card-hover rounded transition-opacity ml-auto"
+          className="opacity-0 group-hover:opacity-100 p-0.5 hover:bg-rillation-card-hover rounded transition-opacity ml-auto"
           title="Minimize column"
         >
-          <Minus size={10} className="text-crm-text-muted" />
+          <Minus size={10} className="text-rillation-text-muted" />
         </button>
       )}
       <ColumnResizeHandle onResize={handleResize} />
@@ -566,7 +566,7 @@ function DraggableColumnHeader({ column, sort, onSortChange, width, onResize, is
 
 // Link cell component
 function LinkCell({ url, label }: { url?: string | null; label?: string }) {
-  if (!url) return <span className="text-crm-text-muted">-</span>
+  if (!url) return <span className="text-rillation-text-muted">-</span>
 
   const href = url.startsWith('http') ? url : `https://${url}`
   const displayText = label || (url.includes('linkedin') ? 'Profile' : new URL(href).hostname.replace('www.', ''))
@@ -631,7 +631,7 @@ const RowQuickActions = memo(({ contact, onSave, onSelect }: RowQuickActionsProp
 
   return (
     <div 
-      className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-crm-card/90 backdrop-blur-sm rounded-lg px-1 py-0.5 border border-crm-border shadow-lg"
+      className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-rillation-card/90 backdrop-blur-sm rounded-lg px-1 py-0.5 border border-rillation-border shadow-lg"
       onClick={(e) => e.stopPropagation()}
     >
       {/* Copy Email */}
@@ -640,13 +640,13 @@ const RowQuickActions = memo(({ contact, onSave, onSelect }: RowQuickActionsProp
           whileHover={{ scale: 1.1 }}
           whileTap={{ scale: 0.9 }}
           onClick={handleCopyEmail}
-          className="p-1.5 rounded-md hover:bg-crm-card-hover transition-colors"
+          className="p-1.5 rounded-md hover:bg-rillation-card-hover transition-colors"
           title={isCopied ? 'Copied!' : 'Copy email'}
         >
           {isCopied ? (
             <Check size={14} className="text-green-400" />
           ) : (
-            <Copy size={14} className="text-crm-text-muted" />
+            <Copy size={14} className="text-rillation-text-muted" />
           )}
         </motion.button>
       )}
@@ -658,10 +658,10 @@ const RowQuickActions = memo(({ contact, onSave, onSelect }: RowQuickActionsProp
           whileHover={{ scale: 1.1 }}
           whileTap={{ scale: 0.9 }}
           onClick={(e) => e.stopPropagation()}
-          className="p-1.5 rounded-md hover:bg-crm-card-hover transition-colors"
+          className="p-1.5 rounded-md hover:bg-rillation-card-hover transition-colors"
           title="Send email"
         >
-          <Mail size={14} className="text-crm-text-muted" />
+          <Mail size={14} className="text-rillation-text-muted" />
         </motion.a>
       )}
 
@@ -672,10 +672,10 @@ const RowQuickActions = memo(({ contact, onSave, onSelect }: RowQuickActionsProp
           whileHover={{ scale: 1.1 }}
           whileTap={{ scale: 0.9 }}
           onClick={(e) => e.stopPropagation()}
-          className="p-1.5 rounded-md hover:bg-crm-card-hover transition-colors"
+          className="p-1.5 rounded-md hover:bg-rillation-card-hover transition-colors"
           title="Call"
         >
-          <Phone size={14} className="text-crm-text-muted" />
+          <Phone size={14} className="text-rillation-text-muted" />
         </motion.a>
       )}
 
@@ -686,18 +686,18 @@ const RowQuickActions = memo(({ contact, onSave, onSelect }: RowQuickActionsProp
           whileTap={{ scale: 0.95 }}
           onClick={handleAdvanceStage}
           disabled={isUpdating}
-          className="flex items-center gap-1 px-2 py-1 rounded-md hover:bg-crm-card-hover transition-colors text-xs"
+          className="flex items-center gap-1 px-2 py-1 rounded-md hover:bg-rillation-card-hover transition-colors text-xs"
           title={`Move to ${nextStage.label}`}
         >
           {isUpdating ? (
-            <Loader2 size={12} className="animate-spin text-crm-text-muted" />
+            <Loader2 size={12} className="animate-spin text-rillation-text-muted" />
           ) : (
             <>
               <div 
                 className="w-2 h-2 rounded-full"
                 style={{ backgroundColor: nextStage.color }}
               />
-              <ChevronRight size={12} className="text-crm-text-muted" />
+              <ChevronRight size={12} className="text-rillation-text-muted" />
             </>
           )}
         </motion.button>
@@ -711,7 +711,7 @@ const RowQuickActions = memo(({ contact, onSave, onSelect }: RowQuickActionsProp
           e.stopPropagation()
           onSelect()
         }}
-        className="px-2 py-1 rounded-md bg-crm-checkbox/20 hover:bg-crm-checkbox/30 transition-colors text-xs text-crm-text"
+        className="px-2 py-1 rounded-md bg-rillation-green/20 hover:bg-rillation-green/30 transition-colors text-xs text-rillation-text"
       >
         View
       </motion.button>
@@ -748,8 +748,8 @@ function getCellValue(
     case 'full_name':
       return (
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-crm-card-hover border border-crm-border rounded-full flex items-center justify-center flex-shrink-0">
-            <span className="text-xs font-medium text-crm-text-muted">
+          <div className="w-8 h-8 bg-rillation-card-hover border border-rillation-border rounded-full flex items-center justify-center flex-shrink-0">
+            <span className="text-xs font-medium text-rillation-text-muted">
               {contact.first_name?.[0] || contact.full_name?.[0] || '?'}
               {contact.last_name?.[0] || ''}
             </span>
@@ -759,7 +759,7 @@ function getCellValue(
               e.stopPropagation()
               onSelect()
             }}
-            className="text-left hover:text-blue-400 transition-colors truncate text-crm-text"
+            className="text-left hover:text-blue-400 transition-colors truncate text-rillation-text"
           >
             {contact.full_name || contact.email}
           </button>
@@ -797,24 +797,24 @@ function getCellValue(
     case 'context':
       const contextValue = contact.context || ''
       return (
-        <span className="text-crm-text-muted truncate block max-w-[180px]" title={contextValue}>
+        <span className="text-rillation-text-muted truncate block max-w-[180px]" title={contextValue}>
           {contextValue || '-'}
         </span>
       )
     
     case 'next_touchpoint':
-      return <span className="text-crm-text-muted">{formatDate(contact.next_touchpoint)}</span>
+      return <span className="text-rillation-text-muted">{formatDate(contact.next_touchpoint)}</span>
     
     case 'created_at':
-      return <span className="text-crm-text-muted">{formatDate(contact.created_at)}</span>
+      return <span className="text-rillation-text-muted">{formatDate(contact.created_at)}</span>
     
     case 'lead_source':
       return contact.lead_source ? (
-        <span className="text-xs px-2 py-1 bg-crm-card-hover rounded-full text-crm-text-muted">
+        <span className="text-xs px-2 py-1 bg-rillation-card-hover rounded-full text-rillation-text-muted">
           {contact.lead_source}
         </span>
       ) : (
-        <span className="text-crm-text-muted">-</span>
+        <span className="text-rillation-text-muted">-</span>
       )
     
     case 'industry':
@@ -830,7 +830,7 @@ function getCellValue(
       )
     
     default:
-      return <span className="text-crm-text-muted truncate">-</span>
+      return <span className="text-rillation-text-muted truncate">-</span>
   }
 }
 
@@ -1093,22 +1093,22 @@ export default function ContactsTable({
   const firstColumnWidth = firstColumn ? (columnWidths[firstColumn.key] || DEFAULT_COLUMN_WIDTHS[firstColumn.key] || 176) : 176
 
   return (
-    <div className="h-full min-h-0 bg-crm-card rounded-xl border border-crm-border flex flex-col overflow-hidden">
+    <div className="h-full min-h-0 bg-rillation-card rounded-xl border border-rillation-border flex flex-col overflow-hidden">
       {/* Fixed Header - doesn't scroll vertically */}
       <div 
-        className="flex-shrink-0 border-b border-crm-border flex"
+        className="flex-shrink-0 border-b border-rillation-border flex"
         style={{ backgroundColor: '#0d1117' }}
       >
         {/* Column Picker Button */}
-        <div className="flex-shrink-0 px-2 py-2 flex items-center border-r border-crm-border/50 relative">
+        <div className="flex-shrink-0 px-2 py-2 flex items-center border-r border-rillation-border/50 relative">
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={() => setShowColumnPicker(!showColumnPicker)}
             className={`p-2 rounded-lg transition-colors ${
               showColumnPicker 
-                ? 'bg-crm-checkbox/20 text-crm-checkbox' 
-                : 'hover:bg-crm-card-hover text-crm-text-muted hover:text-crm-text'
+                ? 'bg-rillation-green/20 text-rillation-green' 
+                : 'hover:bg-rillation-card-hover text-rillation-text-muted hover:text-rillation-text'
             }`}
             title="Toggle columns"
           >
@@ -1128,11 +1128,11 @@ export default function ContactsTable({
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: -5, scale: 0.95 }}
                   transition={{ duration: 0.15 }}
-                  className="absolute top-full left-0 mt-1 w-56 bg-crm-card border border-crm-border rounded-xl shadow-2xl z-50 py-2 max-h-80 overflow-y-auto"
+                  className="absolute top-full left-0 mt-1 w-56 bg-rillation-card border border-rillation-border rounded-xl shadow-2xl z-50 py-2 max-h-80 overflow-y-auto"
                 >
-                  <div className="px-3 py-2 border-b border-crm-border/50 mb-1">
-                    <p className="text-xs font-medium text-crm-text">Show Columns</p>
-                    <p className="text-xs text-crm-text-muted mt-0.5">
+                  <div className="px-3 py-2 border-b border-rillation-border/50 mb-1">
+                    <p className="text-xs font-medium text-rillation-text">Show Columns</p>
+                    <p className="text-xs text-rillation-text-muted mt-0.5">
                       {visibleColumns.size} of {COLUMNS.length} visible
                     </p>
                   </div>
@@ -1147,34 +1147,34 @@ export default function ContactsTable({
                         className={`w-full flex items-center gap-2 px-3 py-2 text-sm text-left transition-colors ${
                           isLocked 
                             ? 'opacity-50 cursor-not-allowed' 
-                            : 'hover:bg-crm-card-hover'
+                            : 'hover:bg-rillation-card-hover'
                         }`}
                       >
                         <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${
                           isVisible 
-                            ? 'bg-crm-checkbox border-crm-checkbox' 
-                            : 'border-crm-border'
+                            ? 'bg-rillation-green border-rillation-green' 
+                            : 'border-rillation-border'
                         }`}>
                           {isVisible && <Check size={12} className="text-white" />}
                         </div>
                         {isVisible ? (
-                          <Eye size={14} className="text-crm-text-muted" />
+                          <Eye size={14} className="text-rillation-text-muted" />
                         ) : (
-                          <EyeOff size={14} className="text-crm-text-muted/50" />
+                          <EyeOff size={14} className="text-rillation-text-muted/50" />
                         )}
-                        <span className={isVisible ? 'text-crm-text' : 'text-crm-text-muted'}>
+                        <span className={isVisible ? 'text-rillation-text' : 'text-rillation-text-muted'}>
                           {col.label}
                         </span>
                         {isLocked && (
-                          <span className="ml-auto text-xs text-crm-text-muted">Required</span>
+                          <span className="ml-auto text-xs text-rillation-text-muted">Required</span>
                         )}
                       </button>
                     )
                   })}
-                  <div className="px-3 py-2 border-t border-crm-border/50 mt-1">
+                  <div className="px-3 py-2 border-t border-rillation-border/50 mt-1">
                     <button
                       onClick={() => setVisibleColumns(new Set(DEFAULT_VISIBLE_COLUMNS))}
-                      className="text-xs text-crm-text-muted hover:text-crm-text transition-colors"
+                      className="text-xs text-rillation-text-muted hover:text-rillation-text transition-colors"
                     >
                       Reset to defaults
                     </button>
@@ -1255,7 +1255,7 @@ export default function ContactsTable({
         onScroll={handleBodyScroll}
       >
         {contacts.length === 0 ? (
-          <div className="px-4 py-12 text-center text-crm-text-muted">
+          <div className="px-4 py-12 text-center text-rillation-text-muted">
             No contacts found
           </div>
         ) : (
@@ -1268,11 +1268,11 @@ export default function ContactsTable({
                 animate={{ 
                   opacity: 1, 
                   y: 0,
-                  backgroundColor: isSelected ? 'rgba(var(--crm-checkbox-rgb, 34, 197, 94), 0.2)' : 'transparent'
+                  backgroundColor: isSelected ? 'rgba(34, 197, 94, 0.2)' : 'transparent'
                 }}
                 whileHover={{ 
                   backgroundColor: isSelected 
-                    ? 'rgba(var(--crm-checkbox-rgb, 34, 197, 94), 0.25)' 
+                    ? 'rgba(34, 197, 94, 0.25)' 
                     : 'rgba(255, 255, 255, 0.03)',
                   transition: { duration: 0.1 }
                 }}
@@ -1282,8 +1282,8 @@ export default function ContactsTable({
                   stiffness: 300,
                   damping: 25
                 }}
-                className={`flex group cursor-pointer border-b border-crm-border/50 relative ${
-                  isSelected ? 'ring-1 ring-inset ring-crm-checkbox/50' : ''
+                className={`flex group cursor-pointer border-b border-rillation-border/50 relative ${
+                  isSelected ? 'ring-1 ring-inset ring-rillation-green/50' : ''
                 }`}
                 onClick={() => {
                   onSelectedRowChange?.(index)
@@ -1307,10 +1307,10 @@ export default function ContactsTable({
                 {/* Sticky first column cell */}
                 {firstColumn && (
                   <div
-                    className={`flex-shrink-0 sticky left-0 z-10 px-3 py-4 text-sm text-crm-text transition-all ${
+                    className={`flex-shrink-0 sticky left-0 z-10 px-3 py-4 text-sm text-rillation-text transition-all ${
                       isSelected 
-                        ? 'bg-crm-checkbox/20' 
-                        : 'bg-crm-card group-hover:bg-crm-card-hover/50'
+                        ? 'bg-rillation-green/20' 
+                        : 'bg-rillation-card group-hover:bg-rillation-card-hover/50'
                     } ${isScrolled ? 'shadow-[4px_0_8px_-2px_rgba(0,0,0,0.4)]' : ''}`}
                     style={{ width: `${firstColumnWidth}px` }}
                   >
@@ -1326,12 +1326,12 @@ export default function ContactsTable({
                     return (
                       <div
                         key={column.key}
-                        className={`flex-shrink-0 text-sm text-crm-text ${isMinimized ? 'px-1 py-4' : 'px-3 py-4'}`}
+                        className={`flex-shrink-0 text-sm text-rillation-text ${isMinimized ? 'px-1 py-4' : 'px-3 py-4'}`}
                         style={{ width: `${width}px` }}
                         title={isMinimized ? column.label : undefined}
                       >
                         {isMinimized ? (
-                          <span className="text-crm-text-muted text-xs">•</span>
+                          <span className="text-rillation-text-muted text-xs">•</span>
                         ) : (
                           getCellValue(contact, column, onContactUpdate, () => onContactSelect(contact), index, contacts.length)
                         )}

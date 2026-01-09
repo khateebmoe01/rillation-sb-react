@@ -77,29 +77,29 @@ function ContactHoverCard({ contact, position, onOpenDetail }: ContactHoverCardP
         left: position.left,
         zIndex: 100,
       }}
-      className="w-80 bg-crm-card border border-crm-border rounded-xl shadow-2xl shadow-black/40 overflow-hidden"
+      className="w-80 bg-rillation-card border border-rillation-border rounded-xl shadow-2xl shadow-black/40 overflow-hidden"
       onClick={(e) => e.stopPropagation()}
     >
       {/* Header with gradient */}
       <div 
-        className="px-4 py-3 border-b border-crm-border"
+        className="px-4 py-3 border-b border-rillation-border"
         style={{ background: `linear-gradient(135deg, ${stage.color}15, transparent)` }}
       >
         <div className="flex items-center gap-3">
           {/* Avatar */}
-          <div className="w-12 h-12 bg-crm-card-hover border border-crm-border rounded-full flex items-center justify-center flex-shrink-0">
-            <span className="text-sm font-semibold text-crm-text-muted">
+          <div className="w-12 h-12 bg-rillation-card-hover border border-rillation-border rounded-full flex items-center justify-center flex-shrink-0">
+            <span className="text-sm font-semibold text-rillation-text-muted">
               {getInitials()}
             </span>
           </div>
           
           {/* Name & Title */}
           <div className="flex-1 min-w-0">
-            <h3 className="font-semibold text-crm-text truncate">
+            <h3 className="font-semibold text-rillation-text truncate">
               {contact.full_name || contact.email}
             </h3>
             {contact.job_title && (
-              <p className="text-xs text-crm-text-muted truncate flex items-center gap-1">
+              <p className="text-xs text-rillation-text-muted truncate flex items-center gap-1">
                 <Briefcase size={10} />
                 {contact.job_title}
               </p>
@@ -124,15 +124,15 @@ function ContactHoverCard({ contact, position, onOpenDetail }: ContactHoverCardP
         {/* Company */}
         {contact.company && (
           <div className="flex items-center gap-2 text-sm">
-            <Building2 size={14} className="text-crm-text-muted flex-shrink-0" />
-            <span className="text-crm-text truncate">{contact.company}</span>
+            <Building2 size={14} className="text-rillation-text-muted flex-shrink-0" />
+            <span className="text-rillation-text truncate">{contact.company}</span>
           </div>
         )}
 
         {/* Email */}
         {contact.email && (
           <div className="flex items-center gap-2 text-sm">
-            <Mail size={14} className="text-crm-text-muted flex-shrink-0" />
+            <Mail size={14} className="text-rillation-text-muted flex-shrink-0" />
             <a 
               href={`mailto:${contact.email}`}
               className="text-blue-400 hover:underline truncate"
@@ -146,10 +146,10 @@ function ContactHoverCard({ contact, position, onOpenDetail }: ContactHoverCardP
         {/* Phone */}
         {contact.lead_phone && (
           <div className="flex items-center gap-2 text-sm">
-            <Phone size={14} className="text-crm-text-muted flex-shrink-0" />
+            <Phone size={14} className="text-rillation-text-muted flex-shrink-0" />
             <a 
               href={`tel:${contact.lead_phone}`}
-              className="text-crm-text hover:text-crm-text-muted"
+              className="text-rillation-text hover:text-rillation-text-muted"
               onClick={(e) => e.stopPropagation()}
             >
               {contact.lead_phone}
@@ -166,8 +166,8 @@ function ContactHoverCard({ contact, position, onOpenDetail }: ContactHoverCardP
         )}
 
         {/* Pipeline Progress */}
-        <div className="pt-2 border-t border-crm-border/50">
-          <p className="text-xs text-crm-text-muted mb-2">
+        <div className="pt-2 border-t border-rillation-border/50">
+          <p className="text-xs text-rillation-text-muted mb-2">
             Pipeline Progress ({completedStages}/{PIPELINE_STAGES.length})
           </p>
           <div className="flex items-center gap-1">
@@ -180,11 +180,11 @@ function ContactHoverCard({ contact, position, onOpenDetail }: ContactHoverCardP
                   title={pStage.label}
                 >
                   {isComplete ? (
-                    <CheckCircle2 size={16} className="text-crm-checkbox" />
+                    <CheckCircle2 size={16} className="text-rillation-green" />
                   ) : (
-                    <Circle size={16} className="text-crm-text-muted/30" />
+                    <Circle size={16} className="text-rillation-text-muted/30" />
                   )}
-                  <span className="text-[10px] text-crm-text-muted truncate w-full text-center">
+                  <span className="text-[10px] text-rillation-text-muted truncate w-full text-center">
                     {pStage.label}
                   </span>
                 </div>
@@ -199,7 +199,7 @@ function ContactHoverCard({ contact, position, onOpenDetail }: ContactHoverCardP
         onClick={onOpenDetail}
         whileHover={{ backgroundColor: 'rgba(255,255,255,0.05)' }}
         whileTap={{ scale: 0.98 }}
-        className="w-full px-4 py-2.5 border-t border-crm-border text-sm text-crm-text-muted hover:text-crm-text flex items-center justify-center gap-2 transition-colors"
+        className="w-full px-4 py-2.5 border-t border-rillation-border text-sm text-rillation-text-muted hover:text-rillation-text flex items-center justify-center gap-2 transition-colors"
       >
         View Full Details
         <ExternalLink size={14} />
