@@ -95,7 +95,7 @@ const PipelineProgressCell = memo(({ contact, onSave }: PipelineProgressCellProp
           />
           <div className="absolute top-full left-0 mt-1 w-72 bg-crm-card border border-crm-border rounded-lg shadow-xl z-50 py-2 max-h-96 overflow-y-auto">
             <div className="px-3 pb-2 border-b border-crm-border mb-2">
-              <h4 className="text-xs font-semibold text-crm-text-muted uppercase tracking-wider">Pipeline Progress</h4>
+              <h4 className="text-xs font-semibold text-crm-text tracking-wide">Pipeline Progress</h4>
             </div>
             {PIPELINE_STAGES.map((stage) => {
               const isChecked = Boolean(contact[stage.key])
@@ -350,17 +350,17 @@ function SortableHeader({ label, field, sortable, currentSort, onSort }: Sortabl
   return (
     <button
       onClick={handleClick}
-      className="flex items-center gap-1 hover:text-crm-text transition-colors group"
+      className="flex items-center gap-1 text-crm-text hover:opacity-80 transition-opacity group"
     >
       <span>{label}</span>
       <div className="flex flex-col">
         <ChevronUp 
           size={10} 
-          className={`-mb-1 ${isActive && direction === 'asc' ? 'text-crm-text' : 'text-crm-text-muted/50 group-hover:text-crm-text-muted'}`} 
+          className={`-mb-1 ${isActive && direction === 'asc' ? 'text-crm-text' : 'text-crm-text/40 group-hover:text-crm-text/60'}`} 
         />
         <ChevronDown 
           size={10} 
-          className={`${isActive && direction === 'desc' ? 'text-crm-text' : 'text-crm-text-muted/50 group-hover:text-crm-text-muted'}`} 
+          className={`${isActive && direction === 'desc' ? 'text-crm-text' : 'text-crm-text/40 group-hover:text-crm-text/60'}`} 
         />
       </div>
     </button>
@@ -540,7 +540,7 @@ export default function ContactsTable({
           {COLUMNS.map((column) => (
             <div
               key={column.key}
-              className={`flex-shrink-0 text-left px-3 py-3 text-xs font-medium text-crm-text-muted uppercase tracking-wider ${column.width} whitespace-nowrap`}
+              className={`flex-shrink-0 text-left px-3 py-3 text-xs font-medium text-crm-text tracking-wide ${column.width} whitespace-nowrap`}
             >
               <SortableHeader
                 label={column.label}
