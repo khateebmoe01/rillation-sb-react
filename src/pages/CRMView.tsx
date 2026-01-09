@@ -158,35 +158,6 @@ export default function CRMView() {
       <div className="flex-shrink-0 bg-[#0f2847] border-b border-[#1e3a5f] mt-2 mx-4 rounded-xl">
         {/* Primary Row */}
         <div className="flex items-center h-12 px-5 gap-4">
-          {/* View Tabs */}
-          <div className="flex items-center gap-1 bg-[#0c1929] rounded-lg p-1">
-            <button
-              onClick={() => setViewMode('list')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-md transition-none ${
-                viewMode === 'list'
-                  ? 'bg-blue-500/20 text-blue-300'
-                  : 'text-blue-300/50 hover:text-blue-300 hover:bg-blue-500/10'
-              }`}
-            >
-              <List size={15} />
-              <span>Grid</span>
-            </button>
-            <button
-              onClick={() => setViewMode('kanban')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-md transition-none ${
-                viewMode === 'kanban'
-                  ? 'bg-blue-500/20 text-blue-300'
-                  : 'text-blue-300/50 hover:text-blue-300 hover:bg-blue-500/10'
-              }`}
-            >
-              <LayoutGrid size={15} />
-              <span>Kanban</span>
-            </button>
-          </div>
-
-          {/* Divider */}
-          <div className="w-px h-6 bg-[#1e3a5f]" />
-
           {/* Filters */}
           <CRMFilters
             filters={filters}
@@ -222,6 +193,35 @@ export default function CRMView() {
           <span className="text-xs text-blue-300/60 font-medium">
             {contacts.length} records
           </span>
+
+          {/* Divider */}
+          <div className="w-px h-6 bg-[#1e3a5f]" />
+
+          {/* View Tabs - on the right */}
+          <div className="flex items-center gap-1 bg-[#0c1929] rounded-lg p-1">
+            <button
+              onClick={() => setViewMode('list')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-md transition-none ${
+                viewMode === 'list'
+                  ? 'bg-blue-500/20 text-blue-300'
+                  : 'text-blue-300/50 hover:text-blue-300 hover:bg-blue-500/10'
+              }`}
+            >
+              <List size={15} />
+              <span>Grid</span>
+            </button>
+            <button
+              onClick={() => setViewMode('kanban')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-md transition-none ${
+                viewMode === 'kanban'
+                  ? 'bg-blue-500/20 text-blue-300'
+                  : 'text-blue-300/50 hover:text-blue-300 hover:bg-blue-500/10'
+              }`}
+            >
+              <LayoutGrid size={15} />
+              <span>Kanban</span>
+            </button>
+          </div>
 
           {/* Divider */}
           <div className="w-px h-6 bg-[#1e3a5f]" />
