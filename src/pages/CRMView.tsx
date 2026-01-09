@@ -152,7 +152,7 @@ export default function CRMView() {
   }, [contacts.length])
 
   return (
-    <div className="h-full flex flex-col bg-rillation-bg p-6">
+    <div className="h-full flex flex-col bg-crm-bg p-6">
       {/* Header - Single Row */}
       <div className="flex-shrink-0 mb-4 flex flex-wrap items-center gap-3">
         {/* Title */}
