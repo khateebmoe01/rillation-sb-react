@@ -608,7 +608,6 @@ const RowQuickActions = memo(({ contact, onSave, onSelect }: RowQuickActionsProp
 
   // Get current and next stage
   const currentStageIndex = CRM_STAGES.findIndex(s => s.id === contact.stage)
-  const currentStage = CRM_STAGES[currentStageIndex] || CRM_STAGES[0]
   const nextStage = CRM_STAGES[currentStageIndex + 1]
 
   const handleCopyEmail = async (e: React.MouseEvent) => {
