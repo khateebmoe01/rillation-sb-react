@@ -1127,17 +1127,8 @@ export default function ContactsTable({
     }
   }, [])
 
-  // Track horizontal scroll for shadow indicator
-  const [isScrolled, setIsScrolled] = useState(false)
-
-  // Sync horizontal scroll between header and body
-  const handleBodyScroll = useCallback(() => {
-    if (bodyRef.current && headerRef.current) {
-      headerRef.current.scrollLeft = bodyRef.current.scrollLeft
-      // Show shadow when scrolled horizontally
-      setIsScrolled(bodyRef.current.scrollLeft > 0)
-    }
-  }, [])
+  // Track horizontal scroll for shadow indicator (no longer needed with unified scroll)
+  const isScrolled = false
 
   // Separate first column from rest for sticky behavior
   const firstColumn = orderedColumns[0]
@@ -1145,10 +1136,10 @@ export default function ContactsTable({
   const firstColumnWidth = firstColumn ? (columnWidths[firstColumn.key] || DEFAULT_COLUMN_WIDTHS[firstColumn.key] || 176) : 176
 
   return (
-    <div className="h-full min-h-0 bg-rillation-card rounded-xl border border-rillation-border flex flex-col overflow-hidden">
-      {/* Fixed Header - doesn't scroll vertically */}
+    <div className="h-full min-h-0 bg-rillation-card rounded-xl border border-rillation-border overflow-auto">
+      {/* Sticky Header - stays at top when scrolling vertically */}
       <div 
-        className="flex-shrink-0 border-b border-rillation-border flex"
+        className="sticky top-0 z-30 border-b border-rillation-border flex"
         style={{ backgroundColor: '#0d1117' }}
       >
         {/* Column Picker Button */}
@@ -1269,7 +1260,7 @@ export default function ContactsTable({
         {/* Scrollable columns header */}
         <div 
           ref={headerRef}
-          className="flex-1 overflow-x-hidden"
+          className="flex-1"
         >
           <DndContext
             sensors={sensors}
@@ -1299,11 +1290,9 @@ export default function ContactsTable({
         </div>
       </div>
       
-      {/* Scrollable Body */}
+      {/* Body - scrolls with the container */}
       <div 
         ref={bodyRef}
-        className="flex-1 min-h-0 overflow-auto"
-        onScroll={handleBodyScroll}
       >
         {contacts.length === 0 ? (
           <div className="px-4 py-12 text-center text-rillation-text-muted">
