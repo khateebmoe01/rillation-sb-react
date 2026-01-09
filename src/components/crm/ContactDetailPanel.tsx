@@ -259,7 +259,7 @@ export default function ContactDetailPanel({ contact, onClose, onUpdate, onDelet
         animate={{ x: 0 }}
         exit={{ x: '100%' }}
         transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-        className="fixed top-0 right-0 h-full w-full max-w-lg bg-crm-card border-l border-crm-border z-50 overflow-y-auto"
+        className="fixed top-0 right-0 h-full w-full max-w-4xl bg-crm-card border-l border-crm-border z-50 overflow-y-auto"
       >
         {/* Header */}
         <div className="sticky top-0 bg-crm-card border-b border-crm-border px-6 py-4 flex items-center justify-between z-10">

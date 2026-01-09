@@ -484,7 +484,7 @@ export default function ContactsTable({
   return (
     <div className="h-full overflow-auto bg-crm-card rounded-xl border border-crm-border">
       <table className="w-full" style={{ minWidth: '2000px' }}>
-        <thead className="sticky top-0 bg-crm-bg z-10">
+        <thead className="sticky top-0 bg-crm-bg z-20 shadow-sm">
           <tr>
             {COLUMNS.map((column) => (
               <th
