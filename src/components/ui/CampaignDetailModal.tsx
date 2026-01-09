@@ -14,17 +14,22 @@ interface CampaignDetailModalProps {
 }
 
 interface SequenceStep {
+  order?: number
   step_number?: number
   email_subject?: string
+  sent?: number
   emails_sent?: number
   leads_contacted?: number
   opened?: number
+  unique_opens?: number
   unique_opens_per_contact?: number
+  unique_replies?: number
   unique_replies_per_contact?: number
   bounced?: number
   interested?: number
   delay?: number
   delay_unit?: string
+  wait_in_days?: number
 }
 
 interface CampaignDetail {
@@ -98,38 +103,48 @@ export default function CampaignDetailModal({
           const steps = row.sequence_step_stats || []
           if (Array.isArray(steps)) {
             steps.forEach((step: any) => {
-              const stepNum = step.step_number || step.stepNumber || 0
+              // Use 'order' from JSONB, fallback to step_number
+              const stepNum = step.order || step.step_number || step.stepNumber || 0
               if (!sequenceStepsMap.has(stepNum)) {
                 sequenceStepsMap.set(stepNum, {
+                  order: stepNum,
                   step_number: stepNum,
                   email_subject: step.email_subject || step.emailSubject || '',
+                  sent: 0,
                   emails_sent: 0,
                   leads_contacted: 0,
                   opened: 0,
+                  unique_opens: 0,
                   unique_opens_per_contact: 0,
+                  unique_replies: 0,
                   unique_replies_per_contact: 0,
                   bounced: 0,
                   interested: 0,
+                  wait_in_days: step.wait_in_days,
                   delay: step.delay,
                   delay_unit: step.delay_unit || step.delayUnit,
                 })
               }
 
               const existingStep = sequenceStepsMap.get(stepNum)!
-              existingStep.emails_sent = (existingStep.emails_sent || 0) + (step.emails_sent || 0)
+              // Support both 'sent' (JSONB) and 'emails_sent' field names
+              existingStep.sent = (existingStep.sent || 0) + (step.sent || 0)
+              existingStep.emails_sent = (existingStep.emails_sent || 0) + (step.emails_sent || step.sent || 0)
               existingStep.leads_contacted = (existingStep.leads_contacted || 0) + (step.leads_contacted || 0)
               existingStep.opened = (existingStep.opened || 0) + (step.opened || 0)
-              existingStep.unique_opens_per_contact = (existingStep.unique_opens_per_contact || 0) + (step.unique_opens_per_contact || 0)
-              existingStep.unique_replies_per_contact = (existingStep.unique_replies_per_contact || 0) + (step.unique_replies_per_contact || 0)
+              existingStep.unique_opens = (existingStep.unique_opens || 0) + (step.unique_opens || 0)
+              existingStep.unique_opens_per_contact = (existingStep.unique_opens_per_contact || 0) + (step.unique_opens_per_contact || step.unique_opens || 0)
+              existingStep.unique_replies = (existingStep.unique_replies || 0) + (step.unique_replies || 0)
+              existingStep.unique_replies_per_contact = (existingStep.unique_replies_per_contact || 0) + (step.unique_replies_per_contact || step.unique_replies || 0)
               existingStep.bounced = (existingStep.bounced || 0) + (step.bounced || 0)
               existingStep.interested = (existingStep.interested || 0) + (step.interested || 0)
             })
           }
         })
 
-        // Convert to sorted array
+        // Convert to sorted array - sort by order field
         const sequenceSteps = Array.from(sequenceStepsMap.values()).sort(
-          (a, b) => (a.step_number || 0) - (b.step_number || 0)
+          (a, b) => (a.order || a.step_number || 0) - (b.order || b.step_number || 0)
         )
 
         setDetail({
@@ -302,40 +317,38 @@ export default function CampaignDetailModal({
                         </thead>
                         <tbody className="divide-y divide-rillation-border/30">
                           {displayDetail.sequenceSteps && displayDetail.sequenceSteps.map((step: SequenceStep, index: number) => {
-                            const openRate =
-                              step.leads_contacted && step.leads_contacted > 0
-                                ? ((step.unique_opens_per_contact || 0) / step.leads_contacted) * 100
-                                : 0
-                            const replyRate =
-                              step.leads_contacted && step.leads_contacted > 0
-                                ? ((step.unique_replies_per_contact || 0) / step.leads_contacted) * 100
-                                : 0
+                            const sentCount = step.sent || step.emails_sent || 0
+                            const contactedCount = step.leads_contacted || 0
+                            const opensCount = step.unique_opens || step.unique_opens_per_contact || 0
+                            const repliesCount = step.unique_replies || step.unique_replies_per_contact || 0
+                            const openRate = contactedCount > 0 ? (opensCount / contactedCount) * 100 : 0
+                            const replyRate = contactedCount > 0 ? (repliesCount / contactedCount) * 100 : 0
 
                             return (
                               <tr
-                                key={step.step_number || index}
+                                key={step.order || step.step_number || index}
                                 className="hover:bg-rillation-card-hover transition-colors"
                               >
                                 <td className="px-4 py-3 text-sm text-rillation-text font-medium">
-                                  {step.step_number || index + 1}
+                                  {step.order || step.step_number || index + 1}
                                 </td>
                                 <td className="px-4 py-3 text-sm text-rillation-text">
                                   {step.email_subject || '-'}
                                 </td>
                                 <td className="px-4 py-3 text-sm text-right text-rillation-text">
-                                  {formatNumber(step.emails_sent || 0)}
+                                  {formatNumber(sentCount)}
                                 </td>
                                 <td className="px-4 py-3 text-sm text-right text-rillation-text">
-                                  {formatNumber(step.leads_contacted || 0)}
+                                  {formatNumber(contactedCount)}
                                 </td>
                                 <td className="px-4 py-3 text-sm text-right text-rillation-text">
-                                  <div>{formatNumber(step.unique_opens_per_contact || 0)}</div>
+                                  <div>{formatNumber(opensCount)}</div>
                                   <div className="text-xs text-rillation-text-muted">
                                     {formatPercentage(openRate)}
                                   </div>
                                 </td>
                                 <td className="px-4 py-3 text-sm text-right text-rillation-text">
-                                  <div>{formatNumber(step.unique_replies_per_contact || 0)}</div>
+                                  <div>{formatNumber(repliesCount)}</div>
                                   <div className="text-xs text-rillation-text-muted">
                                     {formatPercentage(replyRate)}
                                   </div>

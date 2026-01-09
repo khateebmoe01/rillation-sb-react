@@ -17,6 +17,8 @@ export interface CampaignStat {
   // Status fields
   status: CampaignStatusType
   lastActivityDate: string | null
+  // Campaign creation date
+  createdAt: string | null
   // Performance score (for sorting by winning campaigns)
   performanceScore: number
 }
@@ -123,6 +125,7 @@ export function useCampaignStats({ startDate, endDate, client, page, pageSize }:
             meetingsBooked: 0,
             status: 'unknown',
             lastActivityDate: null,
+            createdAt: null,
             performanceScore: 0,
           })
         }
@@ -216,22 +219,25 @@ export function useCampaignStats({ startDate, endDate, client, page, pageSize }:
         client: string | null
       }
 
-      // Fetch campaign status from campaigns table
+      // Fetch campaign status and created_at from campaigns table
       let campaignsStatusQuery = supabase
         .from('Campaigns')
-        .select('campaign_id, client, status')
+        .select('campaign_id, client, status, created_at')
       
       if (client) campaignsStatusQuery = campaignsStatusQuery.eq('client', client)
 
       const { data: campaignsStatusData, error: campaignsStatusError } = await campaignsStatusQuery
       
-      // Create a map of campaign_id||client to status
-      const campaignStatusMap = new Map<string, string>()
+      // Create a map of campaign_id||client to status and created_at
+      const campaignStatusMap = new Map<string, { status: string; createdAt: string | null }>()
       if (!campaignsStatusError && campaignsStatusData) {
         ;(campaignsStatusData as any[]).forEach((campaign) => {
           if (campaign.campaign_id && campaign.client) {
             const key = `${String(campaign.campaign_id)}||${campaign.client}`
-            campaignStatusMap.set(key, campaign.status || 'unknown')
+            campaignStatusMap.set(key, {
+              status: campaign.status || 'unknown',
+              createdAt: campaign.created_at || null
+            })
           }
         })
       }
@@ -311,6 +317,7 @@ export function useCampaignStats({ startDate, endDate, client, page, pageSize }:
             meetingsBooked: 0,
             status: 'unknown',
             lastActivityDate: null,
+            createdAt: null,
             performanceScore: 0,
           })
         }
@@ -355,7 +362,7 @@ export function useCampaignStats({ startDate, endDate, client, page, pageSize }:
       }
       // #endregion
 
-      // Calculate performance score and get status from campaigns table
+      // Calculate performance score and get status/createdAt from campaigns table
       campaignStatsMap.forEach((stat) => {
         // Performance score: weighted combination of key metrics
         // Higher weight on meetings booked and positive replies
@@ -367,9 +374,11 @@ export function useCampaignStats({ startDate, endDate, client, page, pageSize }:
           (stat.positiveReplies * positiveWeight) +
           (stat.realReplies * replyWeight)
         
-        // Get status from campaigns table
+        // Get status and createdAt from campaigns table
         const key = `${String(stat.campaign_id)}||${stat.client}`
-        const dbStatus = (campaignStatusMap.get(key) || '').toLowerCase().trim()
+        const campaignData = campaignStatusMap.get(key)
+        const dbStatus = (campaignData?.status || '').toLowerCase().trim()
+        stat.createdAt = campaignData?.createdAt || null
         
         // Map database status to our status type
         // Handle various possible status values from the Campaigns table

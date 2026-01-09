@@ -1,9 +1,11 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, Plus, Trash2, Clock, User, Tag, FileText, Loader2 } from 'lucide-react'
-import { useIterationLog, ACTION_TYPES } from '../../hooks/useIterationLog'
+import { X, Plus, Trash2, Clock, User, Tag, FileText, Loader2, ChevronDown, ChevronUp, Megaphone } from 'lucide-react'
+import { useIterationLog, ACTION_TYPES, MentionedUser } from '../../hooks/useIterationLog'
+import { useCampaignStats } from '../../hooks/useCampaignStats'
 import Button from './Button'
 import ModalPortal from './ModalPortal'
+import MentionInput from './MentionInput'
 
 interface IterationLogModalProps {
   isOpen: boolean
@@ -14,11 +16,38 @@ interface IterationLogModalProps {
 export default function IterationLogModal({ isOpen, onClose, client }: IterationLogModalProps) {
   const { logs, loading, error, saving, addLog, deleteLog } = useIterationLog({ client })
   
+  // Fetch campaigns for this client
+  const { campaigns } = useCampaignStats({
+    startDate: new Date(Date.now() - 365 * 24 * 60 * 60 * 1000), // Last year
+    endDate: new Date(),
+    client,
+    page: 1,
+    pageSize: 100,
+  })
+  const campaignNames = campaigns.map(c => c.campaign_name).filter(Boolean) as string[]
+  
   // Form state
   const [isAddingNew, setIsAddingNew] = useState(false)
   const [actionType, setActionType] = useState<string>(ACTION_TYPES[0])
   const [description, setDescription] = useState('')
   const [createdBy, setCreatedBy] = useState('')
+  const [campaignName, setCampaignName] = useState<string>('')
+  const [mentionedUsers, setMentionedUsers] = useState<MentionedUser[]>([])
+  
+  // Expanded entries state
+  const [expandedEntries, setExpandedEntries] = useState<Set<number>>(new Set())
+
+  const toggleEntry = (id: number) => {
+    setExpandedEntries(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(id)) {
+        newSet.delete(id)
+      } else {
+        newSet.add(id)
+      }
+      return newSet
+    })
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -29,12 +58,16 @@ export default function IterationLogModal({ isOpen, onClose, client }: Iteration
       action_type: actionType,
       description: description.trim(),
       created_by: createdBy.trim(),
+      campaign_name: campaignName || undefined,
+      mentioned_users: mentionedUsers.length > 0 ? mentionedUsers : undefined,
     })
 
     if (success) {
       setIsAddingNew(false)
       setDescription('')
       setActionType(ACTION_TYPES[0])
+      setCampaignName('')
+      setMentionedUsers([])
       // Keep createdBy for convenience
     }
   }
@@ -171,20 +204,53 @@ export default function IterationLogModal({ isOpen, onClose, client }: Iteration
                   </div>
                 </div>
 
-                {/* Description */}
+                {/* Campaign Selector (Optional) */}
+                <div>
+                  <label className="block text-sm font-medium text-white/70 mb-1.5">
+                    <Megaphone size={14} className="inline mr-1.5" />
+                    Campaign <span className="text-white/40">(optional)</span>
+                  </label>
+                  <select
+                    value={campaignName}
+                    onChange={(e) => setCampaignName(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm focus:outline-none focus:border-violet-500"
+                  >
+                    <option value="">General (No specific campaign)</option>
+                    {campaignNames.map((name) => (
+                      <option key={name} value={name}>
+                        {name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Description with @mentions */}
                 <div>
                   <label className="block text-sm font-medium text-white/70 mb-1.5">
                     <FileText size={14} className="inline mr-1.5" />
                     Description
+                    <span className="text-white/40 ml-2 text-xs">Type @ to mention team members</span>
                   </label>
-                  <textarea
+                  <MentionInput
                     value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    placeholder="Describe the change or iteration..."
+                    onChange={setDescription}
+                    onMentionsChange={setMentionedUsers}
+                    placeholder="Describe the change or iteration... Type @ to mention someone"
                     rows={3}
-                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm placeholder:text-white/40 focus:outline-none focus:border-violet-500 resize-none"
-                    required
                   />
+                  {mentionedUsers.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-1">
+                      <span className="text-xs text-white/50">Will notify:</span>
+                      {mentionedUsers.map((user) => (
+                        <span
+                          key={user.slack_id}
+                          className="px-2 py-0.5 bg-violet-500/20 text-violet-300 text-xs rounded-full"
+                        >
+                          @{user.display_name}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 {/* Actions */}
@@ -196,6 +262,8 @@ export default function IterationLogModal({ isOpen, onClose, client }: Iteration
                     onClick={() => {
                       setIsAddingNew(false)
                       setDescription('')
+                      setCampaignName('')
+                      setMentionedUsers([])
                     }}
                   >
                     Cancel
@@ -238,50 +306,119 @@ export default function IterationLogModal({ isOpen, onClose, client }: Iteration
             </div>
           ) : (
             <div className="space-y-3">
-              {logs.map((log, index) => (
-                <motion.div
-                  key={log.id}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.05 }}
-                  className="group relative bg-slate-800/50 border border-slate-700/50 rounded-lg p-4 hover:border-slate-600/50 transition-colors"
-                >
-                  {/* Delete button */}
-                  <button
-                    onClick={() => handleDelete(log.id)}
-                    className="absolute top-3 right-3 p-1.5 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-red-500/20 transition-all"
-                    title="Delete entry"
+              {logs.map((log, index) => {
+                const isExpanded = expandedEntries.has(log.id)
+                const isLongDescription = log.description.length > 200
+                const shouldTruncate = isLongDescription && !isExpanded
+                const displayDescription = shouldTruncate
+                  ? log.description.substring(0, 200) + '...'
+                  : log.description
+
+                return (
+                  <motion.div
+                    key={log.id}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.05 }}
+                    className={`group relative bg-slate-800/50 border border-slate-700/50 rounded-lg overflow-hidden hover:border-slate-600/50 transition-colors ${
+                      isLongDescription ? 'cursor-pointer' : ''
+                    }`}
+                    onClick={() => isLongDescription && toggleEntry(log.id)}
                   >
-                    <Trash2 size={14} className="text-red-400" />
-                  </button>
+                    <div className="p-4">
+                      {/* Delete button */}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleDelete(log.id)
+                        }}
+                        className="absolute top-3 right-3 p-1.5 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-red-500/20 transition-all z-10"
+                        title="Delete entry"
+                      >
+                        <Trash2 size={14} className="text-red-400" />
+                      </button>
 
-                  {/* Header - Action type on left, metadata on right */}
-                  <div className="flex items-center justify-between mb-2 pr-8">
-                    <span
-                      className={`px-2 py-1 rounded-md text-xs font-medium border ${getActionTypeColor(
-                        log.action_type
-                      )}`}
-                    >
-                      {log.action_type}
-                    </span>
-                    <div className="flex items-center gap-4 text-xs text-white/50">
-                      <span className="flex items-center gap-1">
-                        <User size={12} />
-                        {log.created_by}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Clock size={12} />
-                        {formatDate(log.created_at)}
-                      </span>
+                      {/* Header - Action type on left, metadata on right */}
+                      <div className="flex items-center justify-between mb-2 pr-8">
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={`px-2 py-1 rounded-md text-xs font-medium border ${getActionTypeColor(
+                              log.action_type
+                            )}`}
+                          >
+                            {log.action_type}
+                          </span>
+                          {log.campaign_name && (
+                            <span className="px-2 py-1 rounded-md text-xs font-medium border bg-slate-700/50 text-slate-300 border-slate-600/50">
+                              {log.campaign_name}
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-4 text-xs text-white/50">
+                          <span className="flex items-center gap-1">
+                            <User size={12} />
+                            {log.created_by}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Clock size={12} />
+                            {formatDate(log.created_at)}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Mentioned users */}
+                      {log.mentioned_users && log.mentioned_users.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mb-2">
+                          {log.mentioned_users.map((user) => (
+                            <span
+                              key={user.slack_id}
+                              className="px-2 py-0.5 bg-violet-500/20 text-violet-300 text-xs rounded-full"
+                            >
+                              @{user.display_name}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Description */}
+                      <motion.div
+                        initial={false}
+                        animate={{ height: 'auto' }}
+                        className="overflow-hidden"
+                      >
+                        <p className="text-white/90 text-sm leading-relaxed whitespace-pre-wrap">
+                          {displayDescription}
+                        </p>
+                      </motion.div>
+
+                      {/* Expand/Collapse indicator */}
+                      {isLongDescription && (
+                        <div className="flex items-center justify-center mt-2 pt-2 border-t border-slate-700/30">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              toggleEntry(log.id)
+                            }}
+                            className="flex items-center gap-1 text-xs text-violet-400 hover:text-violet-300 transition-colors"
+                          >
+                            {isExpanded ? (
+                              <>
+                                <ChevronUp size={14} />
+                                Show less
+                              </>
+                            ) : (
+                              <>
+                                <ChevronDown size={14} />
+                                Show more
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      )}
                     </div>
-                  </div>
-
-                  {/* Description */}
-                  <p className="text-white/90 text-sm leading-relaxed">
-                    {log.description}
-                  </p>
-                </motion.div>
-              ))}
+                  </motion.div>
+                )
+              })}
             </div>
           )}
         </div>

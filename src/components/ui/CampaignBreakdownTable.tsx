@@ -61,18 +61,22 @@ function SequenceRow({ sequence, index }: { sequence: SequenceStat; index?: numb
         x: 0,
         transition: { delay: (index || 0) * 0.05, duration: 0.2 }
       }}
-      className="grid grid-cols-8 gap-4 px-4 py-2 bg-slate-800/30 border-l-2 border-violet-500/50 ml-4 text-sm"
+      className="grid grid-cols-[auto_2fr_1fr_1fr_1fr_1fr_1fr_1fr_1fr_1fr_1fr] gap-3 px-3 py-2 bg-slate-800/30 border-l-2 border-violet-500/50 ml-4 text-sm"
     >
-      <div className="col-span-2 flex items-center gap-2">
+      <div className="w-4" /> {/* Spacer for checkbox column */}
+      <div className="flex items-center gap-2 pl-6">
         <span className="text-violet-400 font-medium">Step {sequence.step_number}:</span>
         <span className="text-white">{sequence.step_name}</span>
       </div>
+      <div className="text-center text-slate-500">—</div> {/* Status - N/A for steps */}
+      <div className="text-center text-slate-500">—</div> {/* Created - N/A for steps */}
       <div className="text-center text-white">{formatNumber(sequence.sent)}</div>
-      <div className="text-center text-white">—</div>
-      <div className="text-center text-white">{formatNumber(sequence.total_replies)}</div>
-      <div className="text-center text-white">—</div>
-      <div className="text-center text-white">{formatNumber(sequence.positive_replies)}</div>
-      <div className="text-center text-white">{formatNumber(sequence.meetings_booked)}</div>
+      <div className="text-center text-slate-300">{formatNumber(sequence.prospects)}</div>
+      <div className="text-center text-slate-300">{formatNumber(sequence.total_replies)}</div>
+      <div className="text-center text-slate-300">{formatNumber(sequence.real_replies)}</div>
+      <div className="text-center text-emerald-400">{formatNumber(sequence.positive_replies)}</div>
+      <div className="text-center text-slate-300">{formatNumber(sequence.bounces)}</div>
+      <div className="text-center text-slate-500">—</div> {/* Meetings - Campaign level only */}
     </motion.div>
   )
 }
@@ -112,7 +116,7 @@ function CampaignRow({
     <div className="border-b border-slate-700/50">
       {/* Main campaign row */}
       <motion.div
-        className={`grid grid-cols-[auto_2fr_1fr_1fr_1fr_1fr_1fr_1fr_1fr_1fr] gap-3 px-3 py-3 cursor-pointer hover:bg-slate-800/40 transition-colors ${
+        className={`grid grid-cols-[auto_2fr_1fr_1fr_1fr_1fr_1fr_1fr_1fr_1fr_1fr] gap-3 px-3 py-3 cursor-pointer hover:bg-slate-800/40 transition-colors ${
           isExpanded ? 'bg-slate-800/30' : ''
         } ${isSelected ? 'bg-violet-900/20 border-l-2 border-violet-500' : ''}`}
         onClick={handleToggle}
@@ -145,6 +149,11 @@ function CampaignRow({
         </div>
         <div className="text-center flex items-center justify-center">
           <StatusBadge status={campaign.status} />
+        </div>
+        <div className="text-center text-slate-400 text-xs flex items-center justify-center">
+          {campaign.createdAt 
+            ? new Date(campaign.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+            : '—'}
         </div>
         <div className="text-center text-white flex items-center justify-center">{formatNumber(campaign.totalSent)}</div>
         <div className="text-center text-slate-300 flex items-center justify-center">{formatNumber(campaign.uniqueProspects)}</div>
@@ -189,16 +198,7 @@ function CampaignRow({
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.15 }}
               >
-                {/* Sequence header */}
-                <div className="grid grid-cols-8 gap-4 px-4 py-1 text-xs text-white ml-4">
-                  <div className="col-span-2">Sequence Step</div>
-                  <div className="text-center">Sent</div>
-                  <div className="text-center">Prospects</div>
-                  <div className="text-center">Total Replies</div>
-                  <div className="text-center">Real Replies</div>
-                  <div className="text-center">Positive</div>
-                  <div className="text-center">Meetings</div>
-                </div>
+                {/* Sequence rows - header is inherited from parent table */}
                 {sequenceData.map((seq, idx) => (
                   <SequenceRow key={seq.step_number} sequence={seq} index={idx} />
                 ))}
@@ -412,7 +412,7 @@ export default function CampaignBreakdownTable({ client, onCampaignsSelected }: 
         </div>
 
         {/* Table Header */}
-        <div className="grid grid-cols-[auto_2fr_1fr_1fr_1fr_1fr_1fr_1fr_1fr_1fr] gap-3 px-3 py-2 bg-slate-800/50 text-xs text-white font-medium border-b border-slate-700/30">
+        <div className="grid grid-cols-[auto_2fr_1fr_1fr_1fr_1fr_1fr_1fr_1fr_1fr_1fr] gap-3 px-3 py-2 bg-slate-800/50 text-xs text-white font-medium border-b border-slate-700/30">
           <div className="flex items-center justify-center">
             <input
               type="checkbox"
@@ -423,6 +423,7 @@ export default function CampaignBreakdownTable({ client, onCampaignsSelected }: 
           </div>
           <div className="pl-1">Campaign Name</div>
           <div className="text-center">Status</div>
+          <div className="text-center">Created</div>
           <div className="text-center">Emails Sent</div>
           <div className="text-center">Prospects</div>
           <div className="text-center">Total Replies</div>

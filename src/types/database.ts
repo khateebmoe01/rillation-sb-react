@@ -238,12 +238,19 @@ export interface Campaign {
   status?: string
 }
 
+export interface MentionedUser {
+  slack_id: string
+  display_name: string
+}
+
 export interface ClientIterationLog {
   id?: number
   client: string
   action_type: string
   description: string
   created_by: string
+  campaign_name?: string
+  mentioned_users?: MentionedUser[]
   created_at?: string
 }
 

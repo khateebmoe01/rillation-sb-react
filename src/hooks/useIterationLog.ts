@@ -2,12 +2,19 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { dataCache, DataCache } from '../lib/cache'
 
+export interface MentionedUser {
+  slack_id: string
+  display_name: string
+}
+
 export interface IterationLogEntry {
   id: number
   client: string
   action_type: string
   description: string
   created_by: string
+  campaign_name?: string
+  mentioned_users?: MentionedUser[]
   created_at: string
 }
 
@@ -16,6 +23,8 @@ export interface CreateIterationLogEntry {
   action_type: string
   description: string
   created_by: string
+  campaign_name?: string
+  mentioned_users?: MentionedUser[]
 }
 
 export interface UseIterationLogParams {
@@ -115,12 +124,33 @@ export function useIterationLog({ client }: UseIterationLogParams = {}) {
         action_type: entry.action_type,
         description: entry.description,
         created_by: entry.created_by,
+        campaign_name: entry.campaign_name || null,
+        mentioned_users: entry.mentioned_users || [],
       }
       const { error: insertError } = await supabase
         .from('client_iteration_logs')
         .insert(insertData as any)
 
       if (insertError) throw insertError
+
+      // Send Slack notification if there are mentioned users
+      if (entry.mentioned_users && entry.mentioned_users.length > 0) {
+        try {
+          await supabase.functions.invoke('slack-notify', {
+            body: {
+              client: entry.client,
+              campaign_name: entry.campaign_name,
+              action_type: entry.action_type,
+              description: entry.description,
+              created_by: entry.created_by,
+              mentioned_users: entry.mentioned_users,
+            },
+          })
+        } catch (slackErr) {
+          // Log but don't fail the operation if Slack notification fails
+          console.warn('Failed to send Slack notification:', slackErr)
+        }
+      }
 
       // Invalidate cache and refetch
       if (client) {

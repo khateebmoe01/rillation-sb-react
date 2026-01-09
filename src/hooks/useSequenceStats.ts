@@ -5,8 +5,11 @@ export interface SequenceStat {
   step_number: number
   step_name: string
   sent: number
+  prospects: number
   total_replies: number
+  real_replies: number
   positive_replies: number
+  bounces: number
   meetings_booked: number
 }
 
@@ -15,6 +18,12 @@ interface UseSequenceStatsParams {
   client: string
   startDate: Date
   endDate: Date
+}
+
+// Helper to generate step name from order
+function getStepName(order: number): string {
+  if (order === 1) return 'Initial Outreach'
+  return `Follow-up ${order - 1}`
 }
 
 export function useSequenceStats() {
@@ -28,87 +37,129 @@ export function useSequenceStats() {
       setError(null)
 
       const startStr = formatDateForQuery(startDate)
+      const endStr = formatDateForQuery(endDate)
       const endStrNextDay = formatDateForQueryEndOfDay(endDate)
 
-      // Try to fetch from sequence_step_stats table if it exists
-      const { data: sequenceData, error: sequenceError } = await supabase
-        .from('sequence_step_stats')
-        .select('*')
+      // Fetch campaign_reporting rows with sequence_step_stats JSONB for this campaign
+      const { data: reportingData, error: reportingError } = await supabase
+        .from('campaign_reporting')
+        .select('sequence_step_stats')
         .eq('campaign_id', campaignId)
         .eq('client', client)
         .gte('date', startStr)
-        .lte('date', endStrNextDay.split('T')[0])
-        .order('step_number')
+        .lte('date', endStr)
 
-      if (sequenceError) {
-        // If table doesn't exist or error, generate synthetic data based on campaign stats
-        console.log('Sequence stats table not available, generating from campaign data')
-        
-        // Generate synthetic sequence data (step 1, 2, 3)
-        const syntheticData: SequenceStat[] = [
-          {
-            step_number: 1,
-            step_name: 'Initial Outreach',
-            sent: 0,
-            total_replies: 0,
-            positive_replies: 0,
-            meetings_booked: 0,
-          },
-          {
-            step_number: 2,
-            step_name: 'Follow-up 1',
-            sent: 0,
-            total_replies: 0,
-            positive_replies: 0,
-            meetings_booked: 0,
-          },
-          {
-            step_number: 3,
-            step_name: 'Follow-up 2',
-            sent: 0,
-            total_replies: 0,
-            positive_replies: 0,
-            meetings_booked: 0,
-          },
-        ]
-        
-        setData(syntheticData)
-        return syntheticData
+      if (reportingError) {
+        console.error('Error fetching sequence stats from campaign_reporting:', reportingError)
+        setData([])
+        return []
       }
 
-      // Aggregate by step
+      // Aggregate sequence step stats from JSONB across all date rows
       const stepMap = new Map<number, SequenceStat>()
-      
-      interface SequenceRow {
-        step_number: number
-        step_name?: string
-        emails_sent?: number
-        total_replies?: number
-        positive_replies?: number
-        meetings_booked?: number
+
+      interface SequenceStepJson {
+        order?: number
+        sequence_step_id?: number
+        sent?: number
+        leads_contacted?: number
+        bounced?: number
+        interested?: number
+        unique_replies?: number
+        email_subject?: string
       }
 
-      (sequenceData as SequenceRow[] || []).forEach((row) => {
-        const stepNum = row.step_number || 1
-        if (!stepMap.has(stepNum)) {
-          stepMap.set(stepNum, {
-            step_number: stepNum,
-            step_name: row.step_name || `Step ${stepNum}`,
-            sent: 0,
-            total_replies: 0,
-            positive_replies: 0,
-            meetings_booked: 0,
-          })
-        }
-        
-        const stat = stepMap.get(stepNum)!
-        stat.sent += row.emails_sent || 0
-        stat.total_replies += row.total_replies || 0
-        stat.positive_replies += row.positive_replies || 0
-        stat.meetings_booked += row.meetings_booked || 0
+      ;(reportingData || []).forEach((row: any) => {
+        const steps = row.sequence_step_stats as SequenceStepJson[] | null
+        if (!Array.isArray(steps)) return
+
+        steps.forEach((step) => {
+          const stepOrder = step.order || 1
+          if (!stepMap.has(stepOrder)) {
+            stepMap.set(stepOrder, {
+              step_number: stepOrder,
+              step_name: getStepName(stepOrder),
+              sent: 0,
+              prospects: 0,
+              total_replies: 0,
+              real_replies: 0,
+              positive_replies: 0,
+              bounces: 0,
+              meetings_booked: 0,
+            })
+          }
+
+          const stat = stepMap.get(stepOrder)!
+          stat.sent += step.sent || 0
+          stat.prospects += step.leads_contacted || 0
+          stat.bounces += step.bounced || 0
+          stat.positive_replies += step.interested || 0
+          // Note: unique_replies in the JSONB is per-contact unique replies, not total
+        })
       })
 
+      // Fetch replies aggregated by sequence_step_order for total/real replies
+      const { data: repliesData, error: repliesError } = await supabase
+        .from('replies')
+        .select('sequence_step_order, category, lead_id, from_email')
+        .eq('campaign_id', campaignId)
+        .eq('client', client)
+        .gte('date_received', startStr)
+        .lt('date_received', endStrNextDay)
+
+      if (!repliesError && repliesData) {
+        // Count unique leads per step for total and real replies
+        const stepReplies = new Map<number, { total: Set<string>; real: Set<string> }>()
+
+        ;(repliesData as any[]).forEach((reply) => {
+          const stepOrder = reply.sequence_step_order || 1
+          const leadKey = reply.lead_id || reply.from_email || ''
+          if (!leadKey) return
+
+          if (!stepReplies.has(stepOrder)) {
+            stepReplies.set(stepOrder, { total: new Set(), real: new Set() })
+          }
+
+          const tracking = stepReplies.get(stepOrder)!
+          const cat = (reply.category || '').toLowerCase()
+          const isOOO = cat.includes('out of office') || cat.includes('ooo')
+
+          tracking.total.add(leadKey)
+          if (!isOOO) {
+            tracking.real.add(leadKey)
+          }
+        })
+
+        // Apply reply counts to step stats
+        stepReplies.forEach((tracking, stepOrder) => {
+          if (!stepMap.has(stepOrder)) {
+            stepMap.set(stepOrder, {
+              step_number: stepOrder,
+              step_name: getStepName(stepOrder),
+              sent: 0,
+              prospects: 0,
+              total_replies: 0,
+              real_replies: 0,
+              positive_replies: 0,
+              bounces: 0,
+              meetings_booked: 0,
+            })
+          }
+          const stat = stepMap.get(stepOrder)!
+          stat.total_replies = tracking.total.size
+          stat.real_replies = tracking.real.size
+        })
+      }
+
+      // Sort by step number and return
       const result = Array.from(stepMap.values()).sort((a, b) => a.step_number - b.step_number)
+      
+      // If no data found, return empty array (not synthetic data)
+      if (result.length === 0) {
+        setData([])
+        return []
+      }
+
       setData(result)
       return result
     } catch (err) {
