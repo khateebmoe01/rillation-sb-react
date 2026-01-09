@@ -63,8 +63,8 @@ export default function Sidebar() {
             className={`
               mx-2 h-12 flex items-center gap-3 rounded-xl transition-all duration-200 px-3
               ${isActive
-                ? 'bg-rillation-card-hover border border-rillation-border text-rillation-text'
-                : 'text-rillation-text-muted hover:text-rillation-text hover:bg-rillation-card-hover'
+                ? 'bg-rillation-card-hover border border-rillation-border text-white'
+                : 'text-white/80 hover:text-white hover:bg-white/5'
               }
             `}
           >

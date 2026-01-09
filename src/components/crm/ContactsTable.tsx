@@ -1,7 +1,8 @@
 import { useState, memo, useRef, useCallback, useEffect } from 'react'
-import { motion } from 'framer-motion'
-import { ChevronDown, ChevronUp, Check, Loader2, ExternalLink, Calendar, GripVertical } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { ChevronDown, ChevronUp, Check, Loader2, ExternalLink, Calendar, GripVertical, Mail, Phone, Copy, ChevronRight, Columns, Eye, EyeOff } from 'lucide-react'
 import { CRM_STAGES, type CRMContact, type CRMSort } from '../../types/crm'
+import ContactHoverCard from './ContactHoverCard'
 import {
   DndContext,
   closestCenter,
@@ -26,6 +27,8 @@ interface ContactsTableProps {
   onContactUpdate: (id: string, updates: Partial<CRMContact>) => Promise<boolean>
   sort?: CRMSort
   onSortChange?: (sort: CRMSort | undefined) => void
+  selectedRowIndex?: number
+  onSelectedRowChange?: (index: number) => void
 }
 
 // Column definition interface
@@ -48,6 +51,23 @@ const PIPELINE_STAGES = [
   { key: 'proposal_sent' as const, label: 'Proposal Sent', timestampKey: 'proposal_sent_at' as const },
   { key: 'closed' as const, label: 'Closed', timestampKey: 'closed_at' as const },
 ]
+
+// Default column widths in pixels (mapped from Tailwind classes)
+const DEFAULT_COLUMN_WIDTHS: Record<string, number> = {
+  'full_name': 176,        // w-44 = 11rem = 176px
+  'company': 160,          // w-40 = 10rem = 160px
+  'stage': 128,            // w-32 = 8rem = 128px
+  'pipeline_progress': 176, // w-44 = 11rem = 176px
+  'lead_phone': 128,       // w-32 = 8rem = 128px
+  'company_phone': 128,    // w-32 = 8rem = 128px
+  'linkedin_url': 112,     // w-28 = 7rem = 112px
+  'context': 192,          // w-48 = 12rem = 192px
+  'next_touchpoint': 128,  // w-32 = 8rem = 128px
+  'lead_source': 112,      // w-28 = 7rem = 112px
+  'industry': 128,         // w-32 = 8rem = 128px
+  'created_at': 128,       // w-32 = 8rem = 128px
+  'company_website': 144,  // w-36 = 9rem = 144px
+}
 
 // Column definitions - Lead Name first, removed assignee, combined checkboxes into Pipeline Progress
 const COLUMNS: ColumnDef[] = [
@@ -384,14 +404,78 @@ function SortableHeader({ label, field, sortable, currentSort, onSort }: Sortabl
   )
 }
 
+// Column resize handle component
+interface ColumnResizeHandleProps {
+  onResize: (deltaX: number) => void
+}
+
+function ColumnResizeHandle({ onResize }: ColumnResizeHandleProps) {
+  const [isResizing, setIsResizing] = useState(false)
+  const startXRef = useRef<number>(0)
+
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsResizing(true)
+    startXRef.current = e.clientX
+    document.body.style.cursor = 'col-resize'
+    document.body.style.userSelect = 'none'
+  }, [])
+
+  useEffect(() => {
+    if (!isResizing) return
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const deltaX = e.clientX - startXRef.current
+      if (Math.abs(deltaX) > 0) {
+        onResize(deltaX)
+        startXRef.current = e.clientX
+      }
+    }
+
+    const handleMouseUp = () => {
+      setIsResizing(false)
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
+    }
+
+    document.addEventListener('mousemove', handleMouseMove)
+    document.addEventListener('mouseup', handleMouseUp)
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove)
+      document.removeEventListener('mouseup', handleMouseUp)
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
+    }
+  }, [isResizing, onResize])
+
+  return (
+    <div
+      onMouseDown={handleMouseDown}
+      className={`absolute right-0 top-0 bottom-0 w-1 cursor-col-resize transition-colors ${
+        isResizing 
+          ? 'bg-crm-text-muted' 
+          : 'hover:bg-crm-text-muted/50 group-hover:bg-crm-text-muted/30'
+      }`}
+      style={{ zIndex: 10 }}
+    >
+      {/* Invisible wider hit area for easier dragging */}
+      <div className="absolute inset-0 -right-2 -left-2" />
+    </div>
+  )
+}
+
 // Draggable column header component
 interface DraggableColumnHeaderProps {
   column: ColumnDef
   sort?: CRMSort
   onSortChange?: (sort: CRMSort | undefined) => void
+  width: number
+  onResize: (columnKey: string, newWidth: number) => void
 }
 
-function DraggableColumnHeader({ column, sort, onSortChange }: DraggableColumnHeaderProps) {
+function DraggableColumnHeader({ column, sort, onSortChange, width, onResize }: DraggableColumnHeaderProps) {
   const {
     attributes,
     listeners,
@@ -401,18 +485,24 @@ function DraggableColumnHeader({ column, sort, onSortChange }: DraggableColumnHe
     isDragging,
   } = useSortable({ id: column.key })
 
+  const handleResize = useCallback((deltaX: number) => {
+    const newWidth = Math.max(80, Math.min(width + deltaX, 800)) // Min 80px, Max 800px
+    onResize(column.key, newWidth)
+  }, [width, onResize, column.key])
+
   const style = {
     transform: CSS.Transform.toString(transform),
-    transition,
+    transition: isDragging ? transition : undefined,
     zIndex: isDragging ? 50 : undefined,
     opacity: isDragging ? 0.8 : 1,
+    width: `${width}px`,
   }
 
   return (
     <div
       ref={setNodeRef}
       style={style}
-      className={`flex-shrink-0 text-left px-3 py-3 text-xs font-medium text-crm-text tracking-wide ${column.width} whitespace-nowrap flex items-center gap-1 ${isDragging ? 'bg-crm-card-hover rounded' : ''}`}
+      className={`group flex-shrink-0 text-left px-3 py-3 text-xs font-medium text-crm-text tracking-wide whitespace-nowrap flex items-center gap-1 relative ${isDragging ? 'bg-crm-card-hover rounded' : ''}`}
     >
       <div
         {...attributes}
@@ -428,6 +518,7 @@ function DraggableColumnHeader({ column, sort, onSortChange }: DraggableColumnHe
         currentSort={sort}
         onSort={onSortChange}
       />
+      <ColumnResizeHandle onResize={handleResize} />
     </div>
   )
 }
@@ -462,6 +553,132 @@ function formatDate(dateStr?: string | null): string {
     year: '2-digit',
   })
 }
+
+// Row Quick Actions component
+interface RowQuickActionsProps {
+  contact: CRMContact
+  onSave: (id: string, updates: Partial<CRMContact>) => Promise<boolean>
+  onSelect: () => void
+}
+
+const RowQuickActions = memo(({ contact, onSave, onSelect }: RowQuickActionsProps) => {
+  const [isCopied, setIsCopied] = useState(false)
+  const [isUpdating, setIsUpdating] = useState(false)
+
+  // Get current and next stage
+  const currentStageIndex = CRM_STAGES.findIndex(s => s.id === contact.stage)
+  const currentStage = CRM_STAGES[currentStageIndex] || CRM_STAGES[0]
+  const nextStage = CRM_STAGES[currentStageIndex + 1]
+
+  const handleCopyEmail = async (e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (contact.email) {
+      await navigator.clipboard.writeText(contact.email)
+      setIsCopied(true)
+      setTimeout(() => setIsCopied(false), 2000)
+    }
+  }
+
+  const handleAdvanceStage = async (e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (nextStage && !isUpdating) {
+      setIsUpdating(true)
+      await onSave(contact.id, { stage: nextStage.id })
+      setIsUpdating(false)
+    }
+  }
+
+  return (
+    <div 
+      className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-crm-card/90 backdrop-blur-sm rounded-lg px-1 py-0.5 border border-crm-border shadow-lg"
+      onClick={(e) => e.stopPropagation()}
+    >
+      {/* Copy Email */}
+      {contact.email && (
+        <motion.button
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.9 }}
+          onClick={handleCopyEmail}
+          className="p-1.5 rounded-md hover:bg-crm-card-hover transition-colors"
+          title={isCopied ? 'Copied!' : 'Copy email'}
+        >
+          {isCopied ? (
+            <Check size={14} className="text-green-400" />
+          ) : (
+            <Copy size={14} className="text-crm-text-muted" />
+          )}
+        </motion.button>
+      )}
+
+      {/* Email */}
+      {contact.email && (
+        <motion.a
+          href={`mailto:${contact.email}`}
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.9 }}
+          onClick={(e) => e.stopPropagation()}
+          className="p-1.5 rounded-md hover:bg-crm-card-hover transition-colors"
+          title="Send email"
+        >
+          <Mail size={14} className="text-crm-text-muted" />
+        </motion.a>
+      )}
+
+      {/* Phone */}
+      {contact.lead_phone && (
+        <motion.a
+          href={`tel:${contact.lead_phone}`}
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.9 }}
+          onClick={(e) => e.stopPropagation()}
+          className="p-1.5 rounded-md hover:bg-crm-card-hover transition-colors"
+          title="Call"
+        >
+          <Phone size={14} className="text-crm-text-muted" />
+        </motion.a>
+      )}
+
+      {/* Advance Stage */}
+      {nextStage && (
+        <motion.button
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          onClick={handleAdvanceStage}
+          disabled={isUpdating}
+          className="flex items-center gap-1 px-2 py-1 rounded-md hover:bg-crm-card-hover transition-colors text-xs"
+          title={`Move to ${nextStage.label}`}
+        >
+          {isUpdating ? (
+            <Loader2 size={12} className="animate-spin text-crm-text-muted" />
+          ) : (
+            <>
+              <div 
+                className="w-2 h-2 rounded-full"
+                style={{ backgroundColor: nextStage.color }}
+              />
+              <ChevronRight size={12} className="text-crm-text-muted" />
+            </>
+          )}
+        </motion.button>
+      )}
+
+      {/* View Details */}
+      <motion.button
+        whileHover={{ scale: 1.05 }}
+        whileTap={{ scale: 0.95 }}
+        onClick={(e) => {
+          e.stopPropagation()
+          onSelect()
+        }}
+        className="px-2 py-1 rounded-md bg-crm-checkbox/20 hover:bg-crm-checkbox/30 transition-colors text-xs text-crm-text"
+      >
+        View
+      </motion.button>
+    </div>
+  )
+})
+
+RowQuickActions.displayName = 'RowQuickActions'
 
 // Get cell value for rendering
 function getCellValue(
@@ -576,8 +793,33 @@ function getCellValue(
   }
 }
 
-// LocalStorage key for column order
+// LocalStorage keys
 const COLUMN_ORDER_KEY = 'crm-column-order'
+const COLUMN_WIDTHS_KEY = 'crm-column-widths'
+const COLUMN_VISIBILITY_KEY = 'crm-column-visibility'
+
+// Default visible columns (smart defaults - most useful columns)
+const DEFAULT_VISIBLE_COLUMNS = new Set([
+  'full_name',
+  'company',
+  'stage',
+  'pipeline_progress',
+  'lead_phone',
+  'next_touchpoint',
+])
+
+// Get initial column visibility from localStorage or use defaults
+function getInitialColumnVisibility(): Set<string> {
+  try {
+    const saved = localStorage.getItem(COLUMN_VISIBILITY_KEY)
+    if (saved) {
+      return new Set(JSON.parse(saved))
+    }
+  } catch (e) {
+    // Ignore
+  }
+  return new Set(DEFAULT_VISIBLE_COLUMNS)
+}
 
 // Get initial column order from localStorage or use default
 function getInitialColumnOrder(): string[] {
@@ -597,12 +839,29 @@ function getInitialColumnOrder(): string[] {
   return COLUMNS.map(c => c.key)
 }
 
+// Get initial column widths from localStorage or use defaults
+function getInitialColumnWidths(): Record<string, number> {
+  try {
+    const saved = localStorage.getItem(COLUMN_WIDTHS_KEY)
+    if (saved) {
+      const parsed = JSON.parse(saved) as Record<string, number>
+      // Merge saved widths with defaults to handle new columns
+      return { ...DEFAULT_COLUMN_WIDTHS, ...parsed }
+    }
+  } catch (e) {
+    // Ignore errors
+  }
+  return { ...DEFAULT_COLUMN_WIDTHS }
+}
+
 export default function ContactsTable({ 
   contacts, 
   onContactSelect, 
   onContactUpdate,
   sort,
   onSortChange,
+  selectedRowIndex = -1,
+  onSelectedRowChange,
 }: ContactsTableProps) {
   const headerRef = useRef<HTMLDivElement>(null)
   const bodyRef = useRef<HTMLDivElement>(null)
@@ -610,15 +869,104 @@ export default function ContactsTable({
   // Column order state with localStorage persistence
   const [columnOrder, setColumnOrder] = useState<string[]>(getInitialColumnOrder)
   
-  // Get ordered columns
+  // Column widths state with localStorage persistence
+  const [columnWidths, setColumnWidths] = useState<Record<string, number>>(getInitialColumnWidths)
+
+  // Column visibility state with localStorage persistence
+  const [visibleColumns, setVisibleColumns] = useState<Set<string>>(getInitialColumnVisibility)
+  const [showColumnPicker, setShowColumnPicker] = useState(false)
+
+  // Hover card state
+  const [hoveredContact, setHoveredContact] = useState<CRMContact | null>(null)
+  const [hoverPosition, setHoverPosition] = useState<{ top: number; left: number }>({ top: 0, left: 0 })
+  const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+
+  // Handle row hover with delay
+  const handleRowMouseEnter = useCallback((contact: CRMContact, event: React.MouseEvent) => {
+    const rowElement = event.currentTarget as HTMLElement
+    const rect = rowElement.getBoundingClientRect()
+    
+    // Clear any existing timeout
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current)
+    }
+    
+    // Set a delay before showing the hover card
+    hoverTimeoutRef.current = setTimeout(() => {
+      // Position the card to the right of the viewport, or to the left if not enough space
+      const cardWidth = 320
+      const viewportWidth = window.innerWidth
+      const left = rect.right + 10 + cardWidth > viewportWidth 
+        ? Math.max(10, rect.left - cardWidth - 10)
+        : rect.right + 10
+      
+      setHoverPosition({
+        top: Math.max(10, Math.min(rect.top, window.innerHeight - 400)),
+        left,
+      })
+      setHoveredContact(contact)
+    }, 400) // 400ms delay
+  }, [])
+
+  const handleRowMouseLeave = useCallback(() => {
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current)
+      hoverTimeoutRef.current = null
+    }
+    setHoveredContact(null)
+  }, [])
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (hoverTimeoutRef.current) {
+        clearTimeout(hoverTimeoutRef.current)
+      }
+    }
+  }, [])
+  
+  // Get ordered and visible columns
   const orderedColumns = columnOrder
     .map(key => COLUMNS.find(c => c.key === key))
-    .filter((c): c is ColumnDef => c !== undefined)
+    .filter((c): c is ColumnDef => c !== undefined && visibleColumns.has(c.key))
 
   // Save column order to localStorage
   useEffect(() => {
     localStorage.setItem(COLUMN_ORDER_KEY, JSON.stringify(columnOrder))
   }, [columnOrder])
+
+  // Save column widths to localStorage
+  useEffect(() => {
+    localStorage.setItem(COLUMN_WIDTHS_KEY, JSON.stringify(columnWidths))
+  }, [columnWidths])
+
+  // Save column visibility to localStorage
+  useEffect(() => {
+    localStorage.setItem(COLUMN_VISIBILITY_KEY, JSON.stringify([...visibleColumns]))
+  }, [visibleColumns])
+
+  // Toggle column visibility
+  const toggleColumnVisibility = useCallback((columnKey: string) => {
+    setVisibleColumns(prev => {
+      const next = new Set(prev)
+      if (next.has(columnKey)) {
+        // Don't allow hiding the first column (full_name)
+        if (columnKey === 'full_name') return prev
+        next.delete(columnKey)
+      } else {
+        next.add(columnKey)
+      }
+      return next
+    })
+  }, [])
+
+  // Handle column resize
+  const handleColumnResize = useCallback((columnKey: string, newWidth: number) => {
+    setColumnWidths(prev => ({
+      ...prev,
+      [columnKey]: Math.max(80, Math.min(newWidth, 800)), // Min 80px, Max 800px
+    }))
+  }, [])
 
   // DnD sensors
   const sensors = useSensors(
@@ -645,42 +993,173 @@ export default function ContactsTable({
     }
   }, [])
 
+  // Track horizontal scroll for shadow indicator
+  const [isScrolled, setIsScrolled] = useState(false)
+
   // Sync horizontal scroll between header and body
   const handleBodyScroll = useCallback(() => {
     if (bodyRef.current && headerRef.current) {
       headerRef.current.scrollLeft = bodyRef.current.scrollLeft
+      // Show shadow when scrolled horizontally
+      setIsScrolled(bodyRef.current.scrollLeft > 0)
     }
   }, [])
+
+  // Separate first column from rest for sticky behavior
+  const firstColumn = orderedColumns[0]
+  const scrollableColumns = orderedColumns.slice(1)
+  const firstColumnWidth = firstColumn ? (columnWidths[firstColumn.key] || DEFAULT_COLUMN_WIDTHS[firstColumn.key] || 176) : 176
 
   return (
     <div className="h-full min-h-0 bg-crm-card rounded-xl border border-crm-border flex flex-col overflow-hidden">
       {/* Fixed Header - doesn't scroll vertically */}
       <div 
-        ref={headerRef}
-        className="flex-shrink-0 border-b border-crm-border overflow-x-hidden"
+        className="flex-shrink-0 border-b border-crm-border flex"
         style={{ backgroundColor: '#0d1117' }}
       >
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          onDragEnd={handleDragEnd}
-        >
-          <SortableContext
-            items={columnOrder}
-            strategy={horizontalListSortingStrategy}
+        {/* Column Picker Button */}
+        <div className="flex-shrink-0 px-2 py-2 flex items-center border-r border-crm-border/50 relative">
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => setShowColumnPicker(!showColumnPicker)}
+            className={`p-2 rounded-lg transition-colors ${
+              showColumnPicker 
+                ? 'bg-crm-checkbox/20 text-crm-checkbox' 
+                : 'hover:bg-crm-card-hover text-crm-text-muted hover:text-crm-text'
+            }`}
+            title="Toggle columns"
           >
-            <div className="flex" style={{ minWidth: '2000px' }}>
-              {orderedColumns.map((column) => (
+            <Columns size={16} />
+          </motion.button>
+
+          {/* Column Picker Dropdown */}
+          <AnimatePresence>
+            {showColumnPicker && (
+              <>
+                <div 
+                  className="fixed inset-0 z-40" 
+                  onClick={() => setShowColumnPicker(false)} 
+                />
+                <motion.div
+                  initial={{ opacity: 0, y: -5, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -5, scale: 0.95 }}
+                  transition={{ duration: 0.15 }}
+                  className="absolute top-full left-0 mt-1 w-56 bg-crm-card border border-crm-border rounded-xl shadow-2xl z-50 py-2 max-h-80 overflow-y-auto"
+                >
+                  <div className="px-3 py-2 border-b border-crm-border/50 mb-1">
+                    <p className="text-xs font-medium text-crm-text">Show Columns</p>
+                    <p className="text-xs text-crm-text-muted mt-0.5">
+                      {visibleColumns.size} of {COLUMNS.length} visible
+                    </p>
+                  </div>
+                  {COLUMNS.map((col) => {
+                    const isVisible = visibleColumns.has(col.key)
+                    const isLocked = col.key === 'full_name' // Can't hide name column
+                    return (
+                      <button
+                        key={col.key}
+                        onClick={() => !isLocked && toggleColumnVisibility(col.key)}
+                        disabled={isLocked}
+                        className={`w-full flex items-center gap-2 px-3 py-2 text-sm text-left transition-colors ${
+                          isLocked 
+                            ? 'opacity-50 cursor-not-allowed' 
+                            : 'hover:bg-crm-card-hover'
+                        }`}
+                      >
+                        <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${
+                          isVisible 
+                            ? 'bg-crm-checkbox border-crm-checkbox' 
+                            : 'border-crm-border'
+                        }`}>
+                          {isVisible && <Check size={12} className="text-white" />}
+                        </div>
+                        {isVisible ? (
+                          <Eye size={14} className="text-crm-text-muted" />
+                        ) : (
+                          <EyeOff size={14} className="text-crm-text-muted/50" />
+                        )}
+                        <span className={isVisible ? 'text-crm-text' : 'text-crm-text-muted'}>
+                          {col.label}
+                        </span>
+                        {isLocked && (
+                          <span className="ml-auto text-xs text-crm-text-muted">Required</span>
+                        )}
+                      </button>
+                    )
+                  })}
+                  <div className="px-3 py-2 border-t border-crm-border/50 mt-1">
+                    <button
+                      onClick={() => setVisibleColumns(new Set(DEFAULT_VISIBLE_COLUMNS))}
+                      className="text-xs text-crm-text-muted hover:text-crm-text transition-colors"
+                    >
+                      Reset to defaults
+                    </button>
+                  </div>
+                </motion.div>
+              </>
+            )}
+          </AnimatePresence>
+        </div>
+        {/* Sticky first column header */}
+        {firstColumn && (
+          <div 
+            className={`flex-shrink-0 sticky left-0 z-20 bg-[#0d1117] transition-shadow ${
+              isScrolled ? 'shadow-[4px_0_8px_-2px_rgba(0,0,0,0.4)]' : ''
+            }`}
+            style={{ width: `${firstColumnWidth}px` }}
+          >
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
+            >
+              <SortableContext
+                items={[firstColumn.key]}
+                strategy={horizontalListSortingStrategy}
+              >
                 <DraggableColumnHeader
-                  key={column.key}
-                  column={column}
+                  column={firstColumn}
                   sort={sort}
                   onSortChange={onSortChange}
+                  width={firstColumnWidth}
+                  onResize={handleColumnResize}
                 />
-              ))}
-            </div>
-          </SortableContext>
-        </DndContext>
+              </SortableContext>
+            </DndContext>
+          </div>
+        )}
+        
+        {/* Scrollable columns header */}
+        <div 
+          ref={headerRef}
+          className="flex-1 overflow-x-hidden"
+        >
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext
+              items={scrollableColumns.map(c => c.key)}
+              strategy={horizontalListSortingStrategy}
+            >
+              <div className="flex" style={{ minWidth: '1800px' }}>
+                {scrollableColumns.map((column) => (
+                  <DraggableColumnHeader
+                    key={column.key}
+                    column={column}
+                    sort={sort}
+                    onSortChange={onSortChange}
+                    width={columnWidths[column.key] || DEFAULT_COLUMN_WIDTHS[column.key] || 128}
+                    onResize={handleColumnResize}
+                  />
+                ))}
+              </div>
+            </SortableContext>
+          </DndContext>
+        </div>
       </div>
       
       {/* Scrollable Body */}
@@ -689,34 +1168,104 @@ export default function ContactsTable({
         className="flex-1 min-h-0 overflow-auto"
         onScroll={handleBodyScroll}
       >
-        <div style={{ minWidth: '2000px' }}>
-          {contacts.length === 0 ? (
-            <div className="px-4 py-12 text-center text-crm-text-muted">
-              No contacts found
-            </div>
-          ) : (
-            contacts.map((contact, index) => (
+        {contacts.length === 0 ? (
+          <div className="px-4 py-12 text-center text-crm-text-muted">
+            No contacts found
+          </div>
+        ) : (
+          contacts.map((contact, index) => {
+            const isSelected = index === selectedRowIndex
+            return (
               <motion.div
                 key={contact.id}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: Math.min(index * 0.01, 0.5) }}
-                className="flex group hover:bg-crm-card-hover/50 transition-colors cursor-pointer border-b border-crm-border/50"
-                onClick={() => onContactSelect(contact)}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ 
+                  opacity: 1, 
+                  y: 0,
+                  backgroundColor: isSelected ? 'rgba(var(--crm-checkbox-rgb, 34, 197, 94), 0.2)' : 'transparent'
+                }}
+                whileHover={{ 
+                  backgroundColor: isSelected 
+                    ? 'rgba(var(--crm-checkbox-rgb, 34, 197, 94), 0.25)' 
+                    : 'rgba(255, 255, 255, 0.03)',
+                  transition: { duration: 0.1 }
+                }}
+                transition={{ 
+                  delay: Math.min(index * 0.02, 0.3),
+                  type: 'spring',
+                  stiffness: 300,
+                  damping: 25
+                }}
+                className={`flex group cursor-pointer border-b border-crm-border/50 relative ${
+                  isSelected ? 'ring-1 ring-inset ring-crm-checkbox/50' : ''
+                }`}
+                onClick={() => {
+                  onSelectedRowChange?.(index)
+                  onContactSelect(contact)
+                }}
+                onMouseEnter={(e) => handleRowMouseEnter(contact, e)}
+                onMouseLeave={handleRowMouseLeave}
+                ref={(el) => {
+                  // Scroll selected row into view
+                  if (isSelected && el) {
+                    el.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+                  }
+                }}
               >
-                {orderedColumns.map((column) => (
+                {/* Quick Actions */}
+                <RowQuickActions
+                  contact={contact}
+                  onSave={onContactUpdate}
+                  onSelect={() => onContactSelect(contact)}
+                />
+                {/* Sticky first column cell */}
+                {firstColumn && (
                   <div
-                    key={column.key}
-                    className={`flex-shrink-0 px-3 py-4 text-sm text-crm-text ${column.width}`}
+                    className={`flex-shrink-0 sticky left-0 z-10 px-3 py-4 text-sm text-crm-text transition-all ${
+                      isSelected 
+                        ? 'bg-crm-checkbox/20' 
+                        : 'bg-crm-card group-hover:bg-crm-card-hover/50'
+                    } ${isScrolled ? 'shadow-[4px_0_8px_-2px_rgba(0,0,0,0.4)]' : ''}`}
+                    style={{ width: `${firstColumnWidth}px` }}
                   >
-                    {getCellValue(contact, column, onContactUpdate, () => onContactSelect(contact), index, contacts.length)}
+                    {getCellValue(contact, firstColumn, onContactUpdate, () => onContactSelect(contact), index, contacts.length)}
                   </div>
-                ))}
+                )}
+                
+                {/* Scrollable columns cells */}
+                <div className="flex" style={{ minWidth: '1800px' }}>
+                  {scrollableColumns.map((column) => {
+                    const width = columnWidths[column.key] || DEFAULT_COLUMN_WIDTHS[column.key] || 128
+                    return (
+                      <div
+                        key={column.key}
+                        className="flex-shrink-0 px-3 py-4 text-sm text-crm-text"
+                        style={{ width: `${width}px` }}
+                      >
+                        {getCellValue(contact, column, onContactUpdate, () => onContactSelect(contact), index, contacts.length)}
+                      </div>
+                    )
+                  })}
+                </div>
               </motion.div>
-            ))
-          )}
-        </div>
+            )
+          })
+        )}
       </div>
+
+      {/* Hover Card Portal */}
+      <AnimatePresence>
+        {hoveredContact && (
+          <ContactHoverCard
+            contact={hoveredContact}
+            position={hoverPosition}
+            onOpenDetail={() => {
+              setHoveredContact(null)
+              onContactSelect(hoveredContact)
+            }}
+          />
+        )}
+      </AnimatePresence>
     </div>
   )
 }

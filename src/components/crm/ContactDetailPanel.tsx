@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import { motion } from 'framer-motion'
+import { useState, useEffect, useCallback } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import {
   X,
   Mail,
@@ -16,10 +16,85 @@ import {
   Loader2,
   ExternalLink,
   ChevronDown,
+  ChevronRight,
   Check,
   CheckSquare,
 } from 'lucide-react'
 import { CRM_STAGES, LEAD_SOURCES, type CRMContact } from '../../types/crm'
+
+// LocalStorage key for section collapse state
+const SECTION_STATE_KEY = 'crm-detail-sections'
+
+// Section IDs
+type SectionId = 'pipeline' | 'contact' | 'organization' | 'scheduling' | 'notes'
+
+// Get initial section state from localStorage
+function getInitialSectionState(): Record<SectionId, boolean> {
+  try {
+    const saved = localStorage.getItem(SECTION_STATE_KEY)
+    if (saved) {
+      return JSON.parse(saved)
+    }
+  } catch (e) {
+    // Ignore
+  }
+  // Default: all sections expanded
+  return {
+    pipeline: true,
+    contact: true,
+    organization: false, // Start collapsed to reduce scroll
+    scheduling: false,
+    notes: true,
+  }
+}
+
+// Collapsible section component
+interface CollapsibleSectionProps {
+  id: SectionId
+  title: string
+  icon: React.ReactNode
+  isOpen: boolean
+  onToggle: (id: SectionId) => void
+  children: React.ReactNode
+  badge?: React.ReactNode
+}
+
+function CollapsibleSection({ id, title, icon, isOpen, onToggle, children, badge }: CollapsibleSectionProps) {
+  return (
+    <div className="border border-crm-border/50 rounded-xl overflow-hidden">
+      <motion.button
+        onClick={() => onToggle(id)}
+        className="w-full flex items-center gap-2 px-4 py-3 bg-crm-bg/30 hover:bg-crm-bg/50 transition-colors text-left"
+        whileTap={{ scale: 0.995 }}
+      >
+        <motion.div
+          animate={{ rotate: isOpen ? 90 : 0 }}
+          transition={{ duration: 0.2 }}
+        >
+          <ChevronRight size={16} className="text-crm-text-muted" />
+        </motion.div>
+        <span className="text-crm-text-muted">{icon}</span>
+        <span className="text-sm font-medium text-crm-text flex-1">{title}</span>
+        {badge}
+      </motion.button>
+      
+      <AnimatePresence initial={false}>
+        {isOpen && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+          >
+            <div className="p-4 border-t border-crm-border/50">
+              {children}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
 
 interface ContactDetailPanelProps {
   contact: CRMContact
@@ -178,34 +253,56 @@ interface TrackingCheckboxProps {
 
 function TrackingCheckbox({ label, checked, timestamp, onToggle }: TrackingCheckboxProps) {
   return (
-    <button
+    <motion.button
       onClick={onToggle}
-      className="flex items-center gap-3 w-full px-3 py-2 rounded-lg hover:bg-crm-card-hover transition-colors"
+      whileHover={{ backgroundColor: 'rgba(255,255,255,0.03)' }}
+      whileTap={{ scale: 0.98 }}
+      className="flex items-center gap-3 w-full px-3 py-2 rounded-lg transition-colors"
     >
-      <div
-        className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${
+      <motion.div
+        className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
           checked
             ? 'bg-crm-checkbox border-crm-checkbox'
             : 'border-crm-border hover:border-crm-text-muted'
         }`}
+        animate={checked ? { scale: [1, 1.2, 1] } : { scale: 1 }}
+        transition={{ duration: 0.2 }}
       >
-        {checked && <Check size={14} className="text-white" />}
-      </div>
+        <AnimatePresence mode="wait">
+          {checked && (
+            <motion.div
+              initial={{ scale: 0, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0, opacity: 0 }}
+              transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+            >
+              <Check size={14} className="text-white" />
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </motion.div>
       <div className="flex-1 text-left">
         <span className="text-sm text-crm-text">{label}</span>
-        {checked && timestamp && (
-          <p className="text-xs text-crm-text-muted mt-0.5">
-            {new Date(timestamp).toLocaleDateString('en-US', {
-              month: 'short',
-              day: 'numeric',
-              year: 'numeric',
-              hour: 'numeric',
-              minute: '2-digit',
-            })}
-          </p>
-        )}
+        <AnimatePresence>
+          {checked && timestamp && (
+            <motion.p
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="text-xs text-crm-text-muted mt-0.5"
+            >
+              {new Date(timestamp).toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric',
+                hour: 'numeric',
+                minute: '2-digit',
+              })}
+            </motion.p>
+          )}
+        </AnimatePresence>
       </div>
-    </button>
+    </motion.button>
   )
 }
 
@@ -213,6 +310,18 @@ export default function ContactDetailPanel({ contact, onClose, onUpdate, onDelet
   const [isSaving, setIsSaving] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  
+  // Collapsible sections state
+  const [sectionState, setSectionState] = useState<Record<SectionId, boolean>>(getInitialSectionState)
+
+  // Save section state to localStorage
+  useEffect(() => {
+    localStorage.setItem(SECTION_STATE_KEY, JSON.stringify(sectionState))
+  }, [sectionState])
+
+  const toggleSection = useCallback((id: SectionId) => {
+    setSectionState(prev => ({ ...prev, [id]: !prev[id] }))
+  }, [])
 
   const handleFieldSave = async (field: keyof CRMContact, value: any) => {
     setIsSaving(true)
@@ -242,6 +351,17 @@ export default function ContactDetailPanel({ contact, onClose, onUpdate, onDelet
     }
   }
 
+  // Count pipeline progress
+  const pipelineCount = [
+    contact.meeting_booked,
+    contact.showed_up_to_disco,
+    contact.qualified,
+    contact.demo_booked,
+    contact.showed_up_to_demo,
+    contact.proposal_sent,
+    contact.closed,
+  ].filter(Boolean).length
+
   return (
     <>
       {/* Backdrop */}
@@ -253,13 +373,13 @@ export default function ContactDetailPanel({ contact, onClose, onUpdate, onDelet
         onClick={onClose}
       />
 
-      {/* Panel */}
+      {/* Panel - Compact width for better UX */}
       <motion.div
         initial={{ x: '100%' }}
         animate={{ x: 0 }}
         exit={{ x: '100%' }}
-        transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-        className="fixed top-0 right-0 h-full w-full max-w-4xl bg-crm-card border-l border-crm-border z-50 overflow-y-auto"
+        transition={{ type: 'spring', damping: 30, stiffness: 350 }}
+        className="fixed top-0 right-0 h-full w-full max-w-xl bg-crm-card border-l border-crm-border z-50 overflow-y-auto"
       >
         {/* Header */}
         <div className="sticky top-0 bg-crm-card border-b border-crm-border px-6 py-4 flex items-center justify-between z-10">
@@ -313,13 +433,20 @@ export default function ContactDetailPanel({ contact, onClose, onUpdate, onDelet
             </div>
           </div>
 
-          {/* Pipeline Progress Checkboxes */}
-          <div>
-            <h3 className="text-sm font-medium text-crm-text mb-4 flex items-center gap-2">
-              <CheckSquare size={16} />
-              Pipeline Progress
-            </h3>
-            <div className="bg-crm-bg/50 rounded-xl divide-y divide-crm-border/50">
+          {/* Pipeline Progress - Collapsible */}
+          <CollapsibleSection
+            id="pipeline"
+            title="Pipeline Progress"
+            icon={<CheckSquare size={16} />}
+            isOpen={sectionState.pipeline}
+            onToggle={toggleSection}
+            badge={
+              <span className="text-xs px-2 py-0.5 rounded-full bg-crm-checkbox/20 text-crm-checkbox">
+                {pipelineCount}/7
+              </span>
+            }
+          >
+            <div className="space-y-1">
               <TrackingCheckbox
                 label="Meeting Booked"
                 checked={Boolean(contact.meeting_booked)}
@@ -363,15 +490,17 @@ export default function ContactDetailPanel({ contact, onClose, onUpdate, onDelet
                 onToggle={() => handleCheckboxToggle('closed', 'closed_at')}
               />
             </div>
-          </div>
+          </CollapsibleSection>
 
-          {/* Contact Information */}
-          <div>
-            <h3 className="text-sm font-medium text-crm-text mb-4 flex items-center gap-2">
-              <User size={16} />
-              Contact Information
-            </h3>
-            <div className="space-y-4 bg-crm-bg/50 rounded-xl p-4">
+          {/* Contact Information - Collapsible */}
+          <CollapsibleSection
+            id="contact"
+            title="Contact Information"
+            icon={<User size={16} />}
+            isOpen={sectionState.contact}
+            onToggle={toggleSection}
+          >
+            <div className="space-y-4">
               <EditableField
                 label="Full Name"
                 value={contact.full_name}
@@ -410,15 +539,22 @@ export default function ContactDetailPanel({ contact, onClose, onUpdate, onDelet
                 onSave={handleFieldSave}
               />
             </div>
-          </div>
+          </CollapsibleSection>
 
-          {/* Organization */}
-          <div>
-            <h3 className="text-sm font-medium text-crm-text mb-4 flex items-center gap-2">
-              <Building2 size={16} />
-              Organization
-            </h3>
-            <div className="space-y-4 bg-crm-bg/50 rounded-xl p-4">
+          {/* Organization - Collapsible */}
+          <CollapsibleSection
+            id="organization"
+            title="Organization"
+            icon={<Building2 size={16} />}
+            isOpen={sectionState.organization}
+            onToggle={toggleSection}
+            badge={contact.company ? (
+              <span className="text-xs text-crm-text-muted truncate max-w-[100px]">
+                {contact.company}
+              </span>
+            ) : undefined}
+          >
+            <div className="space-y-4">
               <EditableField
                 label="Company"
                 value={contact.company}
@@ -470,15 +606,22 @@ export default function ContactDetailPanel({ contact, onClose, onUpdate, onDelet
                 onSave={handleFieldSave}
               />
             </div>
-          </div>
+          </CollapsibleSection>
 
-          {/* Scheduling */}
-          <div>
-            <h3 className="text-sm font-medium text-crm-text mb-4 flex items-center gap-2">
-              <Calendar size={16} />
-              Scheduling
-            </h3>
-            <div className="space-y-4 bg-crm-bg/50 rounded-xl p-4">
+          {/* Scheduling - Collapsible */}
+          <CollapsibleSection
+            id="scheduling"
+            title="Scheduling"
+            icon={<Calendar size={16} />}
+            isOpen={sectionState.scheduling}
+            onToggle={toggleSection}
+            badge={contact.next_touchpoint ? (
+              <span className="text-xs text-crm-text-muted">
+                Next: {new Date(contact.next_touchpoint).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+              </span>
+            ) : undefined}
+          >
+            <div className="space-y-4">
               <EditableField
                 label="Meeting Date"
                 value={contact.meeting_date?.split('T')[0]}
@@ -512,15 +655,17 @@ export default function ContactDetailPanel({ contact, onClose, onUpdate, onDelet
                 onSave={handleFieldSave}
               />
             </div>
-          </div>
+          </CollapsibleSection>
 
-          {/* Notes & Context */}
-          <div>
-            <h3 className="text-sm font-medium text-crm-text mb-4 flex items-center gap-2">
-              <FileText size={16} />
-              Notes & Context
-            </h3>
-            <div className="space-y-4 bg-crm-bg/50 rounded-xl p-4">
+          {/* Notes & Context - Collapsible */}
+          <CollapsibleSection
+            id="notes"
+            title="Notes & Context"
+            icon={<FileText size={16} />}
+            isOpen={sectionState.notes}
+            onToggle={toggleSection}
+          >
+            <div className="space-y-4">
               <EditableField
                 label="Context / Conversation"
                 value={contact.context}
@@ -535,19 +680,15 @@ export default function ContactDetailPanel({ contact, onClose, onUpdate, onDelet
                 type="textarea"
                 onSave={handleFieldSave}
               />
+              <EditableField
+                label="Assignee"
+                value={contact.assignee}
+                field="assignee"
+                icon={<User size={16} />}
+                onSave={handleFieldSave}
+              />
             </div>
-          </div>
-
-          {/* Assignee */}
-          <div>
-            <EditableField
-              label="Assignee"
-              value={contact.assignee}
-              field="assignee"
-              icon={<User size={16} />}
-              onSave={handleFieldSave}
-            />
-          </div>
+          </CollapsibleSection>
 
           {/* Delete */}
           <div className="pt-4 border-t border-crm-border">

@@ -53,7 +53,7 @@ export default function CRMFilters({ filters, onFiltersChange, uniqueAssignees }
   const hasFilters = filters.stage?.length || filters.assignee || filters.leadSource
 
   return (
-    <div ref={containerRef} className="flex items-center gap-2 mt-4 flex-wrap">
+    <div ref={containerRef} className="flex items-center gap-2 flex-wrap">
       {/* Stage Filter */}
       <div className="relative">
         <button
