@@ -48,7 +48,7 @@ export default function Layout({ children }: LayoutProps) {
         {!isStandalonePage && <TabNavigation />}
         
         {/* Page Content */}
-        <main className={`flex-1 overflow-auto ${isCRMPage ? 'p-0' : 'p-6'}`}>
+        <main className={`flex-1 ${isCRMPage ? 'overflow-hidden p-0' : 'overflow-auto p-6'}`}>
           {children}
         </main>
       </div>

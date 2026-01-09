@@ -961,7 +961,7 @@ function getCellValue(
       )
     
     default:
-      return <span className="text-rillation-text-muted truncate">-</span>
+      return <span className="text-slate-400 truncate">-</span>
   }
 }
 
@@ -1340,7 +1340,7 @@ export default function ContactsTable({
         ref={bodyRef}
       >
         {contacts.length === 0 ? (
-          <div className="px-4 py-12 text-center text-rillation-text-muted">
+          <div className="px-4 py-12 text-center text-slate-400">
             No contacts found
           </div>
         ) : (
@@ -1402,7 +1402,7 @@ export default function ContactsTable({
                         title={isMinimized ? column.label : undefined}
                       >
                         {isMinimized ? (
-                          <span className="text-rillation-text-muted text-xs">•</span>
+                          <span className="text-slate-500 text-xs">•</span>
                         ) : (
                           getCellValue(contact, column, onContactUpdate, () => onContactSelect(contact), index, contacts.length, onEstimatedValueUpdate)
                         )}
