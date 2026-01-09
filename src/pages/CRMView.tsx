@@ -35,6 +35,7 @@ export default function CRMView() {
     createContact,
     deleteContact,
     updateStage,
+    updateEstimatedValue,
     contactsByStage,
     uniqueAssignees,
   } = useCRMContacts({ filters: activeFilters, sort })
@@ -268,6 +269,7 @@ export default function CRMView() {
                 contacts={contacts}
                 onContactSelect={handleContactSelect}
                 onContactUpdate={handleContactUpdate}
+                onEstimatedValueUpdate={updateEstimatedValue}
                 sort={sort}
                 onSortChange={setSort}
                 selectedRowIndex={selectedRowIndex}

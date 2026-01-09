@@ -71,6 +71,10 @@ export interface CRMContact {
   funding_stage?: string
   growth_score?: string
   is_hiring?: boolean
+  
+  // Pipeline Value (from client_opportunities table)
+  estimated_value?: number
+  opportunity_id?: string
 }
 
 // CRM Stage definitions

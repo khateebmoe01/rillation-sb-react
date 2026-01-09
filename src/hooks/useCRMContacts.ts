@@ -16,6 +16,7 @@ interface UseCRMContactsReturn {
   createContact: (contact: Partial<CRMContact>) => Promise<CRMContact | null>
   deleteContact: (id: string) => Promise<boolean>
   updateStage: (id: string, stage: string) => Promise<boolean>
+  updateEstimatedValue: (contact: CRMContact, value: number) => Promise<boolean>
   // Grouped by stage for kanban
   contactsByStage: Record<string, CRMContact[]>
   // Unique values for filters
@@ -87,15 +88,42 @@ export function useCRMContacts(options: UseCRMContactsOptions = {}): UseCRMConta
 
       if (fetchError) throw fetchError
 
-      // Transform data - ensure full_name exists
-      const transformedData = (data || []).map((contact: any) => ({
-        ...contact,
-        full_name: contact.full_name || 
-          [contact.first_name, contact.last_name].filter(Boolean).join(' ') || 
-          contact.email?.split('@')[0] || 
-          'Unknown',
-        stage: contact.stage || 'new',
-      }))
+      // Fetch opportunities to get estimated values
+      const { data: opportunities } = await supabase
+        .from('client_opportunities')
+        .select('id, contact_email, value, stage')
+        .eq('client', CLIENT)
+
+      // Create a map of email -> opportunity for quick lookup
+      const opportunityMap = new Map<string, { id: string; value: number; stage: string }>()
+      ;(opportunities || []).forEach((opp: any) => {
+        if (opp.contact_email) {
+          // Use the highest value if multiple opportunities exist
+          const existing = opportunityMap.get(opp.contact_email)
+          if (!existing || (opp.value || 0) > existing.value) {
+            opportunityMap.set(opp.contact_email, {
+              id: opp.id,
+              value: opp.value || 0,
+              stage: opp.stage,
+            })
+          }
+        }
+      })
+
+      // Transform data - ensure full_name exists and merge opportunity values
+      const transformedData = (data || []).map((contact: any) => {
+        const opportunity = opportunityMap.get(contact.email)
+        return {
+          ...contact,
+          full_name: contact.full_name || 
+            [contact.first_name, contact.last_name].filter(Boolean).join(' ') || 
+            contact.email?.split('@')[0] || 
+            'Unknown',
+          stage: contact.stage || 'new',
+          estimated_value: opportunity?.value || 0,
+          opportunity_id: opportunity?.id || null,
+        }
+      })
 
       setContacts(transformedData)
     } catch (err) {
@@ -221,6 +249,70 @@ export function useCRMContacts(options: UseCRMContactsOptions = {}): UseCRMConta
     return Array.from(stages)
   }, [contacts])
 
+  // Update estimated value (creates/updates/deletes in client_opportunities)
+  const updateEstimatedValue = useCallback(async (contact: CRMContact, value: number): Promise<boolean> => {
+    // Optimistic update
+    setContacts(prev => prev.map(c => 
+      c.id === contact.id ? { ...c, estimated_value: value } : c
+    ))
+
+    try {
+      if (value === 0 && contact.opportunity_id) {
+        // Delete the opportunity if value is 0
+        const { error: deleteError } = await supabase
+          .from('client_opportunities')
+          .delete()
+          .eq('id', contact.opportunity_id)
+        
+        if (deleteError) throw deleteError
+        
+        // Update local state to remove opportunity_id
+        setContacts(prev => prev.map(c => 
+          c.id === contact.id ? { ...c, estimated_value: 0, opportunity_id: undefined } : c
+        ))
+      } else if (value > 0 && contact.opportunity_id) {
+        // Update existing opportunity
+        const { error: updateError } = await (supabase
+          .from('client_opportunities') as any)
+          .update({ value, updated_at: new Date().toISOString() })
+          .eq('id', contact.opportunity_id)
+        
+        if (updateError) throw updateError
+      } else if (value > 0) {
+        // Create new opportunity
+        const { data: newOpp, error: insertError } = await (supabase
+          .from('client_opportunities') as any)
+          .insert({
+            client: CLIENT,
+            contact_email: contact.email,
+            contact_name: contact.full_name || contact.email,
+            stage: contact.stage || 'new',
+            value,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          })
+          .select('id')
+          .single()
+        
+        if (insertError) throw insertError
+        
+        // Update local state with new opportunity_id
+        if (newOpp?.id) {
+          setContacts(prev => prev.map(c => 
+            c.id === contact.id ? { ...c, estimated_value: value, opportunity_id: newOpp.id } : c
+          ))
+        }
+      }
+      
+      return true
+    } catch (err) {
+      console.error('Error updating estimated value:', err)
+      // Revert optimistic update
+      await fetchContacts()
+      return false
+    }
+  }, [fetchContacts])
+
   return {
     contacts,
     loading,
@@ -230,6 +322,7 @@ export function useCRMContacts(options: UseCRMContactsOptions = {}): UseCRMConta
     createContact,
     deleteContact,
     updateStage,
+    updateEstimatedValue,
     contactsByStage,
     uniqueAssignees,
     uniqueStages,

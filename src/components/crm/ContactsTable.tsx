@@ -25,6 +25,7 @@ interface ContactsTableProps {
   contacts: CRMContact[]
   onContactSelect: (contact: CRMContact) => void
   onContactUpdate: (id: string, updates: Partial<CRMContact>) => Promise<boolean>
+  onEstimatedValueUpdate?: (contact: CRMContact, value: number) => Promise<boolean>
   sort?: CRMSort
   onSortChange?: (sort: CRMSort | undefined) => void
   selectedRowIndex?: number
@@ -58,6 +59,7 @@ const DEFAULT_COLUMN_WIDTHS: Record<string, number> = {
   'company': 180,          // Organization
   'stage': 140,            // Stage dropdown
   'pipeline_progress': 160, // Pipeline progress
+  'estimated_value': 130,  // Pipeline value
   'lead_phone': 140,       // Phone numbers
   'company_phone': 140,    // Phone numbers
   'linkedin_url': 100,     // LinkedIn link
@@ -75,6 +77,7 @@ const COLUMNS: ColumnDef[] = [
   { key: 'company', label: '🏢 Organization', width: 'w-40', sortable: true },
   { key: 'stage', label: '📊 Stage', width: 'w-32', sortable: true },
   { key: 'pipeline_progress', label: '🚀 Pipeline', width: 'w-44', sortable: false, dropdown: true },
+  { key: 'estimated_value', label: '💰 EPV', width: 'w-32', sortable: true },
   { key: 'lead_phone', label: '📱 Lead Phone', width: 'w-32', sortable: true },
   { key: 'company_phone', label: '☎️ Company Phone', width: 'w-32', sortable: true },
   { key: 'linkedin_url', label: '💼 LinkedIn', width: 'w-28', sortable: false, link: true },
@@ -729,6 +732,90 @@ const RowQuickActions = memo(({ contact, onSave, onSelect }: RowQuickActionsProp
 
 RowQuickActions.displayName = 'RowQuickActions'
 
+// Estimated Value Cell component
+interface EstimatedValueCellProps {
+  contact: CRMContact
+  onSave?: (contact: CRMContact, value: number) => Promise<boolean>
+}
+
+const EstimatedValueCell = memo(({ contact, onSave }: EstimatedValueCellProps) => {
+  const [isEditing, setIsEditing] = useState(false)
+  const [editValue, setEditValue] = useState(String(contact.estimated_value || ''))
+  const [isSaving, setIsSaving] = useState(false)
+
+  const formatCurrency = (value: number) => {
+    if (!value) return '-'
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(value)
+  }
+
+  const handleSave = async () => {
+    const numValue = parseFloat(editValue.replace(/[^0-9.]/g, '')) || 0
+    if (numValue === (contact.estimated_value || 0)) {
+      setIsEditing(false)
+      return
+    }
+
+    if (onSave) {
+      setIsSaving(true)
+      await onSave(contact, numValue)
+      setIsSaving(false)
+    }
+    setIsEditing(false)
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      handleSave()
+    } else if (e.key === 'Escape') {
+      setEditValue(String(contact.estimated_value || ''))
+      setIsEditing(false)
+    }
+  }
+
+  if (isEditing) {
+    return (
+      <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+        <span className="text-green-400">$</span>
+        <input
+          type="text"
+          value={editValue}
+          onChange={(e) => setEditValue(e.target.value)}
+          onKeyDown={handleKeyDown}
+          onBlur={handleSave}
+          autoFocus
+          placeholder="0"
+          className="w-20 px-1 py-0.5 bg-rillation-bg border border-green-500/50 rounded text-sm text-green-400 focus:outline-none"
+        />
+        {isSaving && <Loader2 size={12} className="animate-spin text-green-400" />}
+      </div>
+    )
+  }
+
+  const value = contact.estimated_value || 0
+  return (
+    <span
+      onClick={(e) => {
+        e.stopPropagation()
+        setEditValue(String(value || ''))
+        setIsEditing(true)
+      }}
+      className={`cursor-text px-2 py-1 -mx-2 -my-1 rounded transition-none hover:bg-rillation-card-hover ${
+        value > 0 ? 'text-green-400 font-medium' : 'text-rillation-text-muted'
+      }`}
+    >
+      {formatCurrency(value)}
+    </span>
+  )
+})
+
+EstimatedValueCell.displayName = 'EstimatedValueCell'
+
 // Get cell value for rendering
 function getCellValue(
   contact: CRMContact, 
@@ -736,7 +823,8 @@ function getCellValue(
   onSave: (id: string, updates: Partial<CRMContact>) => Promise<boolean>, 
   onSelect: () => void,
   rowIndex: number,
-  totalRows: number
+  totalRows: number,
+  onEstimatedValueUpdate?: (contact: CRMContact, value: number) => Promise<boolean>
 ) {
   const key = column.key
 
@@ -816,6 +904,9 @@ function getCellValue(
     case 'created_at':
       return <span className="text-rillation-text-muted">{formatDate(contact.created_at)}</span>
     
+    case 'estimated_value':
+      return <EstimatedValueCell contact={contact} onSave={onEstimatedValueUpdate} />
+    
     case 'lead_source':
       return contact.lead_source ? (
         <span className="text-xs px-2 py-1 bg-rillation-card-hover rounded-full text-rillation-text-muted">
@@ -857,6 +948,7 @@ const DEFAULT_VISIBLE_COLUMNS = new Set([
   'company',
   'stage',
   'pipeline_progress',
+  'estimated_value',
   'lead_phone',
   'company_phone',
   'linkedin_url',
@@ -927,10 +1019,11 @@ function getInitialColumnWidths(): Record<string, number> {
   return { ...DEFAULT_COLUMN_WIDTHS }
 }
 
-export default function ContactsTable({ 
-  contacts, 
-  onContactSelect, 
+export default function ContactsTable({
+  contacts,
+  onContactSelect,
   onContactUpdate,
+  onEstimatedValueUpdate,
   sort,
   onSortChange,
   selectedRowIndex = -1,
@@ -1324,7 +1417,7 @@ export default function ContactsTable({
                     } ${isScrolled ? 'shadow-[4px_0_8px_-2px_rgba(0,0,0,0.4)]' : ''}`}
                     style={{ width: `${firstColumnWidth}px` }}
                   >
-                    {getCellValue(contact, firstColumn, onContactUpdate, () => onContactSelect(contact), index, contacts.length)}
+                    {getCellValue(contact, firstColumn, onContactUpdate, () => onContactSelect(contact), index, contacts.length, onEstimatedValueUpdate)}
                   </div>
                 )}
                 
@@ -1343,7 +1436,7 @@ export default function ContactsTable({
                         {isMinimized ? (
                           <span className="text-rillation-text-muted text-xs">•</span>
                         ) : (
-                          getCellValue(contact, column, onContactUpdate, () => onContactSelect(contact), index, contacts.length)
+                          getCellValue(contact, column, onContactUpdate, () => onContactSelect(contact), index, contacts.length, onEstimatedValueUpdate)
                         )}
                       </div>
                     )
