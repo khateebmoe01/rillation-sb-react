@@ -492,7 +492,7 @@ export default function ContactsTable({
   }, [])
 
   return (
-    <div className="h-full bg-crm-card rounded-xl border border-crm-border flex flex-col overflow-hidden">
+    <div className="h-full min-h-0 bg-crm-card rounded-xl border border-crm-border flex flex-col overflow-hidden">
       {/* Fixed Header - doesn't scroll vertically */}
       <div 
         ref={headerRef}
@@ -520,7 +520,7 @@ export default function ContactsTable({
       {/* Scrollable Body */}
       <div 
         ref={bodyRef}
-        className="flex-1 overflow-auto"
+        className="flex-1 min-h-0 overflow-auto"
         onScroll={handleBodyScroll}
       >
         <div style={{ minWidth: '2000px' }}>
