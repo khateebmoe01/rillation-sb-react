@@ -23,12 +23,18 @@ interface NotificationPayload {
 
 // Build Slack Block Kit message
 function buildSlackMessage(payload: NotificationPayload): object {
-  const { client, campaign_name, action_type, description, created_by, mentioned_users } = payload;
+  const { client, campaign_name, action_type, description, created_by, mentioned_users = [] } = payload;
 
   // Build mention string with proper Slack user ID format
+  console.log('Building Slack message with mentioned_users:', JSON.stringify(mentioned_users, null, 2));
   const mentionString = mentioned_users.length > 0
-    ? mentioned_users.map(u => `<@${u.slack_id}>`).join(" ")
+    ? mentioned_users.map(u => {
+        console.log(`Mapping user: ${u.display_name} -> <@${u.slack_id}>`);
+        return `<@${u.slack_id}>`;
+      }).join(" ")
     : "";
+  
+  console.log('Final mention string:', mentionString);
 
   // Build the blocks
   const blocks: object[] = [
@@ -108,7 +114,10 @@ function buildSlackMessage(payload: NotificationPayload): object {
 Deno.serve(async (req) => {
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, { 
+      status: 204,
+      headers: corsHeaders 
+    });
   }
 
   try {
@@ -135,7 +144,7 @@ Deno.serve(async (req) => {
 
     // Parse request body
     const payload: NotificationPayload = await req.json();
-    const { client, action_type, description, created_by, mentioned_users } = payload;
+    const { client, action_type, description, created_by, mentioned_users = [] } = payload;
 
     // Validate required fields
     if (!client || !action_type || !description || !created_by) {
@@ -146,7 +155,7 @@ Deno.serve(async (req) => {
     }
 
     console.log(`Sending Slack notification for ${client} - ${action_type} by ${created_by}`);
-    console.log(`Mentioned users: ${mentioned_users?.length || 0}`);
+    console.log(`Mentioned users: ${mentioned_users?.length || 0}`, JSON.stringify(mentioned_users, null, 2));
 
     // Build and send Slack message
     const slackMessage = buildSlackMessage(payload);

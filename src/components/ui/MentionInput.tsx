@@ -49,23 +49,68 @@ export default function MentionInput({
 
   // Extract mentioned users from text
   const extractMentions = useCallback((text: string): MentionedUser[] => {
-    const mentionPattern = /@(\w+(?:\s\w+)?)/g
+    // Match @mention pattern:
+    // - @ followed by word characters, spaces, hyphens, apostrophes
+    // - Can match 1-4 words (names typically 1-3 words)
+    // - Stops at punctuation, multiple spaces, or end of string
+    // More flexible: matches @word or @word word word (up to 4 words total)
+    const mentionPattern = /@([a-zA-Z][a-zA-Z0-9'\-]*(?:\s+[a-zA-Z][a-zA-Z0-9'\-]*){0,3})(?=\s{2,}|\s+[a-z]|[\s\n.,!?;:]|$)/g
     const mentions: MentionedUser[] = []
+    const seenIds = new Set<string>()
     let match
 
     while ((match = mentionPattern.exec(text)) !== null) {
-      const mentionName = match[1].toLowerCase()
-      const user = users.find(u => 
-        u.display_name.toLowerCase() === mentionName ||
-        u.real_name.toLowerCase() === mentionName ||
-        u.name.toLowerCase() === mentionName
-      )
+      const mentionName = match[1].trim()
+      if (!mentionName) continue
       
-      if (user && !mentions.find(m => m.slack_id === user.id)) {
+      const mentionNameLower = mentionName.toLowerCase()
+      
+      // Try to find user by exact match first (case-insensitive)
+      let user = users.find(u => {
+        const displayName = (u.display_name || '').trim().toLowerCase()
+        const realName = (u.real_name || '').trim().toLowerCase()
+        const name = (u.name || '').trim().toLowerCase()
+        
+        return displayName === mentionNameLower || 
+               realName === mentionNameLower || 
+               name === mentionNameLower
+      })
+      
+      // If no exact match, try matching the first word (for cases like "@Mo" matching "Mo Khateeb")
+      if (!user && mentionNameLower.split(/\s+/).length === 1) {
+        user = users.find(u => {
+          const displayName = (u.display_name || '').trim().toLowerCase()
+          const realName = (u.real_name || '').trim().toLowerCase()
+          const name = (u.name || '').trim().toLowerCase()
+          
+          // Check if the first word matches
+          const firstName = displayName.split(/\s+/)[0] || displayName
+          const realFirstName = realName.split(/\s+/)[0] || realName
+          return firstName === mentionNameLower || realFirstName === mentionNameLower
+        })
+      }
+      
+      if (user && !seenIds.has(user.id)) {
+        seenIds.add(user.id)
         mentions.push({
           slack_id: user.id,
           display_name: user.display_name || user.real_name || user.name,
         })
+        console.log('Extracted mention:', { 
+          mentionName, 
+          slack_id: user.id, 
+          display_name: user.display_name,
+          real_name: user.real_name,
+          name: user.name
+        })
+      } else if (mentionName && !user) {
+        console.warn('Could not find Slack user for mention:', mentionName, 
+          'Available users:', users.map(u => ({
+            id: u.id,
+            display_name: u.display_name,
+            real_name: u.real_name,
+            name: u.name
+          })))
       }
     }
 

@@ -119,24 +119,49 @@ export function useIterationLog({ client }: UseIterationLogParams = {}) {
     setError(null)
 
     try {
-      const insertData = {
+      // Build insert data - conditionally include new columns if they have values
+      // This allows the code to work even if migration hasn't been applied yet
+      const insertData: any = {
         client: entry.client,
         action_type: entry.action_type,
         description: entry.description,
         created_by: entry.created_by,
-        campaign_name: entry.campaign_name || null,
-        mentioned_users: entry.mentioned_users || [],
       }
-      const { error: insertError } = await supabase
+      
+      // Only include new columns if they have values (columns may not exist yet if migration not applied)
+      if (entry.campaign_name) {
+        insertData.campaign_name = entry.campaign_name
+      }
+      if (entry.mentioned_users && entry.mentioned_users.length > 0) {
+        insertData.mentioned_users = entry.mentioned_users
+      }
+      
+      let { error: insertError } = await supabase
         .from('client_iteration_logs')
-        .insert(insertData as any)
+        .insert(insertData)
+
+      // If columns don't exist yet (migration not applied), retry without new columns
+      if (insertError && (insertError.message.includes('column "campaign_name"') || insertError.message.includes('column "mentioned_users"'))) {
+        console.warn('New columns not found, inserting without them. Please run the migration!')
+        const fallbackData = {
+          client: entry.client,
+          action_type: entry.action_type,
+          description: entry.description,
+          created_by: entry.created_by,
+        }
+        const retryResult = await supabase
+          .from('client_iteration_logs')
+          .insert(fallbackData)
+        insertError = retryResult.error
+      }
 
       if (insertError) throw insertError
 
       // Send Slack notification if there are mentioned users
       if (entry.mentioned_users && entry.mentioned_users.length > 0) {
         try {
-          await supabase.functions.invoke('slack-notify', {
+          console.log('Sending Slack notification with mentioned users:', entry.mentioned_users)
+          const { data, error: slackErr } = await supabase.functions.invoke('slack-notify', {
             body: {
               client: entry.client,
               campaign_name: entry.campaign_name,
@@ -146,10 +171,23 @@ export function useIterationLog({ client }: UseIterationLogParams = {}) {
               mentioned_users: entry.mentioned_users,
             },
           })
+          
+          if (slackErr) {
+            console.error('Slack notification error:', slackErr)
+          } else if (data) {
+            console.log('Slack notification response:', data)
+            if (data.error) {
+              console.error('Slack notification failed:', data.error)
+            } else if (data.sent) {
+              console.log('Slack notification sent successfully')
+            }
+          }
         } catch (slackErr) {
           // Log but don't fail the operation if Slack notification fails
-          console.warn('Failed to send Slack notification:', slackErr)
+          console.error('Failed to send Slack notification:', slackErr)
         }
+      } else {
+        console.log('No mentioned users to notify')
       }
 
       // Invalidate cache and refetch
@@ -161,7 +199,9 @@ export function useIterationLog({ client }: UseIterationLogParams = {}) {
       
       return true
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to add iteration log')
+      const errorMessage = err instanceof Error ? err.message : String(err)
+      console.error('Failed to add iteration log:', errorMessage, err)
+      setError(errorMessage || 'Failed to add iteration log')
       return false
     } finally {
       setSaving(false)
