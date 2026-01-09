@@ -1,11 +1,13 @@
+import { useState } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import { BarChart3, Wrench, Compass, Users } from 'lucide-react'
+import { motion } from 'framer-motion'
 
 const sections = [
   {
     id: 'reporting',
     icon: BarChart3,
-    label: 'Reporting',
+    label: 'Analytics',
     path: '/quick-view',
   },
   {
@@ -30,9 +32,17 @@ const sections = [
 
 export default function Sidebar() {
   const location = useLocation()
+  const [isExpanded, setIsExpanded] = useState(false)
   
   return (
-    <aside className="w-16 bg-rillation-card border-r border-rillation-border flex flex-col items-center py-4 gap-2">
+    <motion.aside
+      className="bg-rillation-card border-r border-rillation-border flex flex-col py-4 gap-2 overflow-hidden flex-shrink-0"
+      initial={false}
+      animate={{ width: isExpanded ? 180 : 64 }}
+      transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+      onMouseEnter={() => setIsExpanded(true)}
+      onMouseLeave={() => setIsExpanded(false)}
+    >
       {sections.map((section) => {
         const Icon = section.icon
         // Determine active state based on section
@@ -51,19 +61,28 @@ export default function Sidebar() {
             key={section.id}
             to={section.path}
             className={`
-              w-12 h-12 flex items-center justify-center rounded-xl transition-all duration-200
+              mx-2 h-12 flex items-center gap-3 rounded-xl transition-all duration-200 px-3
               ${isActive
                 ? 'bg-rillation-card-hover border border-rillation-border text-rillation-text'
                 : 'text-rillation-text-muted hover:text-rillation-text hover:bg-rillation-card-hover'
               }
             `}
-            title={section.label}
           >
-            <Icon size={22} />
+            <Icon size={22} className="flex-shrink-0" />
+            <motion.span
+              className="text-sm font-medium whitespace-nowrap overflow-hidden"
+              initial={false}
+              animate={{ 
+                opacity: isExpanded ? 1 : 0,
+                width: isExpanded ? 'auto' : 0,
+              }}
+              transition={{ duration: 0.15 }}
+            >
+              {section.label}
+            </motion.span>
           </NavLink>
         )
       })}
-    </aside>
+    </motion.aside>
   )
 }
-
