@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { AnimatePresence } from 'framer-motion'
 import { LayoutGrid, List, Plus, Search, X } from 'lucide-react'
 import { useCRMContacts } from '../hooks/useCRMContacts'
 import KanbanBoard from '../components/crm/KanbanBoard'
@@ -152,94 +152,93 @@ export default function CRMView() {
   }, [contacts.length])
 
   return (
-    <div className="h-full flex flex-col bg-crm-bg p-6">
-      {/* Header - Single Row */}
-      <div className="flex-shrink-0 mb-4 flex flex-wrap items-center gap-3">
-        {/* Title */}
-        <h1 className="text-xl font-bold text-rillation-text mr-2">CRM</h1>
-
-        {/* Search with count */}
-        <div className="relative flex items-center">
-          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-rillation-text-muted" />
-          <input
-            ref={searchInputRef}
-            type="text"
-            placeholder="Search..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9 pr-3 py-1.5 bg-rillation-card border border-rillation-border rounded-lg text-sm text-rillation-text placeholder:text-rillation-text-muted focus:outline-none focus:border-rillation-text-muted w-36 sm:w-48 transition-colors"
-          />
-          {searchQuery && (
+    <div className="h-full flex flex-col bg-crm-bg">
+      {/* Top Bar - Airtable Style */}
+      <div className="flex-shrink-0 bg-rillation-card border-b border-rillation-border">
+        {/* Primary Row */}
+        <div className="flex items-center h-11 px-4">
+          {/* View Tabs */}
+          <div className="flex items-center gap-1">
             <button
-              onClick={() => setSearchQuery('')}
-              className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 hover:bg-rillation-card-hover rounded"
+              onClick={() => setViewMode('list')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-md transition-none ${
+                viewMode === 'list'
+                  ? 'bg-rillation-card-hover text-rillation-text'
+                  : 'text-rillation-text-muted hover:text-rillation-text hover:bg-rillation-card-hover/50'
+              }`}
             >
-              <X size={12} className="text-rillation-text-muted" />
+              <List size={15} />
+              <span>Grid</span>
             </button>
-          )}
-          <span className="ml-2 text-sm text-rillation-text-muted whitespace-nowrap">
-            {contacts.length} contacts
+            <button
+              onClick={() => setViewMode('kanban')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-md transition-none ${
+                viewMode === 'kanban'
+                  ? 'bg-rillation-card-hover text-rillation-text'
+                  : 'text-rillation-text-muted hover:text-rillation-text hover:bg-rillation-card-hover/50'
+              }`}
+            >
+              <LayoutGrid size={15} />
+              <span>Kanban</span>
+            </button>
+          </div>
+
+          {/* Divider */}
+          <div className="w-px h-5 bg-rillation-border mx-3" />
+
+          {/* Filters */}
+          <CRMFilters
+            filters={filters}
+            onFiltersChange={setFilters}
+            uniqueAssignees={uniqueAssignees}
+          />
+
+          {/* Spacer */}
+          <div className="flex-1" />
+
+          {/* Search */}
+          <div className="relative flex items-center">
+            <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-rillation-text-muted" />
+            <input
+              ref={searchInputRef}
+              type="text"
+              placeholder="Find a record"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-8 pr-3 py-1 bg-rillation-bg border border-rillation-border rounded-md text-sm text-rillation-text placeholder:text-rillation-text-muted/60 focus:outline-none focus:border-rillation-text-muted w-44 transition-none"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 hover:bg-rillation-card-hover rounded"
+              >
+                <X size={12} className="text-rillation-text-muted" />
+              </button>
+            )}
+          </div>
+
+          {/* Record Count */}
+          <span className="ml-3 text-xs text-rillation-text-muted">
+            {contacts.length} records
           </span>
-        </div>
 
-        {/* Filters - Inline */}
-        <CRMFilters
-          filters={filters}
-          onFiltersChange={setFilters}
-          uniqueAssignees={uniqueAssignees}
-        />
+          {/* Divider */}
+          <div className="w-px h-5 bg-rillation-border mx-3" />
 
-        {/* Spacer */}
-        <div className="flex-1" />
-
-        {/* View Toggle */}
-        <div className="flex items-center bg-rillation-card border border-rillation-border rounded-lg p-0.5">
+          {/* Add Button */}
           <button
-            onClick={() => setViewMode('kanban')}
-            className={`p-1.5 rounded-md transition-all ${
-              viewMode === 'kanban'
-                ? 'bg-rillation-card-hover text-rillation-text'
-                : 'text-rillation-text-muted hover:text-rillation-text'
-            }`}
-            title="Kanban view"
+            onClick={() => setIsAddModalOpen(true)}
+            className="flex items-center gap-1 px-2.5 py-1 bg-rillation-green text-white text-sm font-medium rounded-md hover:bg-rillation-green/90 transition-none"
+            title="Press 'n' to add a new contact"
           >
-            <LayoutGrid size={16} />
-          </button>
-          <button
-            onClick={() => setViewMode('list')}
-            className={`p-1.5 rounded-md transition-all ${
-              viewMode === 'list'
-                ? 'bg-rillation-card-hover text-rillation-text'
-                : 'text-rillation-text-muted hover:text-rillation-text'
-            }`}
-            title="List view"
-          >
-            <List size={16} />
+            <Plus size={15} />
           </button>
         </div>
-
-        {/* Add Contact Button */}
-        <motion.button
-          whileHover={{ scale: 1.03, boxShadow: '0 4px 20px rgba(34, 197, 94, 0.3)' }}
-          whileTap={{ scale: 0.97 }}
-          onClick={() => setIsAddModalOpen(true)}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-rillation-green text-white font-medium rounded-lg hover:bg-rillation-green/80 transition-colors text-sm"
-          title="Press 'n' to add a new contact"
-        >
-          <motion.div
-            animate={{ rotate: [0, 0, 0] }}
-            whileHover={{ rotate: 90 }}
-            transition={{ duration: 0.2 }}
-          >
-            <Plus size={16} />
-          </motion.div>
-          <span className="hidden sm:inline">Add</span>
-        </motion.button>
       </div>
 
       {/* Error State */}
       {error && (
-        <div className="mb-4 p-4 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400">
+        <div className="mx-4 mt-4 p-4 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400">
           {error}
         </div>
       )}
@@ -253,44 +252,28 @@ export default function CRMView() {
 
       {/* Main Content */}
       {!loading && (
-        <div className="flex-1 min-h-0 overflow-hidden">
-          <AnimatePresence mode="wait">
-            {viewMode === 'kanban' ? (
-              <motion.div
-                key="kanban"
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 20 }}
-                transition={{ duration: 0.2 }}
-                className="h-full"
-              >
-                <KanbanBoard
-                  contactsByStage={contactsByStage}
-                  onContactSelect={handleContactSelect}
-                  onStageChange={handleStageChange}
-                />
-              </motion.div>
-            ) : (
-              <motion.div
-                key="list"
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                transition={{ duration: 0.2 }}
-                className="h-full"
-              >
-                <ContactsTable
-                  contacts={contacts}
-                  onContactSelect={handleContactSelect}
-                  onContactUpdate={handleContactUpdate}
-                  sort={sort}
-                  onSortChange={setSort}
-                  selectedRowIndex={selectedRowIndex}
-                  onSelectedRowChange={setSelectedRowIndex}
-                />
-              </motion.div>
-            )}
-          </AnimatePresence>
+        <div className="flex-1 min-h-0 overflow-hidden p-4">
+          {viewMode === 'kanban' ? (
+            <div className="h-full">
+              <KanbanBoard
+                contactsByStage={contactsByStage}
+                onContactSelect={handleContactSelect}
+                onStageChange={handleStageChange}
+              />
+            </div>
+          ) : (
+            <div className="h-full">
+              <ContactsTable
+                contacts={contacts}
+                onContactSelect={handleContactSelect}
+                onContactUpdate={handleContactUpdate}
+                sort={sort}
+                onSortChange={setSort}
+                selectedRowIndex={selectedRowIndex}
+                onSelectedRowChange={setSelectedRowIndex}
+              />
+            </div>
+          )}
         </div>
       )}
 

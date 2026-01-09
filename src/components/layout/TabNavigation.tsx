@@ -8,7 +8,6 @@ import { useClients } from '../../hooks/useClients'
 import { getDateRange } from '../../lib/supabase'
 
 const tabs = [
-  { path: '/quick-view', label: 'Quick View' },
   { path: '/performance', label: 'Performance' },
   { path: '/pipeline', label: 'Pipeline' },
 ]
