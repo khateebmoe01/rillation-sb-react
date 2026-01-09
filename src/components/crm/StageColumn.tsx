@@ -28,8 +28,8 @@ export default function StageColumn({ stage, contacts, onContactSelect }: StageC
             className="w-3 h-3 rounded-full"
             style={{ backgroundColor: stage.color }}
           />
-          <h3 className="font-medium text-rillation-text">{stage.label}</h3>
-          <span className="ml-auto text-sm text-rillation-text-muted bg-rillation-card-hover px-2 py-0.5 rounded-full">
+          <h3 className="font-medium text-white">{stage.label}</h3>
+          <span className="ml-auto text-sm text-slate-300 bg-slate-700 px-2 py-0.5 rounded-full">
             {contacts.length}
           </span>
         </div>
@@ -40,10 +40,10 @@ export default function StageColumn({ stage, contacts, onContactSelect }: StageC
         ref={setNodeRef}
         className={`
           flex-1 min-h-0 overflow-y-auto rounded-xl p-2 transition-none
-          ${isOver ? 'bg-rillation-card-hover/50 ring-2 ring-rillation-text-muted/20' : 'bg-rillation-bg/50'}
+          ${isOver ? 'bg-slate-700/50 ring-2 ring-slate-500/20' : 'bg-slate-800/50'}
         `}
         animate={{
-          backgroundColor: isOver ? 'rgba(28, 33, 40, 0.5)' : 'rgba(13, 17, 23, 0.5)',
+          backgroundColor: isOver ? 'rgba(51, 65, 85, 0.5)' : 'rgba(30, 41, 59, 0.5)',
         }}
         transition={{ duration: 0 }}
       >
@@ -53,7 +53,7 @@ export default function StageColumn({ stage, contacts, onContactSelect }: StageC
         >
           <div className="space-y-2">
             {contacts.length === 0 ? (
-              <div className="text-center py-8 text-rillation-text-muted text-sm">
+              <div className="text-center py-8 text-slate-400 text-sm">
                 No contacts
               </div>
             ) : (

@@ -65,9 +65,9 @@ function ContactCard({ contact, onClick, isDragging }: ContactCardProps) {
       animate={{ opacity: isDragging ? 0.5 : 1 }}
       transition={{ duration: 0 }}
       className={`
-        group bg-rillation-card border border-rillation-border rounded-xl p-3 
+        group bg-slate-800 border border-slate-700 rounded-xl p-3 
         cursor-pointer transition-none
-        hover:border-rillation-text-muted/30 hover:shadow-lg hover:shadow-black/20
+        hover:border-slate-600 hover:shadow-lg hover:shadow-black/20
         ${isDragging ? 'shadow-xl shadow-black/40 rotate-2' : ''}
       `}
       onClick={onClick}
@@ -80,31 +80,31 @@ function ContactCard({ contact, onClick, isDragging }: ContactCardProps) {
           className="opacity-0 group-hover:opacity-100 transition-none cursor-grab active:cursor-grabbing mt-1"
           onClick={(e) => e.stopPropagation()}
         >
-          <GripVertical size={14} className="text-rillation-text-muted" />
+          <GripVertical size={14} className="text-slate-400" />
         </div>
 
         {/* Avatar */}
-        <div className="flex-shrink-0 w-10 h-10 bg-rillation-card-hover border border-rillation-border rounded-full flex items-center justify-center">
-          <span className="text-sm font-medium text-rillation-text-muted">
+        <div className="flex-shrink-0 w-10 h-10 bg-slate-700 border border-slate-600 rounded-full flex items-center justify-center">
+          <span className="text-sm font-medium text-slate-300">
             {getInitials()}
           </span>
         </div>
 
         {/* Content */}
         <div className="flex-1 min-w-0">
-          <h4 className="font-medium text-rillation-text truncate">
+          <h4 className="font-medium text-white truncate">
             {contact.full_name || contact.email}
           </h4>
           
           {contact.company && (
-            <div className="flex items-center gap-1.5 mt-1 text-sm text-rillation-text-muted">
+            <div className="flex items-center gap-1.5 mt-1 text-sm text-slate-400">
               <Building2 size={12} />
               <span className="truncate">{contact.company}</span>
             </div>
           )}
           
           {contact.email && !contact.company && (
-            <div className="flex items-center gap-1.5 mt-1 text-sm text-rillation-text-muted">
+            <div className="flex items-center gap-1.5 mt-1 text-sm text-slate-400">
               <Mail size={12} />
               <span className="truncate">{contact.email}</span>
             </div>
@@ -114,10 +114,10 @@ function ContactCard({ contact, onClick, isDragging }: ContactCardProps) {
 
       {/* Footer */}
       {(nextTouchpoint || contact.lead_source) && (
-        <div className="mt-3 pt-2 border-t border-rillation-border/50 flex items-center justify-between">
+        <div className="mt-3 pt-2 border-t border-slate-700/50 flex items-center justify-between">
           {nextTouchpoint && (
             <div className={`flex items-center gap-1.5 text-xs ${
-              isOverdue ? 'text-red-400' : 'text-rillation-text-muted'
+              isOverdue ? 'text-red-400' : 'text-slate-400'
             }`}>
               <Calendar size={12} />
               <span>{nextTouchpoint}</span>
@@ -125,7 +125,7 @@ function ContactCard({ contact, onClick, isDragging }: ContactCardProps) {
           )}
           
           {contact.lead_source && (
-            <span className="text-xs px-2 py-0.5 bg-rillation-card-hover rounded-full text-rillation-text-muted">
+            <span className="text-xs px-2 py-0.5 bg-slate-700 rounded-full text-slate-300">
               {contact.lead_source}
             </span>
           )}

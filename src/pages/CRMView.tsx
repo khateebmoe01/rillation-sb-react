@@ -155,7 +155,7 @@ export default function CRMView() {
   return (
     <div className="h-full flex flex-col bg-black">
       {/* Top Bar - Airtable Style */}
-      <div className="flex-shrink-0 bg-[#0f2847] border-b border-[#1e3a5f] mt-2 mx-4 rounded-xl">
+      <div className="flex-shrink-0 bg-black border-b border-slate-700 mt-2 mx-4 rounded-xl">
         {/* Primary Row */}
         <div className="flex items-center h-12 px-5 gap-4">
           {/* Filters */}
@@ -170,41 +170,41 @@ export default function CRMView() {
 
           {/* Search */}
           <div className="relative flex items-center">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-blue-300/50" />
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
               ref={searchInputRef}
               type="text"
               placeholder="Find a record..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9 pr-3 py-1.5 bg-slate-900 border border-slate-700 rounded-lg text-sm text-white placeholder:text-blue-300/40 focus:outline-none focus:border-blue-400/50 w-48 transition-none"
+              className="pl-9 pr-3 py-1.5 bg-slate-900 border border-slate-700 rounded-lg text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-slate-500 w-48 transition-none"
             />
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery('')}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 hover:bg-blue-500/20 rounded"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 hover:bg-slate-700 rounded"
               >
-                <X size={12} className="text-blue-300/60" />
+                <X size={12} className="text-slate-400" />
               </button>
             )}
           </div>
 
           {/* Record Count */}
-          <span className="text-xs text-blue-300/60 font-medium">
+          <span className="text-xs text-slate-400 font-medium">
             {contacts.length} records
           </span>
 
           {/* Divider */}
-          <div className="w-px h-6 bg-[#1e3a5f]" />
+          <div className="w-px h-6 bg-slate-700" />
 
           {/* View Tabs - on the right */}
-          <div className="flex items-center gap-1 bg-[#0c1929] rounded-lg p-1">
+          <div className="flex items-center gap-1 bg-slate-900 rounded-lg p-1">
             <button
               onClick={() => setViewMode('list')}
               className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-md transition-none ${
                 viewMode === 'list'
-                  ? 'bg-blue-500/20 text-blue-300'
-                  : 'text-blue-300/50 hover:text-blue-300 hover:bg-blue-500/10'
+                  ? 'bg-slate-700 text-white'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-800'
               }`}
             >
               <List size={15} />
@@ -214,8 +214,8 @@ export default function CRMView() {
               onClick={() => setViewMode('kanban')}
               className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-md transition-none ${
                 viewMode === 'kanban'
-                  ? 'bg-blue-500/20 text-blue-300'
-                  : 'text-blue-300/50 hover:text-blue-300 hover:bg-blue-500/10'
+                  ? 'bg-slate-700 text-white'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-800'
               }`}
             >
               <LayoutGrid size={15} />
@@ -224,12 +224,12 @@ export default function CRMView() {
           </div>
 
           {/* Divider */}
-          <div className="w-px h-6 bg-[#1e3a5f]" />
+          <div className="w-px h-6 bg-slate-700" />
 
           {/* Add Button */}
           <button
             onClick={() => setIsAddModalOpen(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-500 text-white text-sm font-medium rounded-lg hover:bg-blue-600 transition-none"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 text-white text-sm font-medium rounded-lg hover:bg-emerald-700 transition-none"
             title="Press 'n' to add a new contact"
           >
             <Plus size={16} />

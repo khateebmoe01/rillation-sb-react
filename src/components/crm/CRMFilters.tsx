@@ -71,8 +71,8 @@ export default function CRMFilters({ filters, onFiltersChange, uniqueAssignees }
           className={`
             flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg border
             ${filters.stage?.length
-              ? 'bg-blue-500/20 border-blue-400/50 text-blue-300'
-              : 'bg-[#0c1929] border-[#1e3a5f] text-blue-300/60 hover:text-blue-300 hover:border-blue-400/30'
+              ? 'bg-slate-700 border-slate-600 text-white'
+              : 'bg-slate-900 border-slate-700 text-slate-400 hover:text-white hover:border-slate-600'
             }
           `}
           whileHover={{ scale: 1.02 }}
@@ -136,8 +136,8 @@ export default function CRMFilters({ filters, onFiltersChange, uniqueAssignees }
           className={`
             flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg border
             ${filters.assignee
-              ? 'bg-blue-500/20 border-blue-400/50 text-blue-300'
-              : 'bg-[#0c1929] border-[#1e3a5f] text-blue-300/60 hover:text-blue-300 hover:border-blue-400/30'
+              ? 'bg-slate-700 border-slate-600 text-white'
+              : 'bg-slate-900 border-slate-700 text-slate-400 hover:text-white hover:border-slate-600'
             }
           `}
           whileHover={{ scale: 1.02 }}
@@ -214,8 +214,8 @@ export default function CRMFilters({ filters, onFiltersChange, uniqueAssignees }
           className={`
             flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg border
             ${filters.leadSource
-              ? 'bg-blue-500/20 border-blue-400/50 text-blue-300'
-              : 'bg-[#0c1929] border-[#1e3a5f] text-blue-300/60 hover:text-blue-300 hover:border-blue-400/30'
+              ? 'bg-slate-700 border-slate-600 text-white'
+              : 'bg-slate-900 border-slate-700 text-slate-400 hover:text-white hover:border-slate-600'
             }
           `}
           whileHover={{ scale: 1.02 }}
@@ -290,7 +290,7 @@ export default function CRMFilters({ filters, onFiltersChange, uniqueAssignees }
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.9 }}
             onClick={clearFilters}
-            className="flex items-center gap-1 px-2 py-1.5 text-sm text-blue-300/60 hover:text-blue-300 transition-colors"
+            className="flex items-center gap-1 px-2 py-1.5 text-sm text-slate-400 hover:text-white transition-colors"
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
           >
