@@ -1,4 +1,4 @@
-import { useState, memo } from 'react'
+import { useState, memo, useRef, useCallback } from 'react'
 import { motion } from 'framer-motion'
 import { ChevronDown, ChevronUp, Check, Loader2, ExternalLink, Calendar } from 'lucide-react'
 import { CRM_STAGES, type CRMContact, type CRMSort } from '../../types/crm'
@@ -481,32 +481,48 @@ export default function ContactsTable({
   sort,
   onSortChange,
 }: ContactsTableProps) {
+  const headerRef = useRef<HTMLDivElement>(null)
+  const bodyRef = useRef<HTMLDivElement>(null)
+
+  // Sync horizontal scroll between header and body
+  const handleBodyScroll = useCallback(() => {
+    if (bodyRef.current && headerRef.current) {
+      headerRef.current.scrollLeft = bodyRef.current.scrollLeft
+    }
+  }, [])
+
   return (
-    <div className="h-full flex flex-col bg-crm-card rounded-xl border border-crm-border overflow-hidden">
-      {/* Fixed Header */}
-      <div className="flex-shrink-0 overflow-x-auto" style={{ backgroundColor: '#0d1117' }}>
-        <div style={{ minWidth: '2000px' }}>
-          <div className="flex border-b border-crm-border">
-            {COLUMNS.map((column) => (
-              <div
-                key={column.key}
-                className={`flex-shrink-0 text-left px-3 py-3 text-xs font-medium text-crm-text-muted uppercase tracking-wider ${column.width} whitespace-nowrap`}
-              >
-                <SortableHeader
-                  label={column.label}
-                  field={column.key}
-                  sortable={column.sortable}
-                  currentSort={sort}
-                  onSort={onSortChange}
-                />
-              </div>
-            ))}
-          </div>
+    <div className="h-full bg-crm-card rounded-xl border border-crm-border flex flex-col overflow-hidden">
+      {/* Fixed Header - doesn't scroll vertically */}
+      <div 
+        ref={headerRef}
+        className="flex-shrink-0 border-b border-crm-border overflow-x-hidden"
+        style={{ backgroundColor: '#0d1117' }}
+      >
+        <div className="flex" style={{ minWidth: '2000px' }}>
+          {COLUMNS.map((column) => (
+            <div
+              key={column.key}
+              className={`flex-shrink-0 text-left px-3 py-3 text-xs font-medium text-crm-text-muted uppercase tracking-wider ${column.width} whitespace-nowrap`}
+            >
+              <SortableHeader
+                label={column.label}
+                field={column.key}
+                sortable={column.sortable}
+                currentSort={sort}
+                onSort={onSortChange}
+              />
+            </div>
+          ))}
         </div>
       </div>
       
       {/* Scrollable Body */}
-      <div className="flex-1 overflow-auto">
+      <div 
+        ref={bodyRef}
+        className="flex-1 overflow-auto"
+        onScroll={handleBodyScroll}
+      >
         <div style={{ minWidth: '2000px' }}>
           {contacts.length === 0 ? (
             <div className="px-4 py-12 text-center text-crm-text-muted">

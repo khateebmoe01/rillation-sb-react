@@ -39,7 +39,7 @@ export default function Sidebar() {
       className="bg-rillation-card border-r border-rillation-border flex flex-col py-4 gap-2 overflow-hidden flex-shrink-0"
       initial={false}
       animate={{ width: isExpanded ? 180 : 64 }}
-      transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+      transition={{ duration: 0.1 }}
       onMouseEnter={() => setIsExpanded(true)}
       onMouseLeave={() => setIsExpanded(false)}
     >
@@ -76,7 +76,7 @@ export default function Sidebar() {
                 opacity: isExpanded ? 1 : 0,
                 width: isExpanded ? 'auto' : 0,
               }}
-              transition={{ duration: 0.15 }}
+              transition={{ duration: 0.05 }}
             >
               {section.label}
             </motion.span>
