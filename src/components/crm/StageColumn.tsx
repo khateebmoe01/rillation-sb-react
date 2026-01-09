@@ -39,12 +39,13 @@ export default function StageColumn({ stage, contacts, onContactSelect }: StageC
       <motion.div
         ref={setNodeRef}
         className={`
-          flex-1 min-h-0 overflow-y-auto rounded-xl p-2 transition-colors duration-200
+          flex-1 min-h-0 overflow-y-auto rounded-xl p-2 transition-none
           ${isOver ? 'bg-rillation-card-hover/50 ring-2 ring-rillation-text-muted/20' : 'bg-rillation-bg/50'}
         `}
         animate={{
           backgroundColor: isOver ? 'rgba(28, 33, 40, 0.5)' : 'rgba(13, 17, 23, 0.5)',
         }}
+        transition={{ duration: 0 }}
       >
         <SortableContext
           items={contacts.map((c) => c.id)}

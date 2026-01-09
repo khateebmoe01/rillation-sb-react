@@ -635,13 +635,12 @@ const RowQuickActions = memo(({ contact, onSave, onSelect }: RowQuickActionsProp
     >
       {/* Copy Email */}
       {contact.email && (
-        <motion.button
-          whileHover={{ scale: 1.1 }}
-          whileTap={{ scale: 0.9 }}
-          onClick={handleCopyEmail}
-          className="p-1.5 rounded-md hover:bg-rillation-card-hover transition-colors"
-          title={isCopied ? 'Copied!' : 'Copy email'}
-        >
+          <motion.button
+            whileTap={{ scale: 0.95 }}
+            onClick={handleCopyEmail}
+            className="p-1.5 rounded-md hover:bg-rillation-card-hover transition-none"
+            title={isCopied ? 'Copied!' : 'Copy email'}
+          >
           {isCopied ? (
             <Check size={14} className="text-green-400" />
           ) : (
@@ -654,10 +653,9 @@ const RowQuickActions = memo(({ contact, onSave, onSelect }: RowQuickActionsProp
       {contact.email && (
         <motion.a
           href={`mailto:${contact.email}`}
-          whileHover={{ scale: 1.1 }}
-          whileTap={{ scale: 0.9 }}
+          whileTap={{ scale: 0.95 }}
           onClick={(e) => e.stopPropagation()}
-          className="p-1.5 rounded-md hover:bg-rillation-card-hover transition-colors"
+          className="p-1.5 rounded-md hover:bg-rillation-card-hover transition-none"
           title="Send email"
         >
           <Mail size={14} className="text-rillation-text-muted" />
@@ -668,10 +666,9 @@ const RowQuickActions = memo(({ contact, onSave, onSelect }: RowQuickActionsProp
       {contact.lead_phone && (
         <motion.a
           href={`tel:${contact.lead_phone}`}
-          whileHover={{ scale: 1.1 }}
-          whileTap={{ scale: 0.9 }}
+          whileTap={{ scale: 0.95 }}
           onClick={(e) => e.stopPropagation()}
-          className="p-1.5 rounded-md hover:bg-rillation-card-hover transition-colors"
+          className="p-1.5 rounded-md hover:bg-rillation-card-hover transition-none"
           title="Call"
         >
           <Phone size={14} className="text-rillation-text-muted" />
@@ -681,11 +678,10 @@ const RowQuickActions = memo(({ contact, onSave, onSelect }: RowQuickActionsProp
       {/* Advance Stage */}
       {nextStage && (
         <motion.button
-          whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
           onClick={handleAdvanceStage}
           disabled={isUpdating}
-          className="flex items-center gap-1 px-2 py-1 rounded-md hover:bg-rillation-card-hover transition-colors text-xs"
+          className="flex items-center gap-1 px-2 py-1 rounded-md hover:bg-rillation-card-hover transition-none text-xs"
           title={`Move to ${nextStage.label}`}
         >
           {isUpdating ? (
@@ -704,13 +700,12 @@ const RowQuickActions = memo(({ contact, onSave, onSelect }: RowQuickActionsProp
 
       {/* View Details */}
       <motion.button
-        whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
         onClick={(e) => {
           e.stopPropagation()
           onSelect()
         }}
-        className="px-2 py-1 rounded-md bg-rillation-green/20 hover:bg-rillation-green/30 transition-colors text-xs text-rillation-text"
+        className="px-2 py-1 rounded-md bg-rillation-green/20 hover:bg-rillation-green/30 transition-none text-xs text-rillation-text"
       >
         View
       </motion.button>
@@ -972,7 +967,7 @@ export default function ContactsTable({
         left,
       })
       setHoveredContact(contact)
-    }, 400) // 400ms delay
+    }, 150) // Quick 150ms delay
   }, [])
 
   const handleRowMouseLeave = useCallback(() => {
@@ -1108,10 +1103,9 @@ export default function ContactsTable({
         {/* Column Picker Button */}
         <div className="flex-shrink-0 px-2 py-2 flex items-center border-r border-rillation-border/50 relative">
           <motion.button
-            whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={() => setShowColumnPicker(!showColumnPicker)}
-            className={`p-2 rounded-lg transition-colors ${
+            className={`p-2 rounded-lg transition-none ${
               showColumnPicker 
                 ? 'bg-rillation-green/20 text-rillation-green' 
                 : 'hover:bg-rillation-card-hover text-rillation-text-muted hover:text-rillation-text'
@@ -1130,10 +1124,10 @@ export default function ContactsTable({
                   onClick={() => setShowColumnPicker(false)} 
                 />
                 <motion.div
-                  initial={{ opacity: 0, y: -5, scale: 0.95 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: -5, scale: 0.95 }}
-                  transition={{ duration: 0.15 }}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.05 }}
                   className="absolute top-full left-0 mt-1 w-56 bg-rillation-card border border-rillation-border rounded-xl shadow-2xl z-50 py-2 max-h-80 overflow-y-auto"
                 >
                   <div className="px-3 py-2 border-b border-rillation-border/50 mb-1">
@@ -1270,24 +1264,16 @@ export default function ContactsTable({
             return (
               <motion.div
                 key={contact.id}
-                initial={{ opacity: 0, y: 10 }}
+                initial={false}
                 animate={{ 
-                  opacity: 1, 
-                  y: 0,
                   backgroundColor: isSelected ? 'rgba(34, 197, 94, 0.2)' : 'transparent'
                 }}
                 whileHover={{ 
                   backgroundColor: isSelected 
                     ? 'rgba(34, 197, 94, 0.25)' 
-                    : 'rgba(255, 255, 255, 0.03)',
-                  transition: { duration: 0.1 }
+                    : 'rgba(255, 255, 255, 0.03)'
                 }}
-                transition={{ 
-                  delay: Math.min(index * 0.02, 0.3),
-                  type: 'spring',
-                  stiffness: 300,
-                  damping: 25
-                }}
+                transition={{ duration: 0 }}
                 className={`flex group cursor-pointer border-b border-rillation-border/50 relative ${
                   isSelected ? 'ring-1 ring-inset ring-rillation-green/50' : ''
                 }`}

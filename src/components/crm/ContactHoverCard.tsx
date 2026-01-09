@@ -67,10 +67,10 @@ function ContactHoverCard({ contact, position, onOpenDetail }: ContactHoverCardP
 
   return (
     <motion.div
-      initial={{ opacity: 0, scale: 0.95, y: -5 }}
-      animate={{ opacity: 1, scale: 1, y: 0 }}
-      exit={{ opacity: 0, scale: 0.95, y: -5 }}
-      transition={{ duration: 0.15 }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.05 }}
       style={{
         position: 'fixed',
         top: position.top,
@@ -197,9 +197,8 @@ function ContactHoverCard({ contact, position, onOpenDetail }: ContactHoverCardP
       {/* Footer */}
       <motion.button
         onClick={onOpenDetail}
-        whileHover={{ backgroundColor: 'rgba(255,255,255,0.05)' }}
         whileTap={{ scale: 0.98 }}
-        className="w-full px-4 py-2.5 border-t border-rillation-border text-sm text-rillation-text-muted hover:text-rillation-text flex items-center justify-center gap-2 transition-colors"
+        className="w-full px-4 py-2.5 border-t border-rillation-border text-sm text-rillation-text-muted hover:text-rillation-text hover:bg-white/5 flex items-center justify-center gap-2 transition-none"
       >
         View Full Details
         <ExternalLink size={14} />

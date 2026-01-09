@@ -60,13 +60,13 @@ function ContactCard({ contact, onClick, isDragging }: ContactCardProps) {
     <motion.div
       ref={setNodeRef}
       style={style}
-      layout
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: isDragging ? 0.5 : 1, y: 0 }}
-      exit={{ opacity: 0, scale: 0.9 }}
+      layout="position"
+      initial={false}
+      animate={{ opacity: isDragging ? 0.5 : 1 }}
+      transition={{ duration: 0 }}
       className={`
         group bg-rillation-card border border-rillation-border rounded-xl p-3 
-        cursor-pointer transition-all duration-200
+        cursor-pointer transition-none
         hover:border-rillation-text-muted/30 hover:shadow-lg hover:shadow-black/20
         ${isDragging ? 'shadow-xl shadow-black/40 rotate-2' : ''}
       `}
@@ -77,7 +77,7 @@ function ContactCard({ contact, onClick, isDragging }: ContactCardProps) {
         <div
           {...attributes}
           {...listeners}
-          className="opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing mt-1"
+          className="opacity-0 group-hover:opacity-100 transition-none cursor-grab active:cursor-grabbing mt-1"
           onClick={(e) => e.stopPropagation()}
         >
           <GripVertical size={14} className="text-rillation-text-muted" />

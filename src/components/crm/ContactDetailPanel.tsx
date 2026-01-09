@@ -64,12 +64,12 @@ function CollapsibleSection({ id, title, icon, isOpen, onToggle, children, badge
     <div className="border border-rillation-border/50 rounded-xl overflow-hidden">
       <motion.button
         onClick={() => onToggle(id)}
-        className="w-full flex items-center gap-2 px-4 py-3 bg-rillation-bg/30 hover:bg-rillation-bg/50 transition-colors text-left"
+        className="w-full flex items-center gap-2 px-4 py-3 bg-rillation-bg/30 hover:bg-rillation-bg/50 transition-none text-left"
         whileTap={{ scale: 0.995 }}
       >
         <motion.div
           animate={{ rotate: isOpen ? 90 : 0 }}
-          transition={{ duration: 0.2 }}
+          transition={{ duration: 0.1 }}
         >
           <ChevronRight size={16} className="text-rillation-text-muted" />
         </motion.div>
@@ -84,7 +84,7 @@ function CollapsibleSection({ id, title, icon, isOpen, onToggle, children, badge
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.2 }}
+            transition={{ duration: 0.1 }}
           >
             <div className="p-4 border-t border-rillation-border/50">
               {children}
@@ -255,9 +255,8 @@ function TrackingCheckbox({ label, checked, timestamp, onToggle }: TrackingCheck
   return (
     <motion.button
       onClick={onToggle}
-      whileHover={{ backgroundColor: 'rgba(255,255,255,0.03)' }}
       whileTap={{ scale: 0.98 }}
-      className="flex items-center gap-3 w-full px-3 py-2 rounded-lg transition-colors"
+      className="flex items-center gap-3 w-full px-3 py-2 rounded-lg transition-none hover:bg-white/[0.03]"
     >
       <motion.div
         className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
@@ -265,16 +264,16 @@ function TrackingCheckbox({ label, checked, timestamp, onToggle }: TrackingCheck
             ? 'bg-rillation-green border-rillation-green'
             : 'border-rillation-border hover:border-rillation-text-muted'
         }`}
-        animate={checked ? { scale: [1, 1.2, 1] } : { scale: 1 }}
-        transition={{ duration: 0.2 }}
+        animate={checked ? { scale: 1 } : { scale: 1 }}
+        transition={{ duration: 0 }}
       >
         <AnimatePresence mode="wait">
           {checked && (
             <motion.div
-              initial={{ scale: 0, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0, opacity: 0 }}
-              transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.05 }}
             >
               <Check size={14} className="text-white" />
             </motion.div>
@@ -378,7 +377,7 @@ export default function ContactDetailPanel({ contact, onClose, onUpdate, onDelet
         initial={{ x: '100%' }}
         animate={{ x: 0 }}
         exit={{ x: '100%' }}
-        transition={{ type: 'spring', damping: 30, stiffness: 350 }}
+        transition={{ type: 'spring', damping: 40, stiffness: 500 }}
         className="fixed top-0 right-0 h-full w-full max-w-xl bg-rillation-card border-l border-rillation-border z-50 overflow-y-auto"
       >
         {/* Header */}
