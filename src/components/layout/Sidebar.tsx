@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
-import { BarChart3, Wrench, Compass, Users } from 'lucide-react'
+import { BarChart3, Wrench, Compass, Users, LogOut } from 'lucide-react'
 import { motion } from 'framer-motion'
+import { useAuth } from '../../contexts/AuthContext'
 
 const sections = [
   {
@@ -33,6 +34,11 @@ const sections = [
 export default function Sidebar() {
   const location = useLocation()
   const [isExpanded, setIsExpanded] = useState(false)
+  const { signOut, user } = useAuth()
+  
+  const handleSignOut = async () => {
+    await signOut()
+  }
   
   return (
     <motion.aside
@@ -43,32 +49,57 @@ export default function Sidebar() {
       onMouseEnter={() => setIsExpanded(true)}
       onMouseLeave={() => setIsExpanded(false)}
     >
-      {sections.map((section) => {
-        const Icon = section.icon
-        // Determine active state based on section
-        const isActive = section.id === 'infrastructure'
-          ? location.pathname === '/infrastructure'
-          : section.id === 'strategy'
-            ? location.pathname.startsWith('/strategy')
-            : section.id === 'crm'
-              ? location.pathname.startsWith('/crm')
-              : section.id === 'reporting'
-                ? location.pathname.startsWith('/performance') || location.pathname.startsWith('/pipeline')
-                : false
-        
-        return (
-          <NavLink
-            key={section.id}
-            to={section.path}
-            className={`
-              mx-2 h-12 flex items-center gap-3 rounded-xl transition-all duration-200 px-3
-              ${isActive
-                ? 'bg-rillation-card-hover border border-rillation-border text-white'
-                : 'text-white/80 hover:text-white hover:bg-white/5'
-              }
-            `}
+      <div className="flex-1 flex flex-col gap-2">
+        {sections.map((section) => {
+          const Icon = section.icon
+          // Determine active state based on section
+          const isActive = section.id === 'infrastructure'
+            ? location.pathname === '/infrastructure'
+            : section.id === 'strategy'
+              ? location.pathname.startsWith('/strategy')
+              : section.id === 'crm'
+                ? location.pathname.startsWith('/crm')
+                : section.id === 'reporting'
+                  ? location.pathname.startsWith('/performance') || location.pathname.startsWith('/pipeline')
+                  : false
+          
+          return (
+            <NavLink
+              key={section.id}
+              to={section.path}
+              className={`
+                mx-2 h-12 flex items-center gap-3 rounded-xl transition-all duration-200 px-3
+                ${isActive
+                  ? 'bg-rillation-card-hover border border-rillation-border text-white'
+                  : 'text-white/80 hover:text-white hover:bg-white/5'
+                }
+              `}
+            >
+              <Icon size={22} className="flex-shrink-0" />
+              <motion.span
+                className="text-sm font-medium whitespace-nowrap overflow-hidden"
+                initial={false}
+                animate={{ 
+                  opacity: isExpanded ? 1 : 0,
+                  width: isExpanded ? 'auto' : 0,
+                }}
+                transition={{ duration: 0.05 }}
+              >
+                {section.label}
+              </motion.span>
+            </NavLink>
+          )
+        })}
+      </div>
+      
+      {/* Sign Out Button */}
+      {user && (
+        <div className="mt-auto pt-2 border-t border-rillation-border/50">
+          <button
+            onClick={handleSignOut}
+            className="mx-2 h-12 w-full flex items-center gap-3 rounded-xl transition-all duration-200 px-3 text-white/80 hover:text-white hover:bg-white/5"
           >
-            <Icon size={22} className="flex-shrink-0" />
+            <LogOut size={22} className="flex-shrink-0" />
             <motion.span
               className="text-sm font-medium whitespace-nowrap overflow-hidden"
               initial={false}
@@ -78,11 +109,11 @@ export default function Sidebar() {
               }}
               transition={{ duration: 0.05 }}
             >
-              {section.label}
+              Sign Out
             </motion.span>
-          </NavLink>
-        )
-      })}
+          </button>
+        </div>
+      )}
     </motion.aside>
   )
 }

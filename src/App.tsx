@@ -10,6 +10,8 @@ import DebugView from './pages/DebugView'
 import ClientDetailView from './pages/ClientDetailView'
 import CustomVariablesDiscovery from './pages/CustomVariablesDiscovery'
 import CRMView from './pages/CRMView'
+import Login from './pages/Login'
+import ProtectedRoute from './components/auth/ProtectedRoute'
 import { getSupabaseConfigError } from './lib/supabase'
 
 // Redirect component that properly handles URL params
@@ -42,25 +44,40 @@ function App() {
   }
   
   return (
-    <Layout>
-      <AnimatePresence mode="wait">
-        <Routes location={location} key={location.pathname}>
-          <Route path="/" element={<Navigate to="/crm" replace />} />
-          <Route path="/performance" element={<PageTransition><PerformanceOverview /></PageTransition>} />
-          <Route path="/performance/:clientName" element={<PageTransition><ClientDetailView /></PageTransition>} />
-          <Route path="/pipeline" element={<PageTransition><PipelineView /></PageTransition>} />
-          <Route path="/crm" element={<PageTransition><CRMView /></PageTransition>} />
-          <Route path="/strategy" element={<PageTransition><StrategyView /></PageTransition>} />
-          <Route path="/infrastructure" element={<PageTransition><Infrastructure /></PageTransition>} />
-          <Route path="/admin/variables" element={<PageTransition><CustomVariablesDiscovery /></PageTransition>} />
-          <Route path="/debug" element={<PageTransition><DebugView /></PageTransition>} />
-          {/* Legacy routes - redirect to new structure */}
-          <Route path="/gtm-scoreboard" element={<Navigate to="/performance" replace />} />
-          <Route path="/quick-view" element={<Navigate to="/crm" replace />} />
-          <Route path="/client-detail/:clientName" element={<ClientDetailRedirect />} />
-        </Routes>
-      </AnimatePresence>
-    </Layout>
+    <AnimatePresence mode="wait">
+      <Routes location={location} key={location.pathname}>
+        {/* Public route */}
+        <Route path="/login" element={<Login />} />
+        
+        {/* Protected routes */}
+        <Route
+          path="/*"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <AnimatePresence mode="wait">
+                  <Routes location={location} key={location.pathname}>
+                    <Route path="/" element={<Navigate to="/crm" replace />} />
+                    <Route path="/performance" element={<PageTransition><PerformanceOverview /></PageTransition>} />
+                    <Route path="/performance/:clientName" element={<PageTransition><ClientDetailView /></PageTransition>} />
+                    <Route path="/pipeline" element={<PageTransition><PipelineView /></PageTransition>} />
+                    <Route path="/crm" element={<PageTransition><CRMView /></PageTransition>} />
+                    <Route path="/strategy" element={<PageTransition><StrategyView /></PageTransition>} />
+                    <Route path="/infrastructure" element={<PageTransition><Infrastructure /></PageTransition>} />
+                    <Route path="/admin/variables" element={<PageTransition><CustomVariablesDiscovery /></PageTransition>} />
+                    <Route path="/debug" element={<PageTransition><DebugView /></PageTransition>} />
+                    {/* Legacy routes - redirect to new structure */}
+                    <Route path="/gtm-scoreboard" element={<Navigate to="/performance" replace />} />
+                    <Route path="/quick-view" element={<Navigate to="/crm" replace />} />
+                    <Route path="/client-detail/:clientName" element={<ClientDetailRedirect />} />
+                  </Routes>
+                </AnimatePresence>
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+      </Routes>
+    </AnimatePresence>
   )
 }
 
