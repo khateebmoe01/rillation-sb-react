@@ -338,25 +338,35 @@ const StageCell = memo(({ contact, onSave }: StageCellProps) => {
     setIsOpen(false)
   }
 
+  // Convert hex color to rgba for background with opacity
+  const hexToRgba = (hex: string, alpha: number) => {
+    const r = parseInt(hex.slice(1, 3), 16)
+    const g = parseInt(hex.slice(3, 5), 16)
+    const b = parseInt(hex.slice(5, 7), 16)
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`
+  }
+
   return (
-    <div className="relative" onClick={(e) => e.stopPropagation()}>
+    <div className="relative flex justify-center" onClick={(e) => e.stopPropagation()}>
       <motion.button
         onClick={() => setIsOpen(!isOpen)}
         disabled={isSaving}
-        className="flex items-center gap-2 px-2.5 py-1 rounded-lg text-sm hover:bg-white/5"
-        whileHover={{ scale: 1.02 }}
-        whileTap={{ scale: 0.98 }}
+        className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs"
+        style={{
+          backgroundColor: hexToRgba(currentStage.color, 0.2),
+          color: currentStage.color,
+        }}
+        whileHover={{ scale: 1.05 }}
+        whileTap={{ scale: 0.95 }}
       >
-        <div
-          className="w-2.5 h-2.5 rounded-full flex-shrink-0"
-          style={{ backgroundColor: currentStage.color }}
-        />
-        <span className="text-white truncate">{currentStage.label}</span>
+        <span className="truncate max-w-[90px] font-medium">
+          {currentStage.label}
+        </span>
         {isSaving ? (
-          <Loader2 size={12} className="animate-spin flex-shrink-0" />
+          <Loader2 size={11} className="animate-spin flex-shrink-0 opacity-70" />
         ) : (
           <motion.div animate={{ rotate: isOpen ? 180 : 0 }} transition={{ duration: 0.2 }}>
-            <ChevronDown size={12} className="text-slate-300 flex-shrink-0" />
+            <ChevronDown size={11} className="flex-shrink-0 opacity-70" />
           </motion.div>
         )}
       </motion.button>
@@ -510,7 +520,7 @@ function ColumnResizeHandle({ onResize }: ColumnResizeHandleProps) {
   return (
     <div
       onMouseDown={handleMouseDown}
-      className={`absolute right-0 top-0 bottom-0 w-1 cursor-col-resize transition-colors ${
+      className={`absolute right-0 top-0 bottom-0 w-1 cursor-col-resize transition-colors pointer-events-auto ${
         isResizing 
           ? 'bg-slate-400' 
           : 'hover:bg-slate-500/50 group-hover:bg-slate-500/30'
@@ -518,7 +528,7 @@ function ColumnResizeHandle({ onResize }: ColumnResizeHandleProps) {
       style={{ zIndex: 10 }}
     >
       {/* Invisible wider hit area for easier dragging */}
-      <div className="absolute inset-0 -right-2 -left-2" />
+      <div className="absolute inset-0 -right-2 -left-2 pointer-events-auto" />
     </div>
   )
 }
@@ -564,6 +574,8 @@ function DraggableColumnHeader({ column, sort, onSortChange, width, onResize, is
     zIndex: isDragging ? 50 : undefined,
     opacity: isDragging ? 0.8 : 1,
     width: `${displayWidth}px`,
+    backfaceVisibility: 'hidden' as const,
+    WebkitBackfaceVisibility: 'hidden' as const,
   }
 
   // Minimized view - just show expand icon
@@ -572,7 +584,7 @@ function DraggableColumnHeader({ column, sort, onSortChange, width, onResize, is
       <div
         ref={setNodeRef}
         style={style}
-        className={`group flex-shrink-0 flex items-center justify-center py-3 cursor-pointer hover:bg-slate-700/50 transition-colors ${isDragging ? 'bg-slate-700/50 rounded' : ''}`}
+        className={`group flex-shrink-0 flex items-center justify-center py-3 cursor-pointer bg-slate-900 hover:bg-slate-700/50 transition-colors overflow-hidden ${isDragging ? 'bg-slate-700/50 rounded' : ''}`}
         onClick={handleDoubleClick}
         title={`Expand ${column.label}`}
       >
@@ -585,7 +597,7 @@ function DraggableColumnHeader({ column, sort, onSortChange, width, onResize, is
     <div
       ref={setNodeRef}
       style={style}
-      className={`group flex-shrink-0 text-left px-3 py-3 text-xs font-medium text-white tracking-wide whitespace-nowrap flex items-center gap-1 relative ${isDragging ? 'bg-slate-700/50 rounded' : ''}`}
+      className={`group flex-shrink-0 text-left px-3 py-3 text-xs font-medium text-white tracking-wide whitespace-nowrap flex items-center gap-1 relative bg-slate-900 overflow-hidden ${isDragging ? 'bg-slate-700/50 rounded' : ''}`}
       onDoubleClick={handleDoubleClick}
       title={column.key !== 'full_name' ? 'Double-click to minimize' : undefined}
     >
