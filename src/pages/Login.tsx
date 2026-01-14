@@ -1,10 +1,10 @@
-import { useState, FormEvent, useEffect } from 'react'
+import { useState, FormEvent } from 'react'
 import { Navigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { Loader2 } from 'lucide-react'
 
 export default function Login() {
-  const { signIn, user, loading } = useAuth()
+  const { signIn, user, loading: authLoading } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
@@ -25,7 +25,7 @@ export default function Login() {
   }
 
   // Redirect if already authenticated
-  if (!loading && user) {
+  if (!authLoading && user) {
     return <Navigate to="/crm" replace />
   }
 
