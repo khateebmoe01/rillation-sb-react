@@ -6,7 +6,6 @@ import {
   Flame, 
   XCircle,
   RefreshCw,
-  Mail,
   Globe,
   Package,
   TrendingUp,
@@ -52,24 +51,24 @@ const CACHE_KEY_PREFIX = 'infra:client:'
 // Fetch all client summaries in parallel for speed
 async function fetchAllClientSummaries(clientNames: string[]): Promise<ClientSummary[]> {
   // Fetch all data in parallel with single queries
-  const [inboxesResult, domainsResult, setsResult] = await Promise.all([
+  const [inboxesResult, domainsResult, tagsResult] = await Promise.all([
     supabase
-      .from('inboxes')
+        .from('inboxes')
       .select('client, status, lifecycle_status, warmup_enabled, deliverability_score, warmup_reputation, synced_at')
       .in('client', clientNames),
     supabase
-      .from('domain_inventory' as any)
+        .from('domain_inventory' as any)
       .select('client, status, inboxes_ordered')
       .in('client', clientNames) as any,
     supabase
-      .from('inbox_sets' as any)
-      .select('client, id')
-      .in('client', clientNames) as any,
+      .from('inbox_tags')
+      .select('client, id, name')
+      .in('client', clientNames),
   ])
 
   const inboxes = (inboxesResult.data || []) as any[]
   const domains = (domainsResult.data || []) as any[]
-  const sets = (setsResult.data || []) as any[]
+  const tags = (tagsResult.data || []) as any[]
 
   // Group by client
   const inboxesByClient = inboxes.reduce((acc, inbox) => {
@@ -86,12 +85,15 @@ async function fetchAllClientSummaries(clientNames: string[]): Promise<ClientSum
     return acc
   }, {} as Record<string, any[]>)
 
-  const setsByClient = sets.reduce((acc, set) => {
-    const client = set.client || 'Unknown'
-    if (!acc[client]) acc[client] = []
-    acc[client].push(set)
-    return acc
-  }, {} as Record<string, any[]>)
+  // Filter tags to only those with "Set" in the name and group by client
+  const setsByClient = tags
+    .filter((tag: any) => tag.name?.toLowerCase().includes('set'))
+    .reduce((acc: Record<string, any[]>, tag: any) => {
+      const client = tag.client || 'Unknown'
+      if (!acc[client]) acc[client] = []
+      acc[client].push(tag)
+      return acc
+    }, {} as Record<string, any[]>)
 
   // Build summaries
   return clientNames.map(clientName => {
@@ -110,7 +112,7 @@ async function fetchAllClientSummaries(clientNames: string[]): Promise<ClientSum
       : 0
 
     const warmupInboxes = clientInboxes.filter((i: any) => i.warmup_reputation)
-    const avgWarmupReputation = warmupInboxes.length > 0
+      const avgWarmupReputation = warmupInboxes.length > 0
       ? warmupInboxes.reduce((sum: number, i: any) => sum + (i.warmup_reputation || 0), 0) / warmupInboxes.length
       : 0
 
@@ -122,19 +124,19 @@ async function fetchAllClientSummaries(clientNames: string[]): Promise<ClientSum
     const domainsUnused = clientDomains.filter((d: any) => d.status === 'purchased' && d.inboxes_ordered === 0).length
 
     return {
-      client: clientName,
+        client: clientName,
       totalInboxes: clientInboxes.length,
-      connected,
-      disconnected,
-      warming,
-      ready,
-      active,
+        connected,
+        disconnected,
+        warming,
+        ready,
+        active,
       domainsCount: clientDomains.length,
       domainsUnused,
       setsCount: clientSets.length,
-      avgDeliverability,
-      avgWarmupReputation,
-      lastSynced,
+        avgDeliverability,
+        avgWarmupReputation,
+        lastSynced,
       needsAttention: disconnected > 0 || domainsUnused > 0,
     }
   })
@@ -196,14 +198,28 @@ function ClientCard({
         <ChevronRight size={18} className="text-white" />
       </div>
 
-      {/* Metrics Grid - 4 columns */}
-      <div className="grid grid-cols-4 gap-4 mb-5">
+      {/* Metrics Grid - 6 columns */}
+      <div className="grid grid-cols-3 gap-4 mb-5">
         <div className="text-center">
           <div className="flex items-center justify-center gap-1.5 mb-1">
-            <Mail size={14} className="text-white" />
-            <span className="text-xs text-white">Inboxes</span>
+            <CheckCircle size={14} className="text-emerald-400" />
+            <span className="text-xs text-white">Connected</span>
           </div>
-          <p className="text-xl font-bold text-white">{summary.totalInboxes}</p>
+          <p className="text-xl font-bold text-emerald-400">{summary.connected}</p>
+        </div>
+        <div className="text-center">
+          <div className="flex items-center justify-center gap-1.5 mb-1">
+            <XCircle size={14} className="text-red-400" />
+            <span className="text-xs text-white">Disconnected</span>
+          </div>
+          <p className="text-xl font-bold text-red-400">{summary.disconnected}</p>
+        </div>
+        <div className="text-center">
+          <div className="flex items-center justify-center gap-1.5 mb-1">
+            <Flame size={14} className="text-amber-400" />
+            <span className="text-xs text-white">Warming</span>
+          </div>
+          <p className="text-xl font-bold text-amber-400">{summary.warming}</p>
         </div>
         <div className="text-center">
           <div className="flex items-center justify-center gap-1.5 mb-1">
@@ -238,21 +254,9 @@ function ClientCard({
         </div>
       </div>
 
-      {/* Status Bar */}
-      <div className="flex items-center gap-4 text-sm">
-        <span className="flex items-center gap-1.5 text-emerald-400">
-          <CheckCircle size={14} />
-          {summary.connected}
-        </span>
-        <span className="flex items-center gap-1.5 text-red-400">
-          <XCircle size={14} />
-          {summary.disconnected}
-        </span>
-        <span className="flex items-center gap-1.5 text-amber-400">
-          <Flame size={14} />
-          {summary.warming}
-        </span>
-        <span className="ml-auto text-xs text-white">
+      {/* Last Updated */}
+      <div className="flex items-center justify-end">
+        <span className="text-xs text-white/60">
           {formatDate(summary.lastSynced)}
         </span>
       </div>
@@ -285,7 +289,7 @@ function ClientDetailView({
       }
 
       // Fetch fresh data
-      const [inboxesRes, domainsRes, setsRes] = await Promise.all([
+      const [inboxesRes, domainsRes, tagsRes] = await Promise.all([
         supabase
           .from('inboxes')
           .select('*')
@@ -296,21 +300,26 @@ function ClientDetailView({
           .select('*')
           .eq('client', clientName) as any,
         supabase
-          .from('inbox_sets' as any)
+          .from('inbox_tags')
           .select('*')
-          .eq('client', clientName) as any,
+          .eq('client', clientName),
       ])
+
+      // Filter tags to only those with "Set" in the name
+      const sets = (tagsRes.data || []).filter((tag: any) => 
+        tag.name?.toLowerCase().includes('set')
+      )
 
       const data = {
         inboxes: inboxesRes.data || [],
         domains: domainsRes.data || [],
-        sets: setsRes.data || [],
+        sets,
       }
 
       dataCache.set(cacheKey, data)
       setDetailData(data)
-      setLoading(false)
-    }
+    setLoading(false)
+  }
 
     fetchDetails()
   }, [clientName])
@@ -342,11 +351,7 @@ function ClientDetailView({
           animate={{ opacity: 1, y: 0 }}
         >
           <h3 className="text-lg font-semibold text-white mb-4">{clientName} Overview</h3>
-          <div className="grid grid-cols-6 gap-6">
-            <div className="text-center">
-              <p className="text-2xl font-bold text-white">{summary.totalInboxes}</p>
-              <p className="text-xs text-white">Total Inboxes</p>
-            </div>
+          <div className="grid grid-cols-5 gap-6">
             <div className="text-center">
               <p className="text-2xl font-bold text-emerald-400">{summary.connected}</p>
               <p className="text-xs text-white">Connected</p>
@@ -596,10 +601,6 @@ export default function InfrastructureOverview({ drillDownClient, onClientClick 
           {/* Left: Stats */}
           <div className="flex items-center gap-8">
             <div>
-              <p className="text-xs text-white mb-0.5">Total Inboxes</p>
-              <p className="text-xl font-bold text-white">{totals.inboxes.toLocaleString()}</p>
-            </div>
-            <div>
               <p className="text-xs text-white mb-0.5">Connected</p>
               <p className="text-xl font-bold text-emerald-400">{totals.connected.toLocaleString()}</p>
             </div>
@@ -642,12 +643,12 @@ export default function InfrastructureOverview({ drillDownClient, onClientClick 
               onChange={setSelectedClient}
             />
 
-            <Button variant="secondary" onClick={handleSync} disabled={syncing}>
-              <RefreshCw size={16} className={syncing ? 'animate-spin' : ''} />
-              {syncing ? 'Syncing...' : 'Sync All'}
-            </Button>
-          </div>
+          <Button variant="secondary" onClick={handleSync} disabled={syncing}>
+            <RefreshCw size={16} className={syncing ? 'animate-spin' : ''} />
+            {syncing ? 'Syncing...' : 'Sync All'}
+          </Button>
         </div>
+      </div>
       </motion.div>
 
       {/* Client Cards Grid */}
@@ -668,7 +669,7 @@ export default function InfrastructureOverview({ drillDownClient, onClientClick 
         >
           {filteredSummaries.map((summary) => (
             <motion.div
-              key={summary.client}
+            key={summary.client}
               variants={{
                 hidden: { opacity: 0, y: 20 },
                 show: { opacity: 1, y: 0 },

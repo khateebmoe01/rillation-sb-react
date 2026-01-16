@@ -128,15 +128,20 @@ export default function InboxAnalytics() {
 
       {/* Metrics Cards */}
       <motion.div 
-        className="grid grid-cols-1 md:grid-cols-4 gap-4"
+        className="grid grid-cols-1 md:grid-cols-5 gap-4"
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
       >
         <MetricCard
-          title="Total Inboxes"
-          value={totalInboxes}
-          colorClass="text-white"
+          title="Connected"
+          value={connectedCount}
+          colorClass="text-emerald-400"
+        />
+        <MetricCard
+          title="Disconnected"
+          value={disconnectedCount}
+          colorClass="text-red-400"
         />
         <MetricCard
           title="Clients"

@@ -117,9 +117,10 @@ export default function AnimatedSelect({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -10, scale: 0.95 }}
             transition={{ duration: 0.15, ease: 'easeOut' }}
-            className="absolute top-full left-0 right-0 mt-1.5 z-50"
+            className="absolute top-full left-0 mt-1.5 z-50 min-w-full max-w-[400px]"
+            style={{ width: 'max-content' }}
           >
-            <div className="bg-slate-900/95 backdrop-blur-xl border border-slate-600/50 rounded-xl shadow-2xl overflow-hidden">
+            <div className="bg-slate-900/95 backdrop-blur-xl border border-slate-600/50 rounded-xl shadow-2xl overflow-hidden w-full">
               <div className="max-h-64 overflow-y-auto py-1">
                 {options.map((option, index) => {
                   const isSelected = option.value === value
@@ -151,7 +152,7 @@ export default function AnimatedSelect({
                       {option.icon && (
                         <span className="flex-shrink-0">{option.icon}</span>
                       )}
-                      <span className="truncate">{option.label}</span>
+                      <span className="whitespace-nowrap">{option.label}</span>
                     </motion.button>
                   )
                 })}
