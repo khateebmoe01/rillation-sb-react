@@ -7,6 +7,8 @@ import {
   Package,
   Clock,
   Trash2,
+  Copy,
+  Check,
 } from 'lucide-react'
 import { useDomainInventory } from '../../hooks/useDomainInventory'
 import { useClients } from '../../hooks/useClients'
@@ -41,6 +43,7 @@ export default function DomainInventoryManager() {
   const [selectedDomains, setSelectedDomains] = useState<Set<string>>(new Set())
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set(['all']))
   const [showNeedsAction, setShowNeedsAction] = useState(false)
+  const [copied, setCopied] = useState(false)
 
   const { domains, loading, markAsPurchased, assignToProvider, bulkUpdateDomains, deleteDomains } = useDomainInventory({
     client: selectedClient || undefined,
@@ -137,6 +140,23 @@ export default function DomainInventoryManager() {
         break
     }
     setSelectedDomains(new Set())
+  }
+
+  const copyDomainsToClipboard = async () => {
+    const ids = Array.from(selectedDomains)
+    // Get the domain names for selected IDs
+    const domainNames = domains
+      .filter(d => ids.includes(d.id))
+      .map(d => d.domain_name)
+      .join('\n')
+    
+    try {
+      await navigator.clipboard.writeText(domainNames)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch (err) {
+      console.error('Failed to copy:', err)
+    }
   }
 
   const getStatusBadge = (status: DomainStatus) => {
@@ -244,6 +264,10 @@ export default function DomainInventoryManager() {
             {selectedDomains.size} domain{selectedDomains.size > 1 ? 's' : ''} selected
           </span>
           <div className="flex items-center gap-2">
+            <Button variant="secondary" size="sm" onClick={copyDomainsToClipboard}>
+              {copied ? <Check size={14} /> : <Copy size={14} />}
+              {copied ? 'Copied!' : 'Copy Domains'}
+            </Button>
             <Button variant="secondary" size="sm" onClick={() => handleBulkAction('mark_purchased')}>
               Mark Purchased
             </Button>
