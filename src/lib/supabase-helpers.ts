@@ -22,4 +22,6 @@ export const tables = {
   provider_orders: () => getTable('provider_orders'),
   domain_generation_templates: () => getTable('domain_generation_templates'),
   purchase_batches: () => getTable('purchase_batches'),
+  inbox_tags: () => getTable('inbox_tags'),
+  inbox_tag_assignments: () => getTable('inbox_tag_assignments'),
 }

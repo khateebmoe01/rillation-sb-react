@@ -112,11 +112,18 @@ export default function InfrastructureOverview() {
   const handleSync = async () => {
     setSyncing(true)
     try {
-      await supabase.functions.invoke('sync-inboxes-bison')
-      await fetchSummaries()
+      // Both functions run in background and return immediately
+      await Promise.all([
+        supabase.functions.invoke('sync-inboxes-bison'),
+        supabase.functions.invoke('sync-inbox-tags'),
+      ])
+      // Refetch after a delay to allow background processing
+      setTimeout(() => {
+        fetchSummaries()
+        setSyncing(false)
+      }, 3000)
     } catch (err) {
       console.error('Sync failed:', err)
-    } finally {
       setSyncing(false)
     }
   }

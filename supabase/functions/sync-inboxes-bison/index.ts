@@ -1,6 +1,6 @@
 // Edge Function: sync-inboxes-bison
 // Syncs sender email accounts (inboxes) from EmailBison API for all clients
-// Endpoint: GET /api/sender-emails
+// Uses background processing to avoid timeout limits
 
 import { createClient } from "npm:@supabase/supabase-js@2.26.0";
 
@@ -43,27 +43,22 @@ function mapConnectionStatus(apiStatus: string): 'Connected' | 'Not connected' {
 function deriveLifecycleStatus(inbox: any): string {
   const apiStatus = (inbox.status || '').toLowerCase();
   
-  // Check for disconnected/error states
   if (['disconnected', 'error', 'failed', 'inactive'].includes(apiStatus)) {
     return 'disconnected';
   }
   
-  // Check warmup status
   if (inbox.warmup_enabled || apiStatus === 'warming') {
     return 'warming';
   }
   
-  // Check if in campaign
   if (inbox.in_campaign) {
     return 'active';
   }
   
-  // Check for paused
   if (apiStatus === 'paused') {
     return 'paused';
   }
   
-  // Default to ready if connected
   if (['active', 'connected', 'ready'].includes(apiStatus)) {
     return 'ready';
   }
@@ -78,7 +73,7 @@ async function fetchSenderEmails(apiKey: string, clientName: string) {
   let pageCount = 0;
 
   try {
-    while (nextUrl && pageCount < 100) { // Safety limit
+    while (nextUrl && pageCount < 100) {
       pageCount++;
       console.log(`[${clientName}] Fetching page ${pageCount}: ${nextUrl}`);
 
@@ -104,7 +99,6 @@ async function fetchSenderEmails(apiKey: string, clientName: string) {
         console.log(`[${clientName}] Page ${pageCount}: got ${data.length} inboxes (total: ${allInboxes.length})`);
       }
 
-      // Handle pagination
       nextUrl = json.links?.next || json.next_page_url || null;
     }
 
@@ -116,13 +110,76 @@ async function fetchSenderEmails(apiKey: string, clientName: string) {
   return allInboxes;
 }
 
+// Fetch all tags for a client
+async function fetchTags(apiKey: string, clientName: string) {
+  try {
+    const res = await fetch('https://send.rillationrevenue.com/api/tags', {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+      }
+    });
+
+    if (!res.ok) {
+      console.error(`[${clientName}] Tags API error: ${res.status}`);
+      return [];
+    }
+
+    const json = await res.json();
+    return json.data || json || [];
+  } catch (err) {
+    console.error(`[${clientName}] Exception fetching tags:`, err);
+    return [];
+  }
+}
+
+// Upsert tags and return a map of bison_id -> uuid
+async function upsertTags(tags: any[], clientName: string): Promise<Map<number, string>> {
+  const tagMap = new Map<number, string>();
+
+  for (const tag of tags) {
+    try {
+      const { data, error } = await supabase
+        .from('inbox_tags')
+        .upsert({
+          bison_tag_id: tag.id,
+          name: tag.name,
+          client: clientName,
+          is_default: tag.default || false,
+          synced_at: new Date().toISOString(),
+        }, { onConflict: 'bison_tag_id,client' })
+        .select('id')
+        .single();
+
+      if (!error && data) {
+        tagMap.set(tag.id, data.id);
+      }
+    } catch (err) {
+      console.error(`Error upserting tag ${tag.name}:`, err);
+    }
+  }
+
+  return tagMap;
+}
+
 // Upsert inboxes to database
-async function upsertInboxes(inboxes: any[], clientName: string) {
+async function upsertInboxes(inboxes: any[], clientName: string, tagMap: Map<number, string>) {
   let successCount = 0;
   let errorCount = 0;
 
   for (const inbox of inboxes) {
     try {
+      // Extract tag UUIDs from inbox tags (if present)
+      const inboxTagIds: string[] = [];
+      if (inbox.tags && Array.isArray(inbox.tags)) {
+        for (const tag of inbox.tags) {
+          const tagId = tag.id || tag;
+          const uuid = tagMap.get(tagId);
+          if (uuid) inboxTagIds.push(uuid);
+        }
+      }
+
       const inboxData = {
         bison_inbox_id: inbox.id,
         email: inbox.email || inbox.email_address,
@@ -137,18 +194,33 @@ async function upsertInboxes(inboxes: any[], clientName: string) {
         provider_inbox_id: String(inbox.id),
         daily_limit: inbox.daily_limit || inbox.sending_limit || 0,
         emails_sent_count: inbox.emails_sent || inbox.sent_count || 0,
+        tags: inboxTagIds,
         synced_at: new Date().toISOString(),
       };
 
-      const { error } = await supabase
+      const { data: upsertedInbox, error } = await supabase
         .from('inboxes')
-        .upsert(inboxData, { onConflict: 'bison_inbox_id' });
+        .upsert(inboxData, { onConflict: 'bison_inbox_id' })
+        .select('id')
+        .single();
 
       if (error) {
         console.error(`Error upserting inbox ${inbox.email}:`, error.message);
         errorCount++;
       } else {
         successCount++;
+
+        // Update tag assignments if we have tags and an inbox ID
+        if (upsertedInbox && inboxTagIds.length > 0) {
+          const assignments = inboxTagIds.map(tagId => ({
+            inbox_id: upsertedInbox.id,
+            tag_id: tagId
+          }));
+
+          await supabase
+            .from('inbox_tag_assignments')
+            .upsert(assignments, { onConflict: 'inbox_id,tag_id' });
+        }
       }
     } catch (err) {
       console.error(`Exception processing inbox:`, err);
@@ -159,84 +231,55 @@ async function upsertInboxes(inboxes: any[], clientName: string) {
   return { successCount, errorCount };
 }
 
-// Main handler
-Deno.serve(async (req) => {
-  // Handle CORS preflight
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
-  }
+// Background sync function
+async function runSync() {
+  console.log('========================================');
+  console.log('SYNC INBOXES FROM BISON - BACKGROUND START');
+  console.log('========================================\n');
 
   try {
-    console.log('========================================');
-    console.log('SYNC INBOXES FROM BISON - START');
-    console.log('========================================\n');
-
-    // Fetch all clients with API keys
     const { data: clients, error: clientsError } = await supabase
       .from('Clients')
       .select('Business, "Api Key - Bison"');
 
     if (clientsError) {
-      throw new Error(`Error fetching clients: ${clientsError.message}`);
+      console.error('Error fetching clients:', clientsError.message);
+      return;
     }
 
     if (!clients || clients.length === 0) {
-      return new Response(JSON.stringify({
-        ok: false,
-        error: 'No clients found'
-      }), {
-        status: 404,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
+      console.log('No clients found');
+      return;
     }
 
     console.log(`Found ${clients.length} clients\n`);
 
-    const results: any[] = [];
     let totalInboxes = 0;
     let totalErrors = 0;
 
-    // Process each client
     for (const client of clients) {
       const businessName = client.Business;
       const apiKey = client['Api Key - Bison'];
 
       if (!apiKey) {
         console.log(`Skipping ${businessName}: No API key`);
-        results.push({
-          client: businessName,
-          status: 'skipped',
-          reason: 'No API key'
-        });
         continue;
       }
 
       console.log(`\nProcessing: ${businessName}`);
 
-      // Fetch inboxes from Bison
+      // First sync tags
+      const tags = await fetchTags(apiKey, businessName);
+      const tagMap = await upsertTags(tags, businessName);
+      console.log(`[${businessName}] Synced ${tagMap.size} tags`);
+
+      // Then sync inboxes
       const inboxes = await fetchSenderEmails(apiKey, businessName);
 
       if (inboxes.length > 0) {
-        // Upsert to database
-        const { successCount, errorCount } = await upsertInboxes(inboxes, businessName);
-        
+        const { successCount, errorCount } = await upsertInboxes(inboxes, businessName, tagMap);
         totalInboxes += successCount;
         totalErrors += errorCount;
-
-        results.push({
-          client: businessName,
-          status: 'success',
-          inboxes_fetched: inboxes.length,
-          inboxes_synced: successCount,
-          errors: errorCount
-        });
-      } else {
-        results.push({
-          client: businessName,
-          status: 'success',
-          inboxes_fetched: 0,
-          message: 'No inboxes found'
-        });
       }
 
       // Small delay between clients to avoid rate limiting
@@ -249,24 +292,26 @@ Deno.serve(async (req) => {
     console.log(`Total errors: ${totalErrors}`);
     console.log('========================================');
 
-    return new Response(JSON.stringify({
-      ok: true,
-      total_clients: clients.length,
-      total_inboxes_synced: totalInboxes,
-      total_errors: totalErrors,
-      results
-    }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-    });
-
   } catch (err) {
-    console.error('Fatal error:', err);
-    return new Response(JSON.stringify({
-      ok: false,
-      error: err instanceof Error ? err.message : String(err)
-    }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-    });
+    console.error('Fatal error in background sync:', err);
   }
+}
+
+// Main handler - returns immediately, runs sync in background
+Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders });
+  }
+
+  // Start background processing
+  EdgeRuntime.waitUntil(runSync());
+
+  // Return immediately
+  return new Response(JSON.stringify({
+    ok: true,
+    message: 'Inbox sync started in background',
+    started_at: new Date().toISOString(),
+  }), {
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+  });
 });

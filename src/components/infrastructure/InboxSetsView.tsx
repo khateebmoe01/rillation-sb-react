@@ -1,128 +1,106 @@
 import { useState } from 'react'
 import { 
-  Package, 
+  Tag, 
   ChevronDown, 
   ChevronRight, 
   Plus,
-  Pause,
-  Play,
-  CheckCircle,
-  Archive,
+  Trash2,
   MoreHorizontal,
-  Flame,
+  RefreshCw,
   Wifi,
   WifiOff
 } from 'lucide-react'
-import { useInboxSets, useInboxesInSet } from '../../hooks/useInboxSets'
+import { useInboxTags, useInboxesByTag, type InboxTag } from '../../hooks/useInboxTags'
 import { useClients } from '../../hooks/useClients'
-import type { InboxSet, InboxSetStatus } from '../../types/infrastructure'
 import Button from '../ui/Button'
 import ClientFilter from '../ui/ClientFilter'
-import AnimatedSelect from '../ui/AnimatedSelect'
-
-const STATUS_OPTIONS = [
-  { value: '', label: 'All Statuses' },
-  { value: 'ordered', label: 'Ordered' },
-  { value: 'warming', label: 'Warming' },
-  { value: 'ready', label: 'Ready' },
-  { value: 'deployed', label: 'Deployed' },
-  { value: 'paused', label: 'Paused' },
-]
-
-const PROVIDER_OPTIONS = [
-  { value: '', label: 'All Providers' },
-  { value: 'google', label: 'Google' },
-  { value: 'microsoft', label: 'Microsoft' },
-  { value: 'smtp', label: 'SMTP' },
-]
 
 export default function InboxSetsView() {
   const { clients } = useClients()
   const [selectedClient, setSelectedClient] = useState('')
-  const [selectedStatus, setSelectedStatus] = useState('')
-  const [selectedProvider, setSelectedProvider] = useState('')
-  const [selectedSets, setSelectedSets] = useState<Set<string>>(new Set())
-  const [expandedSets, setExpandedSets] = useState<Set<string>>(new Set())
-  const [_showCreateModal, setShowCreateModal] = useState(false)
+  const [selectedTags, setSelectedTags] = useState<Set<string>>(new Set())
+  const [expandedTags, setExpandedTags] = useState<Set<string>>(new Set())
+  const [showCreateModal, setShowCreateModal] = useState(false)
+  const [newTagName, setNewTagName] = useState('')
+  const [syncing, setSyncing] = useState(false)
 
-  const { sets, loading, bulkUpdateSets, bulkArchiveSets } = useInboxSets({
+  const { tags, loading, syncTags, createTag, deleteTag, refetch } = useInboxTags({
     client: selectedClient || undefined,
-    status: selectedStatus as InboxSetStatus || undefined,
-    provider: selectedProvider as any || undefined,
   })
 
-  const toggleSetSelection = (id: string) => {
-    const newSet = new Set(selectedSets)
+  const toggleTagSelection = (id: string) => {
+    const newSet = new Set(selectedTags)
     if (newSet.has(id)) {
       newSet.delete(id)
     } else {
       newSet.add(id)
     }
-    setSelectedSets(newSet)
+    setSelectedTags(newSet)
   }
 
-  const toggleAllSets = () => {
-    if (selectedSets.size === sets.length) {
-      setSelectedSets(new Set())
+  const toggleAllTags = () => {
+    if (selectedTags.size === tags.length) {
+      setSelectedTags(new Set())
     } else {
-      setSelectedSets(new Set(sets.map(s => s.id)))
+      setSelectedTags(new Set(tags.map(t => t.id)))
     }
   }
 
   const toggleExpanded = (id: string) => {
-    const newSet = new Set(expandedSets)
+    const newSet = new Set(expandedTags)
     if (newSet.has(id)) {
       newSet.delete(id)
     } else {
       newSet.add(id)
     }
-    setExpandedSets(newSet)
+    setExpandedTags(newSet)
   }
 
-  const handleBulkAction = async (action: string) => {
-    const ids = Array.from(selectedSets)
-    if (ids.length === 0) return
-
-    switch (action) {
-      case 'pause':
-        await bulkUpdateSets(ids, { status: 'paused' })
-        break
-      case 'resume':
-        await bulkUpdateSets(ids, { status: 'warming' })
-        break
-      case 'ready':
-        await bulkUpdateSets(ids, { status: 'ready' })
-        break
-      case 'deploy':
-        await bulkUpdateSets(ids, { status: 'deployed' })
-        break
-      case 'archive':
-        await bulkArchiveSets(ids)
-        break
+  const handleSync = async () => {
+    setSyncing(true)
+    try {
+      await syncTags()
+      // Wait a bit for background processing then refetch
+      setTimeout(() => {
+        refetch()
+        setSyncing(false)
+      }, 3000)
+    } catch (err) {
+      console.error('Sync failed:', err)
+      setSyncing(false)
     }
-    setSelectedSets(new Set())
   }
 
-  const getStatusBadge = (status: InboxSetStatus) => {
-    const styles: Record<string, string> = {
-      ordered: 'bg-rillation-purple/20 text-rillation-purple',
-      warming: 'bg-rillation-orange/20 text-rillation-orange',
-      ready: 'bg-rillation-cyan/20 text-rillation-cyan',
-      deployed: 'bg-rillation-green/20 text-rillation-green',
-      paused: 'bg-gray-500/20 text-gray-400',
-      archived: 'bg-gray-700/20 text-gray-500',
+  const handleCreateTag = async () => {
+    if (!newTagName.trim() || !selectedClient) return
+    
+    try {
+      await createTag(selectedClient, newTagName.trim())
+      setShowCreateModal(false)
+      setNewTagName('')
+    } catch (err) {
+      console.error('Failed to create tag:', err)
     }
-    return styles[status] || styles.ordered
   }
 
-  const getProviderBadge = (provider: string) => {
-    const styles: Record<string, string> = {
-      google: 'bg-blue-500/20 text-blue-400',
-      microsoft: 'bg-sky-500/20 text-sky-400',
-      smtp: 'bg-violet-500/20 text-violet-400',
+  const handleDeleteTag = async (tagId: string) => {
+    if (!selectedClient) return
+    if (!confirm('Are you sure you want to delete this tag? This will also remove it from Bison.')) return
+    
+    try {
+      await deleteTag(selectedClient, tagId)
+    } catch (err) {
+      console.error('Failed to delete tag:', err)
     }
-    return styles[provider] || 'bg-gray-500/20 text-gray-400'
   }
+
+  // Group tags by client
+  const tagsByClient = tags.reduce((acc, tag) => {
+    const client = tag.client || 'Unknown'
+    if (!acc[client]) acc[client] = []
+    acc[client].push(tag)
+    return acc
+  }, {} as Record<string, InboxTag[]>)
 
   return (
     <div className="space-y-4">
@@ -135,71 +113,46 @@ export default function InboxSetsView() {
               selectedClient={selectedClient}
               onChange={setSelectedClient}
             />
-            <AnimatedSelect
-              value={selectedStatus}
-              onChange={setSelectedStatus}
-              placeholder="All Statuses"
-              size="sm"
-              options={STATUS_OPTIONS}
-            />
-            <AnimatedSelect
-              value={selectedProvider}
-              onChange={setSelectedProvider}
-              placeholder="All Providers"
-              size="sm"
-              options={PROVIDER_OPTIONS}
-            />
           </div>
-          <Button variant="primary" onClick={() => setShowCreateModal(true)}>
-            <Plus size={16} />
-            Create Set
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="secondary" onClick={handleSync} disabled={syncing}>
+              <RefreshCw size={16} className={syncing ? 'animate-spin' : ''} />
+              {syncing ? 'Syncing...' : 'Sync Tags'}
+            </Button>
+            <Button variant="primary" onClick={() => setShowCreateModal(true)} disabled={!selectedClient}>
+              <Plus size={16} />
+              Create Tag
+            </Button>
+          </div>
         </div>
       </div>
 
       {/* Bulk Action Bar */}
-      {selectedSets.size > 0 && (
+      {selectedTags.size > 0 && (
         <div className="bg-rillation-purple/10 border border-rillation-purple/30 rounded-xl p-4 flex items-center justify-between">
           <span className="text-sm text-rillation-text">
-            {selectedSets.size} set{selectedSets.size > 1 ? 's' : ''} selected
+            {selectedTags.size} tag{selectedTags.size > 1 ? 's' : ''} selected
           </span>
           <div className="flex items-center gap-2">
-            <Button variant="secondary" size="sm" onClick={() => handleBulkAction('pause')}>
-              <Pause size={14} />
-              Pause Warmup
-            </Button>
-            <Button variant="secondary" size="sm" onClick={() => handleBulkAction('resume')}>
-              <Play size={14} />
-              Resume Warmup
-            </Button>
-            <Button variant="secondary" size="sm" onClick={() => handleBulkAction('ready')}>
-              <CheckCircle size={14} />
-              Mark Ready
-            </Button>
-            <Button variant="secondary" size="sm" onClick={() => handleBulkAction('deploy')}>
-              <CheckCircle size={14} />
-              Mark Deployed
-            </Button>
-            <Button variant="secondary" size="sm" onClick={() => handleBulkAction('archive')}>
-              <Archive size={14} />
-              Archive
+            <Button variant="secondary" size="sm" onClick={() => setSelectedTags(new Set())}>
+              Clear Selection
             </Button>
           </div>
         </div>
       )}
 
-      {/* Sets Table */}
+      {/* Tags Table */}
       <div className="bg-rillation-card rounded-xl border border-rillation-border overflow-hidden">
         <div className="p-4 border-b border-rillation-border flex items-center justify-between">
           <h3 className="text-lg font-semibold text-rillation-text flex items-center gap-2">
-            <Package size={20} className="text-rillation-purple" />
-            Inbox Sets ({sets.length})
+            <Tag size={20} className="text-rillation-purple" />
+            Tags / Sets ({tags.length})
           </h3>
           <button
-            onClick={toggleAllSets}
+            onClick={toggleAllTags}
             className="text-sm text-rillation-purple hover:text-rillation-magenta"
           >
-            {selectedSets.size === sets.length ? 'Deselect All' : 'Select All'}
+            {selectedTags.size === tags.length ? 'Deselect All' : 'Select All'}
           </button>
         </div>
 
@@ -208,52 +161,101 @@ export default function InboxSetsView() {
             <div className="p-8 text-center">
               <div className="w-6 h-6 border-2 border-rillation-purple border-t-transparent rounded-full animate-spin mx-auto" />
             </div>
-          ) : sets.length === 0 ? (
+          ) : tags.length === 0 ? (
             <div className="p-8 text-center text-rillation-text-muted">
-              No inbox sets found
+              {selectedClient 
+                ? 'No tags found for this client. Click "Sync Tags" to fetch from Bison.'
+                : 'Select a client to view tags'}
             </div>
-          ) : (
-            sets.map((set) => (
-              <SetRow
-                key={set.id}
-                set={set}
-                isSelected={selectedSets.has(set.id)}
-                isExpanded={expandedSets.has(set.id)}
-                onToggleSelect={() => toggleSetSelection(set.id)}
-                onToggleExpand={() => toggleExpanded(set.id)}
-                getStatusBadge={getStatusBadge}
-                getProviderBadge={getProviderBadge}
+          ) : selectedClient ? (
+            // Show flat list when client is selected
+            tags.map((tag) => (
+              <TagRow
+                key={tag.id}
+                tag={tag}
+                isSelected={selectedTags.has(tag.id)}
+                isExpanded={expandedTags.has(tag.id)}
+                onToggleSelect={() => toggleTagSelection(tag.id)}
+                onToggleExpand={() => toggleExpanded(tag.id)}
+                onDelete={() => handleDeleteTag(tag.id)}
               />
+            ))
+          ) : (
+            // Show grouped by client
+            Object.entries(tagsByClient).map(([client, clientTags]) => (
+              <div key={client}>
+                <div className="px-4 py-2 bg-rillation-bg/50 font-medium text-rillation-text-muted text-sm">
+                  {client} ({clientTags.length} tags)
+                </div>
+                {clientTags.map((tag) => (
+                  <TagRow
+                    key={tag.id}
+                    tag={tag}
+                    isSelected={selectedTags.has(tag.id)}
+                    isExpanded={expandedTags.has(tag.id)}
+                    onToggleSelect={() => toggleTagSelection(tag.id)}
+                    onToggleExpand={() => toggleExpanded(tag.id)}
+                    onDelete={() => handleDeleteTag(tag.id)}
+                  />
+                ))}
+              </div>
             ))
           )}
         </div>
       </div>
+
+      {/* Create Tag Modal */}
+      {showCreateModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-rillation-card rounded-xl p-6 w-96 border border-rillation-border">
+            <h3 className="text-lg font-semibold text-white mb-4">Create New Tag</h3>
+            <p className="text-sm text-rillation-text-muted mb-4">
+              This tag will be created in Bison for: <strong>{selectedClient}</strong>
+            </p>
+            <input
+              type="text"
+              value={newTagName}
+              onChange={(e) => setNewTagName(e.target.value)}
+              placeholder="Tag name (e.g., Set 1 - Jan 2025)"
+              className="w-full px-3 py-2 bg-rillation-bg border border-rillation-border rounded-lg text-white mb-4"
+              autoFocus
+              onKeyDown={(e) => e.key === 'Enter' && handleCreateTag()}
+            />
+            <div className="flex justify-end gap-2">
+              <Button variant="secondary" onClick={() => setShowCreateModal(false)}>
+                Cancel
+              </Button>
+              <Button variant="primary" onClick={handleCreateTag} disabled={!newTagName.trim()}>
+                Create Tag
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
 
-function SetRow({
-  set,
+function TagRow({
+  tag,
   isSelected,
   isExpanded,
   onToggleSelect,
   onToggleExpand,
-  getStatusBadge,
-  getProviderBadge,
+  onDelete,
 }: {
-  set: InboxSet
+  tag: InboxTag
   isSelected: boolean
   isExpanded: boolean
   onToggleSelect: () => void
   onToggleExpand: () => void
-  getStatusBadge: (status: InboxSetStatus) => string
-  getProviderBadge: (provider: string) => string
+  onDelete: () => void
 }) {
-  const { inboxes, loading: inboxesLoading } = useInboxesInSet(isExpanded ? set.id : undefined)
+  const { inboxes, loading: inboxesLoading } = useInboxesByTag(isExpanded ? tag.id : undefined)
 
   return (
     <div>
-      {/* Set Row */}
+      {/* Tag Row */}
       <div 
         className={`flex items-center gap-4 px-4 py-3 hover:bg-rillation-card-hover transition-colors ${
           isSelected ? 'bg-rillation-purple/5' : ''
@@ -272,66 +274,44 @@ function SetRow({
           {isExpanded ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
         </button>
 
-        {/* Set Name */}
+        {/* Tag Icon */}
+        <Tag size={16} className={tag.is_default ? 'text-rillation-cyan' : 'text-rillation-purple'} />
+
+        {/* Tag Name */}
         <div className="flex-1 min-w-0">
-          <p className="font-medium text-white truncate">{set.name}</p>
-          <p className="text-xs text-rillation-text-muted">{set.domain}</p>
-        </div>
-
-        {/* Client */}
-        <div className="w-32">
-          <p className="text-sm text-rillation-text-muted truncate">{set.client}</p>
-        </div>
-
-        {/* Provider */}
-        <div className="w-24">
-          <span className={`px-2 py-1 rounded text-xs font-medium ${getProviderBadge(set.provider)}`}>
-            {set.provider}
-          </span>
-        </div>
-
-        {/* Count */}
-        <div className="w-24 text-center">
-          <span className="text-sm">
-            <span className="text-rillation-green">{set.connected_count}</span>
-            <span className="text-rillation-text-muted"> / {set.quantity}</span>
-          </span>
-        </div>
-
-        {/* Warmup Progress */}
-        <div className="w-32">
-          {set.status === 'warming' && set.warmup_progress !== undefined ? (
-            <div className="space-y-1">
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-rillation-orange flex items-center gap-1">
-                  <Flame size={12} />
-                  {set.days_warming}d
-                </span>
-                <span className="text-rillation-text-muted">{set.warmup_progress}%</span>
-              </div>
-              <div className="h-1.5 bg-rillation-bg rounded-full overflow-hidden">
-                <div 
-                  className="h-full bg-gradient-to-r from-rillation-orange to-rillation-green transition-all"
-                  style={{ width: `${set.warmup_progress}%` }}
-                />
-              </div>
-            </div>
-          ) : (
-            <span className="text-xs text-rillation-text-muted">-</span>
+          <p className="font-medium text-white truncate">{tag.name}</p>
+          {tag.is_default && (
+            <span className="text-xs text-rillation-cyan">Default tag</span>
           )}
         </div>
 
-        {/* Status */}
-        <div className="w-24">
-          <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusBadge(set.status)}`}>
-            {set.status}
+        {/* Client */}
+        <div className="w-32 text-sm text-rillation-text-muted truncate">
+          {tag.client}
+        </div>
+
+        {/* Inbox Count */}
+        <div className="w-24 text-center">
+          <span className="px-2 py-1 bg-rillation-purple/20 text-rillation-purple text-sm rounded-full">
+            {tag.inbox_count} inboxes
           </span>
         </div>
 
         {/* Actions */}
-        <button className="p-1 text-rillation-text-muted hover:text-white">
-          <MoreHorizontal size={18} />
-        </button>
+        <div className="flex items-center gap-1">
+          {!tag.is_default && (
+            <button 
+              onClick={onDelete}
+              className="p-1 text-rillation-text-muted hover:text-rillation-red"
+              title="Delete tag"
+            >
+              <Trash2 size={16} />
+            </button>
+          )}
+          <button className="p-1 text-rillation-text-muted hover:text-white">
+            <MoreHorizontal size={18} />
+          </button>
+        </div>
       </div>
 
       {/* Expanded Inboxes */}
@@ -343,7 +323,7 @@ function SetRow({
             </div>
           ) : inboxes.length === 0 ? (
             <div className="p-4 text-center text-sm text-rillation-text-muted">
-              No inboxes in this set
+              No inboxes with this tag
             </div>
           ) : (
             <div className="p-4">
@@ -352,7 +332,7 @@ function SetRow({
                   <tr className="text-xs text-rillation-text-muted">
                     <th className="text-left pb-2">Email</th>
                     <th className="text-left pb-2">Status</th>
-                    <th className="text-left pb-2">Warmup</th>
+                    <th className="text-left pb-2">Domain</th>
                     <th className="text-right pb-2">Sent</th>
                   </tr>
                 </thead>
@@ -371,9 +351,7 @@ function SetRow({
                           </span>
                         )}
                       </td>
-                      <td className="py-1.5">
-                        {inbox.warmup_reputation ? `${inbox.warmup_reputation}%` : '-'}
-                      </td>
+                      <td className="py-1.5">{inbox.domain || '-'}</td>
                       <td className="py-1.5 text-right">{inbox.emails_sent_count || 0}</td>
                     </tr>
                   ))}
