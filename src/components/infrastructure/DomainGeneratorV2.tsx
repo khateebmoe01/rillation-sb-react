@@ -217,6 +217,20 @@ export default function DomainGeneratorV2() {
                         newNames[idx] = e.target.value.toLowerCase().replace(/[^a-z0-9]/g, '')
                         setBaseNames(newNames)
                       }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault()
+                          // Add a new empty input after current one
+                          const newNames = [...baseNames]
+                          newNames.splice(idx + 1, 0, '')
+                          setBaseNames(newNames)
+                          // Focus the new input after render
+                          setTimeout(() => {
+                            const inputs = document.querySelectorAll<HTMLInputElement>('input[placeholder="e.g., bkatxtransport"]')
+                            inputs[idx + 1]?.focus()
+                          }, 10)
+                        }
+                      }}
                       placeholder="e.g., bkatxtransport"
                       className="flex-1 px-3 py-2 bg-rillation-bg border border-rillation-border rounded-lg text-white text-sm focus:outline-none focus:border-rillation-purple"
                     />
