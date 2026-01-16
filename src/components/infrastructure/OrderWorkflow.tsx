@@ -48,7 +48,7 @@ export default function OrderWorkflow() {
   const [mailboxConfig, setMailboxConfig] = useState<MailboxConfig>({
     first_names: DEFAULT_FIRST_NAMES,
     last_names: DEFAULT_LAST_NAMES,
-    password_pattern: 'SecurePass{n}$',
+    password_pattern: 'Zxc123{n}',
     warmup: 'ON',
     inboxes_per_domain: 3,
   })
