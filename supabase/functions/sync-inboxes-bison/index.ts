@@ -32,11 +32,42 @@ function normalizeType(bisonType: string): string {
   return typeMap[bisonType?.toLowerCase()] || 'custom';
 }
 
+// Map API status to our connection status
+function mapConnectionStatus(apiStatus: string): 'Connected' | 'Not connected' {
+  const connectedStatuses = ['active', 'connected', 'warming', 'paused'];
+  const status = (apiStatus || '').toLowerCase();
+  return connectedStatuses.includes(status) ? 'Connected' : 'Not connected';
+}
+
 // Derive lifecycle status from inbox data
 function deriveLifecycleStatus(inbox: any): string {
-  if (!inbox.connected) return 'disconnected';
-  if (inbox.warmup_enabled) return 'warming';
-  if (inbox.in_campaign) return 'active';
+  const apiStatus = (inbox.status || '').toLowerCase();
+  
+  // Check for disconnected/error states
+  if (['disconnected', 'error', 'failed', 'inactive'].includes(apiStatus)) {
+    return 'disconnected';
+  }
+  
+  // Check warmup status
+  if (inbox.warmup_enabled || apiStatus === 'warming') {
+    return 'warming';
+  }
+  
+  // Check if in campaign
+  if (inbox.in_campaign) {
+    return 'active';
+  }
+  
+  // Check for paused
+  if (apiStatus === 'paused') {
+    return 'paused';
+  }
+  
+  // Default to ready if connected
+  if (['active', 'connected', 'ready'].includes(apiStatus)) {
+    return 'ready';
+  }
+  
   return 'ready';
 }
 
@@ -98,7 +129,7 @@ async function upsertInboxes(inboxes: any[], clientName: string) {
         name: inbox.display_name || inbox.name || inbox.email || inbox.email_address,
         client: clientName,
         type: normalizeType(inbox.type || inbox.account_type),
-        status: inbox.connected ? 'Connected' : 'Not connected',
+        status: mapConnectionStatus(inbox.status),
         lifecycle_status: deriveLifecycleStatus(inbox),
         warmup_enabled: inbox.warmup_enabled || false,
         warmup_reputation: inbox.warmup_reputation || inbox.reputation || null,
