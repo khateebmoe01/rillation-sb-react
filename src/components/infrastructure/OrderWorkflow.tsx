@@ -37,6 +37,11 @@ interface GeneratedCSVs {
   inboxKitMailboxes: string
 }
 
+interface DateGroupSelection {
+  useAll: boolean
+  percentage: number
+}
+
 export default function OrderWorkflow() {
   const { clients, getClientWebsite } = useClients()
   const { createOrder, saveCSVData, markAsSubmitted } = useProviderOrders()
@@ -44,6 +49,10 @@ export default function OrderWorkflow() {
 
   const [selectedProviders, setSelectedProviders] = useState<Set<OrderProvider>>(new Set())
   const [selectedClient, setSelectedClient] = useState('')
+  // Provider split percentage (only matters when both selected)
+  const [providerSplit, setProviderSplit] = useState({ missioninbox: 50, inboxkit: 50 })
+  // Date group selections: { "Jan 15, 2026": { useAll: true, percentage: 100 } }
+  const [dateGroupSelections, setDateGroupSelections] = useState<Record<string, DateGroupSelection>>({})
   const [selectedDomains, setSelectedDomains] = useState<Set<string>>(new Set())
   const [mailboxConfig, setMailboxConfig] = useState<MailboxConfig>({
     first_names: DEFAULT_FIRST_NAMES,
@@ -85,26 +94,65 @@ export default function OrderWorkflow() {
     return groups
   }, [availableDomains])
 
+  // Calculate selected domains based on date group selections
+  const calculatedSelectedDomains = useMemo(() => {
+    const selected: string[] = []
+    for (const [date, selection] of Object.entries(dateGroupSelections)) {
+      const groupDomains = domainsByDate[date] || []
+      if (selection.useAll) {
+        selected.push(...groupDomains.map(d => d.domain_name))
+      } else if (selection.percentage > 0) {
+        const count = Math.ceil(groupDomains.length * (selection.percentage / 100))
+        selected.push(...groupDomains.slice(0, count).map(d => d.domain_name))
+      }
+    }
+    return selected
+  }, [dateGroupSelections, domainsByDate])
+
+  // Update selectedDomains when calculated changes
+  useMemo(() => {
+    setSelectedDomains(new Set(calculatedSelectedDomains))
+  }, [calculatedSelectedDomains])
+
+  // Check if both providers are selected
+  const bothProvidersSelected = selectedProviders.has('missioninbox') && selectedProviders.has('inboxkit')
+
+  // Split domains between providers
+  const { missionInboxDomains, inboxKitDomains } = useMemo(() => {
+    const allSelected = calculatedSelectedDomains
+    if (!bothProvidersSelected) {
+      return {
+        missionInboxDomains: selectedProviders.has('missioninbox') ? allSelected : [],
+        inboxKitDomains: selectedProviders.has('inboxkit') ? allSelected : [],
+      }
+    }
+    // Split based on percentage
+    const missionCount = Math.ceil(allSelected.length * (providerSplit.missioninbox / 100))
+    return {
+      missionInboxDomains: allSelected.slice(0, missionCount),
+      inboxKitDomains: allSelected.slice(missionCount),
+    }
+  }, [calculatedSelectedDomains, bothProvidersSelected, providerSplit, selectedProviders])
+
   const generateCSV = () => {
-    const domainList = Array.from(selectedDomains)
     const clientWebsite = getClientWebsite(selectedClient)
     
     // Get profile picture filenames for InboxKit
     const profilePicNames = profilePictures.map(f => f.name)
 
-    // Generate all 4 CSVs
+    // Generate CSVs using split domains
     const csvs: GeneratedCSVs = {
-      missionInboxDomains: selectedProviders.has('missioninbox') 
-        ? generateMissionInboxDomainsCSV(domainList, selectedClient, clientWebsite)
+      missionInboxDomains: missionInboxDomains.length > 0
+        ? generateMissionInboxDomainsCSV(missionInboxDomains, selectedClient, clientWebsite)
         : '',
-      missionInboxMailboxes: selectedProviders.has('missioninbox')
-        ? generateMissionInboxMailboxesCSV(domainList, mailboxConfig)
+      missionInboxMailboxes: missionInboxDomains.length > 0
+        ? generateMissionInboxMailboxesCSV(missionInboxDomains, mailboxConfig)
         : '',
-      inboxKitDomains: selectedProviders.has('inboxkit')
-        ? generateInboxKitDomainsCSV(domainList)
+      inboxKitDomains: inboxKitDomains.length > 0
+        ? generateInboxKitDomainsCSV(inboxKitDomains)
         : '',
-      inboxKitMailboxes: selectedProviders.has('inboxkit')
-        ? generateInboxKitMailboxesCSV(domainList, mailboxConfig, profilePicNames)
+      inboxKitMailboxes: inboxKitDomains.length > 0
+        ? generateInboxKitMailboxesCSV(inboxKitDomains, mailboxConfig, profilePicNames)
         : '',
     }
 
@@ -153,25 +201,28 @@ export default function OrderWorkflow() {
     }
   }
 
-  const selectAllUnused = () => {
-    setSelectedDomains(new Set(availableDomains.map(d => d.domain_name)))
+  const handleDateGroupChange = (date: string, selection: DateGroupSelection) => {
+    setDateGroupSelections(prev => ({
+      ...prev,
+      [date]: selection
+    }))
   }
 
-  const toggleDateGroup = (date: string) => {
-    const groupDomains = domainsByDate[date] || []
-    const allSelected = groupDomains.every(d => selectedDomains.has(d.domain_name))
-    
-    const newSet = new Set(selectedDomains)
-    if (allSelected) {
-      groupDomains.forEach(d => newSet.delete(d.domain_name))
-    } else {
-      groupDomains.forEach(d => newSet.add(d.domain_name))
-    }
-    setSelectedDomains(newSet)
+  const selectAllDates = () => {
+    const allSelections: Record<string, DateGroupSelection> = {}
+    Object.keys(domainsByDate).forEach(date => {
+      allSelections[date] = { useAll: true, percentage: 100 }
+    })
+    setDateGroupSelections(allSelections)
   }
 
-  const totalMailboxes = selectedDomains.size * mailboxConfig.inboxes_per_domain
-  const canGenerate = selectedProviders.size > 0 && selectedClient && selectedDomains.size > 0 && 
+  const clearAllDates = () => {
+    setDateGroupSelections({})
+  }
+
+  const totalSelectedDomains = calculatedSelectedDomains.length
+  const totalMailboxes = totalSelectedDomains * mailboxConfig.inboxes_per_domain
+  const canGenerate = selectedProviders.size > 0 && selectedClient && totalSelectedDomains > 0 && 
     mailboxConfig.first_names.length > 0 &&
     mailboxConfig.last_names.length > 0 &&
     mailboxConfig.password_pattern &&
@@ -232,15 +283,68 @@ export default function OrderWorkflow() {
             </div>
           </div>
 
-          {/* Domains Selection */}
+          {/* Provider Split - Show when both providers selected */}
+          {bothProvidersSelected && (
+            <div className="bg-rillation-bg/30 rounded-lg p-4 border border-rillation-border">
+              <label className="block text-sm font-medium text-white mb-3">Domain Split Between Providers</label>
+              <div className="flex items-center gap-4">
+                <div className="flex-1">
+                  <div className="flex items-center justify-between text-sm mb-2">
+                    <span className="text-emerald-400 font-medium">MissionInbox</span>
+                    <span className="text-white">{providerSplit.missioninbox}%</span>
+                  </div>
+                  <input
+                    type="range"
+                    min={0}
+                    max={100}
+                    value={providerSplit.missioninbox}
+                    onChange={(e) => {
+                      const mi = parseInt(e.target.value)
+                      setProviderSplit({ missioninbox: mi, inboxkit: 100 - mi })
+                    }}
+                    className="w-full accent-emerald-500"
+                  />
+                </div>
+                <div className="text-white/40 px-2">|</div>
+                <div className="flex-1">
+                  <div className="flex items-center justify-between text-sm mb-2">
+                    <span className="text-cyan-400 font-medium">InboxKit</span>
+                    <span className="text-white">{providerSplit.inboxkit}%</span>
+                  </div>
+                  <div className="h-2 bg-cyan-500/30 rounded-full">
+                    <div 
+                      className="h-full bg-cyan-500 rounded-full transition-all"
+                      style={{ width: `${providerSplit.inboxkit}%` }}
+                    />
+                  </div>
+                </div>
+              </div>
+              {totalSelectedDomains > 0 && (
+                <div className="mt-3 text-sm text-white/60">
+                  <span className="text-emerald-400">{missionInboxDomains.length} domains</span> → MissionInbox
+                  <span className="mx-2">|</span>
+                  <span className="text-cyan-400">{inboxKitDomains.length} domains</span> → InboxKit
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Domains Selection - Simplified date groups */}
           {selectedClient && (
             <div>
               <div className="flex items-center justify-between mb-4">
                 <label className="block text-sm font-medium text-white">Select Domains *</label>
                 {availableDomains.length > 0 && (
-                  <Button variant="secondary" size="sm" onClick={selectAllUnused}>
-                    Select All ({availableDomains.length})
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Button variant="secondary" size="sm" onClick={selectAllDates}>
+                      Use All ({availableDomains.length})
+                    </Button>
+                    {Object.keys(dateGroupSelections).length > 0 && (
+                      <Button variant="secondary" size="sm" onClick={clearAllDates}>
+                        Clear
+                      </Button>
+                    )}
+                  </div>
                 )}
               </div>
               
@@ -249,50 +353,73 @@ export default function OrderWorkflow() {
                   No unused domains found for {selectedClient}. Add domains to inventory first.
                 </div>
               ) : (
-                <div className="space-y-3 max-h-[300px] overflow-y-auto bg-rillation-bg/30 rounded-lg p-4">
-                  {Object.entries(domainsByDate).map(([date, domains]) => (
-                    <div key={date} className="border border-rillation-border rounded-lg">
+                <div className="space-y-2">
+                  {Object.entries(domainsByDate).map(([date, domains]) => {
+                    const selection = dateGroupSelections[date] || { useAll: false, percentage: 0 }
+                    const selectedCount = selection.useAll 
+                      ? domains.length 
+                      : Math.ceil(domains.length * (selection.percentage / 100))
+                    
+                    return (
                       <div 
-                        className="flex items-center gap-3 p-3 bg-rillation-bg/50 cursor-pointer hover:bg-rillation-bg/70 transition-colors"
-                        onClick={() => toggleDateGroup(date)}
+                        key={date} 
+                        className="flex items-center gap-4 p-4 bg-rillation-bg/50 rounded-lg border border-rillation-border hover:border-emerald-500/30 transition-colors"
                       >
-                        <input
-                          type="checkbox"
-                          checked={domains.every(d => selectedDomains.has(d.domain_name))}
-                          onChange={() => {}}
-                          className="rounded border-rillation-border"
-                        />
-                        <span className="font-medium text-white">Purchased: {date}</span>
-                        <span className="text-sm text-white/60">({domains.length} domains)</span>
-                      </div>
-                      <div className="p-3 grid grid-cols-3 gap-2">
-                        {domains.map((domain) => (
-                          <label key={domain.id} className="flex items-center gap-2 cursor-pointer hover:text-emerald-400 transition-colors">
+                        <div className="flex-1">
+                          <p className="font-medium text-white">{date}</p>
+                          <p className="text-sm text-white/60">{domains.length} domains available</p>
+                        </div>
+                        
+                        <div className="flex items-center gap-3">
+                          <button
+                            onClick={() => handleDateGroupChange(date, { useAll: true, percentage: 100 })}
+                            className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
+                              selection.useAll 
+                                ? 'bg-emerald-500 text-white' 
+                                : 'bg-rillation-bg text-white/60 hover:text-white'
+                            }`}
+                          >
+                            Use All
+                          </button>
+                          
+                          <div className="flex items-center gap-2">
                             <input
-                              type="checkbox"
-                              checked={selectedDomains.has(domain.domain_name)}
-                              onChange={() => {
-                                const newSet = new Set(selectedDomains)
-                                if (newSet.has(domain.domain_name)) {
-                                  newSet.delete(domain.domain_name)
-                                } else {
-                                  newSet.add(domain.domain_name)
-                                }
-                                setSelectedDomains(newSet)
+                              type="number"
+                              min={0}
+                              max={100}
+                              value={selection.useAll ? 100 : selection.percentage}
+                              onChange={(e) => {
+                                const pct = Math.min(100, Math.max(0, parseInt(e.target.value) || 0))
+                                handleDateGroupChange(date, { useAll: false, percentage: pct })
                               }}
-                              className="rounded border-rillation-border"
+                              className="w-16 px-2 py-1.5 bg-rillation-bg border border-rillation-border rounded text-white text-sm text-center focus:outline-none focus:border-emerald-500"
                             />
-                            <span className="text-sm font-mono text-white">{domain.domain_name}</span>
-                          </label>
-                        ))}
+                            <span className="text-white/60 text-sm">%</span>
+                          </div>
+                          
+                          {(selection.useAll || selection.percentage > 0) && (
+                            <span className="text-emerald-400 text-sm font-medium min-w-[60px] text-right">
+                              {selectedCount} selected
+                            </span>
+                          )}
+                          
+                          {(selection.useAll || selection.percentage > 0) && (
+                            <button
+                              onClick={() => handleDateGroupChange(date, { useAll: false, percentage: 0 })}
+                              className="text-white/40 hover:text-red-400 transition-colors"
+                            >
+                              <X size={16} />
+                            </button>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               )}
               
-              <div className="mt-2 text-sm text-white/60">
-                Selected: <span className="text-white font-medium">{selectedDomains.size}</span> domains
+              <div className="mt-3 text-sm text-white/60">
+                Total selected: <span className="text-white font-medium">{totalSelectedDomains}</span> domains
               </div>
             </div>
           )}
@@ -384,8 +511,15 @@ export default function OrderWorkflow() {
               </div>
               <div className="mt-4 p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-lg">
                 <p className="text-sm text-white">
-                  Will generate: <strong>{selectedDomains.size}</strong> domains × <strong>{mailboxConfig.inboxes_per_domain}</strong> inboxes = <strong className="text-emerald-400">{totalMailboxes} mailboxes</strong>
+                  Will generate: <strong>{totalSelectedDomains}</strong> domains × <strong>{mailboxConfig.inboxes_per_domain}</strong> inboxes = <strong className="text-emerald-400">{totalMailboxes} mailboxes</strong>
                 </p>
+                {bothProvidersSelected && totalSelectedDomains > 0 && (
+                  <p className="text-sm text-white/60 mt-1">
+                    MissionInbox: {missionInboxDomains.length} domains ({missionInboxDomains.length * mailboxConfig.inboxes_per_domain} mailboxes) 
+                    <span className="mx-2">|</span>
+                    InboxKit: {inboxKitDomains.length} domains ({inboxKitDomains.length * mailboxConfig.inboxes_per_domain} mailboxes)
+                  </p>
+                )}
               </div>
 
               {/* Profile Pictures Upload */}
