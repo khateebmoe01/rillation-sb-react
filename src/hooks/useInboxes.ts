@@ -66,8 +66,9 @@ export function useInboxes({
 
   // Bulk update inboxes
   const bulkUpdate = async (ids: number[], updates: Partial<Inbox>) => {
-    const { error } = await supabase
-      .from('inboxes')
+    // Use type assertion to bypass strict typing for new columns
+    const { error } = await (supabase
+      .from('inboxes') as any)
       .update(updates)
       .in('id', ids)
 

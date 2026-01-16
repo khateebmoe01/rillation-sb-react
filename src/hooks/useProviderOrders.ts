@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { supabase } from '../lib/supabase'
+import { tables } from '../lib/supabase-helpers'
 import type { 
   ProviderOrder, 
   ProviderOrderStatus, 
@@ -24,8 +24,7 @@ export function useProviderOrders({ client, provider, status }: UseProviderOrder
       setLoading(true)
       setError(null)
 
-      let query = supabase
-        .from('provider_orders')
+      let query = tables.provider_orders()
         .select('*')
         .order('created_at', { ascending: false })
 
@@ -37,7 +36,7 @@ export function useProviderOrders({ client, provider, status }: UseProviderOrder
 
       if (queryError) throw queryError
 
-      setOrders(data || [])
+      setOrders((data || []) as ProviderOrder[])
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch orders')
     } finally {
@@ -57,13 +56,12 @@ export function useProviderOrders({ client, provider, status }: UseProviderOrder
     domains: string[]
     mailbox_config?: MailboxConfig
     notes?: string
-  }) => {
+  }): Promise<ProviderOrder> => {
     const quantity = orderData.order_type === 'mailboxes' && orderData.mailbox_config
       ? orderData.domains.length * (orderData.mailbox_config.inboxes_per_domain || 1)
       : orderData.domains.length
 
-    const { data, error } = await supabase
-      .from('provider_orders')
+    const { data, error } = await tables.provider_orders()
       .insert({
         ...orderData,
         quantity,
@@ -74,12 +72,12 @@ export function useProviderOrders({ client, provider, status }: UseProviderOrder
 
     if (error) throw error
     await fetchOrders()
-    return data
+    return data as ProviderOrder
   }
 
   // Update order status
   const updateOrderStatus = async (id: string, newStatus: ProviderOrderStatus) => {
-    const updates: Partial<ProviderOrder> = {
+    const updates: Record<string, any> = {
       status: newStatus,
       updated_at: new Date().toISOString(),
     }
@@ -93,8 +91,7 @@ export function useProviderOrders({ client, provider, status }: UseProviderOrder
       updates.completed_at = new Date().toISOString()
     }
 
-    const { error } = await supabase
-      .from('provider_orders')
+    const { error } = await tables.provider_orders()
       .update(updates)
       .eq('id', id)
 
@@ -104,8 +101,7 @@ export function useProviderOrders({ client, provider, status }: UseProviderOrder
 
   // Save CSV data to order
   const saveCSVData = async (id: string, csvData: string) => {
-    const { error } = await supabase
-      .from('provider_orders')
+    const { error } = await tables.provider_orders()
       .update({
         csv_data: csvData,
         status: 'exported',
@@ -125,8 +121,7 @@ export function useProviderOrders({ client, provider, status }: UseProviderOrder
     // Also update domain inventory to mark domains as in_use
     const order = orders.find(o => o.id === id)
     if (order && order.domains.length > 0) {
-      await supabase
-        .from('domain_inventory')
+      await tables.domain_inventory()
         .update({
           status: 'in_use',
           inboxes_ordered: order.quantity,
@@ -143,8 +138,7 @@ export function useProviderOrders({ client, provider, status }: UseProviderOrder
 
   // Delete a draft order
   const deleteOrder = async (id: string) => {
-    const { error } = await supabase
-      .from('provider_orders')
+    const { error } = await tables.provider_orders()
       .delete()
       .eq('id', id)
       .eq('status', 'draft') // Only allow deleting drafts

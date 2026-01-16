@@ -8,7 +8,6 @@ import {
   Play,
   CheckCircle,
   Archive,
-  Download,
   MoreHorizontal,
   Flame,
   Wifi,
@@ -44,7 +43,7 @@ export default function InboxSetsView() {
   const [selectedProvider, setSelectedProvider] = useState('')
   const [selectedSets, setSelectedSets] = useState<Set<string>>(new Set())
   const [expandedSets, setExpandedSets] = useState<Set<string>>(new Set())
-  const [showCreateModal, setShowCreateModal] = useState(false)
+  const [_showCreateModal, setShowCreateModal] = useState(false)
 
   const { sets, loading, bulkUpdateSets, bulkArchiveSets } = useInboxSets({
     client: selectedClient || undefined,

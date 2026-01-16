@@ -77,7 +77,7 @@ export async function getInboxHealthMetrics(client?: string) {
 
   if (error) throw error
 
-  const inboxes = data || []
+  const inboxes = (data || []) as any[]
   return {
     total: inboxes.length,
     connected: inboxes.filter(i => i.status === 'Connected').length,
@@ -103,7 +103,7 @@ export async function getLastSyncTime() {
     .single()
 
   if (error) return null
-  return data?.synced_at
+  return (data as any)?.synced_at
 }
 
 

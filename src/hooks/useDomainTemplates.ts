@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { supabase } from '../lib/supabase'
+import { tables } from '../lib/supabase-helpers'
 import type { DomainGenerationTemplate } from '../types/infrastructure'
 
 export function useDomainTemplates(client?: string) {
@@ -12,8 +12,7 @@ export function useDomainTemplates(client?: string) {
       setLoading(true)
       setError(null)
 
-      let query = supabase
-        .from('domain_generation_templates')
+      let query = tables.domain_generation_templates()
         .select('*')
         .order('last_used_at', { ascending: false, nullsFirst: false })
 
@@ -25,7 +24,7 @@ export function useDomainTemplates(client?: string) {
 
       if (queryError) throw queryError
 
-      setTemplates(data || [])
+      setTemplates((data || []) as DomainGenerationTemplate[])
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch templates')
     } finally {
@@ -39,21 +38,19 @@ export function useDomainTemplates(client?: string) {
 
   // Create a new template
   const createTemplate = async (templateData: Partial<DomainGenerationTemplate>) => {
-    const { data, error } = await supabase
-      .from('domain_generation_templates')
+    const { data, error } = await tables.domain_generation_templates()
       .insert(templateData)
       .select()
       .single()
 
     if (error) throw error
     await fetchTemplates()
-    return data
+    return data as DomainGenerationTemplate
   }
 
   // Update a template
   const updateTemplate = async (id: string, updates: Partial<DomainGenerationTemplate>) => {
-    const { error } = await supabase
-      .from('domain_generation_templates')
+    const { error } = await tables.domain_generation_templates()
       .update({ ...updates, updated_at: new Date().toISOString() })
       .eq('id', id)
 
@@ -66,8 +63,7 @@ export function useDomainTemplates(client?: string) {
     const template = templates.find(t => t.id === id)
     if (!template) return
 
-    await supabase
-      .from('domain_generation_templates')
+    await tables.domain_generation_templates()
       .update({
         last_used_at: new Date().toISOString(),
         use_count: (template.use_count || 0) + 1,
@@ -79,8 +75,7 @@ export function useDomainTemplates(client?: string) {
 
   // Delete a template
   const deleteTemplate = async (id: string) => {
-    const { error } = await supabase
-      .from('domain_generation_templates')
+    const { error } = await tables.domain_generation_templates()
       .delete()
       .eq('id', id)
 

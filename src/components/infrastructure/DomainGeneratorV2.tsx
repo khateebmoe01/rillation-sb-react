@@ -135,8 +135,8 @@ export default function DomainGeneratorV2() {
     return { total: generatedDomains.length, duplicates, available }
   }, [generatedDomains])
 
-  // Group domains by base name and type for matrix view
-  const domainMatrix = useMemo(() => {
+  // Group domains by base name and type for matrix view (for future use)
+  const _domainMatrix = useMemo(() => {
     const matrix: Record<string, Record<string, (GeneratedDomainResult & { isDuplicate?: boolean })[]>> = {}
     
     for (const domain of generatedDomains) {
@@ -147,6 +147,7 @@ export default function DomainGeneratorV2() {
     
     return matrix
   }, [generatedDomains])
+  void _domainMatrix // Suppress unused warning
 
   return (
     <div className="space-y-6">

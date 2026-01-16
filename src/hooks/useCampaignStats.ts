@@ -256,26 +256,16 @@ export function useCampaignStats({ startDate, endDate, client, page, pageSize }:
       // Build this map from campaign_reporting first (authoritative source)
       // IMPORTANT: Must use campaign_id + client combination because campaign_id alone is not unique
       const campaignIdClientToName = new Map<string, string>()
-      const targetCampaignName = 'sbp_Storeleads United States - Copy Version 2'
       ;(campaignRows as CampaignRow[] | null)?.forEach((row) => {
         if (row.campaign_id && row.campaign_name && row.client) {
           // Use campaign_id + client as unique key
           const key = `${String(row.campaign_id)}||${row.client}`
-          
-          // #region agent log
-          if (row.campaign_name === targetCampaignName) {
-            fetch('http://127.0.0.1:7242/ingest/9428b436-58ef-4c72-b9f2-dfdc5784cfa8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'useCampaignStats.ts:245',message:'Target campaign in campaign_reporting',data:{campaign_id:row.campaign_id,client:row.client,campaign_name:row.campaign_name,emails_sent:row.emails_sent},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'B'})}).catch(()=>{});
-          }
-          // #endregion
-          
           campaignIdClientToName.set(key, row.campaign_name)
         }
       })
 
       // Count UNIQUE leads by campaign and create campaign entries for replies-only campaigns
       // Use campaign_id||client as the key directly to match campaignStatsMap structure
-      const targetCampaignClient = client || 'Sb P' // Use filtered client or default
-      let targetCampaignReplies: any[] = []
       
       // Track unique leads per campaign for deduplication
       const uniqueLeadsByCampaignKey = new Map<string, { all: Set<string>, real: Set<string> }>()
@@ -285,16 +275,6 @@ export function useCampaignStats({ startDate, endDate, client, page, pageSize }:
         
         // Use campaign_id||client as the key (matches campaignStatsMap structure)
         const key = `${String(reply.campaign_id)}||${reply.client}`
-        
-        // Get campaign_name from the mapping for logging/debugging purposes
-        const campaignName = campaignIdClientToName.get(key) || reply.campaign_id
-        
-        // #region agent log
-        if (campaignName === targetCampaignName && reply.client === targetCampaignClient) {
-          fetch('http://127.0.0.1:7242/ingest/9428b436-58ef-4c72-b9f2-dfdc5784cfa8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'useCampaignStats.ts:277',message:'Matching reply to target campaign',data:{campaign_id:reply.campaign_id,campaign_name_matched:campaignName,client:reply.client,date_received:reply.date_received,category:reply.category},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'B'})}).catch(()=>{});
-          targetCampaignReplies.push(reply)
-        }
-        // #endregion
         
         // Ensure campaign exists in campaignStatsMap (create if it doesn't exist)
         if (!campaignStatsMap.has(key)) {
@@ -347,16 +327,6 @@ export function useCampaignStats({ startDate, endDate, client, page, pageSize }:
           stat.realReplies = tracking.real.size
         }
       })
-      
-      // #region agent log
-      // Find target campaign by name since campaignStatsMap is now keyed by campaign_id||client
-      const targetCampaign = Array.from(campaignStatsMap.values()).find(
-        c => c.campaign_name === targetCampaignName && c.client === targetCampaignClient
-      )
-      if (targetCampaign) {
-        fetch('http://127.0.0.1:7242/ingest/9428b436-58ef-4c72-b9f2-dfdc5784cfa8',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'useCampaignStats.ts:290',message:'Final campaign stats',data:{campaign_name:targetCampaignName,campaign_id:targetCampaign.campaign_id,totalReplies:targetCampaign.totalReplies,realReplies:targetCampaign.realReplies,client:targetCampaign.client,target_replies_count:targetCampaignReplies.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'E'})}).catch(()=>{});
-      }
-      // #endregion
 
       // Calculate performance score and get status/createdAt from campaigns table
       campaignStatsMap.forEach((stat) => {

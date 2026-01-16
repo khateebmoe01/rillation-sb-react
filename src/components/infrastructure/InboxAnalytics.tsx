@@ -50,10 +50,10 @@ export default function InboxAnalytics() {
   
   // Calculate status counts
   const connectedCount = inboxes.filter((inbox) => 
-    inbox.status === 'active' || inbox.status === 'connected'
+    inbox.status === 'Connected'
   ).length
   const disconnectedCount = inboxes.filter((inbox) => 
-    inbox.status === 'inactive' || inbox.status === 'disconnected' || inbox.status === 'error'
+    inbox.status === 'Not connected' || inbox.status === 'Failed'
   ).length
   const totalSends = inboxes.reduce((sum, inbox) => sum + (inbox.emails_sent_count || 0), 0)
 
@@ -212,10 +212,10 @@ export default function InboxAnalytics() {
               {providerChartData.map(({ name: provider, value: count }) => {
                 const providerInboxes = inboxes.filter((i) => normalizeProviderName(i.type) === provider)
                 const providerConnected = providerInboxes.filter((i) => 
-                  i.status === 'active' || i.status === 'connected'
+                  i.status === 'Connected'
                 ).length
                 const providerDisconnected = providerInboxes.filter((i) => 
-                  i.status === 'inactive' || i.status === 'disconnected' || i.status === 'error'
+                  i.status === 'Not connected' || i.status === 'Failed'
                 ).length
                 const providerSends = providerInboxes.reduce((sum, i) => sum + (i.emails_sent_count || 0), 0)
                 const providerAvgDeliverability = providerInboxes.length > 0

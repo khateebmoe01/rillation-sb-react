@@ -6,6 +6,7 @@ interface AuthContextType {
   user: User | null
   session: Session | null
   loading: boolean
+  client: string | null // Client extracted from user metadata
   signIn: (email: string, password: string) => Promise<{ error: any }>
   signOut: () => Promise<void>
 }
@@ -16,6 +17,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
+  const [client, setClient] = useState<string | null>(null)
+
+  // Extract client from user metadata
+  useEffect(() => {
+    if (user?.user_metadata?.client) {
+      setClient(user.user_metadata.client)
+    } else {
+      setClient(null)
+    }
+  }, [user])
 
   useEffect(() => {
     // Get initial session
@@ -47,6 +58,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = async () => {
     await supabase.auth.signOut()
+    setClient(null)
   }
 
   return (
@@ -55,6 +67,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         user,
         session,
         loading,
+        client,
         signIn,
         signOut,
       }}

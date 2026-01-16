@@ -2,14 +2,12 @@ import { useState, useMemo } from 'react'
 import { 
   Globe, 
   AlertTriangle, 
-  Check, 
   ChevronDown, 
   ChevronRight,
   Package,
   Clock,
-  ExternalLink
 } from 'lucide-react'
-import { useDomainInventory, usePurchaseBatches } from '../../hooks/useDomainInventory'
+import { useDomainInventory } from '../../hooks/useDomainInventory'
 import { useClients } from '../../hooks/useClients'
 import type { DomainInventory, DomainStatus, InboxProvider } from '../../types/infrastructure'
 import Button from '../ui/Button'
@@ -111,7 +109,7 @@ export default function DomainInventoryManager() {
     setExpandedGroups(newSet)
   }
 
-  const handleBulkAction = async (action: string, value?: string) => {
+  const handleBulkAction = async (action: string, _value?: string) => {
     const ids = Array.from(selectedDomains)
     if (ids.length === 0) return
 

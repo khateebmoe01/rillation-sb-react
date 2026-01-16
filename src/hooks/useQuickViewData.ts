@@ -34,7 +34,7 @@ export function useQuickViewData({ startDate, endDate, client, campaigns }: UseQ
       while (hasMore && offset / pageSize < maxPages) {
         let campaignQuery = supabase
           .from('campaign_reporting')
-          .select('date,campaign_name,emails_sent,total_leads_contacted,bounced,interested')
+          .select('date,campaign_id,campaign_name,client,emails_sent,total_leads_contacted,bounced,interested')
           .gte('date', startStr)
           .lte('date', endStr)
           .range(offset, offset + pageSize - 1)
@@ -59,7 +59,9 @@ export function useQuickViewData({ startDate, endDate, client, campaigns }: UseQ
 
       type CampaignRow = { 
         date: string
+        campaign_id: string | null
         campaign_name: string | null
+        client: string | null
         emails_sent: number | null
         total_leads_contacted: number | null
         bounced: number | null
@@ -67,8 +69,10 @@ export function useQuickViewData({ startDate, endDate, client, campaigns }: UseQ
       }
 
       // Calculate metrics from all fetched rows
-      // Filter out rows with null/empty campaign_name to match useCampaignStats behavior
-      const validRows = (campaignData as CampaignRow[] | null)?.filter(row => row.campaign_name) || []
+      // Filter to match useCampaignStats behavior - require campaign_id, campaign_name, and client
+      const validRows = (campaignData as CampaignRow[] | null)?.filter(row => 
+        row.campaign_id && row.campaign_name && row.client
+      ) || []
       const totalEmailsSent = validRows.reduce((sum, row) => sum + (row.emails_sent || 0), 0) || 0
       const uniqueProspects = validRows.reduce((sum, row) => sum + (row.total_leads_contacted || 0), 0) || 0
       const bounces = validRows.reduce((sum, row) => sum + (row.bounced || 0), 0) || 0

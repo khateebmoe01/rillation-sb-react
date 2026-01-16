@@ -1,13 +1,10 @@
 import { useState, useEffect } from 'react'
 import { 
-  Mail, 
-  Globe, 
   AlertTriangle, 
   CheckCircle, 
   Flame, 
   XCircle,
   RefreshCw,
-  ExternalLink 
 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useClients } from '../../hooks/useClients'
@@ -45,7 +42,10 @@ export default function InfrastructureOverview() {
     const results: ClientSummary[] = []
 
     for (const client of clients) {
-      const clientName = client.Business || client.name || client
+      // Handle both object and string formats
+      const clientName = typeof client === 'string' 
+        ? client 
+        : ((client as any).Business || (client as any).name || String(client))
 
       // Fetch inbox stats
       const { data: inboxes } = await supabase
@@ -53,20 +53,20 @@ export default function InfrastructureOverview() {
         .select('status, lifecycle_status, warmup_enabled, deliverability_score, warmup_reputation, synced_at')
         .eq('client', clientName)
 
-      // Fetch domain stats
-      const { data: domains } = await supabase
-        .from('domain_inventory')
+      // Fetch domain stats (new table - may not exist in types)
+      const { data: domains } = await (supabase
+        .from('domain_inventory' as any)
         .select('status, inboxes_ordered')
-        .eq('client', clientName)
+        .eq('client', clientName) as any)
 
-      // Fetch sets count
-      const { count: setsCount } = await supabase
-        .from('inbox_sets')
+      // Fetch sets count (new table - may not exist in types)
+      const { count: setsCount } = await (supabase
+        .from('inbox_sets' as any)
         .select('id', { count: 'exact', head: true })
-        .eq('client', clientName)
+        .eq('client', clientName) as any)
 
-      const inboxList = inboxes || []
-      const domainList = domains || []
+      const inboxList = (inboxes || []) as any[]
+      const domainList = (domains || []) as any[]
 
       const connected = inboxList.filter(i => i.status === 'Connected').length
       const disconnected = inboxList.filter(i => i.status === 'Not connected' || i.lifecycle_status === 'disconnected').length

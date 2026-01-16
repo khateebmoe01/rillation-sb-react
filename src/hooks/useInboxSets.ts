@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
+import { tables } from '../lib/supabase-helpers'
 import type { InboxSet, InboxSetStatus, InboxSetProvider } from '../types/infrastructure'
 
 interface UseInboxSetsParams {
@@ -18,8 +19,7 @@ export function useInboxSets({ client, status, provider }: UseInboxSetsParams = 
       setLoading(true)
       setError(null)
 
-      let query = supabase
-        .from('inbox_sets')
+      let query = tables.inbox_sets()
         .select('*')
         .order('ordered_at', { ascending: false })
 
@@ -32,7 +32,7 @@ export function useInboxSets({ client, status, provider }: UseInboxSetsParams = 
       if (queryError) throw queryError
 
       // Calculate warmup progress for each set
-      const setsWithProgress = (data || []).map((set: InboxSet) => {
+      const setsWithProgress = ((data || []) as any[]).map((set) => {
         let warmup_progress = 0
         let days_warming = 0
         
@@ -47,7 +47,7 @@ export function useInboxSets({ client, status, provider }: UseInboxSetsParams = 
           ...set,
           warmup_progress,
           days_warming,
-        }
+        } as InboxSet
       })
 
       setSets(setsWithProgress)
@@ -64,21 +64,19 @@ export function useInboxSets({ client, status, provider }: UseInboxSetsParams = 
 
   // Create a new inbox set
   const createSet = async (setData: Partial<InboxSet>) => {
-    const { data, error } = await supabase
-      .from('inbox_sets')
+    const { data, error } = await tables.inbox_sets()
       .insert(setData)
       .select()
       .single()
 
     if (error) throw error
     await fetchSets()
-    return data
+    return data as InboxSet
   }
 
   // Update an inbox set
   const updateSet = async (id: string, updates: Partial<InboxSet>) => {
-    const { error } = await supabase
-      .from('inbox_sets')
+    const { error } = await tables.inbox_sets()
       .update({ ...updates, updated_at: new Date().toISOString() })
       .eq('id', id)
 
@@ -88,8 +86,7 @@ export function useInboxSets({ client, status, provider }: UseInboxSetsParams = 
 
   // Bulk update multiple sets
   const bulkUpdateSets = async (ids: string[], updates: Partial<InboxSet>) => {
-    const { error } = await supabase
-      .from('inbox_sets')
+    const { error } = await tables.inbox_sets()
       .update({ ...updates, updated_at: new Date().toISOString() })
       .in('id', ids)
 

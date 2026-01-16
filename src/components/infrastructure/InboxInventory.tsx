@@ -173,7 +173,7 @@ export default function InboxInventory() {
                     <td className="px-4 py-3">
                       <span
                         className={`px-2 py-1 rounded text-xs font-medium ${
-                          inbox.status === 'active'
+                          inbox.status === 'Connected'
                             ? 'bg-rillation-green/20 text-rillation-green'
                             : 'bg-rillation-red/20 text-rillation-red'
                         }`}

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
+import { tables } from '../lib/supabase-helpers'
 import type { DomainInventory, DomainStatus, InboxProvider, PurchaseBatch } from '../types/infrastructure'
 
 interface UseDomainInventoryParams {
@@ -19,8 +20,7 @@ export function useDomainInventory({ client, status, inbox_provider, needsAction
       setLoading(true)
       setError(null)
 
-      let query = supabase
-        .from('domain_inventory')
+      let query = tables.domain_inventory()
         .select('*')
         .order('created_at', { ascending: false })
 
@@ -38,7 +38,7 @@ export function useDomainInventory({ client, status, inbox_provider, needsAction
       if (queryError) throw queryError
 
       // Calculate days since purchase
-      const domainsWithDays = (data || []).map((domain: DomainInventory) => {
+      const domainsWithDays = (data || []).map((domain: any) => {
         let days_since_purchase = 0
         if (domain.purchased_at) {
           const purchaseDate = new Date(domain.purchased_at)
@@ -49,8 +49,8 @@ export function useDomainInventory({ client, status, inbox_provider, needsAction
         return {
           ...domain,
           days_since_purchase,
-          needs_action: domain.purchased_at && domain.inboxes_ordered === 0 && days_since_purchase > 30,
-        }
+          needs_action: Boolean(domain.purchased_at && domain.inboxes_ordered === 0 && days_since_purchase > 30),
+        } as DomainInventory
       })
 
       setDomains(domainsWithDays)
@@ -70,8 +70,7 @@ export function useDomainInventory({ client, status, inbox_provider, needsAction
     // Create a purchase batch if batch data is provided
     let batch_id: string | undefined
     if (batchData) {
-      const { data: batch, error: batchError } = await supabase
-        .from('purchase_batches')
+      const { data: batch, error: batchError } = await tables.purchase_batches()
         .insert({
           ...batchData,
           client: clientName,
@@ -81,7 +80,7 @@ export function useDomainInventory({ client, status, inbox_provider, needsAction
         .single()
 
       if (batchError) throw batchError
-      batch_id = batch.id
+      batch_id = batch?.id
     }
 
     // Insert domains
@@ -92,8 +91,7 @@ export function useDomainInventory({ client, status, inbox_provider, needsAction
       purchase_batch_id: batch_id,
     }))
 
-    const { error } = await supabase
-      .from('domain_inventory')
+    const { error } = await tables.domain_inventory()
       .insert(domainsToInsert)
 
     if (error) throw error
@@ -102,8 +100,7 @@ export function useDomainInventory({ client, status, inbox_provider, needsAction
 
   // Update a single domain
   const updateDomain = async (id: string, updates: Partial<DomainInventory>) => {
-    const { error } = await supabase
-      .from('domain_inventory')
+    const { error } = await tables.domain_inventory()
       .update({ ...updates, updated_at: new Date().toISOString() })
       .eq('id', id)
 
@@ -113,8 +110,7 @@ export function useDomainInventory({ client, status, inbox_provider, needsAction
 
   // Bulk update domains
   const bulkUpdateDomains = async (ids: string[], updates: Partial<DomainInventory>) => {
-    const { error } = await supabase
-      .from('domain_inventory')
+    const { error } = await tables.domain_inventory()
       .update({ ...updates, updated_at: new Date().toISOString() })
       .in('id', ids)
 
@@ -142,8 +138,7 @@ export function useDomainInventory({ client, status, inbox_provider, needsAction
   // Check for duplicate domain
   const checkDuplicate = async (domainName: string): Promise<{ isDuplicate: boolean; source?: string }> => {
     // Check domain_inventory
-    const { data: invData } = await supabase
-      .from('domain_inventory')
+    const { data: invData } = await tables.domain_inventory()
       .select('id')
       .eq('domain_name', domainName)
       .limit(1)
@@ -182,12 +177,11 @@ export function useDomainInventory({ client, status, inbox_provider, needsAction
     const results = new Map<string, { isDuplicate: boolean; source?: string }>()
 
     // Get all existing domains from domain_inventory
-    const { data: invDomains } = await supabase
-      .from('domain_inventory')
+    const { data: invDomains } = await tables.domain_inventory()
       .select('domain_name')
       .in('domain_name', domainNames)
 
-    const invSet = new Set((invDomains || []).map(d => d.domain_name))
+    const invSet = new Set(((invDomains || []) as any[]).map(d => d.domain_name))
 
     // Get all existing domains from inboxes
     const { data: inboxDomains } = await supabase
@@ -195,7 +189,7 @@ export function useDomainInventory({ client, status, inbox_provider, needsAction
       .select('domain')
       .in('domain', domainNames)
 
-    const inboxSet = new Set((inboxDomains || []).map(d => d.domain))
+    const inboxSet = new Set(((inboxDomains || []) as any[]).map(d => d.domain))
 
     // Mark duplicates
     for (const domain of domainNames) {
@@ -234,15 +228,14 @@ export function usePurchaseBatches(client?: string) {
   useEffect(() => {
     const fetchBatches = async () => {
       setLoading(true)
-      let query = supabase
-        .from('purchase_batches')
+      let query = tables.purchase_batches()
         .select('*')
         .order('purchased_at', { ascending: false })
 
       if (client) query = query.eq('client', client)
 
       const { data } = await query
-      setBatches(data || [])
+      setBatches((data || []) as PurchaseBatch[])
       setLoading(false)
     }
 

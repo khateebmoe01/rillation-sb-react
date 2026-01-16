@@ -1,6 +1,5 @@
 import { useState, useMemo } from 'react'
 import { 
-  ShoppingCart, 
   ChevronRight, 
   ChevronLeft,
   Download,
