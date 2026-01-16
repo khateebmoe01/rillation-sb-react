@@ -5,9 +5,9 @@ import type { MailboxConfig } from '../types/infrastructure'
 // MissionInbox CSV Generators
 // ============================================
 
-export function generateMissionInboxDomainsCSV(domains: string[], project: string): string {
+export function generateMissionInboxDomainsCSV(domains: string[], project: string, clientWebsite: string = ''): string {
   const header = 'IP ProviderName,Domain Name,Project,Redirect URL'
-  const rows = domains.map(domain => `MissionInbox,${domain},${project},`)
+  const rows = domains.map(domain => `mo-relay,${domain},${project},${clientWebsite}`)
   return [header, ...rows].join('\n')
 }
 
@@ -19,17 +19,35 @@ export function generateMissionInboxMailboxesCSV(
   const rows: string[] = []
 
   const { first_names, last_names, password_pattern, warmup, inboxes_per_domain } = config
+  
+  // Handle empty names
+  if (first_names.length === 0 || last_names.length === 0) {
+    return header // Return just header if no names provided
+  }
+  
   let passwordCounter = 1
+  const totalMailboxes = domains.length * inboxes_per_domain
+  
+  // Calculate how to distribute names evenly
+  const getNameForIndex = (globalIndex: number, names: string[]): string => {
+    if (names.length === 1) return names[0]
+    // Distribute evenly: first N/count get name 0, next N/count get name 1, etc.
+    const mailboxesPerName = Math.ceil(totalMailboxes / names.length)
+    const nameIndex = Math.floor(globalIndex / mailboxesPerName)
+    return names[Math.min(nameIndex, names.length - 1)]
+  }
 
+  let globalIndex = 0
   for (const domain of domains) {
     for (let i = 0; i < inboxes_per_domain; i++) {
-      const firstName = first_names[i % first_names.length]
-      const lastName = last_names[i % last_names.length]
+      const firstName = getNameForIndex(globalIndex, first_names)
+      const lastName = getNameForIndex(globalIndex, last_names)
       const username = firstName.toLowerCase()
       const email = `${username}@${domain}`
       const password = password_pattern.replace('{n}', String(passwordCounter++))
       
       rows.push(`${firstName},${lastName},${email},${password},,${warmup}`)
+      globalIndex++
     }
   }
 
@@ -47,20 +65,43 @@ export function generateInboxKitDomainsCSV(domains: string[]): string {
 
 export function generateInboxKitMailboxesCSV(
   domains: string[],
-  config: MailboxConfig
+  config: MailboxConfig,
+  profilePictures: string[] = []
 ): string {
   const header = 'first_name,last_name,username,domain_name,platform,profile_picture'
   const rows: string[] = []
 
   const { first_names, last_names, inboxes_per_domain, platform = '' } = config
 
+  // Handle empty names
+  if (first_names.length === 0 || last_names.length === 0) {
+    return header // Return just header if no names provided
+  }
+
+  const totalMailboxes = domains.length * inboxes_per_domain
+  
+  // Calculate how to distribute names evenly
+  const getNameForIndex = (globalIndex: number, names: string[]): string => {
+    if (names.length === 1) return names[0]
+    // Distribute evenly: first N/count get name 0, next N/count get name 1, etc.
+    const mailboxesPerName = Math.ceil(totalMailboxes / names.length)
+    const nameIndex = Math.floor(globalIndex / mailboxesPerName)
+    return names[Math.min(nameIndex, names.length - 1)]
+  }
+
+  let globalIndex = 0
   for (const domain of domains) {
     for (let i = 0; i < inboxes_per_domain; i++) {
-      const firstName = first_names[i % first_names.length]
-      const lastName = last_names[i % last_names.length]
+      const firstName = getNameForIndex(globalIndex, first_names)
+      const lastName = getNameForIndex(globalIndex, last_names)
       const username = firstName.toLowerCase()
+      // Assign profile pictures in order, cycling if fewer than total mailboxes
+      const profilePic = profilePictures.length > 0 
+        ? profilePictures[globalIndex % profilePictures.length] 
+        : ''
       
-      rows.push(`${firstName},${lastName},${username},${domain},${platform},`)
+      rows.push(`${firstName},${lastName},${username},${domain},${platform},${profilePic}`)
+      globalIndex++
     }
   }
 

@@ -5,7 +5,10 @@ import {
   Check,
   ExternalLink,
   Package,
-  FileText
+  FileText,
+  Upload,
+  Image,
+  X
 } from 'lucide-react'
 import { useProviderOrders } from '../../hooks/useProviderOrders'
 import { useDomainInventory } from '../../hooks/useDomainInventory'
@@ -23,11 +26,19 @@ import {
 import Button from '../ui/Button'
 import ClientFilter from '../ui/ClientFilter'
 
-const DEFAULT_FIRST_NAMES = ['Alex', 'Jordan', 'Taylor', 'Morgan', 'Casey', 'Riley', 'Jamie', 'Quinn', 'Avery', 'Reese']
-const DEFAULT_LAST_NAMES = ['Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis', 'Rodriguez', 'Martinez']
+// Start with empty names - user types 1-3 names which are distributed evenly
+const DEFAULT_FIRST_NAMES: string[] = []
+const DEFAULT_LAST_NAMES: string[] = []
+
+interface GeneratedCSVs {
+  missionInboxDomains: string
+  missionInboxMailboxes: string
+  inboxKitDomains: string
+  inboxKitMailboxes: string
+}
 
 export default function OrderWorkflow() {
-  const { clients } = useClients()
+  const { clients, getClientWebsite } = useClients()
   const { createOrder, saveCSVData, markAsSubmitted } = useProviderOrders()
   const { domains: allDomains } = useDomainInventory()
 
@@ -42,9 +53,15 @@ export default function OrderWorkflow() {
     inboxes_per_domain: 3,
   })
   const [showPreview, setShowPreview] = useState(false)
-  const [csvPreview, setCsvPreview] = useState('')
-  const [copied, setCopied] = useState(false)
+  const [generatedCSVs, setGeneratedCSVs] = useState<GeneratedCSVs>({
+    missionInboxDomains: '',
+    missionInboxMailboxes: '',
+    inboxKitDomains: '',
+    inboxKitMailboxes: '',
+  })
+  const [copiedSection, setCopiedSection] = useState<string | null>(null)
   const [orderId, setOrderId] = useState<string | null>(null)
+  const [profilePictures, setProfilePictures] = useState<File[]>([])
 
   // Filter domains for selected client that are ready for order
   const availableDomains = useMemo(() => {
@@ -70,36 +87,40 @@ export default function OrderWorkflow() {
 
   const generateCSV = () => {
     const domainList = Array.from(selectedDomains)
-    const csvParts: string[] = []
+    const clientWebsite = getClientWebsite(selectedClient)
+    
+    // Get profile picture filenames for InboxKit
+    const profilePicNames = profilePictures.map(f => f.name)
 
-    // Always generate both domains + mailboxes for each selected provider
-    if (selectedProviders.has('missioninbox')) {
-      const domainsCSV = generateMissionInboxDomainsCSV(domainList, selectedClient)
-      const mailboxCSV = generateMissionInboxMailboxesCSV(domainList, mailboxConfig)
-      csvParts.push(`=== MISSIONINBOX ===\n\n--- DOMAINS ---\n\n${domainsCSV}\n\n--- MAILBOXES ---\n\n${mailboxCSV}`)
+    // Generate all 4 CSVs
+    const csvs: GeneratedCSVs = {
+      missionInboxDomains: selectedProviders.has('missioninbox') 
+        ? generateMissionInboxDomainsCSV(domainList, selectedClient, clientWebsite)
+        : '',
+      missionInboxMailboxes: selectedProviders.has('missioninbox')
+        ? generateMissionInboxMailboxesCSV(domainList, mailboxConfig)
+        : '',
+      inboxKitDomains: selectedProviders.has('inboxkit')
+        ? generateInboxKitDomainsCSV(domainList)
+        : '',
+      inboxKitMailboxes: selectedProviders.has('inboxkit')
+        ? generateInboxKitMailboxesCSV(domainList, mailboxConfig, profilePicNames)
+        : '',
     }
 
-    if (selectedProviders.has('inboxkit')) {
-      const domainsCSV = generateInboxKitDomainsCSV(domainList)
-      const mailboxCSV = generateInboxKitMailboxesCSV(domainList, mailboxConfig)
-      csvParts.push(`=== INBOXKIT ===\n\n--- DOMAINS ---\n\n${domainsCSV}\n\n--- MAILBOXES ---\n\n${mailboxCSV}`)
-    }
-
-    setCsvPreview(csvParts.join('\n\n'))
+    setGeneratedCSVs(csvs)
     setShowPreview(true)
   }
 
-  const providerNames = Array.from(selectedProviders).join('+')
-
-  const handleDownload = () => {
-    const filename = `${providerNames}_order_${selectedClient.replace(/\s+/g, '_')}_${Date.now()}.csv`
-    downloadCSV(csvPreview, filename)
+  const handleDownloadCSV = (csv: string, type: string) => {
+    const filename = `${type}_${selectedClient.replace(/\s+/g, '_')}_${Date.now()}.csv`
+    downloadCSV(csv, filename)
   }
 
-  const handleCopy = async () => {
-    await copyToClipboard(csvPreview)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+  const handleCopyCSV = async (csv: string, section: string) => {
+    await copyToClipboard(csv)
+    setCopiedSection(section)
+    setTimeout(() => setCopiedSection(null), 2000)
   }
 
   const handleSaveAndMark = async () => {
@@ -114,7 +135,16 @@ export default function OrderWorkflow() {
     })
 
     setOrderId(order.id)
-    await saveCSVData(order.id, csvPreview)
+    // Save all CSVs as JSON
+    const allCSVs = JSON.stringify(generatedCSVs)
+    await saveCSVData(order.id, allCSVs)
+  }
+
+  const handleProfileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files
+    if (files) {
+      setProfilePictures(Array.from(files))
+    }
   }
 
   const handleMarkSubmitted = async () => {
@@ -357,6 +387,47 @@ export default function OrderWorkflow() {
                   Will generate: <strong>{selectedDomains.size}</strong> domains × <strong>{mailboxConfig.inboxes_per_domain}</strong> inboxes = <strong className="text-emerald-400">{totalMailboxes} mailboxes</strong>
                 </p>
               </div>
+
+              {/* Profile Pictures Upload */}
+              {selectedProviders.has('inboxkit') && (
+                <div className="mt-6 pt-4 border-t border-rillation-border">
+                  <label className="block text-sm font-medium text-white/80 mb-2">
+                    Profile Pictures (optional - for InboxKit)
+                  </label>
+                  <div className="flex items-start gap-4">
+                    <label className="flex items-center gap-2 px-4 py-2 bg-rillation-bg border border-rillation-border rounded-lg text-white text-sm cursor-pointer hover:border-emerald-500 transition-colors">
+                      <Upload size={16} />
+                      Upload Images
+                      <input
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        onChange={handleProfileUpload}
+                        className="hidden"
+                      />
+                    </label>
+                    {profilePictures.length > 0 && (
+                      <div className="flex-1">
+                        <div className="flex flex-wrap gap-2">
+                          {profilePictures.map((file, idx) => (
+                            <div key={idx} className="flex items-center gap-1 px-2 py-1 bg-rillation-bg rounded text-xs text-white">
+                              <Image size={12} />
+                              {file.name}
+                              <button
+                                onClick={() => setProfilePictures(profilePictures.filter((_, i) => i !== idx))}
+                                className="text-white/50 hover:text-red-400"
+                              >
+                                <X size={12} />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                        <p className="text-xs text-white/60 mt-1">{profilePictures.length} images will be assigned to mailboxes</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -377,57 +448,143 @@ export default function OrderWorkflow() {
         </div>
       </div>
 
-      {/* CSV Preview */}
-      {showPreview && csvPreview && (
-        <div className="bg-rillation-card rounded-xl p-6 border border-rillation-border">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-              <FileText size={20} className="text-emerald-400" />
-              CSV Preview
-            </h3>
-            <div className="flex items-center gap-2">
-              <Button variant="secondary" size="sm" onClick={handleCopy}>
-                {copied ? <Check size={14} /> : <Copy size={14} />}
-                {copied ? 'Copied!' : 'Copy'}
-              </Button>
-              <Button variant="primary" size="sm" onClick={handleDownload}>
-                <Download size={14} />
-                Download CSV
-              </Button>
-            </div>
-          </div>
-
-          <pre className="bg-rillation-bg rounded-lg p-4 text-sm text-white/80 font-mono overflow-x-auto max-h-[300px] overflow-y-auto border border-rillation-border">
-            {csvPreview}
-          </pre>
-
-          <div className="mt-6 p-4 bg-rillation-bg rounded-lg border border-rillation-border">
-            <p className="text-sm font-medium text-white mb-3">Next Steps:</p>
-            <div className="flex flex-wrap items-center gap-4 mb-4">
-              {Array.from(selectedProviders).map((p) => (
-                <div key={p} className="flex items-center gap-3">
+      {/* CSV Previews - 4 Separate Sections */}
+      {showPreview && (
+        <div className="space-y-4">
+          {/* MissionInbox Domains */}
+          {generatedCSVs.missionInboxDomains && (
+            <div className="bg-rillation-card rounded-xl p-4 border border-rillation-border">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-base font-semibold text-white flex items-center gap-2">
+                  <FileText size={18} className="text-emerald-400" />
+                  MissionInbox Domains
                   <a 
-                    href={PROVIDER_URLS[p as keyof typeof PROVIDER_URLS]?.domains || '#'}
+                    href={PROVIDER_URLS.missioninbox.domains}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center gap-2 text-emerald-400 hover:text-emerald-300 transition-colors"
+                    className="text-emerald-400 hover:text-emerald-300"
                   >
-                    <ExternalLink size={16} />
-                    {p} Domains
+                    <ExternalLink size={14} />
                   </a>
-                  <a 
-                    href={PROVIDER_URLS[p as keyof typeof PROVIDER_URLS]?.mailboxes || '#'}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-2 text-emerald-400 hover:text-emerald-300 transition-colors"
-                  >
-                    <ExternalLink size={16} />
-                    {p} Mailboxes
-                  </a>
+                </h3>
+                <div className="flex items-center gap-2">
+                  <Button variant="secondary" size="sm" onClick={() => handleCopyCSV(generatedCSVs.missionInboxDomains, 'mi-domains')}>
+                    {copiedSection === 'mi-domains' ? <Check size={14} /> : <Copy size={14} />}
+                    {copiedSection === 'mi-domains' ? 'Copied!' : 'Copy'}
+                  </Button>
+                  <Button variant="primary" size="sm" onClick={() => handleDownloadCSV(generatedCSVs.missionInboxDomains, 'missioninbox_domains')}>
+                    <Download size={14} />
+                    Download
+                  </Button>
                 </div>
-              ))}
+              </div>
+              <pre className="bg-rillation-bg rounded-lg p-3 text-xs text-white/80 font-mono overflow-x-auto max-h-[150px] overflow-y-auto border border-rillation-border">
+                {generatedCSVs.missionInboxDomains}
+              </pre>
             </div>
+          )}
 
+          {/* MissionInbox Mailboxes */}
+          {generatedCSVs.missionInboxMailboxes && (
+            <div className="bg-rillation-card rounded-xl p-4 border border-rillation-border">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-base font-semibold text-white flex items-center gap-2">
+                  <FileText size={18} className="text-emerald-400" />
+                  MissionInbox Mailboxes
+                  <a 
+                    href={PROVIDER_URLS.missioninbox.mailboxes}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-emerald-400 hover:text-emerald-300"
+                  >
+                    <ExternalLink size={14} />
+                  </a>
+                </h3>
+                <div className="flex items-center gap-2">
+                  <Button variant="secondary" size="sm" onClick={() => handleCopyCSV(generatedCSVs.missionInboxMailboxes, 'mi-mailboxes')}>
+                    {copiedSection === 'mi-mailboxes' ? <Check size={14} /> : <Copy size={14} />}
+                    {copiedSection === 'mi-mailboxes' ? 'Copied!' : 'Copy'}
+                  </Button>
+                  <Button variant="primary" size="sm" onClick={() => handleDownloadCSV(generatedCSVs.missionInboxMailboxes, 'missioninbox_mailboxes')}>
+                    <Download size={14} />
+                    Download
+                  </Button>
+                </div>
+              </div>
+              <pre className="bg-rillation-bg rounded-lg p-3 text-xs text-white/80 font-mono overflow-x-auto max-h-[150px] overflow-y-auto border border-rillation-border">
+                {generatedCSVs.missionInboxMailboxes}
+              </pre>
+            </div>
+          )}
+
+          {/* InboxKit Domains */}
+          {generatedCSVs.inboxKitDomains && (
+            <div className="bg-rillation-card rounded-xl p-4 border border-rillation-border">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-base font-semibold text-white flex items-center gap-2">
+                  <FileText size={18} className="text-cyan-400" />
+                  InboxKit Domains
+                  <a 
+                    href={PROVIDER_URLS.inboxkit.domains}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-cyan-400 hover:text-cyan-300"
+                  >
+                    <ExternalLink size={14} />
+                  </a>
+                </h3>
+                <div className="flex items-center gap-2">
+                  <Button variant="secondary" size="sm" onClick={() => handleCopyCSV(generatedCSVs.inboxKitDomains, 'ik-domains')}>
+                    {copiedSection === 'ik-domains' ? <Check size={14} /> : <Copy size={14} />}
+                    {copiedSection === 'ik-domains' ? 'Copied!' : 'Copy'}
+                  </Button>
+                  <Button variant="primary" size="sm" onClick={() => handleDownloadCSV(generatedCSVs.inboxKitDomains, 'inboxkit_domains')}>
+                    <Download size={14} />
+                    Download
+                  </Button>
+                </div>
+              </div>
+              <pre className="bg-rillation-bg rounded-lg p-3 text-xs text-white/80 font-mono overflow-x-auto max-h-[150px] overflow-y-auto border border-rillation-border">
+                {generatedCSVs.inboxKitDomains}
+              </pre>
+            </div>
+          )}
+
+          {/* InboxKit Mailboxes */}
+          {generatedCSVs.inboxKitMailboxes && (
+            <div className="bg-rillation-card rounded-xl p-4 border border-rillation-border">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-base font-semibold text-white flex items-center gap-2">
+                  <FileText size={18} className="text-cyan-400" />
+                  InboxKit Mailboxes
+                  <a 
+                    href={PROVIDER_URLS.inboxkit.mailboxes}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-cyan-400 hover:text-cyan-300"
+                  >
+                    <ExternalLink size={14} />
+                  </a>
+                </h3>
+                <div className="flex items-center gap-2">
+                  <Button variant="secondary" size="sm" onClick={() => handleCopyCSV(generatedCSVs.inboxKitMailboxes, 'ik-mailboxes')}>
+                    {copiedSection === 'ik-mailboxes' ? <Check size={14} /> : <Copy size={14} />}
+                    {copiedSection === 'ik-mailboxes' ? 'Copied!' : 'Copy'}
+                  </Button>
+                  <Button variant="primary" size="sm" onClick={() => handleDownloadCSV(generatedCSVs.inboxKitMailboxes, 'inboxkit_mailboxes')}>
+                    <Download size={14} />
+                    Download
+                  </Button>
+                </div>
+              </div>
+              <pre className="bg-rillation-bg rounded-lg p-3 text-xs text-white/80 font-mono overflow-x-auto max-h-[150px] overflow-y-auto border border-rillation-border">
+                {generatedCSVs.inboxKitMailboxes}
+              </pre>
+            </div>
+          )}
+
+          {/* Save Order */}
+          <div className="bg-rillation-card rounded-xl p-4 border border-rillation-border">
             <div className="flex items-center gap-3">
               <Button variant="secondary" onClick={handleSaveAndMark} disabled={!!orderId}>
                 {orderId ? 'Order Saved' : 'Save Order'}
