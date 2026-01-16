@@ -10,7 +10,7 @@ import {
 import { useProviderOrders } from '../../hooks/useProviderOrders'
 import { useDomainInventory } from '../../hooks/useDomainInventory'
 import { useClients } from '../../hooks/useClients'
-import type { OrderProvider, OrderType, MailboxConfig } from '../../types/infrastructure'
+import type { OrderProvider, MailboxConfig } from '../../types/infrastructure'
 import {
   generateMissionInboxDomainsCSV,
   generateMissionInboxMailboxesCSV,
@@ -22,7 +22,6 @@ import {
 } from '../../lib/csv-generators'
 import Button from '../ui/Button'
 import ClientFilter from '../ui/ClientFilter'
-import AnimatedSelect from '../ui/AnimatedSelect'
 
 const DEFAULT_FIRST_NAMES = ['Alex', 'Jordan', 'Taylor', 'Morgan', 'Casey', 'Riley', 'Jamie', 'Quinn', 'Avery', 'Reese']
 const DEFAULT_LAST_NAMES = ['Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis', 'Rodriguez', 'Martinez']
@@ -33,7 +32,6 @@ export default function OrderWorkflow() {
   const { domains: allDomains } = useDomainInventory()
 
   const [selectedProviders, setSelectedProviders] = useState<Set<OrderProvider>>(new Set())
-  const [orderType, setOrderType] = useState<OrderType | ''>('')
   const [selectedClient, setSelectedClient] = useState('')
   const [selectedDomains, setSelectedDomains] = useState<Set<string>>(new Set())
   const [mailboxConfig, setMailboxConfig] = useState<MailboxConfig>({
@@ -74,29 +72,17 @@ export default function OrderWorkflow() {
     const domainList = Array.from(selectedDomains)
     const csvParts: string[] = []
 
-    // Generate CSV for each selected provider
+    // Always generate both domains + mailboxes for each selected provider
     if (selectedProviders.has('missioninbox')) {
-      let missionCsv = ''
-      if (orderType === 'domains' || orderType === 'both') {
-        missionCsv = generateMissionInboxDomainsCSV(domainList, selectedClient)
-      }
-      if (orderType === 'mailboxes' || orderType === 'both') {
-        const mailboxCSV = generateMissionInboxMailboxesCSV(domainList, mailboxConfig)
-        missionCsv = orderType === 'both' ? `${missionCsv}\n\n---MAILBOXES---\n\n${mailboxCSV}` : mailboxCSV
-      }
-      csvParts.push(`=== MISSIONINBOX ===\n\n${missionCsv}`)
+      const domainsCSV = generateMissionInboxDomainsCSV(domainList, selectedClient)
+      const mailboxCSV = generateMissionInboxMailboxesCSV(domainList, mailboxConfig)
+      csvParts.push(`=== MISSIONINBOX ===\n\n--- DOMAINS ---\n\n${domainsCSV}\n\n--- MAILBOXES ---\n\n${mailboxCSV}`)
     }
 
     if (selectedProviders.has('inboxkit')) {
-      let inboxkitCsv = ''
-      if (orderType === 'domains' || orderType === 'both') {
-        inboxkitCsv = generateInboxKitDomainsCSV(domainList)
-      }
-      if (orderType === 'mailboxes' || orderType === 'both') {
-        const mailboxCSV = generateInboxKitMailboxesCSV(domainList, mailboxConfig)
-        inboxkitCsv = orderType === 'both' ? `${inboxkitCsv}\n\n---MAILBOXES---\n\n${mailboxCSV}` : mailboxCSV
-      }
-      csvParts.push(`=== INBOXKIT ===\n\n${inboxkitCsv}`)
+      const domainsCSV = generateInboxKitDomainsCSV(domainList)
+      const mailboxCSV = generateInboxKitMailboxesCSV(domainList, mailboxConfig)
+      csvParts.push(`=== INBOXKIT ===\n\n--- DOMAINS ---\n\n${domainsCSV}\n\n--- MAILBOXES ---\n\n${mailboxCSV}`)
     }
 
     setCsvPreview(csvParts.join('\n\n'))
@@ -106,7 +92,7 @@ export default function OrderWorkflow() {
   const providerNames = Array.from(selectedProviders).join('+')
 
   const handleDownload = () => {
-    const filename = `${providerNames}_${orderType}_${selectedClient.replace(/\s+/g, '_')}_${Date.now()}.csv`
+    const filename = `${providerNames}_order_${selectedClient.replace(/\s+/g, '_')}_${Date.now()}.csv`
     downloadCSV(csvPreview, filename)
   }
 
@@ -121,10 +107,10 @@ export default function OrderWorkflow() {
     const firstProvider = Array.from(selectedProviders)[0]
     const order = await createOrder({
       provider: firstProvider as OrderProvider,
-      order_type: orderType as OrderType,
+      order_type: 'both' as OrderType,
       client: selectedClient,
       domains: Array.from(selectedDomains),
-      mailbox_config: orderType !== 'domains' ? mailboxConfig : undefined,
+      mailbox_config: mailboxConfig,
     })
 
     setOrderId(order.id)
@@ -155,13 +141,11 @@ export default function OrderWorkflow() {
   }
 
   const totalMailboxes = selectedDomains.size * mailboxConfig.inboxes_per_domain
-  const canGenerate = selectedProviders.size > 0 && orderType && selectedClient && selectedDomains.size > 0 && 
-    (orderType === 'domains' || (
-      mailboxConfig.first_names.length > 0 &&
-      mailboxConfig.last_names.length > 0 &&
-      mailboxConfig.password_pattern &&
-      mailboxConfig.inboxes_per_domain > 0
-    ))
+  const canGenerate = selectedProviders.size > 0 && selectedClient && selectedDomains.size > 0 && 
+    mailboxConfig.first_names.length > 0 &&
+    mailboxConfig.last_names.length > 0 &&
+    mailboxConfig.password_pattern &&
+    mailboxConfig.inboxes_per_domain > 0
 
   return (
     <div className="space-y-6">
@@ -172,7 +156,7 @@ export default function OrderWorkflow() {
         </h2>
 
         <div className="space-y-6">
-          {/* Provider & Order Type */}
+          {/* Provider & Client */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-white mb-2">Provider(s) * <span className="text-white/50 font-normal">(select one or both)</span></label>
@@ -208,30 +192,14 @@ export default function OrderWorkflow() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-white mb-2">Order Type *</label>
-              <AnimatedSelect
-                value={orderType}
-                onChange={(val) => setOrderType(val as OrderType)}
-                placeholder="Select order type"
-                options={[
-                  { value: '', label: 'Select order type' },
-                  { value: 'domains', label: 'Domains Only' },
-                  { value: 'mailboxes', label: 'Mailboxes Only' },
-                  { value: 'both', label: 'Domains + Mailboxes' },
-                ]}
+              <label className="block text-sm font-medium text-white mb-2">Client *</label>
+              <ClientFilter
+                clients={clients}
+                selectedClient={selectedClient}
+                onChange={setSelectedClient}
+                requireSelection={true}
               />
             </div>
-          </div>
-
-          {/* Client */}
-          <div>
-            <label className="block text-sm font-medium text-white mb-2">Client *</label>
-            <ClientFilter
-              clients={clients}
-              selectedClient={selectedClient}
-              onChange={setSelectedClient}
-              requireSelection={true}
-            />
           </div>
 
           {/* Domains Selection */}
@@ -299,8 +267,8 @@ export default function OrderWorkflow() {
             </div>
           )}
 
-          {/* Mailbox Configuration - Only show if not domains-only */}
-          {orderType && orderType !== 'domains' && selectedDomains.size > 0 && (
+          {/* Mailbox Configuration - Show when domains are selected */}
+          {selectedDomains.size > 0 && (
             <div className="border-t border-rillation-border pt-6">
               <h3 className="text-lg font-semibold text-white mb-4">Mailbox Configuration</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -384,13 +352,11 @@ export default function OrderWorkflow() {
                   </div>
                 </div>
               </div>
-              {orderType !== 'domains' && (
-                <div className="mt-4 p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-lg">
-                  <p className="text-sm text-white">
-                    Will generate: <strong>{selectedDomains.size}</strong> domains × <strong>{mailboxConfig.inboxes_per_domain}</strong> inboxes = <strong className="text-emerald-400">{totalMailboxes} mailboxes</strong>
-                  </p>
-                </div>
-              )}
+              <div className="mt-4 p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-lg">
+                <p className="text-sm text-white">
+                  Will generate: <strong>{selectedDomains.size}</strong> domains × <strong>{mailboxConfig.inboxes_per_domain}</strong> inboxes = <strong className="text-emerald-400">{totalMailboxes} mailboxes</strong>
+                </p>
+              </div>
             </div>
           )}
 
@@ -449,17 +415,15 @@ export default function OrderWorkflow() {
                     <ExternalLink size={16} />
                     {p} Domains
                   </a>
-                  {orderType !== 'domains' && (
-                    <a 
-                      href={PROVIDER_URLS[p as keyof typeof PROVIDER_URLS]?.mailboxes || '#'}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-2 text-emerald-400 hover:text-emerald-300 transition-colors"
-                    >
-                      <ExternalLink size={16} />
-                      {p} Mailboxes
-                    </a>
-                  )}
+                  <a 
+                    href={PROVIDER_URLS[p as keyof typeof PROVIDER_URLS]?.mailboxes || '#'}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 text-emerald-400 hover:text-emerald-300 transition-colors"
+                  >
+                    <ExternalLink size={16} />
+                    {p} Mailboxes
+                  </a>
                 </div>
               ))}
             </div>
