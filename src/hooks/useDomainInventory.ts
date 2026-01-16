@@ -135,6 +135,16 @@ export function useDomainInventory({ client, status, inbox_provider, needsAction
     })
   }
 
+  // Delete domains from inventory
+  const deleteDomains = async (ids: string[]) => {
+    const { error } = await tables.domain_inventory()
+      .delete()
+      .in('id', ids)
+
+    if (error) throw error
+    await fetchDomains()
+  }
+
   // Check for duplicate domain
   const checkDuplicate = async (domainName: string): Promise<{ isDuplicate: boolean; source?: string }> => {
     // Check domain_inventory
@@ -215,6 +225,7 @@ export function useDomainInventory({ client, status, inbox_provider, needsAction
     bulkUpdateDomains,
     markAsPurchased,
     assignToProvider,
+    deleteDomains,
     checkDuplicate,
     checkDuplicates,
   }

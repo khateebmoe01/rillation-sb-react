@@ -14,7 +14,7 @@ interface LayoutProps {
 export default function Layout({ children }: LayoutProps) {
   const location = useLocation()
   const { isPanelOpen, panelWidth } = useAI()
-  const isInfrastructurePage = location.pathname === '/infrastructure'
+  const isInfrastructurePage = location.pathname.startsWith('/infrastructure')
   const isStrategyPage = location.pathname.startsWith('/strategy')
   const isCRMPage = location.pathname.startsWith('/crm')
   

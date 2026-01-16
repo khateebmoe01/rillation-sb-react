@@ -6,6 +6,7 @@ import {
   ChevronRight,
   Package,
   Clock,
+  Trash2,
 } from 'lucide-react'
 import { useDomainInventory } from '../../hooks/useDomainInventory'
 import { useClients } from '../../hooks/useClients'
@@ -41,7 +42,7 @@ export default function DomainInventoryManager() {
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set(['all']))
   const [showNeedsAction, setShowNeedsAction] = useState(false)
 
-  const { domains, loading, markAsPurchased, assignToProvider, bulkUpdateDomains } = useDomainInventory({
+  const { domains, loading, markAsPurchased, assignToProvider, bulkUpdateDomains, deleteDomains } = useDomainInventory({
     client: selectedClient || undefined,
     status: selectedStatus as DomainStatus || undefined,
     inbox_provider: selectedProvider as InboxProvider || undefined,
@@ -128,6 +129,11 @@ export default function DomainInventoryManager() {
         break
       case 'mark_in_use':
         await bulkUpdateDomains(ids, { status: 'in_use' })
+        break
+      case 'delete':
+        if (window.confirm(`Are you sure you want to delete ${ids.length} domain(s)? This cannot be undone.`)) {
+          await deleteDomains(ids)
+        }
         break
     }
     setSelectedDomains(new Set())
@@ -233,8 +239,8 @@ export default function DomainInventoryManager() {
 
       {/* Bulk Action Bar */}
       {selectedDomains.size > 0 && (
-        <div className="bg-rillation-purple/10 border border-rillation-purple/30 rounded-xl p-4 flex items-center justify-between">
-          <span className="text-sm text-rillation-text">
+        <div className="bg-white/5 border border-white/20 rounded-xl p-4 flex items-center justify-between">
+          <span className="text-sm text-white">
             {selectedDomains.size} domain{selectedDomains.size > 1 ? 's' : ''} selected
           </span>
           <div className="flex items-center gap-2">
@@ -251,6 +257,15 @@ export default function DomainInventoryManager() {
             <Button variant="secondary" size="sm" onClick={() => handleBulkAction('assign_inboxkit')}>
               <Package size={14} />
               Assign InboxKit
+            </Button>
+            <Button 
+              variant="secondary" 
+              size="sm" 
+              onClick={() => handleBulkAction('delete')}
+              className="!text-red-400 hover:!bg-red-500/20 !border-red-500/30"
+            >
+              <Trash2 size={14} />
+              Delete
             </Button>
           </div>
         </div>

@@ -197,6 +197,7 @@ export default function DomainGeneratorV2() {
                 clients={clients}
                 selectedClient={selectedClient}
                 onChange={setSelectedClient}
+                requireSelection={true}
               />
             </div>
 
@@ -365,7 +366,7 @@ export default function DomainGeneratorV2() {
           <p className="text-sm text-rillation-text-muted">
             Will generate ~{baseNames.filter(n => n.trim()).length * (prefixes.length + suffixes.length + 1) * tlds.length} domains
           </p>
-          <Button variant="primary" onClick={handleGenerate} disabled={loading || !baseNames.some(n => n.trim())}>
+          <Button variant="primary" onClick={handleGenerate} disabled={loading || !baseNames.some(n => n.trim()) || !selectedClient}>
             {loading ? 'Generating...' : 'Generate Matrix'}
           </Button>
         </div>

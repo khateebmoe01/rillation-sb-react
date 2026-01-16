@@ -22,7 +22,7 @@ export default function InboxSetsView() {
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [newTagName, setNewTagName] = useState('')
   const [syncing, setSyncing] = useState(false)
-  const [showOnlySets, setShowOnlySets] = useState(false)
+  const [showOnlySets, setShowOnlySets] = useState(true)
 
   const { tags, loading, syncTags, createTag, deleteTag, refetch } = useInboxTags({
     client: selectedClient || undefined,
@@ -71,9 +71,13 @@ export default function InboxSetsView() {
     setSyncing(true)
     try {
       await syncTags()
+      // Wait longer and refetch multiple times to ensure counts are updated
       setTimeout(() => {
         refetch()
-        setSyncing(false)
+        setTimeout(() => {
+          refetch()
+          setSyncing(false)
+        }, 2000)
       }, 3000)
     } catch (err) {
       console.error('Sync failed:', err)
@@ -214,8 +218,9 @@ export default function InboxSetsView() {
             // Show grouped by client
             Object.entries(tagsByClient).map(([client, clientTags]) => (
               <div key={client}>
-                <div className="px-4 py-2 bg-rillation-bg/50 font-medium text-white text-sm">
-                  {client} ({clientTags.length} tags)
+                <div className="px-6 py-3 bg-rillation-bg/50 border-b border-rillation-border/30">
+                  <h4 className="font-semibold text-white text-base">{client}</h4>
+                  <p className="text-xs text-white/60 mt-0.5">{clientTags.length} tag{clientTags.length !== 1 ? 's' : ''}</p>
                 </div>
                 {clientTags.map((tag) => (
                   <TagRow
@@ -299,7 +304,7 @@ function TagRow({
     <div>
       {/* Tag Row */}
       <div 
-        className={`flex items-center gap-4 px-4 py-3 hover:bg-rillation-card-hover transition-colors ${
+        className={`flex items-center gap-6 px-6 py-4 hover:bg-rillation-card-hover transition-colors ${
           isSelected ? 'bg-white/5' : ''
         }`}
       >
@@ -308,13 +313,13 @@ function TagRow({
           type="checkbox"
           checked={isSelected}
           onChange={onToggleSelect}
-          className="rounded border-rillation-border bg-transparent checked:bg-white checked:border-white"
+          className="rounded border-rillation-border bg-transparent checked:bg-white checked:border-white w-4 h-4 flex-shrink-0"
         />
 
         {/* Expand Button */}
         <motion.button 
           onClick={onToggleExpand} 
-          className="text-white hover:text-white"
+          className="text-white hover:text-white flex-shrink-0"
           animate={{ rotate: isExpanded ? 90 : 0 }}
           transition={{ duration: 0.2 }}
         >
@@ -322,34 +327,34 @@ function TagRow({
         </motion.button>
 
         {/* Tag Icon */}
-        <Tag size={16} className={tag.is_default ? 'text-emerald-400' : 'text-white'} />
+        <Tag size={18} className={`flex-shrink-0 ${tag.is_default ? 'text-emerald-400' : 'text-white'}`} />
 
         {/* Tag Name */}
         <div className="flex-1 min-w-0">
-          <p className="font-medium text-white truncate">{tag.name}</p>
+          <p className="font-medium text-white text-sm">{tag.name}</p>
           {tag.is_default && (
-            <span className="text-xs text-emerald-400">Default tag</span>
+            <span className="text-xs text-emerald-400 mt-0.5 block">Default tag</span>
           )}
         </div>
 
         {/* Client */}
-        <div className="w-32 text-sm text-white truncate">
+        <div className="w-48 text-sm text-white font-medium">
           {tag.client}
         </div>
 
         {/* Inbox Count */}
-        <div className="w-24 text-center">
-          <span className="px-2 py-1 bg-white/10 text-white text-sm rounded-full">
+        <div className="w-32 text-center flex-shrink-0">
+          <span className="px-3 py-1.5 bg-emerald-500/20 text-emerald-400 text-sm rounded-full font-medium">
             {tag.inbox_count} inboxes
           </span>
         </div>
 
         {/* Actions */}
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-2 flex-shrink-0">
           {!tag.is_default && (
             <motion.button 
               onClick={onDelete}
-              className="p-1 text-white hover:text-red-400 transition-colors"
+              className="p-2 text-white/60 hover:text-red-400 transition-colors"
               title="Delete tag"
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
@@ -357,7 +362,7 @@ function TagRow({
               <Trash2 size={16} />
             </motion.button>
           )}
-          <button className="p-1 text-white hover:text-white transition-colors">
+          <button className="p-2 text-white/60 hover:text-white transition-colors">
             <MoreHorizontal size={18} />
           </button>
         </div>

@@ -7,7 +7,6 @@ import {
   Sparkles,
   Search,
   ArrowLeft,
-  Globe,
   ShoppingCart,
 } from 'lucide-react'
 import { useClients } from '../hooks/useClients'
@@ -18,13 +17,12 @@ import InboxInventory from '../components/infrastructure/InboxInventory'
 import InboxAnalytics from '../components/infrastructure/InboxAnalytics'
 import DomainGeneratorV2 from '../components/infrastructure/DomainGeneratorV2'
 import DomainInventoryManager from '../components/infrastructure/DomainInventoryManager'
-import DomainsTab from '../components/infrastructure/DomainsTab'
 import OrderWorkflow from '../components/infrastructure/OrderWorkflow'
 import InboxOrders from '../components/infrastructure/InboxOrders'
 
 type MainTab = 'overview' | 'inboxes' | 'domains' | 'orders'
 type InboxSubTab = 'sets' | 'inventory' | 'analytics'
-type DomainSubTab = 'generator' | 'inventory' | 'list'
+type DomainSubTab = 'generator' | 'inventory'
 type OrderSubTab = 'create' | 'history'
 
 // Context for sharing filter state across all infrastructure components
@@ -78,7 +76,6 @@ export default function Infrastructure({ defaultTab = 'overview' }: Infrastructu
   const domainSubTabs = [
     { id: 'generator' as DomainSubTab, label: 'Generator', icon: Sparkles },
     { id: 'inventory' as DomainSubTab, label: 'Inventory', icon: List },
-    { id: 'list' as DomainSubTab, label: 'Legacy List', icon: Globe },
   ]
 
   const orderSubTabs = [
@@ -101,76 +98,62 @@ export default function Infrastructure({ defaultTab = 'overview' }: Infrastructu
   return (
     <InfraFilterContext.Provider value={{ selectedClient, setSelectedClient, searchQuery, setSearchQuery }}>
       <div className="space-y-6">
-        {/* Top Bar with Sub-tabs and Filters */}
-        <motion.div 
-          className="bg-rillation-card rounded-xl p-4 border border-rillation-border"
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3 }}
-        >
-          <div className="flex items-center justify-between gap-4">
-            {/* Left: Sub-tabs */}
-            <div className="flex items-center gap-2">
-              {/* Back button for drill-down */}
-              {drillDownClient && mainTab === 'overview' && (
-                <motion.button
-                  onClick={() => setDrillDownClient(null)}
-                  className="flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg bg-slate-700/50 text-white border border-slate-600 hover:bg-slate-600/50"
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                >
-                  <ArrowLeft size={14} />
-                  All Clients
-                </motion.button>
-              )}
-
-              {/* Sub Tabs */}
-              {subTabConfig && subTabConfig.tabs.map((tab) => {
-                const Icon = tab.icon
-                return (
-                  <motion.button
-                    key={tab.id}
-                    onClick={() => subTabConfig.setter(tab.id as any)}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-all ${
-                      subTabConfig.current === tab.id
-                        ? 'bg-white text-black'
-                        : 'bg-rillation-card-hover border border-rillation-border text-white hover:border-white/30'
-                    }`}
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                  >
-                    <Icon size={16} />
-                    {tab.label}
-                  </motion.button>
-                )
-              })}
-            </div>
-
-            {/* Right: Filters */}
-            <div className="flex items-center gap-3">
-              {/* Search Input */}
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-white" size={16} />
-                <input
-                  type="text"
-                  placeholder="Search..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9 pr-4 py-2 text-sm bg-rillation-bg border border-rillation-border rounded-lg text-white placeholder:text-white focus:outline-none focus:border-white/40 w-48"
-                />
+        {/* Top Bar with Sub-tabs and Filters - Only show when there are sub-tabs */}
+        {subTabConfig && (
+          <motion.div 
+            className="bg-rillation-card rounded-xl p-4 border border-rillation-border"
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3 }}
+          >
+            <div className="flex items-center justify-between gap-4">
+              {/* Left: Sub-tabs */}
+              <div className="flex items-center gap-2">
+                {subTabConfig.tabs.map((tab) => {
+                  const Icon = tab.icon
+                  return (
+                    <motion.button
+                      key={tab.id}
+                      onClick={() => subTabConfig.setter(tab.id as any)}
+                      className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-all ${
+                        subTabConfig.current === tab.id
+                          ? 'bg-white text-black'
+                          : 'bg-rillation-card-hover border border-rillation-border text-white hover:border-white/30'
+                      }`}
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                    >
+                      <Icon size={16} />
+                      {tab.label}
+                    </motion.button>
+                  )
+                })}
               </div>
 
-              {/* Client Filter */}
-              <ClientFilter
-                clients={clients}
-                selectedClient={selectedClient}
-                onChange={setSelectedClient}
-              />
+              {/* Right: Filters */}
+              <div className="flex items-center gap-3">
+                {/* Search Input */}
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-white" size={16} />
+                  <input
+                    type="text"
+                    placeholder="Search..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-9 pr-4 py-2 text-sm bg-rillation-bg border border-rillation-border rounded-lg text-white placeholder:text-white focus:outline-none focus:border-white/40 w-48"
+                  />
+                </div>
+
+                {/* Client Filter */}
+                <ClientFilter
+                  clients={clients}
+                  selectedClient={selectedClient}
+                  onChange={setSelectedClient}
+                />
+              </div>
             </div>
-          </div>
-        </motion.div>
+          </motion.div>
+        )}
 
         {/* Content */}
         <AnimatePresence mode="wait">
@@ -194,7 +177,6 @@ export default function Infrastructure({ defaultTab = 'overview' }: Infrastructu
             
             {mainTab === 'domains' && domainSubTab === 'generator' && <DomainGeneratorV2 />}
             {mainTab === 'domains' && domainSubTab === 'inventory' && <DomainInventoryManager />}
-            {mainTab === 'domains' && domainSubTab === 'list' && <DomainsTab />}
             
             {mainTab === 'orders' && orderSubTab === 'create' && <OrderWorkflow />}
             {mainTab === 'orders' && orderSubTab === 'history' && <InboxOrders />}

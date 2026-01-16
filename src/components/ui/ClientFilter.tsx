@@ -7,12 +7,14 @@ interface ClientFilterProps {
   selectedClient: string
   onChange: (client: string) => void
   label?: string
+  requireSelection?: boolean // If true, hides "All Clients" option
 }
 
 export default function ClientFilter({
   clients,
   selectedClient,
   onChange,
+  requireSelection = false,
 }: ClientFilterProps) {
   const [isOpen, setIsOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -37,7 +39,7 @@ export default function ClientFilter({
     return () => document.removeEventListener('keydown', handleEscape)
   }, [])
 
-  const displayValue = selectedClient || 'All Clients'
+  const displayValue = selectedClient || (requireSelection ? 'Select a client...' : 'All Clients')
 
   return (
     <div ref={containerRef} className="relative">
@@ -56,7 +58,7 @@ export default function ClientFilter({
       >
         <Building2 size={14} className="text-white shrink-0" />
         <span className="flex-1 text-left truncate">{displayValue}</span>
-        {selectedClient && (
+        {selectedClient && !requireSelection && (
           <motion.button
             onClick={(e) => {
               e.stopPropagation()
@@ -97,34 +99,38 @@ export default function ClientFilter({
 
               {/* Options */}
               <div className="max-h-[300px] overflow-y-auto">
-                {/* All Clients Option */}
-                <motion.button
-                  onClick={() => {
-                    onChange('')
-                    setIsOpen(false)
-                  }}
-                  className={`
-                    w-full flex items-center gap-3 px-4 py-3 text-left
-                    transition-colors
-                    ${!selectedClient 
-                      ? 'bg-white/10 text-white' 
-                      : 'text-white/80 hover:bg-white/5 hover:text-white'
-                    }
-                  `}
-                  whileHover={{ x: 2 }}
-                >
-                  <div className={`
-                    w-5 h-5 rounded-full border-2 flex items-center justify-center
-                    ${!selectedClient ? 'border-emerald-400 bg-emerald-400/20' : 'border-slate-500'}
-                  `}>
-                    {!selectedClient && <Check size={12} className="text-emerald-400" />}
-                  </div>
-                  <span className="font-medium">All Clients</span>
-                </motion.button>
+                {/* All Clients Option - Only show if requireSelection is false */}
+                {!requireSelection && (
+                  <>
+                    <motion.button
+                      onClick={() => {
+                        onChange('')
+                        setIsOpen(false)
+                      }}
+                      className={`
+                        w-full flex items-center gap-3 px-4 py-3 text-left
+                        transition-colors
+                        ${!selectedClient 
+                          ? 'bg-white/10 text-white' 
+                          : 'text-white/80 hover:bg-white/5 hover:text-white'
+                        }
+                      `}
+                      whileHover={{ x: 2 }}
+                    >
+                      <div className={`
+                        w-5 h-5 rounded-full border-2 flex items-center justify-center
+                        ${!selectedClient ? 'border-emerald-400 bg-emerald-400/20' : 'border-slate-500'}
+                      `}>
+                        {!selectedClient && <Check size={12} className="text-emerald-400" />}
+                      </div>
+                      <span className="font-medium">All Clients</span>
+                    </motion.button>
 
-                {/* Divider */}
-                {clients.length > 0 && (
-                  <div className="h-px bg-slate-700/50 mx-4" />
+                    {/* Divider */}
+                    {clients.length > 0 && (
+                      <div className="h-px bg-slate-700/50 mx-4" />
+                    )}
+                  </>
                 )}
 
                 {/* Client Options */}

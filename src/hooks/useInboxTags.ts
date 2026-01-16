@@ -40,7 +40,34 @@ export function useInboxTags({ client }: UseInboxTagsParams = {}) {
 
       if (queryError) throw queryError
 
-      setTags((data || []) as InboxTag[])
+      const tagsData = (data || []) as InboxTag[]
+      
+      // Calculate actual inbox counts from assignments (fetch all at once for efficiency)
+      if (tagsData.length > 0) {
+        const tagIds = tagsData.map(t => t.id)
+        const { data: allAssignments } = await tables.inbox_tag_assignments()
+          .select('tag_id')
+          .in('tag_id', tagIds)
+
+        // Count assignments per tag
+        const countsByTagId = new Map<string, number>()
+        if (allAssignments) {
+          for (const assignment of allAssignments as any[]) {
+            const tagId = assignment.tag_id
+            countsByTagId.set(tagId, (countsByTagId.get(tagId) || 0) + 1)
+          }
+        }
+
+        // Merge counts into tags
+        const tagsWithCounts = tagsData.map(tag => ({
+          ...tag,
+          inbox_count: countsByTagId.get(tag.id) || 0,
+        }))
+
+        setTags(tagsWithCounts)
+      } else {
+        setTags(tagsData)
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch tags')
     } finally {

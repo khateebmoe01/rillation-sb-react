@@ -15,12 +15,14 @@ import {
   ChevronRight,
   Wifi,
   WifiOff,
+  Search,
 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { dataCache } from '../../lib/cache'
 import { useClients } from '../../hooks/useClients'
 import { useInfraFilter } from '../../pages/Infrastructure'
 import Button from '../ui/Button'
+import ClientFilter from '../ui/ClientFilter'
 
 interface ClientSummary {
   client: string
@@ -490,7 +492,7 @@ interface InfrastructureOverviewProps {
 
 export default function InfrastructureOverview({ drillDownClient, onClientClick }: InfrastructureOverviewProps) {
   const { clients } = useClients()
-  const { selectedClient, searchQuery } = useInfraFilter()
+  const { selectedClient, setSelectedClient, searchQuery, setSearchQuery } = useInfraFilter()
   const [summaries, setSummaries] = useState<ClientSummary[]>([])
   const [loading, setLoading] = useState(true)
   const [syncing, setSyncing] = useState(false)
@@ -584,43 +586,67 @@ export default function InfrastructureOverview({ drillDownClient, onClientClick 
 
   return (
     <div className="space-y-6">
-      {/* Global Stats Bar */}
+      {/* Global Stats Bar with Filters */}
       <motion.div 
-        className="bg-rillation-card rounded-xl p-5 border border-rillation-border"
+        className="bg-rillation-card rounded-xl p-4 border border-rillation-border"
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
       >
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-10">
+          {/* Left: Stats */}
+          <div className="flex items-center gap-8">
             <div>
-              <p className="text-xs text-white mb-1">Total Inboxes</p>
-              <p className="text-2xl font-bold text-white">{totals.inboxes.toLocaleString()}</p>
+              <p className="text-xs text-white mb-0.5">Total Inboxes</p>
+              <p className="text-xl font-bold text-white">{totals.inboxes.toLocaleString()}</p>
             </div>
             <div>
-              <p className="text-xs text-white mb-1">Connected</p>
-              <p className="text-2xl font-bold text-emerald-400">{totals.connected.toLocaleString()}</p>
+              <p className="text-xs text-white mb-0.5">Connected</p>
+              <p className="text-xl font-bold text-emerald-400">{totals.connected.toLocaleString()}</p>
             </div>
             <div>
-              <p className="text-xs text-white mb-1">Disconnected</p>
-              <p className="text-2xl font-bold text-red-400">{totals.disconnected.toLocaleString()}</p>
+              <p className="text-xs text-white mb-0.5">Disconnected</p>
+              <p className="text-xl font-bold text-red-400">{totals.disconnected.toLocaleString()}</p>
             </div>
             <div>
-              <p className="text-xs text-white mb-1">Warming</p>
-              <p className="text-2xl font-bold text-amber-400">{totals.warming.toLocaleString()}</p>
+              <p className="text-xs text-white mb-0.5">Warming</p>
+              <p className="text-xl font-bold text-amber-400">{totals.warming.toLocaleString()}</p>
             </div>
             <div>
-              <p className="text-xs text-white mb-1">Domains</p>
-              <p className="text-2xl font-bold text-white">{totals.domains.toLocaleString()}</p>
+              <p className="text-xs text-white mb-0.5">Domains</p>
+              <p className="text-xl font-bold text-white">{totals.domains.toLocaleString()}</p>
             </div>
             <div>
-              <p className="text-xs text-white mb-1">Sets</p>
-              <p className="text-2xl font-bold text-white">{totals.sets.toLocaleString()}</p>
+              <p className="text-xs text-white mb-0.5">Sets</p>
+              <p className="text-xl font-bold text-white">{totals.sets.toLocaleString()}</p>
             </div>
           </div>
-          <Button variant="secondary" onClick={handleSync} disabled={syncing}>
-            <RefreshCw size={16} className={syncing ? 'animate-spin' : ''} />
-            {syncing ? 'Syncing...' : 'Sync All'}
-          </Button>
+
+          {/* Right: Filters and Actions */}
+          <div className="flex items-center gap-3">
+            {/* Search Input */}
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-white" size={16} />
+              <input
+                type="text"
+                placeholder="Search..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9 pr-4 py-2 text-sm bg-rillation-bg border border-rillation-border rounded-lg text-white placeholder:text-white focus:outline-none focus:border-white/40 w-48"
+              />
+            </div>
+
+            {/* Client Filter */}
+            <ClientFilter
+              clients={clients}
+              selectedClient={selectedClient}
+              onChange={setSelectedClient}
+            />
+
+            <Button variant="secondary" onClick={handleSync} disabled={syncing}>
+              <RefreshCw size={16} className={syncing ? 'animate-spin' : ''} />
+              {syncing ? 'Syncing...' : 'Sync All'}
+            </Button>
+          </div>
         </div>
       </motion.div>
 
