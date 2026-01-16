@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { 
   Tag, 
   ChevronDown, 
@@ -11,21 +12,31 @@ import {
   WifiOff
 } from 'lucide-react'
 import { useInboxTags, useInboxesByTag, type InboxTag } from '../../hooks/useInboxTags'
-import { useClients } from '../../hooks/useClients'
+import { useInfraFilter } from '../../pages/Infrastructure'
 import Button from '../ui/Button'
-import ClientFilter from '../ui/ClientFilter'
 
 export default function InboxSetsView() {
-  const { clients } = useClients()
-  const [selectedClient, setSelectedClient] = useState('')
+  const { selectedClient, searchQuery } = useInfraFilter()
   const [selectedTags, setSelectedTags] = useState<Set<string>>(new Set())
   const [expandedTags, setExpandedTags] = useState<Set<string>>(new Set())
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [newTagName, setNewTagName] = useState('')
   const [syncing, setSyncing] = useState(false)
+  const [showOnlySets, setShowOnlySets] = useState(false)
 
   const { tags, loading, syncTags, createTag, deleteTag, refetch } = useInboxTags({
     client: selectedClient || undefined,
+  })
+
+  // Filter tags by search query and "Sets only" filter
+  const filteredTags = tags.filter(tag => {
+    if (searchQuery && !tag.name.toLowerCase().includes(searchQuery.toLowerCase())) {
+      return false
+    }
+    if (showOnlySets && !tag.name.toLowerCase().includes('set')) {
+      return false
+    }
+    return true
   })
 
   const toggleTagSelection = (id: string) => {
@@ -39,10 +50,10 @@ export default function InboxSetsView() {
   }
 
   const toggleAllTags = () => {
-    if (selectedTags.size === tags.length) {
+    if (selectedTags.size === filteredTags.length) {
       setSelectedTags(new Set())
     } else {
-      setSelectedTags(new Set(tags.map(t => t.id)))
+      setSelectedTags(new Set(filteredTags.map(t => t.id)))
     }
   }
 
@@ -60,7 +71,6 @@ export default function InboxSetsView() {
     setSyncing(true)
     try {
       await syncTags()
-      // Wait a bit for background processing then refetch
       setTimeout(() => {
         refetch()
         setSyncing(false)
@@ -94,8 +104,8 @@ export default function InboxSetsView() {
     }
   }
 
-  // Group tags by client
-  const tagsByClient = tags.reduce((acc, tag) => {
+  // Group tags by client when no client is selected
+  const tagsByClient = filteredTags.reduce((acc, tag) => {
     const client = tag.client || 'Unknown'
     if (!acc[client]) acc[client] = []
     acc[client].push(tag)
@@ -104,87 +114,107 @@ export default function InboxSetsView() {
 
   return (
     <div className="space-y-4">
-      {/* Filters */}
-      <div className="bg-rillation-card rounded-xl p-4 border border-rillation-border">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <ClientFilter
-              clients={clients}
-              selectedClient={selectedClient}
-              onChange={setSelectedClient}
-            />
-          </div>
-          <div className="flex items-center gap-2">
-            <Button variant="secondary" onClick={handleSync} disabled={syncing}>
-              <RefreshCw size={16} className={syncing ? 'animate-spin' : ''} />
+      {/* Bulk Action Bar */}
+      <AnimatePresence>
+        {selectedTags.size > 0 && (
+          <motion.div 
+            className="bg-white/5 border border-white/10 rounded-xl p-4 flex items-center justify-between"
+            initial={{ opacity: 0, height: 0, marginBottom: 0 }}
+            animate={{ opacity: 1, height: 'auto', marginBottom: 16 }}
+            exit={{ opacity: 0, height: 0, marginBottom: 0 }}
+          >
+            <span className="text-sm text-white">
+              {selectedTags.size} tag{selectedTags.size > 1 ? 's' : ''} selected
+            </span>
+            <div className="flex items-center gap-2">
+              <Button variant="secondary" size="sm" onClick={() => setSelectedTags(new Set())}>
+                Clear Selection
+              </Button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Tags Table */}
+      <motion.div 
+        className="bg-rillation-card rounded-xl border border-rillation-border overflow-hidden"
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+      >
+        <div className="p-4 border-b border-rillation-border flex items-center justify-between">
+          <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+            <Tag size={20} className="text-white" />
+            Tags / Sets ({filteredTags.length})
+          </h3>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setShowOnlySets(!showOnlySets)}
+              className={`text-sm transition-colors px-3 py-1.5 rounded-lg border ${
+                showOnlySets 
+                  ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' 
+                  : 'bg-white/5 text-white border-white/10 hover:bg-white/10'
+              }`}
+            >
+              {showOnlySets ? 'Show All Tags' : 'Show Only Sets'}
+            </button>
+            <button
+              onClick={toggleAllTags}
+              className="text-sm text-white hover:text-white transition-colors"
+            >
+              {selectedTags.size === filteredTags.length ? 'Deselect All' : 'Select All'}
+            </button>
+            <Button variant="secondary" size="sm" onClick={handleSync} disabled={syncing}>
+              <RefreshCw size={14} className={syncing ? 'animate-spin' : ''} />
               {syncing ? 'Syncing...' : 'Sync Tags'}
             </Button>
-            <Button variant="primary" onClick={() => setShowCreateModal(true)} disabled={!selectedClient}>
-              <Plus size={16} />
+            <Button variant="primary" size="sm" onClick={() => setShowCreateModal(true)} disabled={!selectedClient}>
+              <Plus size={14} />
               Create Tag
             </Button>
           </div>
-        </div>
-      </div>
-
-      {/* Bulk Action Bar */}
-      {selectedTags.size > 0 && (
-        <div className="bg-rillation-purple/10 border border-rillation-purple/30 rounded-xl p-4 flex items-center justify-between">
-          <span className="text-sm text-rillation-text">
-            {selectedTags.size} tag{selectedTags.size > 1 ? 's' : ''} selected
-          </span>
-          <div className="flex items-center gap-2">
-            <Button variant="secondary" size="sm" onClick={() => setSelectedTags(new Set())}>
-              Clear Selection
-            </Button>
-          </div>
-        </div>
-      )}
-
-      {/* Tags Table */}
-      <div className="bg-rillation-card rounded-xl border border-rillation-border overflow-hidden">
-        <div className="p-4 border-b border-rillation-border flex items-center justify-between">
-          <h3 className="text-lg font-semibold text-rillation-text flex items-center gap-2">
-            <Tag size={20} className="text-rillation-purple" />
-            Tags / Sets ({tags.length})
-          </h3>
-          <button
-            onClick={toggleAllTags}
-            className="text-sm text-rillation-purple hover:text-rillation-magenta"
-          >
-            {selectedTags.size === tags.length ? 'Deselect All' : 'Select All'}
-          </button>
         </div>
 
         <div className="divide-y divide-rillation-border/30">
           {loading ? (
             <div className="p-8 text-center">
-              <div className="w-6 h-6 border-2 border-rillation-purple border-t-transparent rounded-full animate-spin mx-auto" />
+              <motion.div 
+                className="w-6 h-6 border-2 border-white border-t-transparent rounded-full mx-auto"
+                animate={{ rotate: 360 }}
+                transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+              />
             </div>
-          ) : tags.length === 0 ? (
-            <div className="p-8 text-center text-rillation-text-muted">
+          ) : filteredTags.length === 0 ? (
+            <div className="p-8 text-center text-white">
               {selectedClient 
                 ? 'No tags found for this client. Click "Sync Tags" to fetch from Bison.'
                 : 'Select a client to view tags'}
             </div>
           ) : selectedClient ? (
             // Show flat list when client is selected
-            tags.map((tag) => (
-              <TagRow
-                key={tag.id}
-                tag={tag}
-                isSelected={selectedTags.has(tag.id)}
-                isExpanded={expandedTags.has(tag.id)}
-                onToggleSelect={() => toggleTagSelection(tag.id)}
-                onToggleExpand={() => toggleExpanded(tag.id)}
-                onDelete={() => handleDeleteTag(tag.id)}
-              />
-            ))
+            <AnimatePresence>
+              {filteredTags.map((tag, index) => (
+                <motion.div
+                  key={tag.id}
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: index * 0.03 }}
+                >
+                  <TagRow
+                    tag={tag}
+                    isSelected={selectedTags.has(tag.id)}
+                    isExpanded={expandedTags.has(tag.id)}
+                    onToggleSelect={() => toggleTagSelection(tag.id)}
+                    onToggleExpand={() => toggleExpanded(tag.id)}
+                    onDelete={() => handleDeleteTag(tag.id)}
+                  />
+                </motion.div>
+              ))}
+            </AnimatePresence>
           ) : (
             // Show grouped by client
             Object.entries(tagsByClient).map(([client, clientTags]) => (
               <div key={client}>
-                <div className="px-4 py-2 bg-rillation-bg/50 font-medium text-rillation-text-muted text-sm">
+                <div className="px-4 py-2 bg-rillation-bg/50 font-medium text-white text-sm">
                   {client} ({clientTags.length} tags)
                 </div>
                 {clientTags.map((tag) => (
@@ -202,36 +232,48 @@ export default function InboxSetsView() {
             ))
           )}
         </div>
-      </div>
+      </motion.div>
 
       {/* Create Tag Modal */}
-      {showCreateModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-rillation-card rounded-xl p-6 w-96 border border-rillation-border">
-            <h3 className="text-lg font-semibold text-white mb-4">Create New Tag</h3>
-            <p className="text-sm text-rillation-text-muted mb-4">
-              This tag will be created in Bison for: <strong>{selectedClient}</strong>
-            </p>
-            <input
-              type="text"
-              value={newTagName}
-              onChange={(e) => setNewTagName(e.target.value)}
-              placeholder="Tag name (e.g., Set 1 - Jan 2025)"
-              className="w-full px-3 py-2 bg-rillation-bg border border-rillation-border rounded-lg text-white mb-4"
-              autoFocus
-              onKeyDown={(e) => e.key === 'Enter' && handleCreateTag()}
-            />
-            <div className="flex justify-end gap-2">
-              <Button variant="secondary" onClick={() => setShowCreateModal(false)}>
-                Cancel
-              </Button>
-              <Button variant="primary" onClick={handleCreateTag} disabled={!newTagName.trim()}>
-                Create Tag
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+      <AnimatePresence>
+        {showCreateModal && (
+          <motion.div 
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.div 
+              className="bg-rillation-card rounded-xl p-6 w-96 border border-rillation-border shadow-2xl"
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+            >
+              <h3 className="text-lg font-semibold text-white mb-4">Create New Tag</h3>
+              <p className="text-sm text-white mb-4">
+                This tag will be created in Bison for: <strong className="text-white">{selectedClient}</strong>
+              </p>
+              <input
+                type="text"
+                value={newTagName}
+                onChange={(e) => setNewTagName(e.target.value)}
+                placeholder="Tag name (e.g., Set 1 - Jan 2025)"
+                className="w-full px-3 py-2 bg-rillation-bg border border-rillation-border rounded-lg text-white placeholder:text-white/30 focus:outline-none focus:border-white/40 mb-4"
+                autoFocus
+                onKeyDown={(e) => e.key === 'Enter' && handleCreateTag()}
+              />
+              <div className="flex justify-end gap-2">
+                <Button variant="secondary" onClick={() => setShowCreateModal(false)}>
+                  Cancel
+                </Button>
+                <Button variant="primary" onClick={handleCreateTag} disabled={!newTagName.trim()}>
+                  Create Tag
+                </Button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }
@@ -258,7 +300,7 @@ function TagRow({
       {/* Tag Row */}
       <div 
         className={`flex items-center gap-4 px-4 py-3 hover:bg-rillation-card-hover transition-colors ${
-          isSelected ? 'bg-rillation-purple/5' : ''
+          isSelected ? 'bg-white/5' : ''
         }`}
       >
         {/* Checkbox */}
@@ -266,33 +308,38 @@ function TagRow({
           type="checkbox"
           checked={isSelected}
           onChange={onToggleSelect}
-          className="rounded border-rillation-border"
+          className="rounded border-rillation-border bg-transparent checked:bg-white checked:border-white"
         />
 
         {/* Expand Button */}
-        <button onClick={onToggleExpand} className="text-rillation-text-muted hover:text-white">
-          {isExpanded ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
-        </button>
+        <motion.button 
+          onClick={onToggleExpand} 
+          className="text-white hover:text-white"
+          animate={{ rotate: isExpanded ? 90 : 0 }}
+          transition={{ duration: 0.2 }}
+        >
+          <ChevronRight size={18} />
+        </motion.button>
 
         {/* Tag Icon */}
-        <Tag size={16} className={tag.is_default ? 'text-rillation-cyan' : 'text-rillation-purple'} />
+        <Tag size={16} className={tag.is_default ? 'text-emerald-400' : 'text-white'} />
 
         {/* Tag Name */}
         <div className="flex-1 min-w-0">
           <p className="font-medium text-white truncate">{tag.name}</p>
           {tag.is_default && (
-            <span className="text-xs text-rillation-cyan">Default tag</span>
+            <span className="text-xs text-emerald-400">Default tag</span>
           )}
         </div>
 
         {/* Client */}
-        <div className="w-32 text-sm text-rillation-text-muted truncate">
+        <div className="w-32 text-sm text-white truncate">
           {tag.client}
         </div>
 
         {/* Inbox Count */}
         <div className="w-24 text-center">
-          <span className="px-2 py-1 bg-rillation-purple/20 text-rillation-purple text-sm rounded-full">
+          <span className="px-2 py-1 bg-white/10 text-white text-sm rounded-full">
             {tag.inbox_count} inboxes
           </span>
         </div>
@@ -300,72 +347,86 @@ function TagRow({
         {/* Actions */}
         <div className="flex items-center gap-1">
           {!tag.is_default && (
-            <button 
+            <motion.button 
               onClick={onDelete}
-              className="p-1 text-rillation-text-muted hover:text-rillation-red"
+              className="p-1 text-white hover:text-red-400 transition-colors"
               title="Delete tag"
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
             >
               <Trash2 size={16} />
-            </button>
+            </motion.button>
           )}
-          <button className="p-1 text-rillation-text-muted hover:text-white">
+          <button className="p-1 text-white hover:text-white transition-colors">
             <MoreHorizontal size={18} />
           </button>
         </div>
       </div>
 
       {/* Expanded Inboxes */}
-      {isExpanded && (
-        <div className="bg-rillation-bg/50 border-t border-rillation-border/30">
-          {inboxesLoading ? (
-            <div className="p-4 text-center">
-              <div className="w-4 h-4 border-2 border-rillation-purple border-t-transparent rounded-full animate-spin mx-auto" />
-            </div>
-          ) : inboxes.length === 0 ? (
-            <div className="p-4 text-center text-sm text-rillation-text-muted">
-              No inboxes with this tag
-            </div>
-          ) : (
-            <div className="p-4">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="text-xs text-rillation-text-muted">
-                    <th className="text-left pb-2">Email</th>
-                    <th className="text-left pb-2">Status</th>
-                    <th className="text-left pb-2">Domain</th>
-                    <th className="text-right pb-2">Sent</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-rillation-border/20">
-                  {inboxes.slice(0, 10).map((inbox: any) => (
-                    <tr key={inbox.id} className="text-rillation-text-muted">
-                      <td className="py-1.5">{inbox.email}</td>
-                      <td className="py-1.5">
-                        {inbox.status === 'Connected' ? (
-                          <span className="text-rillation-green flex items-center gap-1">
-                            <Wifi size={12} /> Connected
-                          </span>
-                        ) : (
-                          <span className="text-rillation-red flex items-center gap-1">
-                            <WifiOff size={12} /> Disconnected
-                          </span>
-                        )}
-                      </td>
-                      <td className="py-1.5">{inbox.domain || '-'}</td>
-                      <td className="py-1.5 text-right">{inbox.emails_sent_count || 0}</td>
+      <AnimatePresence>
+        {isExpanded && (
+          <motion.div 
+            className="bg-rillation-bg/50 border-t border-rillation-border/30 overflow-hidden"
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+          >
+            {inboxesLoading ? (
+              <div className="p-4 text-center">
+                <motion.div 
+                  className="w-4 h-4 border-2 border-white border-t-transparent rounded-full mx-auto"
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                />
+              </div>
+            ) : inboxes.length === 0 ? (
+              <div className="p-4 text-center text-sm text-white">
+                No inboxes with this tag
+              </div>
+            ) : (
+              <div className="p-4">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-xs text-white">
+                      <th className="text-left pb-2">Email</th>
+                      <th className="text-left pb-2">Status</th>
+                      <th className="text-left pb-2">Domain</th>
+                      <th className="text-right pb-2">Sent</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-              {inboxes.length > 10 && (
-                <p className="text-xs text-rillation-text-muted mt-2">
-                  + {inboxes.length - 10} more inboxes
-                </p>
-              )}
-            </div>
-          )}
-        </div>
-      )}
+                  </thead>
+                  <tbody className="divide-y divide-rillation-border/20">
+                    {inboxes.slice(0, 10).map((inbox: any) => (
+                      <tr key={inbox.id} className="text-white">
+                        <td className="py-1.5">{inbox.email}</td>
+                        <td className="py-1.5">
+                          {inbox.status === 'Connected' ? (
+                            <span className="text-emerald-400 flex items-center gap-1">
+                              <Wifi size={12} /> Connected
+                            </span>
+                          ) : (
+                            <span className="text-red-400 flex items-center gap-1">
+                              <WifiOff size={12} /> Disconnected
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-1.5">{inbox.domain || '-'}</td>
+                        <td className="py-1.5 text-right">{inbox.emails_sent_count || 0}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {inboxes.length > 10 && (
+                  <p className="text-xs text-white mt-2">
+                    + {inboxes.length - 10} more inboxes
+                  </p>
+                )}
+              </div>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

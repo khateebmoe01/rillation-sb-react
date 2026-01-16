@@ -127,17 +127,17 @@ export function normalizeProviderName(provider: string | null | undefined): stri
   
   const normalized = provider.toLowerCase().trim()
   
-  // Google variants
-  if (normalized.includes('google') || normalized === 'google_workplace_auth' || normalized === 'google_workspace' || normalized === 'gmail') {
+  // Google variants (google_workspace_oauth, google, gmail)
+  if (normalized.includes('google') || normalized.includes('gmail')) {
     return 'Google'
   }
   
-  // Microsoft/Outlook variants
-  if (normalized === 'microsoft' || normalized.includes('outlook') || normalized === 'microsoft_oauth') {
+  // Microsoft/Outlook variants (microsoft_oauth, microsoft, outlook)
+  if (normalized.includes('microsoft') || normalized.includes('outlook')) {
     return 'Outlook'
   }
   
-  // Custom/SMTP variants
+  // Custom/SMTP variants (custom, smtp, custom_smtp)
   if (normalized === 'custom' || normalized === 'smtp' || normalized === 'custom_smtp') {
     return 'SMTP'
   }

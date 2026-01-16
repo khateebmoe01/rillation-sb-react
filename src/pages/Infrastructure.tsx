@@ -1,14 +1,17 @@
-import { useState } from 'react'
+import { useState, createContext, useContext, useEffect } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { 
-  LayoutDashboard, 
-  Mail, 
-  Globe, 
-  ShoppingCart,
   Package,
-  Sparkles,
   List,
-  Flame
+  Flame,
+  Sparkles,
+  Search,
+  ArrowLeft,
+  Globe,
+  ShoppingCart,
 } from 'lucide-react'
+import { useClients } from '../hooks/useClients'
+import ClientFilter from '../components/ui/ClientFilter'
 import InfrastructureOverview from '../components/infrastructure/InfrastructureOverview'
 import InboxSetsView from '../components/infrastructure/InboxSetsView'
 import InboxInventory from '../components/infrastructure/InboxInventory'
@@ -24,18 +27,47 @@ type InboxSubTab = 'sets' | 'inventory' | 'analytics'
 type DomainSubTab = 'generator' | 'inventory' | 'list'
 type OrderSubTab = 'create' | 'history'
 
-export default function Infrastructure() {
-  const [mainTab, setMainTab] = useState<MainTab>('overview')
+// Context for sharing filter state across all infrastructure components
+interface InfraFilterContextType {
+  selectedClient: string
+  setSelectedClient: (client: string) => void
+  searchQuery: string
+  setSearchQuery: (query: string) => void
+}
+
+const InfraFilterContext = createContext<InfraFilterContextType>({
+  selectedClient: '',
+  setSelectedClient: () => {},
+  searchQuery: '',
+  setSearchQuery: () => {},
+})
+
+export const useInfraFilter = () => useContext(InfraFilterContext)
+
+interface InfrastructureProps {
+  defaultTab?: MainTab
+}
+
+export default function Infrastructure({ defaultTab = 'overview' }: InfrastructureProps) {
+  const [mainTab, setMainTab] = useState<MainTab>(defaultTab)
   const [inboxSubTab, setInboxSubTab] = useState<InboxSubTab>('sets')
   const [domainSubTab, setDomainSubTab] = useState<DomainSubTab>('generator')
   const [orderSubTab, setOrderSubTab] = useState<OrderSubTab>('create')
+  
+  // Shared filter state
+  const [selectedClient, setSelectedClient] = useState('')
+  const [searchQuery, setSearchQuery] = useState('')
+  
+  // For drill-down view in overview
+  const [drillDownClient, setDrillDownClient] = useState<string | null>(null)
+  
+  const { clients } = useClients()
 
-  const mainTabs = [
-    { id: 'overview' as MainTab, label: 'Overview', icon: LayoutDashboard },
-    { id: 'inboxes' as MainTab, label: 'Inboxes', icon: Mail },
-    { id: 'domains' as MainTab, label: 'Domains', icon: Globe },
-    { id: 'orders' as MainTab, label: 'Orders', icon: ShoppingCart },
-  ]
+  // Update mainTab when defaultTab prop changes (route change)
+  useEffect(() => {
+    setMainTab(defaultTab)
+    setDrillDownClient(null)
+  }, [defaultTab])
 
   const inboxSubTabs = [
     { id: 'sets' as InboxSubTab, label: 'Sets', icon: Package },
@@ -54,119 +86,121 @@ export default function Infrastructure() {
     { id: 'history' as OrderSubTab, label: 'Order History', icon: List },
   ]
 
+  // Get current sub-tabs based on main tab
+  const getCurrentSubTabs = () => {
+    switch (mainTab) {
+      case 'inboxes': return { tabs: inboxSubTabs, current: inboxSubTab, setter: setInboxSubTab }
+      case 'domains': return { tabs: domainSubTabs, current: domainSubTab, setter: setDomainSubTab }
+      case 'orders': return { tabs: orderSubTabs, current: orderSubTab, setter: setOrderSubTab }
+      default: return null
+    }
+  }
+
+  const subTabConfig = getCurrentSubTabs()
+
   return (
-    <div className="space-y-6 fade-in">
-      {/* Main Tab Navigation */}
-      <div className="bg-rillation-card rounded-xl p-4 border border-rillation-border">
-        <div className="flex gap-2">
-          {mainTabs.map((tab) => {
-            const Icon = tab.icon
-            return (
-              <button
-                key={tab.id}
-                onClick={() => setMainTab(tab.id)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-all ${
-                  mainTab === tab.id
-                    ? 'bg-gradient-to-r from-rillation-purple to-rillation-magenta text-white'
-                    : 'bg-rillation-card-hover border border-rillation-border text-rillation-text-muted hover:text-rillation-text'
-                }`}
-              >
-                <Icon size={16} />
-                {tab.label}
-              </button>
-            )
-          })}
-        </div>
+    <InfraFilterContext.Provider value={{ selectedClient, setSelectedClient, searchQuery, setSearchQuery }}>
+      <div className="space-y-6">
+        {/* Top Bar with Sub-tabs and Filters */}
+        <motion.div 
+          className="bg-rillation-card rounded-xl p-4 border border-rillation-border"
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+        >
+          <div className="flex items-center justify-between gap-4">
+            {/* Left: Sub-tabs */}
+            <div className="flex items-center gap-2">
+              {/* Back button for drill-down */}
+              {drillDownClient && mainTab === 'overview' && (
+                <motion.button
+                  onClick={() => setDrillDownClient(null)}
+                  className="flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg bg-slate-700/50 text-white border border-slate-600 hover:bg-slate-600/50"
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  <ArrowLeft size={14} />
+                  All Clients
+                </motion.button>
+              )}
+
+              {/* Sub Tabs */}
+              {subTabConfig && subTabConfig.tabs.map((tab) => {
+                const Icon = tab.icon
+                return (
+                  <motion.button
+                    key={tab.id}
+                    onClick={() => subTabConfig.setter(tab.id as any)}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-all ${
+                      subTabConfig.current === tab.id
+                        ? 'bg-white text-black'
+                        : 'bg-rillation-card-hover border border-rillation-border text-white hover:border-white/30'
+                    }`}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                  >
+                    <Icon size={16} />
+                    {tab.label}
+                  </motion.button>
+                )
+              })}
+            </div>
+
+            {/* Right: Filters */}
+            <div className="flex items-center gap-3">
+              {/* Search Input */}
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-white" size={16} />
+                <input
+                  type="text"
+                  placeholder="Search..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9 pr-4 py-2 text-sm bg-rillation-bg border border-rillation-border rounded-lg text-white placeholder:text-white focus:outline-none focus:border-white/40 w-48"
+                />
+              </div>
+
+              {/* Client Filter */}
+              <ClientFilter
+                clients={clients}
+                selectedClient={selectedClient}
+                onChange={setSelectedClient}
+              />
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Content */}
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={`${mainTab}-${inboxSubTab}-${domainSubTab}-${orderSubTab}-${drillDownClient || 'all'}`}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.2 }}
+          >
+            {mainTab === 'overview' && (
+              <InfrastructureOverview 
+                drillDownClient={drillDownClient}
+                onClientClick={setDrillDownClient}
+              />
+            )}
+            
+            {mainTab === 'inboxes' && inboxSubTab === 'sets' && <InboxSetsView />}
+            {mainTab === 'inboxes' && inboxSubTab === 'inventory' && <InboxInventory />}
+            {mainTab === 'inboxes' && inboxSubTab === 'analytics' && <InboxAnalytics />}
+            
+            {mainTab === 'domains' && domainSubTab === 'generator' && <DomainGeneratorV2 />}
+            {mainTab === 'domains' && domainSubTab === 'inventory' && <DomainInventoryManager />}
+            {mainTab === 'domains' && domainSubTab === 'list' && <DomainsTab />}
+            
+            {mainTab === 'orders' && orderSubTab === 'create' && <OrderWorkflow />}
+            {mainTab === 'orders' && orderSubTab === 'history' && <InboxOrders />}
+          </motion.div>
+        </AnimatePresence>
       </div>
-
-      {/* Inbox Sub-Tabs */}
-      {mainTab === 'inboxes' && (
-        <div className="bg-rillation-card rounded-xl p-4 border border-rillation-border">
-          <div className="flex gap-2">
-            {inboxSubTabs.map((tab) => {
-              const Icon = tab.icon
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setInboxSubTab(tab.id)}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-all ${
-                    inboxSubTab === tab.id
-                      ? 'bg-rillation-purple/20 text-rillation-purple border border-rillation-purple/30'
-                      : 'bg-rillation-card-hover border border-rillation-border text-rillation-text-muted hover:text-rillation-text'
-                  }`}
-                >
-                  <Icon size={14} />
-                  {tab.label}
-                </button>
-              )
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Domain Sub-Tabs */}
-      {mainTab === 'domains' && (
-        <div className="bg-rillation-card rounded-xl p-4 border border-rillation-border">
-          <div className="flex gap-2">
-            {domainSubTabs.map((tab) => {
-              const Icon = tab.icon
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setDomainSubTab(tab.id)}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-all ${
-                    domainSubTab === tab.id
-                      ? 'bg-rillation-purple/20 text-rillation-purple border border-rillation-purple/30'
-                      : 'bg-rillation-card-hover border border-rillation-border text-rillation-text-muted hover:text-rillation-text'
-                  }`}
-                >
-                  <Icon size={14} />
-                  {tab.label}
-                </button>
-              )
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Order Sub-Tabs */}
-      {mainTab === 'orders' && (
-        <div className="bg-rillation-card rounded-xl p-4 border border-rillation-border">
-          <div className="flex gap-2">
-            {orderSubTabs.map((tab) => {
-              const Icon = tab.icon
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setOrderSubTab(tab.id)}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-all ${
-                    orderSubTab === tab.id
-                      ? 'bg-rillation-purple/20 text-rillation-purple border border-rillation-purple/30'
-                      : 'bg-rillation-card-hover border border-rillation-border text-rillation-text-muted hover:text-rillation-text'
-                  }`}
-                >
-                  <Icon size={14} />
-                  {tab.label}
-                </button>
-              )
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Content */}
-      {mainTab === 'overview' && <InfrastructureOverview />}
-      
-      {mainTab === 'inboxes' && inboxSubTab === 'sets' && <InboxSetsView />}
-      {mainTab === 'inboxes' && inboxSubTab === 'inventory' && <InboxInventory />}
-      {mainTab === 'inboxes' && inboxSubTab === 'analytics' && <InboxAnalytics />}
-      
-      {mainTab === 'domains' && domainSubTab === 'generator' && <DomainGeneratorV2 />}
-      {mainTab === 'domains' && domainSubTab === 'inventory' && <DomainInventoryManager />}
-      {mainTab === 'domains' && domainSubTab === 'list' && <DomainsTab />}
-      
-      {mainTab === 'orders' && orderSubTab === 'create' && <OrderWorkflow />}
-      {mainTab === 'orders' && orderSubTab === 'history' && <InboxOrders />}
-    </div>
+    </InfraFilterContext.Provider>
   )
 }

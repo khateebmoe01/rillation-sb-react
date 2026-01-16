@@ -18,10 +18,18 @@ const corsHeaders = {
 
 // Normalize inbox type from Bison API to our format
 function normalizeType(bisonType: string): string {
+  if (!bisonType) {
+    console.warn('normalizeType: received null/undefined bisonType, defaulting to custom');
+    return 'custom';
+  }
+  
+  const normalized = bisonType.toLowerCase().trim();
   const typeMap: Record<string, string> = {
     'google': 'google_workspace_oauth',
     'google_oauth': 'google_workspace_oauth',
     'google_workspace': 'google_workspace_oauth',
+    'google_workspace_oauth': 'google_workspace_oauth',
+    'gmail': 'google_workspace_oauth',
     'microsoft': 'microsoft_oauth',
     'microsoft_oauth': 'microsoft_oauth',
     'outlook': 'microsoft_oauth',
@@ -29,7 +37,14 @@ function normalizeType(bisonType: string): string {
     'imap': 'custom',
     'custom': 'custom',
   };
-  return typeMap[bisonType?.toLowerCase()] || 'custom';
+  
+  const result = typeMap[normalized];
+  if (!result) {
+    console.warn(`normalizeType: unmapped type "${bisonType}" (normalized: "${normalized}"), defaulting to custom`);
+    return 'custom';
+  }
+  
+  return result;
 }
 
 // Map API status to our connection status
@@ -167,9 +182,16 @@ async function upsertTags(tags: any[], clientName: string): Promise<Map<number, 
 async function upsertInboxes(inboxes: any[], clientName: string, tagMap: Map<number, string>) {
   let successCount = 0;
   let errorCount = 0;
+  
+  // Track unique types from Bison API for debugging
+  const typesFromApi = new Set<string>();
 
   for (const inbox of inboxes) {
     try {
+      // Log the raw type from API
+      const rawType = inbox.type || inbox.account_type || 'undefined';
+      typesFromApi.add(rawType);
+      
       // Extract tag UUIDs from inbox tags (if present)
       const inboxTagIds: string[] = [];
       if (inbox.tags && Array.isArray(inbox.tags)) {
@@ -185,7 +207,7 @@ async function upsertInboxes(inboxes: any[], clientName: string, tagMap: Map<num
         email: inbox.email || inbox.email_address,
         name: inbox.display_name || inbox.name || inbox.email || inbox.email_address,
         client: clientName,
-        type: normalizeType(inbox.type || inbox.account_type),
+        type: normalizeType(rawType),
         status: mapConnectionStatus(inbox.status),
         lifecycle_status: deriveLifecycleStatus(inbox),
         warmup_enabled: inbox.warmup_enabled || false,
@@ -227,6 +249,9 @@ async function upsertInboxes(inboxes: any[], clientName: string, tagMap: Map<num
       errorCount++;
     }
   }
+  
+  // Log unique types found from API
+  console.log(`[${clientName}] Unique provider types from Bison API:`, Array.from(typesFromApi));
 
   return { successCount, errorCount };
 }

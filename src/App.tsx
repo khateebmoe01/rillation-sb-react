@@ -64,6 +64,10 @@ function App() {
                     <Route path="/crm" element={<PageTransition><CRMView /></PageTransition>} />
                     <Route path="/strategy" element={<PageTransition><StrategyView /></PageTransition>} />
                     <Route path="/infrastructure" element={<PageTransition><Infrastructure /></PageTransition>} />
+                    <Route path="/infrastructure/overview" element={<PageTransition><Infrastructure defaultTab="overview" /></PageTransition>} />
+                    <Route path="/infrastructure/inboxes" element={<PageTransition><Infrastructure defaultTab="inboxes" /></PageTransition>} />
+                    <Route path="/infrastructure/domains" element={<PageTransition><Infrastructure defaultTab="domains" /></PageTransition>} />
+                    <Route path="/infrastructure/orders" element={<PageTransition><Infrastructure defaultTab="orders" /></PageTransition>} />
                     <Route path="/admin/variables" element={<PageTransition><CustomVariablesDiscovery /></PageTransition>} />
                     <Route path="/debug" element={<PageTransition><DebugView /></PageTransition>} />
                     {/* Legacy routes - redirect to new structure */}
