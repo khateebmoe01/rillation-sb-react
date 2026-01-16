@@ -32,7 +32,7 @@ export default function OrderWorkflow() {
   const { createOrder, saveCSVData, markAsSubmitted } = useProviderOrders()
   const { domains: allDomains } = useDomainInventory()
 
-  const [provider, setProvider] = useState<OrderProvider | ''>('')
+  const [selectedProviders, setSelectedProviders] = useState<Set<OrderProvider>>(new Set())
   const [orderType, setOrderType] = useState<OrderType | ''>('')
   const [selectedClient, setSelectedClient] = useState('')
   const [selectedDomains, setSelectedDomains] = useState<Set<string>>(new Set())
@@ -52,8 +52,8 @@ export default function OrderWorkflow() {
   const availableDomains = useMemo(() => {
     return allDomains.filter(d => 
       d.client === selectedClient && 
-      (d.status === 'purchased' || d.status === 'configured') &&
-      d.inboxes_ordered === 0
+      (d.status === 'available' || d.status === 'purchased' || d.status === 'configured') &&
+      (d.inboxes_ordered === 0 || d.inboxes_ordered === null)
     )
   }, [allDomains, selectedClient])
 
@@ -72,32 +72,41 @@ export default function OrderWorkflow() {
 
   const generateCSV = () => {
     const domainList = Array.from(selectedDomains)
-    let csv = ''
+    const csvParts: string[] = []
 
-    if (provider === 'missioninbox') {
+    // Generate CSV for each selected provider
+    if (selectedProviders.has('missioninbox')) {
+      let missionCsv = ''
       if (orderType === 'domains' || orderType === 'both') {
-        csv = generateMissionInboxDomainsCSV(domainList, selectedClient)
+        missionCsv = generateMissionInboxDomainsCSV(domainList, selectedClient)
       }
       if (orderType === 'mailboxes' || orderType === 'both') {
         const mailboxCSV = generateMissionInboxMailboxesCSV(domainList, mailboxConfig)
-        csv = orderType === 'both' ? `${csv}\n\n---MAILBOXES---\n\n${mailboxCSV}` : mailboxCSV
+        missionCsv = orderType === 'both' ? `${missionCsv}\n\n---MAILBOXES---\n\n${mailboxCSV}` : mailboxCSV
       }
-    } else if (provider === 'inboxkit') {
+      csvParts.push(`=== MISSIONINBOX ===\n\n${missionCsv}`)
+    }
+
+    if (selectedProviders.has('inboxkit')) {
+      let inboxkitCsv = ''
       if (orderType === 'domains' || orderType === 'both') {
-        csv = generateInboxKitDomainsCSV(domainList)
+        inboxkitCsv = generateInboxKitDomainsCSV(domainList)
       }
       if (orderType === 'mailboxes' || orderType === 'both') {
         const mailboxCSV = generateInboxKitMailboxesCSV(domainList, mailboxConfig)
-        csv = orderType === 'both' ? `${csv}\n\n---MAILBOXES---\n\n${mailboxCSV}` : mailboxCSV
+        inboxkitCsv = orderType === 'both' ? `${inboxkitCsv}\n\n---MAILBOXES---\n\n${mailboxCSV}` : mailboxCSV
       }
+      csvParts.push(`=== INBOXKIT ===\n\n${inboxkitCsv}`)
     }
 
-    setCsvPreview(csv)
+    setCsvPreview(csvParts.join('\n\n'))
     setShowPreview(true)
   }
 
+  const providerNames = Array.from(selectedProviders).join('+')
+
   const handleDownload = () => {
-    const filename = `${provider}_${orderType}_${selectedClient.replace(/\s+/g, '_')}_${Date.now()}.csv`
+    const filename = `${providerNames}_${orderType}_${selectedClient.replace(/\s+/g, '_')}_${Date.now()}.csv`
     downloadCSV(csvPreview, filename)
   }
 
@@ -108,9 +117,10 @@ export default function OrderWorkflow() {
   }
 
   const handleSaveAndMark = async () => {
-    // Create order record
+    // Create order record for the first provider (or could be modified to create multiple)
+    const firstProvider = Array.from(selectedProviders)[0]
     const order = await createOrder({
-      provider: provider as OrderProvider,
+      provider: firstProvider as OrderProvider,
       order_type: orderType as OrderType,
       client: selectedClient,
       domains: Array.from(selectedDomains),
@@ -145,7 +155,7 @@ export default function OrderWorkflow() {
   }
 
   const totalMailboxes = selectedDomains.size * mailboxConfig.inboxes_per_domain
-  const canGenerate = provider && orderType && selectedClient && selectedDomains.size > 0 && 
+  const canGenerate = selectedProviders.size > 0 && orderType && selectedClient && selectedDomains.size > 0 && 
     (orderType === 'domains' || (
       mailboxConfig.first_names.length > 0 &&
       mailboxConfig.last_names.length > 0 &&
@@ -165,24 +175,35 @@ export default function OrderWorkflow() {
           {/* Provider & Order Type */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-white mb-2">Provider *</label>
+              <label className="block text-sm font-medium text-white mb-2">Provider(s) * <span className="text-white/50 font-normal">(select one or both)</span></label>
               <div className="grid grid-cols-2 gap-3">
-                {(['missioninbox', 'inboxkit'] as OrderProvider[]).map((p) => (
-                  <button
-                    key={p}
-                    onClick={() => setProvider(p)}
-                    className={`p-4 rounded-lg border-2 text-left transition-all ${
-                      provider === p 
-                        ? 'border-emerald-500 bg-emerald-500/10' 
-                        : 'border-rillation-border hover:border-emerald-500/50'
-                    }`}
-                  >
-                    <p className="font-semibold text-white capitalize">{p}</p>
-                    <p className="text-xs text-white/60 mt-1">
-                      {p === 'missioninbox' ? 'Google & Microsoft' : 'SMTP/IMAP'}
-                    </p>
-                  </button>
-                ))}
+                {(['missioninbox', 'inboxkit'] as OrderProvider[]).map((p) => {
+                  const isSelected = selectedProviders.has(p)
+                  return (
+                    <button
+                      key={p}
+                      onClick={() => {
+                        const newSet = new Set(selectedProviders)
+                        if (newSet.has(p)) {
+                          newSet.delete(p)
+                        } else {
+                          newSet.add(p)
+                        }
+                        setSelectedProviders(newSet)
+                      }}
+                      className={`p-4 rounded-lg border-2 text-left transition-all ${
+                        isSelected 
+                          ? 'border-emerald-500 bg-emerald-500/10' 
+                          : 'border-rillation-border hover:border-emerald-500/50'
+                      }`}
+                    >
+                      <p className="font-semibold text-white capitalize">{p}</p>
+                      <p className="text-xs text-white/60 mt-1">
+                        {p === 'missioninbox' ? 'SMTP/IMAP inboxes' : 'Google Workspace inboxes'}
+                      </p>
+                    </button>
+                  )
+                })}
               </div>
             </div>
 
@@ -416,27 +437,31 @@ export default function OrderWorkflow() {
 
           <div className="mt-6 p-4 bg-rillation-bg rounded-lg border border-rillation-border">
             <p className="text-sm font-medium text-white mb-3">Next Steps:</p>
-            <div className="flex items-center gap-4 mb-4">
-              <a 
-                href={provider ? PROVIDER_URLS[provider as keyof typeof PROVIDER_URLS]?.domains : '#'}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-2 text-emerald-400 hover:text-emerald-300 transition-colors"
-              >
-                <ExternalLink size={16} />
-                Open {provider} Domains
-              </a>
-              {orderType !== 'domains' && (
-                <a 
-                  href={provider ? PROVIDER_URLS[provider as keyof typeof PROVIDER_URLS]?.mailboxes : '#'}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-2 text-emerald-400 hover:text-emerald-300 transition-colors"
-                >
-                  <ExternalLink size={16} />
-                  Open {provider} Mailboxes
-                </a>
-              )}
+            <div className="flex flex-wrap items-center gap-4 mb-4">
+              {Array.from(selectedProviders).map((p) => (
+                <div key={p} className="flex items-center gap-3">
+                  <a 
+                    href={PROVIDER_URLS[p as keyof typeof PROVIDER_URLS]?.domains || '#'}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 text-emerald-400 hover:text-emerald-300 transition-colors"
+                  >
+                    <ExternalLink size={16} />
+                    {p} Domains
+                  </a>
+                  {orderType !== 'domains' && (
+                    <a 
+                      href={PROVIDER_URLS[p as keyof typeof PROVIDER_URLS]?.mailboxes || '#'}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 text-emerald-400 hover:text-emerald-300 transition-colors"
+                    >
+                      <ExternalLink size={16} />
+                      {p} Mailboxes
+                    </a>
+                  )}
+                </div>
+              ))}
             </div>
 
             <div className="flex items-center gap-3">
