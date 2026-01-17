@@ -332,6 +332,21 @@ export function useClientStrategy(selectedClient: string | null) {
     }
   }, [])
 
+  const deleteOpportunityMap = useCallback(async (id: string) => {
+    try {
+      const { error } = await getTable('client_opportunity_maps')
+        .delete()
+        .eq('id', id)
+
+      if (error) throw error
+      setOpportunityMaps(prev => prev.filter(m => m.id !== id))
+      return true
+    } catch (err) {
+      console.error('Error deleting opportunity map:', err)
+      return false
+    }
+  }, [])
+
   return {
     // Data
     fathomCalls,
@@ -350,6 +365,7 @@ export function useClientStrategy(selectedClient: string | null) {
     savePlanOfAction,
     createOpportunityMap,
     updateOpportunityMap,
+    deleteOpportunityMap,
   }
 }
 

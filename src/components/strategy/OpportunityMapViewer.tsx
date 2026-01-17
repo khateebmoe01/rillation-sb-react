@@ -12,6 +12,7 @@ import {
   Globe,
   ListChecks,
   Award,
+  Trash2,
 } from 'lucide-react'
 import html2canvas from 'html2canvas'
 import { jsPDF } from 'jspdf'
@@ -24,6 +25,7 @@ interface OpportunityMapViewerProps {
   fathomCalls: FathomCall[]
   loading: boolean
   onCreateMap: (map: Partial<OpportunityMap>) => Promise<OpportunityMap | null>
+  onDeleteMap?: (id: string) => Promise<boolean>
   compact?: boolean
 }
 
@@ -175,11 +177,13 @@ interface MapCardProps {
   isExpanded: boolean
   onToggle: () => void
   onExportPDF: () => void
+  onDelete: () => void
   isExporting: boolean
+  isDeleting: boolean
   onRefChange: (el: HTMLDivElement | null) => void
 }
 
-function MapCard({ map, isExpanded, onToggle, onExportPDF, isExporting, onRefChange }: MapCardProps) {
+function MapCard({ map, isExpanded, onToggle, onExportPDF, onDelete, isExporting, isDeleting, onRefChange }: MapCardProps) {
   return (
     <div className="bg-rillation-card border border-rillation-border rounded-xl overflow-hidden">
       {/* Header */}
@@ -218,17 +222,31 @@ function MapCard({ map, isExpanded, onToggle, onExportPDF, isExporting, onRefCha
           </div>
         </div>
 
-        <button
-          onClick={(e) => {
-            e.stopPropagation()
-            onExportPDF()
-          }}
-          disabled={isExporting}
-          className="flex items-center gap-2 px-3 py-1.5 bg-rillation-bg text-rillation-text text-xs rounded-lg hover:bg-rillation-card-hover transition-colors disabled:opacity-50"
-        >
-          {isExporting ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
-          PDF
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              onExportPDF()
+            }}
+            disabled={isExporting}
+            className="flex items-center gap-2 px-3 py-1.5 bg-rillation-bg text-rillation-text text-xs rounded-lg hover:bg-rillation-card-hover transition-colors disabled:opacity-50"
+          >
+            {isExporting ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
+            PDF
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              if (confirm('Are you sure you want to delete this opportunity map?')) {
+                onDelete()
+              }
+            }}
+            disabled={isDeleting}
+            className="flex items-center gap-2 px-3 py-1.5 bg-red-500/10 text-red-400 text-xs rounded-lg hover:bg-red-500/20 transition-colors disabled:opacity-50"
+          >
+            {isDeleting ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+          </button>
+        </div>
       </button>
 
       {/* Expanded Content */}
@@ -411,12 +429,14 @@ export default function OpportunityMapViewer({
   fathomCalls,
   loading,
   onCreateMap,
+  onDeleteMap,
   compact = false,
 }: OpportunityMapViewerProps) {
   const [isGenerateModalOpen, setIsGenerateModalOpen] = useState(false)
   const [isGenerating, setIsGenerating] = useState(false)
   const [expandedMapId, setExpandedMapId] = useState<string | null>(null)
   const [exportingId, setExportingId] = useState<string | null>(null)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
   const mapRefs = useRef<Record<string, HTMLDivElement | null>>({})
 
   const handleGenerate = async (callIds: string[], title: string) => {
@@ -516,6 +536,23 @@ export default function OpportunityMapViewer({
     }
   }
 
+  const handleDelete = async (mapId: string) => {
+    if (!onDeleteMap) return
+    
+    setDeletingId(mapId)
+    try {
+      await onDeleteMap(mapId)
+      // If the deleted map was expanded, collapse it
+      if (expandedMapId === mapId) {
+        setExpandedMapId(null)
+      }
+    } catch (err) {
+      console.error('Error deleting map:', err)
+    } finally {
+      setDeletingId(null)
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -572,7 +609,9 @@ export default function OpportunityMapViewer({
               isExpanded={expandedMapId === map.id}
               onToggle={() => setExpandedMapId(expandedMapId === map.id ? null : map.id)}
               onExportPDF={() => handleExportPDF(map.id)}
+              onDelete={() => handleDelete(map.id)}
               isExporting={exportingId === map.id}
+              isDeleting={deletingId === map.id}
               onRefChange={(el) => { mapRefs.current[map.id] = el }}
             />
           ))}

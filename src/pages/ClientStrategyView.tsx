@@ -150,6 +150,7 @@ export default function ClientStrategyView() {
     saveKnowledgeBase,
     savePlanOfAction,
     createOpportunityMap,
+    deleteOpportunityMap,
   } = useClientStrategy(selectedClient)
 
   // Save section states to localStorage
@@ -334,6 +335,7 @@ export default function ClientStrategyView() {
                           fathomCalls={fathomCalls}
                           loading={dataLoading}
                           onCreateMap={createOpportunityMap}
+                          onDeleteMap={deleteOpportunityMap}
                           compact
                         />
                       </div>
