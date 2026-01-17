@@ -175,6 +175,53 @@ function GenerateModal({ isOpen, onClose, fathomCalls, onGenerate, isGenerating 
   )
 }
 
+// Normalize old data format for PDF generation
+function normalizeMapDataForPDF(rawData: any) {
+  if (!rawData) return {}
+  
+  const data = { ...rawData }
+  
+  // Handle old 'segments' format -> convert to tier1_segments/tier2_segments
+  if (data.segments && !data.tier1_segments) {
+    data.tier1_segments = data.segments.filter((s: any) => s.tier === 1).map((s: any) => ({
+      name: s.name,
+      description: s.description,
+      pain_points: s.pain_points,
+      value_proposition: s.value_proposition,
+      job_titles: s.job_titles ? {
+        primary_buyers: s.job_titles.primary || s.job_titles.primary_buyers || [],
+        champions: s.job_titles.champions || [],
+      } : undefined,
+      signals: s.signals,
+    }))
+    data.tier2_segments = data.segments.filter((s: any) => s.tier === 2).map((s: any) => ({
+      name: s.name,
+      description: s.description,
+      pain_points: s.pain_points,
+      value_proposition: s.value_proposition,
+      job_titles: s.job_titles ? {
+        primary_buyers: s.job_titles.primary || s.job_titles.primary_buyers || [],
+        champions: s.job_titles.champions || [],
+      } : undefined,
+      signals: s.signals,
+    }))
+  }
+  
+  // Handle old geographies array format -> convert to tiered object
+  if (Array.isArray(data.geographies)) {
+    const oldGeos = data.geographies
+    data.geographies = {
+      tier1: oldGeos.filter((g: any) => g.tier === 1),
+      tier2: oldGeos.filter((g: any) => g.tier === 2),
+      tier3: oldGeos.filter((g: any) => g.tier === 3),
+      deprioritized: [],
+      off_limits: [],
+    }
+  }
+  
+  return data
+}
+
 // PDF Generation Function - Creates a professional document-style PDF
 function generatePDF(map: OpportunityMap, client: string) {
   const pdf = new jsPDF({
@@ -213,7 +260,9 @@ function generatePDF(map: OpportunityMap, client: string) {
   pdf.addPage()
   y = margin
   
-  const data = map.content_json || {}
+  // Normalize data for backwards compatibility
+  const rawData = map.content_json || {}
+  const data = normalizeMapDataForPDF(rawData)
   
   // Helper functions
   const addSectionHeader = (title: string, sectionNumber?: number) => {
@@ -523,8 +572,55 @@ interface MapCardProps {
   isDeleting: boolean
 }
 
+// Normalize old data format to new format for backwards compatibility
+function normalizeMapData(rawData: any) {
+  if (!rawData) return {}
+  
+  const data = { ...rawData }
+  
+  // Handle old 'segments' format -> convert to tier1_segments/tier2_segments
+  if (data.segments && !data.tier1_segments) {
+    data.tier1_segments = data.segments.filter((s: any) => s.tier === 1).map((s: any) => ({
+      name: s.name,
+      description: s.description,
+      pain_points: s.pain_points,
+      value_proposition: s.value_proposition,
+      job_titles: s.job_titles ? {
+        primary_buyers: s.job_titles.primary || s.job_titles.primary_buyers || [],
+        champions: s.job_titles.champions || [],
+      } : undefined,
+      signals: s.signals,
+    }))
+    data.tier2_segments = data.segments.filter((s: any) => s.tier === 2).map((s: any) => ({
+      name: s.name,
+      description: s.description,
+      pain_points: s.pain_points,
+      value_proposition: s.value_proposition,
+      job_titles: s.job_titles ? {
+        primary_buyers: s.job_titles.primary || s.job_titles.primary_buyers || [],
+        champions: s.job_titles.champions || [],
+      } : undefined,
+      signals: s.signals,
+    }))
+  }
+  
+  // Handle old geographies array format -> convert to tiered object
+  if (Array.isArray(data.geographies)) {
+    const oldGeos = data.geographies
+    data.geographies = {
+      tier1: oldGeos.filter((g: any) => g.tier === 1),
+      tier2: oldGeos.filter((g: any) => g.tier === 2),
+      tier3: oldGeos.filter((g: any) => g.tier === 3),
+      deprioritized: [],
+      off_limits: [],
+    }
+  }
+  
+  return data
+}
+
 function MapCard({ map, client, isExpanded, onToggle, onExportPDF, onDelete, isExporting, isDeleting }: MapCardProps) {
-  const data = map.content_json || {}
+  const data = normalizeMapData(map.content_json)
   
   return (
     <div className="bg-rillation-card border border-rillation-border rounded-xl overflow-hidden">
