@@ -13,8 +13,11 @@ import {
   ListChecks,
   Award,
   Trash2,
+  Plus,
+  Building2,
+  Calendar,
+  Settings,
 } from 'lucide-react'
-import html2canvas from 'html2canvas'
 import { jsPDF } from 'jspdf'
 import type { OpportunityMap, FathomCall } from '../../hooks/useClientStrategy'
 import { supabase } from '../../lib/supabase'
@@ -76,12 +79,12 @@ function GenerateModal({ isOpen, onClose, fathomCalls, onGenerate, isGenerating 
               <Sparkles size={20} className="text-white" />
             </div>
             <div>
-              <h2 className="text-lg font-semibold text-rillation-text">Generate Opportunity Map</h2>
-              <p className="text-xs text-rillation-text-muted">AI will analyze calls to create the map</p>
+              <h2 className="text-lg font-semibold text-white">Generate Opportunity Map</h2>
+              <p className="text-xs text-white/60">AI will analyze calls to create the map</p>
             </div>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-rillation-card-hover rounded-lg">
-            <X size={18} className="text-rillation-text-muted" />
+          <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-lg">
+            <X size={18} className="text-white/60" />
           </button>
         </div>
 
@@ -89,23 +92,23 @@ function GenerateModal({ isOpen, onClose, fathomCalls, onGenerate, isGenerating 
         <div className="p-4 space-y-4">
           {/* Title */}
           <div>
-            <label className="block text-sm font-medium text-rillation-text mb-2">Map Title</label>
+            <label className="block text-sm font-medium text-white mb-2">Map Title</label>
             <input
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="e.g., Opportunity Map V1"
-              className="w-full px-4 py-2.5 bg-rillation-bg border border-rillation-border rounded-lg text-sm text-rillation-text placeholder:text-rillation-text-muted focus:outline-none focus:border-rillation-text-muted"
+              className="w-full px-4 py-2.5 bg-rillation-bg border border-rillation-border rounded-lg text-sm text-white placeholder:text-white/40 focus:outline-none focus:border-white/40"
             />
           </div>
 
           {/* Call Selection */}
           <div>
-            <label className="block text-sm font-medium text-rillation-text mb-2">
+            <label className="block text-sm font-medium text-white mb-2">
               Select Fathom Calls to Analyze
             </label>
             {fathomCalls.length === 0 ? (
-              <div className="text-center py-6 bg-rillation-bg rounded-lg text-sm text-rillation-text-muted">
+              <div className="text-center py-6 bg-rillation-bg rounded-lg text-sm text-white/60">
                 No calls available. Add Fathom calls first.
               </div>
             ) : (
@@ -119,17 +122,17 @@ function GenerateModal({ isOpen, onClose, fathomCalls, onGenerate, isGenerating 
                       className={`w-full flex items-center gap-3 p-3 rounded-lg transition-colors text-left ${
                         isSelected
                           ? 'bg-white/10 border border-white/20'
-                          : 'bg-rillation-bg hover:bg-rillation-card-hover border border-transparent'
+                          : 'bg-rillation-bg hover:bg-white/5 border border-transparent'
                       }`}
                     >
                       <div className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
-                        isSelected ? 'bg-white border-white' : 'border-rillation-border'
+                        isSelected ? 'bg-white border-white' : 'border-white/30'
                       }`}>
                         {isSelected && <Check size={12} className="text-black" />}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="text-sm font-medium text-rillation-text truncate">{call.title}</div>
-                        <div className="text-xs text-rillation-text-muted">
+                        <div className="text-sm font-medium text-white truncate">{call.title}</div>
+                        <div className="text-xs text-white/50">
                           {call.call_date ? new Date(call.call_date).toLocaleDateString() : 'No date'}
                         </div>
                       </div>
@@ -145,7 +148,7 @@ function GenerateModal({ isOpen, onClose, fathomCalls, onGenerate, isGenerating 
         <div className="flex items-center justify-end gap-3 p-4 border-t border-rillation-border">
           <button
             onClick={onClose}
-            className="px-4 py-2 text-sm text-rillation-text-muted hover:text-rillation-text transition-colors"
+            className="px-4 py-2 text-sm text-white/60 hover:text-white transition-colors"
           >
             Cancel
           </button>
@@ -172,30 +175,369 @@ function GenerateModal({ isOpen, onClose, fathomCalls, onGenerate, isGenerating 
   )
 }
 
+// PDF Generation Function - Creates a professional document-style PDF
+function generatePDF(map: OpportunityMap, client: string) {
+  const pdf = new jsPDF({
+    orientation: 'portrait',
+    unit: 'mm',
+    format: 'a4',
+  })
+  
+  const pageWidth = pdf.internal.pageSize.getWidth()
+  const pageHeight = pdf.internal.pageSize.getHeight()
+  const margin = 20
+  const contentWidth = pageWidth - (margin * 2)
+  let y = margin
+  
+  const checkPageBreak = (neededHeight: number) => {
+    if (y + neededHeight > pageHeight - margin) {
+      pdf.addPage()
+      y = margin
+    }
+  }
+  
+  // Title Page
+  pdf.setFontSize(28)
+  pdf.setFont('helvetica', 'bold')
+  pdf.text('OPPORTUNITY MAP', pageWidth / 2, 60, { align: 'center' })
+  
+  pdf.setFontSize(16)
+  pdf.setFont('helvetica', 'normal')
+  pdf.text(client, pageWidth / 2, 75, { align: 'center' })
+  
+  pdf.setFontSize(12)
+  pdf.text(map.title || 'Strategy Document', pageWidth / 2, 85, { align: 'center' })
+  pdf.text(new Date(map.created_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }), pageWidth / 2, 95, { align: 'center' })
+  
+  // Start content on new page
+  pdf.addPage()
+  y = margin
+  
+  const data = map.content_json || {}
+  
+  // Helper functions
+  const addSectionHeader = (title: string, sectionNumber?: number) => {
+    checkPageBreak(15)
+    pdf.setFontSize(14)
+    pdf.setFont('helvetica', 'bold')
+    const text = sectionNumber ? `${sectionNumber}. ${title}` : title
+    pdf.text(text, margin, y)
+    y += 8
+    // Add line
+    pdf.setDrawColor(200, 200, 200)
+    pdf.line(margin, y, pageWidth - margin, y)
+    y += 6
+  }
+  
+  const addSubsectionHeader = (title: string) => {
+    checkPageBreak(12)
+    pdf.setFontSize(12)
+    pdf.setFont('helvetica', 'bold')
+    pdf.text(title, margin, y)
+    y += 6
+  }
+  
+  const addParagraph = (text: string) => {
+    checkPageBreak(10)
+    pdf.setFontSize(10)
+    pdf.setFont('helvetica', 'normal')
+    const lines = pdf.splitTextToSize(text, contentWidth)
+    pdf.text(lines, margin, y)
+    y += lines.length * 5 + 4
+  }
+  
+  const addBulletList = (items: string[]) => {
+    items.forEach((item) => {
+      checkPageBreak(8)
+      pdf.setFontSize(10)
+      pdf.setFont('helvetica', 'normal')
+      const lines = pdf.splitTextToSize(`• ${item}`, contentWidth - 5)
+      pdf.text(lines, margin + 3, y)
+      y += lines.length * 5 + 2
+    })
+    y += 2
+  }
+  
+  // Section 1: How We Operate
+  if (data.how_we_operate) {
+    addSectionHeader('How We Operate', 1)
+    addParagraph("Before we dive into the strategy, here's how our campaigns work:")
+    y += 4
+    
+    if (data.how_we_operate.tracking) {
+      addSubsectionHeader('Everything In Is Tracked, Everything Out Is Tracked')
+      addParagraph(data.how_we_operate.tracking)
+    }
+    
+    if (data.how_we_operate.segmentation) {
+      addSubsectionHeader('Industry-First Segmentation')
+      addParagraph(data.how_we_operate.segmentation)
+    }
+    
+    if (data.how_we_operate.test_then_scale) {
+      addSubsectionHeader('Test-Then-Scale')
+      addParagraph(data.how_we_operate.test_then_scale)
+    }
+    
+    if (data.how_we_operate.tracking_variables?.length > 0) {
+      addSubsectionHeader('Tracking Variables (Defined Upfront)')
+      addBulletList(data.how_we_operate.tracking_variables)
+    }
+    y += 6
+  }
+  
+  // Section 2: Tier 1 Campaign Segments
+  if (data.tier1_segments?.length > 0) {
+    addSectionHeader('Tier 1 Campaign Segments', 2)
+    
+    data.tier1_segments.forEach((segment: any, index: number) => {
+      checkPageBreak(40)
+      pdf.setFontSize(12)
+      pdf.setFont('helvetica', 'bold')
+      pdf.text(`Segment ${index + 1}: ${segment.name}`, margin, y)
+      y += 5
+      
+      if (segment.description) {
+        pdf.setFontSize(10)
+        pdf.setFont('helvetica', 'italic')
+        const descLines = pdf.splitTextToSize(segment.description, contentWidth)
+        pdf.text(descLines, margin, y)
+        y += descLines.length * 5 + 4
+      }
+      
+      if (segment.pain_points?.length > 0) {
+        addSubsectionHeader('The Pain')
+        addBulletList(segment.pain_points)
+      }
+      
+      if (segment.value_proposition) {
+        addSubsectionHeader('The Value Proposition')
+        addParagraph(segment.value_proposition)
+      }
+      
+      if (segment.job_titles) {
+        addSubsectionHeader('Job Titles to Target')
+        if (segment.job_titles.primary_buyers?.length > 0) {
+          pdf.setFontSize(10)
+          pdf.setFont('helvetica', 'bold')
+          pdf.text('Primary Buyers (Decision Makers)', margin, y)
+          y += 5
+          addBulletList(segment.job_titles.primary_buyers)
+        }
+        if (segment.job_titles.champions?.length > 0) {
+          pdf.setFontSize(10)
+          pdf.setFont('helvetica', 'bold')
+          pdf.text('Champions / Influencers', margin, y)
+          y += 5
+          addBulletList(segment.job_titles.champions)
+        }
+      }
+      
+      if (segment.signals?.length > 0) {
+        addSubsectionHeader('Potential Signals (To Validate)')
+        addBulletList(segment.signals)
+      }
+      
+      y += 6
+    })
+  }
+  
+  // Section 3: Tier 2 Campaign Segments
+  if (data.tier2_segments?.length > 0) {
+    addSectionHeader('Tier 2 Campaign Segments', 3)
+    
+    data.tier2_segments.forEach((segment: any, index: number) => {
+      checkPageBreak(30)
+      pdf.setFontSize(12)
+      pdf.setFont('helvetica', 'bold')
+      pdf.text(`Segment ${index + 1}: ${segment.name}`, margin, y)
+      y += 5
+      
+      if (segment.description) {
+        pdf.setFontSize(10)
+        pdf.setFont('helvetica', 'italic')
+        const descLines = pdf.splitTextToSize(segment.description, contentWidth)
+        pdf.text(descLines, margin, y)
+        y += descLines.length * 5 + 4
+      }
+      
+      if (segment.pain_points?.length > 0) {
+        addSubsectionHeader('The Pain')
+        addBulletList(segment.pain_points)
+      }
+      
+      if (segment.value_proposition) {
+        addSubsectionHeader('The Value Proposition')
+        addParagraph(segment.value_proposition)
+      }
+      
+      y += 4
+    })
+  }
+  
+  // Section 4: Geographies
+  if (data.geographies) {
+    addSectionHeader('Geographies', 4)
+    addParagraph('All campaigns include all approved geographies. We track performance by geography to identify where to focus.')
+    y += 4
+    
+    const addGeoList = (title: string, geos: any[]) => {
+      if (geos?.length > 0) {
+        addSubsectionHeader(title)
+        geos.forEach((geo) => {
+          checkPageBreak(8)
+          pdf.setFontSize(10)
+          pdf.setFont('helvetica', 'normal')
+          const geoName = geo.geography || geo
+          const reason = geo.reason || ''
+          const text = reason ? `${geoName} - ${reason}` : geoName
+          const lines = pdf.splitTextToSize(`• ${text}`, contentWidth - 5)
+          pdf.text(lines, margin + 3, y)
+          y += lines.length * 5 + 2
+        })
+        y += 4
+      }
+    }
+    
+    addGeoList('Tier 1: Registered + Not Price Sensitive + Strategic Priority', data.geographies.tier1)
+    addGeoList('Tier 2: Registered + Good Potential', data.geographies.tier2)
+    addGeoList('Tier 3: Can Sell + Less Certain', data.geographies.tier3)
+    addGeoList('Deprioritized', data.geographies.deprioritized)
+    
+    if (data.geographies.off_limits?.length > 0) {
+      addSubsectionHeader('Off Limits')
+      addParagraph(data.geographies.off_limits.join(', '))
+    }
+  }
+  
+  // Section 5: Company Size & Revenue
+  if (data.company_tracking) {
+    addSectionHeader('Company Size & Revenue Tracking', 5)
+    addParagraph('We will track responses by company size to identify patterns in who converts best.')
+    y += 4
+    
+    if (data.company_tracking.employee_size_bands?.length > 0) {
+      addSubsectionHeader('Employee Size Bands')
+      addBulletList(data.company_tracking.employee_size_bands)
+    }
+    
+    if (data.company_tracking.revenue_bands?.length > 0) {
+      addSubsectionHeader('Revenue Bands (Where Available)')
+      addBulletList(data.company_tracking.revenue_bands)
+    }
+  }
+  
+  // Section 6: Social Proof
+  if (data.social_proof) {
+    addSectionHeader('Social Proof Inventory', 6)
+    
+    const proofSections = [
+      { key: 'case_studies', label: 'Case Studies' },
+      { key: 'testimonials', label: 'Testimonials' },
+      { key: 'publications', label: 'Publications' },
+      { key: 'certifications', label: 'Certifications' },
+      { key: 'pilots', label: 'Notable Pilots' },
+      { key: 'data_points', label: 'Known Data Points' },
+    ]
+    
+    proofSections.forEach(({ key, label }) => {
+      const items = data.social_proof[key]
+      if (items?.length > 0) {
+        addSubsectionHeader(label)
+        addBulletList(items)
+      }
+    })
+  }
+  
+  // Section 7: Campaign Architecture
+  if (data.campaign_architecture) {
+    addSectionHeader('Campaign Architecture', 7)
+    
+    const arch = data.campaign_architecture
+    if (arch.monthly_volume) {
+      addParagraph(`Volume: ${arch.monthly_volume.toLocaleString()} emails/month = ${(arch.unique_prospects_per_month || arch.monthly_volume / 3).toLocaleString()} unique prospects (${arch.emails_per_prospect || 2}-3 emails per prospect per quarter)`)
+    }
+    if (arch.segment_distribution) {
+      addParagraph(`Segment Distribution: ${arch.segment_distribution}`)
+    }
+    
+    if (arch.monthly_plan?.length > 0) {
+      y += 4
+      addSubsectionHeader('Month-by-Month Plan')
+      arch.monthly_plan.forEach((month: any) => {
+        checkPageBreak(8)
+        pdf.setFontSize(10)
+        pdf.setFont('helvetica', 'bold')
+        pdf.text(`Month ${month.month}:`, margin, y)
+        pdf.setFont('helvetica', 'normal')
+        const focusLines = pdf.splitTextToSize(month.focus, contentWidth - 25)
+        pdf.text(focusLines, margin + 25, y)
+        y += focusLines.length * 5 + 3
+      })
+    }
+  }
+  
+  // Section 8: Events & Conferences
+  if (data.events_conferences?.length > 0) {
+    addSectionHeader('Events & Conferences', 8)
+    data.events_conferences.forEach((event: any) => {
+      checkPageBreak(8)
+      pdf.setFontSize(10)
+      pdf.setFont('helvetica', 'normal')
+      const eventText = event.event + (event.date ? ` (${event.date})` : '') + (event.notes ? ` - ${event.notes}` : '')
+      const lines = pdf.splitTextToSize(`• ${eventText}`, contentWidth - 5)
+      pdf.text(lines, margin + 3, y)
+      y += lines.length * 5 + 2
+    })
+  }
+  
+  // Section 9: Next Steps
+  if (data.next_steps?.length > 0) {
+    addSectionHeader('Next Steps', 9)
+    data.next_steps.forEach((step: any) => {
+      checkPageBreak(10)
+      pdf.setFontSize(10)
+      pdf.setFont('helvetica', 'normal')
+      const action = typeof step === 'string' ? step : step.action
+      const owner = typeof step === 'object' && step.owner ? ` (${step.owner})` : ''
+      const deadline = typeof step === 'object' && step.deadline ? ` - ${step.deadline}` : ''
+      const text = `${action}${owner}${deadline}`
+      const lines = pdf.splitTextToSize(`• ${text}`, contentWidth - 5)
+      pdf.text(lines, margin + 3, y)
+      y += lines.length * 5 + 2
+    })
+  }
+  
+  // Save the PDF
+  pdf.save(`opportunity-map-${client.replace(/\s+/g, '-').toLowerCase()}-${new Date().toISOString().split('T')[0]}.pdf`)
+}
+
 interface MapCardProps {
   map: OpportunityMap
+  client: string
   isExpanded: boolean
   onToggle: () => void
   onExportPDF: () => void
   onDelete: () => void
   isExporting: boolean
   isDeleting: boolean
-  onRefChange: (el: HTMLDivElement | null) => void
 }
 
-function MapCard({ map, isExpanded, onToggle, onExportPDF, onDelete, isExporting, isDeleting, onRefChange }: MapCardProps) {
+function MapCard({ map, client, isExpanded, onToggle, onExportPDF, onDelete, isExporting, isDeleting }: MapCardProps) {
+  const data = map.content_json || {}
+  
   return (
     <div className="bg-rillation-card border border-rillation-border rounded-xl overflow-hidden">
       {/* Header */}
       <button
         onClick={onToggle}
-        className="w-full flex items-center gap-4 p-4 hover:bg-rillation-card-hover transition-colors text-left"
+        className="w-full flex items-center gap-4 p-4 hover:bg-white/5 transition-colors text-left"
       >
         <motion.div
           animate={{ rotate: isExpanded ? 90 : 0 }}
           transition={{ duration: 0.15 }}
         >
-          <ChevronRight size={18} className="text-rillation-text-muted" />
+          <ChevronRight size={18} className="text-white/60" />
         </motion.div>
 
         <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center">
@@ -204,17 +546,17 @@ function MapCard({ map, isExpanded, onToggle, onExportPDF, onDelete, isExporting
 
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-3">
-            <span className="text-sm font-medium text-rillation-text">{map.title}</span>
-            <span className="text-xs text-rillation-text-muted">v{map.version}</span>
+            <span className="text-sm font-medium text-white">{map.title}</span>
+            <span className="text-xs text-white/50">v{map.version}</span>
             <span className={`text-xs px-2 py-0.5 rounded ${
-              map.status === 'confirmed' ? 'bg-rillation-green/20 text-rillation-green' :
-              map.status === 'archived' ? 'bg-rillation-text-muted/20 text-rillation-text-muted' :
-              'bg-rillation-yellow/20 text-rillation-yellow'
+              map.status === 'confirmed' ? 'bg-green-500/20 text-green-400' :
+              map.status === 'archived' ? 'bg-white/10 text-white/50' :
+              'bg-yellow-500/20 text-yellow-400'
             }`}>
               {map.status}
             </span>
           </div>
-          <div className="text-xs text-rillation-text-muted mt-0.5">
+          <div className="text-xs text-white/50 mt-0.5">
             {new Date(map.created_at).toLocaleDateString('en-US', { 
               month: 'short', day: 'numeric', year: 'numeric' 
             })}
@@ -229,7 +571,7 @@ function MapCard({ map, isExpanded, onToggle, onExportPDF, onDelete, isExporting
               onExportPDF()
             }}
             disabled={isExporting}
-            className="flex items-center gap-2 px-3 py-1.5 bg-rillation-bg text-rillation-text text-xs rounded-lg hover:bg-rillation-card-hover transition-colors disabled:opacity-50"
+            className="flex items-center gap-2 px-3 py-1.5 bg-white/10 text-white text-xs rounded-lg hover:bg-white/20 transition-colors disabled:opacity-50"
           >
             {isExporting ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
             PDF
@@ -258,36 +600,74 @@ function MapCard({ map, isExpanded, onToggle, onExportPDF, onDelete, isExporting
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.2 }}
           >
-            <div ref={onRefChange} className="border-t border-rillation-border/50 bg-rillation-bg/30 p-6">
-              {/* Opportunity Map Content - Styled for PDF export */}
+            <div className="border-t border-white/10 bg-black/20 p-6">
               <div className="space-y-8">
-                {/* Segments */}
-                {map.segments && map.segments.length > 0 && (
+                
+                {/* How We Operate */}
+                {data.how_we_operate && (
                   <div>
                     <div className="flex items-center gap-2 mb-4">
-                      <Target size={18} className="text-rillation-text" />
-                      <h3 className="text-base font-semibold text-rillation-text">Campaign Segments</h3>
+                      <Settings size={18} className="text-white" />
+                      <h3 className="text-base font-semibold text-white">1. How We Operate</h3>
+                    </div>
+                    <div className="space-y-4 pl-6">
+                      {data.how_we_operate.tracking && (
+                        <div>
+                          <h4 className="text-sm font-medium text-white mb-1">Everything In Is Tracked, Everything Out Is Tracked</h4>
+                          <p className="text-sm text-white/70">{data.how_we_operate.tracking}</p>
+                        </div>
+                      )}
+                      {data.how_we_operate.segmentation && (
+                        <div>
+                          <h4 className="text-sm font-medium text-white mb-1">Industry-First Segmentation</h4>
+                          <p className="text-sm text-white/70">{data.how_we_operate.segmentation}</p>
+                        </div>
+                      )}
+                      {data.how_we_operate.test_then_scale && (
+                        <div>
+                          <h4 className="text-sm font-medium text-white mb-1">Test-Then-Scale</h4>
+                          <p className="text-sm text-white/70">{data.how_we_operate.test_then_scale}</p>
+                        </div>
+                      )}
+                      {data.how_we_operate.tracking_variables?.length > 0 && (
+                        <div>
+                          <h4 className="text-sm font-medium text-white mb-2">Tracking Variables</h4>
+                          <div className="flex flex-wrap gap-2">
+                            {data.how_we_operate.tracking_variables.map((v: string, i: number) => (
+                              <span key={i} className="text-xs px-2 py-1 bg-white/10 rounded text-white">{v}</span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Tier 1 Segments */}
+                {data.tier1_segments?.length > 0 && (
+                  <div>
+                    <div className="flex items-center gap-2 mb-4">
+                      <Target size={18} className="text-white" />
+                      <h3 className="text-base font-semibold text-white">2. Tier 1 Campaign Segments</h3>
                     </div>
                     <div className="grid gap-4">
-                      {map.segments.map((segment, i) => (
-                        <div key={i} className="bg-rillation-card border border-rillation-border rounded-lg p-4">
+                      {data.tier1_segments.map((segment: any, i: number) => (
+                        <div key={i} className="bg-white/5 border border-white/10 rounded-lg p-4">
                           <div className="flex items-center gap-2 mb-2">
-                            <span className="text-xs px-2 py-0.5 bg-blue-500/20 text-blue-400 rounded">
-                              Tier {segment.tier}
-                            </span>
-                            <h4 className="font-medium text-rillation-text">{segment.name}</h4>
+                            <span className="text-xs px-2 py-0.5 bg-blue-500/20 text-blue-400 rounded">Tier 1</span>
+                            <h4 className="font-medium text-white">{segment.name}</h4>
                           </div>
                           {segment.description && (
-                            <p className="text-sm text-rillation-text-muted mb-3">{segment.description}</p>
+                            <p className="text-sm text-white/60 mb-3 italic">{segment.description}</p>
                           )}
                           
-                          {segment.pain_points && segment.pain_points.length > 0 && (
+                          {segment.pain_points?.length > 0 && (
                             <div className="mb-3">
-                              <span className="text-xs font-medium text-rillation-text-muted uppercase tracking-wide">Pain Points</span>
+                              <span className="text-xs font-medium text-white/50 uppercase tracking-wide">The Pain</span>
                               <ul className="mt-1 space-y-1">
-                                {segment.pain_points.map((p, j) => (
-                                  <li key={j} className="text-sm text-rillation-text flex items-start gap-2">
-                                    <span className="text-rillation-text-muted">•</span> {p}
+                                {segment.pain_points.map((p: string, j: number) => (
+                                  <li key={j} className="text-sm text-white flex items-start gap-2">
+                                    <span className="text-white/40">•</span> {p}
                                   </li>
                                 ))}
                               </ul>
@@ -296,33 +676,46 @@ function MapCard({ map, isExpanded, onToggle, onExportPDF, onDelete, isExporting
 
                           {segment.value_proposition && (
                             <div className="mb-3">
-                              <span className="text-xs font-medium text-rillation-text-muted uppercase tracking-wide">Value Proposition</span>
-                              <p className="mt-1 text-sm text-rillation-text">{segment.value_proposition}</p>
+                              <span className="text-xs font-medium text-white/50 uppercase tracking-wide">The Value Proposition</span>
+                              <p className="mt-1 text-sm text-white">{segment.value_proposition}</p>
                             </div>
                           )}
 
                           {segment.job_titles && (
-                            <div className="grid grid-cols-2 gap-4">
-                              {segment.job_titles.primary && segment.job_titles.primary.length > 0 && (
+                            <div className="grid grid-cols-2 gap-4 mb-3">
+                              {segment.job_titles.primary_buyers?.length > 0 && (
                                 <div>
-                                  <span className="text-xs font-medium text-rillation-text-muted uppercase tracking-wide">Primary Buyers</span>
+                                  <span className="text-xs font-medium text-white/50 uppercase tracking-wide">Primary Buyers</span>
                                   <div className="mt-1 flex flex-wrap gap-1">
-                                    {segment.job_titles.primary.map((t, j) => (
-                                      <span key={j} className="text-xs px-2 py-0.5 bg-rillation-bg rounded text-rillation-text">{t}</span>
+                                    {segment.job_titles.primary_buyers.map((t: string, j: number) => (
+                                      <span key={j} className="text-xs px-2 py-0.5 bg-white/10 rounded text-white">{t}</span>
                                     ))}
                                   </div>
                                 </div>
                               )}
-                              {segment.job_titles.champions && segment.job_titles.champions.length > 0 && (
+                              {segment.job_titles.champions?.length > 0 && (
                                 <div>
-                                  <span className="text-xs font-medium text-rillation-text-muted uppercase tracking-wide">Champions</span>
+                                  <span className="text-xs font-medium text-white/50 uppercase tracking-wide">Champions</span>
                                   <div className="mt-1 flex flex-wrap gap-1">
-                                    {segment.job_titles.champions.map((t, j) => (
-                                      <span key={j} className="text-xs px-2 py-0.5 bg-rillation-bg rounded text-rillation-text">{t}</span>
+                                    {segment.job_titles.champions.map((t: string, j: number) => (
+                                      <span key={j} className="text-xs px-2 py-0.5 bg-white/10 rounded text-white">{t}</span>
                                     ))}
                                   </div>
                                 </div>
                               )}
+                            </div>
+                          )}
+
+                          {segment.signals?.length > 0 && (
+                            <div>
+                              <span className="text-xs font-medium text-white/50 uppercase tracking-wide">Potential Signals</span>
+                              <ul className="mt-1 space-y-1">
+                                {segment.signals.map((s: string, j: number) => (
+                                  <li key={j} className="text-sm text-white flex items-start gap-2">
+                                    <span className="text-white/40">•</span> {s}
+                                  </li>
+                                ))}
+                              </ul>
                             </div>
                           )}
                         </div>
@@ -331,60 +724,152 @@ function MapCard({ map, isExpanded, onToggle, onExportPDF, onDelete, isExporting
                   </div>
                 )}
 
-                {/* Geographies */}
-                {map.geographies && map.geographies.length > 0 && (
+                {/* Tier 2 Segments */}
+                {data.tier2_segments?.length > 0 && (
                   <div>
                     <div className="flex items-center gap-2 mb-4">
-                      <Globe size={18} className="text-rillation-text" />
-                      <h3 className="text-base font-semibold text-rillation-text">Geographies</h3>
+                      <Target size={18} className="text-white" />
+                      <h3 className="text-base font-semibold text-white">3. Tier 2 Campaign Segments</h3>
                     </div>
-                    <div className="bg-rillation-card border border-rillation-border rounded-lg overflow-hidden">
+                    <div className="grid gap-4">
+                      {data.tier2_segments.map((segment: any, i: number) => (
+                        <div key={i} className="bg-white/5 border border-white/10 rounded-lg p-4">
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className="text-xs px-2 py-0.5 bg-orange-500/20 text-orange-400 rounded">Tier 2</span>
+                            <h4 className="font-medium text-white">{segment.name}</h4>
+                          </div>
+                          {segment.description && (
+                            <p className="text-sm text-white/60">{segment.description}</p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Geographies */}
+                {data.geographies && (
+                  <div>
+                    <div className="flex items-center gap-2 mb-4">
+                      <Globe size={18} className="text-white" />
+                      <h3 className="text-base font-semibold text-white">4. Geographies</h3>
+                    </div>
+                    <div className="bg-white/5 border border-white/10 rounded-lg overflow-hidden">
                       <table className="w-full">
                         <thead>
-                          <tr className="bg-rillation-bg/50">
-                            <th className="px-4 py-2 text-left text-xs font-medium text-rillation-text-muted uppercase">Tier</th>
-                            <th className="px-4 py-2 text-left text-xs font-medium text-rillation-text-muted uppercase">Geography</th>
-                            <th className="px-4 py-2 text-left text-xs font-medium text-rillation-text-muted uppercase">Reason</th>
+                          <tr className="bg-white/5">
+                            <th className="px-4 py-2 text-left text-xs font-medium text-white/50 uppercase">Tier</th>
+                            <th className="px-4 py-2 text-left text-xs font-medium text-white/50 uppercase">Geography</th>
+                            <th className="px-4 py-2 text-left text-xs font-medium text-white/50 uppercase">Reason</th>
                           </tr>
                         </thead>
                         <tbody>
-                          {map.geographies.map((geo, i) => (
-                            <tr key={i} className="border-t border-rillation-border/50">
-                              <td className="px-4 py-2 text-sm text-rillation-text">Tier {geo.tier}</td>
-                              <td className="px-4 py-2 text-sm text-rillation-text">{geo.geography}</td>
-                              <td className="px-4 py-2 text-sm text-rillation-text-muted">{geo.reason}</td>
-                            </tr>
-                          ))}
+                          {['tier1', 'tier2', 'tier3'].map((tierKey) => 
+                            data.geographies[tierKey]?.map((geo: any, i: number) => (
+                              <tr key={`${tierKey}-${i}`} className="border-t border-white/5">
+                                <td className="px-4 py-2 text-sm text-white">{tierKey.replace('tier', 'Tier ')}</td>
+                                <td className="px-4 py-2 text-sm text-white">{geo.geography}</td>
+                                <td className="px-4 py-2 text-sm text-white/60">{geo.reason}</td>
+                              </tr>
+                            ))
+                          )}
                         </tbody>
                       </table>
                     </div>
                   </div>
                 )}
 
-                {/* Social Proof */}
-                {map.social_proof && Object.keys(map.social_proof).some(k => (map.social_proof as any)[k]?.length > 0) && (
+                {/* Company Size & Revenue */}
+                {data.company_tracking && (
                   <div>
                     <div className="flex items-center gap-2 mb-4">
-                      <Award size={18} className="text-rillation-text" />
-                      <h3 className="text-base font-semibold text-rillation-text">Social Proof</h3>
+                      <Building2 size={18} className="text-white" />
+                      <h3 className="text-base font-semibold text-white">5. Company Size & Revenue Tracking</h3>
                     </div>
                     <div className="grid grid-cols-2 gap-4">
-                      {map.social_proof.case_studies && map.social_proof.case_studies.length > 0 && (
-                        <div className="bg-rillation-card border border-rillation-border rounded-lg p-4">
-                          <span className="text-xs font-medium text-rillation-text-muted uppercase tracking-wide">Case Studies</span>
-                          <ul className="mt-2 space-y-1">
-                            {map.social_proof.case_studies.map((c, i) => (
-                              <li key={i} className="text-sm text-rillation-text">• {c}</li>
+                      {data.company_tracking.employee_size_bands?.length > 0 && (
+                        <div className="bg-white/5 border border-white/10 rounded-lg p-4">
+                          <span className="text-xs font-medium text-white/50 uppercase tracking-wide">Employee Size Bands</span>
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            {data.company_tracking.employee_size_bands.map((b: string, i: number) => (
+                              <span key={i} className="text-xs px-2 py-1 bg-white/10 rounded text-white">{b}</span>
                             ))}
-                          </ul>
+                          </div>
                         </div>
                       )}
-                      {map.social_proof.testimonials && map.social_proof.testimonials.length > 0 && (
-                        <div className="bg-rillation-card border border-rillation-border rounded-lg p-4">
-                          <span className="text-xs font-medium text-rillation-text-muted uppercase tracking-wide">Testimonials</span>
-                          <ul className="mt-2 space-y-1">
-                            {map.social_proof.testimonials.map((t, i) => (
-                              <li key={i} className="text-sm text-rillation-text">• {t}</li>
+                      {data.company_tracking.revenue_bands?.length > 0 && (
+                        <div className="bg-white/5 border border-white/10 rounded-lg p-4">
+                          <span className="text-xs font-medium text-white/50 uppercase tracking-wide">Revenue Bands</span>
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            {data.company_tracking.revenue_bands.map((b: string, i: number) => (
+                              <span key={i} className="text-xs px-2 py-1 bg-white/10 rounded text-white">{b}</span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Social Proof */}
+                {data.social_proof && (
+                  <div>
+                    <div className="flex items-center gap-2 mb-4">
+                      <Award size={18} className="text-white" />
+                      <h3 className="text-base font-semibold text-white">6. Social Proof Inventory</h3>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      {Object.entries(data.social_proof).map(([key, items]) => {
+                        if (!Array.isArray(items) || items.length === 0) return null
+                        const labels: Record<string, string> = {
+                          case_studies: 'Case Studies',
+                          testimonials: 'Testimonials',
+                          publications: 'Publications',
+                          certifications: 'Certifications',
+                          pilots: 'Notable Pilots',
+                          data_points: 'Known Data Points',
+                        }
+                        return (
+                          <div key={key} className="bg-white/5 border border-white/10 rounded-lg p-4">
+                            <span className="text-xs font-medium text-white/50 uppercase tracking-wide">{labels[key] || key}</span>
+                            <ul className="mt-2 space-y-1">
+                              {(items as string[]).map((item, i) => (
+                                <li key={i} className="text-sm text-white">• {item}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Campaign Architecture */}
+                {data.campaign_architecture && (
+                  <div>
+                    <div className="flex items-center gap-2 mb-4">
+                      <Calendar size={18} className="text-white" />
+                      <h3 className="text-base font-semibold text-white">7. Campaign Architecture</h3>
+                    </div>
+                    <div className="bg-white/5 border border-white/10 rounded-lg p-4 space-y-3">
+                      {data.campaign_architecture.monthly_volume && (
+                        <p className="text-sm text-white">
+                          <strong>Volume:</strong> {data.campaign_architecture.monthly_volume.toLocaleString()} emails/month
+                        </p>
+                      )}
+                      {data.campaign_architecture.segment_distribution && (
+                        <p className="text-sm text-white">
+                          <strong>Segment Distribution:</strong> {data.campaign_architecture.segment_distribution}
+                        </p>
+                      )}
+                      {data.campaign_architecture.monthly_plan?.length > 0 && (
+                        <div>
+                          <span className="text-xs font-medium text-white/50 uppercase tracking-wide">Monthly Plan</span>
+                          <ul className="mt-2 space-y-2">
+                            {data.campaign_architecture.monthly_plan.map((m: any, i: number) => (
+                              <li key={i} className="text-sm text-white">
+                                <strong>Month {m.month}:</strong> {m.focus}
+                              </li>
                             ))}
                           </ul>
                         </div>
@@ -394,22 +879,26 @@ function MapCard({ map, isExpanded, onToggle, onExportPDF, onDelete, isExporting
                 )}
 
                 {/* Next Steps */}
-                {map.next_steps && map.next_steps.length > 0 && (
+                {data.next_steps?.length > 0 && (
                   <div>
                     <div className="flex items-center gap-2 mb-4">
-                      <ListChecks size={18} className="text-rillation-text" />
-                      <h3 className="text-base font-semibold text-rillation-text">Next Steps</h3>
+                      <ListChecks size={18} className="text-white" />
+                      <h3 className="text-base font-semibold text-white">9. Next Steps</h3>
                     </div>
-                    <div className="bg-rillation-card border border-rillation-border rounded-lg p-4">
+                    <div className="bg-white/5 border border-white/10 rounded-lg p-4">
                       <ol className="space-y-2">
-                        {map.next_steps.map((step, i) => (
-                          <li key={i} className="flex items-start gap-3 text-sm text-rillation-text">
-                            <span className="w-6 h-6 rounded-full bg-rillation-bg flex items-center justify-center text-xs font-medium text-rillation-text-muted flex-shrink-0">
-                              {i + 1}
-                            </span>
-                            {step}
-                          </li>
-                        ))}
+                        {data.next_steps.map((step: any, i: number) => {
+                          const action = typeof step === 'string' ? step : step.action
+                          const owner = typeof step === 'object' && step.owner ? ` (${step.owner})` : ''
+                          return (
+                            <li key={i} className="flex items-start gap-3 text-sm text-white">
+                              <span className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center text-xs font-medium text-white/60 flex-shrink-0">
+                                {i + 1}
+                              </span>
+                              {action}{owner}
+                            </li>
+                          )
+                        })}
                       </ol>
                     </div>
                   </div>
@@ -437,7 +926,6 @@ export default function OpportunityMapViewer({
   const [expandedMapId, setExpandedMapId] = useState<string | null>(null)
   const [exportingId, setExportingId] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
-  const mapRefs = useRef<Record<string, HTMLDivElement | null>>({})
 
   const handleGenerate = async (callIds: string[], title: string) => {
     setIsGenerating(true)
@@ -464,17 +952,9 @@ export default function OpportunityMapViewer({
         title,
         status: 'draft',
         source_call_ids: callIds,
-        segments: data?.segments || [],
-        geographies: data?.geographies || [],
-        company_size_bands: data?.company_size_bands || [],
-        revenue_bands: data?.revenue_bands || [],
-        social_proof: data?.social_proof || {},
-        campaign_architecture: data?.campaign_architecture || {},
-        events_conferences: data?.events_conferences || [],
-        next_steps: data?.next_steps || [],
         content_json: data || {},
         generated_by: 'ai',
-        ai_model: 'claude-3-5-sonnet',
+        ai_model: 'claude-sonnet-4',
       })
 
       setIsGenerateModalOpen(false)
@@ -485,8 +965,7 @@ export default function OpportunityMapViewer({
         title,
         status: 'draft',
         source_call_ids: callIds,
-        segments: [],
-        geographies: [],
+        content_json: {},
         generated_by: 'manual',
       })
       setIsGenerateModalOpen(false)
@@ -495,40 +974,11 @@ export default function OpportunityMapViewer({
     }
   }
 
-  const handleExportPDF = async (mapId: string) => {
-    const mapRef = mapRefs.current[mapId]
-    if (!mapRef) return
-
-    setExportingId(mapId)
+  const handleExportPDF = async (map: OpportunityMap) => {
+    setExportingId(map.id)
     
     try {
-      const canvas = await html2canvas(mapRef, {
-        backgroundColor: '#141414',
-        scale: 2,
-        logging: false,
-        useCORS: true,
-      })
-      
-      // Get canvas dimensions
-      const imgWidth = canvas.width
-      const imgHeight = canvas.height
-      
-      // Create PDF with proper dimensions (A4 or auto-sized)
-      const pdfWidth = 210 // A4 width in mm
-      const pdfHeight = (imgHeight * pdfWidth) / imgWidth
-      
-      const pdf = new jsPDF({
-        orientation: pdfHeight > pdfWidth ? 'portrait' : 'landscape',
-        unit: 'mm',
-        format: [pdfWidth, pdfHeight],
-      })
-      
-      // Add the image to PDF
-      const imgData = canvas.toDataURL('image/png')
-      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight)
-      
-      // Download the PDF
-      pdf.save(`opportunity-map-${client}-${new Date().toISOString().split('T')[0]}.pdf`)
+      generatePDF(map, client)
     } catch (err) {
       console.error('Error exporting PDF:', err)
     } finally {
@@ -542,7 +992,6 @@ export default function OpportunityMapViewer({
     setDeletingId(mapId)
     try {
       await onDeleteMap(mapId)
-      // If the deleted map was expanded, collapse it
       if (expandedMapId === mapId) {
         setExpandedMapId(null)
       }
@@ -556,19 +1005,19 @@ export default function OpportunityMapViewer({
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <Loader2 size={24} className="animate-spin text-rillation-text-muted" />
+        <Loader2 size={24} className="animate-spin text-white/50" />
       </div>
     )
   }
 
   return (
     <div className={compact ? "space-y-3" : "p-6 space-y-6"}>
-      {/* Header - only in non-compact mode */}
+      {/* Header with Generate Button - Always Visible */}
       {!compact && (
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-lg font-semibold text-rillation-text">Opportunity Maps</h2>
-            <p className="text-sm text-rillation-text-muted mt-0.5">
+            <h2 className="text-lg font-semibold text-white">Opportunity Maps</h2>
+            <p className="text-sm text-white/50 mt-0.5">
               AI-generated strategy documents for {client}
             </p>
           </div>
@@ -576,20 +1025,33 @@ export default function OpportunityMapViewer({
             onClick={() => setIsGenerateModalOpen(true)}
             className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-sm font-medium rounded-lg hover:opacity-90 transition-opacity"
           >
-            <Sparkles size={16} />
-            Generate Map
+            <Plus size={16} />
+            Generate New Map
+          </button>
+        </div>
+      )}
+
+      {/* Compact mode - Generate button */}
+      {compact && (
+        <div className="flex items-center justify-end">
+          <button
+            onClick={() => setIsGenerateModalOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs font-medium rounded-lg hover:opacity-90 transition-opacity"
+          >
+            <Plus size={14} />
+            Generate New Map
           </button>
         </div>
       )}
 
       {/* Map List */}
       {opportunityMaps.length === 0 ? (
-        <div className={`text-center bg-rillation-card border border-rillation-border rounded-xl ${compact ? 'py-8' : 'py-16'}`}>
+        <div className={`text-center bg-white/5 border border-white/10 rounded-xl ${compact ? 'py-8' : 'py-16'}`}>
           <div className={`mx-auto mb-3 rounded-xl bg-gradient-to-br from-purple-500/20 to-pink-500/20 flex items-center justify-center ${compact ? 'w-12 h-12' : 'w-16 h-16'}`}>
             <Map size={compact ? 20 : 32} className="text-purple-400" />
           </div>
-          <h3 className="text-sm font-medium text-rillation-text mb-1">No opportunity maps yet</h3>
-          <p className="text-xs text-rillation-text-muted mb-3 max-w-sm mx-auto">
+          <h3 className="text-sm font-medium text-white mb-1">No opportunity maps yet</h3>
+          <p className="text-xs text-white/50 mb-3 max-w-sm mx-auto">
             Generate your first map from Fathom calls using AI.
           </p>
           <button
@@ -606,13 +1068,13 @@ export default function OpportunityMapViewer({
             <MapCard
               key={map.id}
               map={map}
+              client={client}
               isExpanded={expandedMapId === map.id}
               onToggle={() => setExpandedMapId(expandedMapId === map.id ? null : map.id)}
-              onExportPDF={() => handleExportPDF(map.id)}
+              onExportPDF={() => handleExportPDF(map)}
               onDelete={() => handleDelete(map.id)}
               isExporting={exportingId === map.id}
               isDeleting={deletingId === map.id}
-              onRefChange={(el) => { mapRefs.current[map.id] = el }}
             />
           ))}
         </div>

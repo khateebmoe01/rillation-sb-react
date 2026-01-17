@@ -2,28 +2,54 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 
 const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY');
 
-const SYSTEM_PROMPT = `You are an expert B2B sales strategist helping a lead generation agency create opportunity maps for their clients.
+const SYSTEM_PROMPT = `You are an expert B2B sales strategist at Rillation Revenue, a lead generation agency. You create comprehensive Opportunity Maps for clients based on TAM (Total Addressable Market) mapping call transcripts.
 
-Given a transcript from a TAM (Total Addressable Market) mapping call, extract and structure the following information:
+Your Opportunity Maps are detailed strategy documents that guide outbound campaigns. They follow a specific structure and include:
 
-1. **Segments**: Identify market segments by tier (1 = highest priority, 2 = secondary)
-   - For each segment: name, description, pain points, value proposition, target job titles (primary buyers and champions), and signals to look for
+1. **How We Operate** - A section explaining Rillation's methodology:
+   - Everything In Is Tracked, Everything Out Is Tracked (define variables upfront, analyze what's working)
+   - Industry-First Segmentation (segment by vertical, reach all job titles/geos/sizes, find winning combinations)
+   - Test-Then-Scale (Month 1 = signals, Month 2-3 = scale winners, cut losers)
+   - Tracking Variables (Industry, Geography, Company Size, Revenue Range, Job Title, Signals/Triggers)
 
-2. **Geographies**: List target geographies by tier with reasoning
+2. **Tier 1 Campaign Segments** - Primary market segments (highest priority), each with:
+   - Segment name and description
+   - "The Pain" - Detailed pain points (5-10 bullet points)
+   - "The Value Proposition" - Clear value statement
+   - "Job Titles to Target" - Two columns: Primary Buyers (decision makers) and Champions/Influencers
+   - "Potential Signals" - Triggers that indicate readiness to buy
 
-3. **Company Size Bands**: Target company sizes (e.g., "1-10", "11-50", "51-200")
+3. **Tier 2 Campaign Segments** - Secondary segments with same structure as Tier 1
 
-4. **Revenue Bands**: Target revenue ranges if mentioned
+4. **Geographies** - Three tiers:
+   - Tier 1: Registered + Not Price Sensitive + Strategic Priority
+   - Tier 2: Registered + Good Potential
+   - Tier 3: Can Sell + Less Certain
+   - Plus: Deprioritized and Off Limits lists
+   Each with geography name and reasoning
 
-5. **Social Proof**: Any case studies, testimonials, publications, certifications, or pilots mentioned
+5. **Company Size & Revenue Tracking**:
+   - Employee Size Bands (1-10, 11-50, 51-200, 201-500, 501-1000, 1000+)
+   - Revenue Bands (Under $1M, $1M-$5M, $5M-$20M, etc.)
 
-6. **Campaign Architecture**: Monthly volume, segment distribution if discussed
+6. **Social Proof Inventory** - What proof exists:
+   - Case studies (count and brief descriptions)
+   - Testimonials and KOL quotes
+   - Publications/journal articles
+   - Certifications
+   - Notable pilots and deployments
+   - Known data points/statistics
 
-7. **Events/Conferences**: Any upcoming events mentioned
+7. **Campaign Architecture**:
+   - Monthly email volume
+   - Segment distribution
+   - Month-by-month launch plan
 
-8. **Next Steps**: Action items from the call
+8. **Events & Conferences** - Upcoming events for pre-event outreach
 
-Return a JSON object with these fields. Be thorough but only include information that was actually discussed in the transcript.`;
+9. **Next Steps** - Specific action items with owners
+
+Be comprehensive and detailed. Include all information discussed in the transcript. Use the exact section structure above.`;
 
 interface RequestBody {
   client: string;
@@ -56,7 +82,7 @@ Deno.serve(async (req: Request) => {
         JSON.stringify({ error: 'No transcript content provided' }),
         { 
           status: 400,
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
         }
       );
     }
@@ -71,57 +97,106 @@ Deno.serve(async (req: Request) => {
       },
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
-        max_tokens: 4096,
+        max_tokens: 8192,
         system: SYSTEM_PROMPT,
         messages: [
           {
             role: 'user',
-            content: `Please analyze the following TAM mapping call transcript(s) for client "${client}" and create a structured opportunity map.
+            content: `Analyze the following TAM mapping call transcript(s) for client "${client}" and create a comprehensive Opportunity Map.
 
 TRANSCRIPT:
 ${transcripts}
 
-Return a JSON object with the following structure:
+Return a JSON object with this exact structure:
+
 {
-  "segments": [
+  "how_we_operate": {
+    "tracking": "Everything In Is Tracked, Everything Out Is Tracked - We define all variables upfront so when results come in, we analyze exactly what's working. We do not guess.",
+    "segmentation": "Industry-First Segmentation - We segment by vertical/industry. Within each campaign, we reach all relevant job titles, geographies, and company sizes, then review data to find winning combinations.",
+    "test_then_scale": "Test-Then-Scale - Month 1 gets signals across segments. Month 2-3, we scale winners, cut losers, test new segments.",
+    "tracking_variables": ["Industry/Vertical", "Geography", "Company Size", "Revenue Range", "Job Title / Seniority", "Signal/Trigger"]
+  },
+  "tier1_segments": [
     {
-      "tier": 1,
       "name": "Segment Name",
-      "description": "Brief description",
-      "pain_points": ["pain 1", "pain 2"],
-      "value_proposition": "Value prop text",
+      "description": "Brief description of this segment",
+      "pain_points": [
+        "Specific pain point 1",
+        "Specific pain point 2",
+        "Specific pain point 3"
+      ],
+      "value_proposition": "Clear value proposition statement for this segment",
       "job_titles": {
-        "primary": ["Title 1", "Title 2"],
-        "champions": ["Title 3", "Title 4"]
+        "primary_buyers": ["Title 1", "Title 2", "Title 3"],
+        "champions": ["Champion Title 1", "Champion Title 2"]
       },
-      "signals": ["signal 1", "signal 2"]
+      "signals": [
+        "Signal 1 that indicates buying readiness",
+        "Signal 2"
+      ]
     }
   ],
-  "geographies": [
+  "tier2_segments": [
     {
-      "tier": 1,
-      "geography": "Region/Country",
-      "reason": "Why this geography"
+      "name": "Segment Name",
+      "description": "Description",
+      "pain_points": ["Pain 1", "Pain 2"],
+      "value_proposition": "Value prop",
+      "job_titles": {
+        "primary_buyers": ["Title 1"],
+        "champions": ["Champion 1"]
+      },
+      "signals": ["Signal 1"]
     }
   ],
-  "company_size_bands": ["1-10", "11-50"],
-  "revenue_bands": ["$1M-$5M", "$5M-$20M"],
+  "geographies": {
+    "tier1": [
+      {"geography": "Country/Region", "reason": "Why this is Tier 1"}
+    ],
+    "tier2": [
+      {"geography": "Country/Region", "reason": "Why Tier 2"}
+    ],
+    "tier3": [
+      {"geography": "Country/Region", "reason": "Why Tier 3"}
+    ],
+    "deprioritized": [
+      {"geography": "Country", "reason": "Why deprioritized"}
+    ],
+    "off_limits": ["USA (not registered)", "Sanctioned countries"]
+  },
+  "company_tracking": {
+    "employee_size_bands": ["1-10", "11-50", "51-200", "201-500", "501-1000", "1000+"],
+    "revenue_bands": ["Under $1M", "$1M-$5M", "$5M-$20M", "$20M-$50M", "$50M-$100M", "$100M+"]
+  },
   "social_proof": {
-    "case_studies": [],
-    "testimonials": [],
-    "publications": [],
-    "certifications": [],
-    "pilots": []
+    "case_studies": ["Case study 1 description", "Case study 2"],
+    "testimonials": ["Testimonial or KOL quote 1"],
+    "publications": ["Publication 1"],
+    "certifications": ["Certification 1"],
+    "pilots": ["Pilot 1 description"],
+    "data_points": ["Known statistic 1", "Data point 2"]
   },
   "campaign_architecture": {
     "monthly_volume": 30000,
-    "segment_distribution": {}
+    "emails_per_prospect": 3,
+    "unique_prospects_per_month": 10000,
+    "segment_distribution": "~7,500 emails per segment for 4 Tier 1 segments",
+    "monthly_plan": [
+      {"month": 1, "focus": "Launch Tier 1 segments, gather signals"},
+      {"month": 2, "focus": "Scale winners, add Tier 2 tests"},
+      {"month": 3, "focus": "Scale winners, cut losers, add new tests"}
+    ]
   },
-  "events_conferences": [],
-  "next_steps": ["Step 1", "Step 2"]
+  "events_conferences": [
+    {"event": "Event Name", "date": "Date if known", "notes": "Any notes"}
+  ],
+  "next_steps": [
+    {"action": "Action item description", "owner": "Person responsible", "deadline": "Deadline if mentioned"},
+    {"action": "Another action item", "owner": "Owner"}
+  ]
 }
 
-Only include fields that were actually discussed in the transcript. Return ONLY valid JSON, no other text.`,
+Be thorough and extract ALL relevant information from the transcript. If something wasn't discussed, use reasonable defaults or leave as empty array. Return ONLY valid JSON, no other text.`,
           },
         ],
       }),
