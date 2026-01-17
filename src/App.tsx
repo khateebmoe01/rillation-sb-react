@@ -68,6 +68,7 @@ function App() {
                     <Route path="/infrastructure/inboxes" element={<PageTransition><Infrastructure defaultTab="inboxes" /></PageTransition>} />
                     <Route path="/infrastructure/domains" element={<PageTransition><Infrastructure defaultTab="domains" /></PageTransition>} />
                     <Route path="/infrastructure/orders" element={<PageTransition><Infrastructure defaultTab="orders" /></PageTransition>} />
+                    <Route path="/infrastructure/health" element={<PageTransition><Infrastructure defaultTab="health" /></PageTransition>} />
                     <Route path="/admin/variables" element={<PageTransition><CustomVariablesDiscovery /></PageTransition>} />
                     <Route path="/debug" element={<PageTransition><DebugView /></PageTransition>} />
                     {/* Legacy routes - redirect to new structure */}

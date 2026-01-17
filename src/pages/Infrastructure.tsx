@@ -8,6 +8,7 @@ import {
   Search,
   ArrowLeft,
   ShoppingCart,
+  Activity,
 } from 'lucide-react'
 import { useClients } from '../hooks/useClients'
 import ClientFilter from '../components/ui/ClientFilter'
@@ -19,8 +20,9 @@ import DomainGeneratorV2 from '../components/infrastructure/DomainGeneratorV2'
 import DomainInventoryManager from '../components/infrastructure/DomainInventoryManager'
 import OrderWorkflow from '../components/infrastructure/OrderWorkflow'
 import InboxOrders from '../components/infrastructure/InboxOrders'
+import HealthMonitor from '../components/infrastructure/HealthMonitor'
 
-type MainTab = 'overview' | 'inboxes' | 'domains' | 'orders'
+type MainTab = 'overview' | 'inboxes' | 'domains' | 'orders' | 'health'
 type InboxSubTab = 'sets' | 'inventory' | 'analytics'
 type DomainSubTab = 'generator' | 'inventory'
 type OrderSubTab = 'create' | 'history'
@@ -180,6 +182,8 @@ export default function Infrastructure({ defaultTab = 'overview' }: Infrastructu
             
             {mainTab === 'orders' && orderSubTab === 'create' && <OrderWorkflow />}
             {mainTab === 'orders' && orderSubTab === 'history' && <InboxOrders />}
+            
+            {mainTab === 'health' && <HealthMonitor />}
           </motion.div>
         </AnimatePresence>
       </div>

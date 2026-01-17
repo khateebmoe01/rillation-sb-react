@@ -15,6 +15,9 @@ import {
   Wifi,
   WifiOff,
   Search,
+  ShoppingCart,
+  Calendar,
+  Clock,
 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { dataCache } from '../../lib/cache'
@@ -22,6 +25,20 @@ import { useClients } from '../../hooks/useClients'
 import { useInfraFilter } from '../../pages/Infrastructure'
 import Button from '../ui/Button'
 import ClientFilter from '../ui/ClientFilter'
+
+interface OrderSummary {
+  id: string
+  provider: string
+  status: string
+  quantity: number
+  created_at: string
+  activated_at: string | null
+  renewal_date: string | null
+  cancelled_at: string | null
+  daysActive: number
+  milestone: '30d' | '60d' | '90d' | null
+  renewalSoon: boolean
+}
 
 interface ClientSummary {
   client: string
@@ -38,20 +55,48 @@ interface ClientSummary {
   avgWarmupReputation: number
   lastSynced: string | null
   needsAttention: boolean
+  activeOrders: OrderSummary[]
+  totalOrders: number
 }
 
 interface ClientDetailData {
   inboxes: any[]
   domains: any[]
   sets: any[]
+  orders: any[]
 }
 
 const CACHE_KEY_PREFIX = 'infra:client:'
 
+// Helper to calculate days between dates
+function daysBetween(start: string | null, end: string | Date | null): number {
+  if (!start) return 0
+  const startDate = new Date(start)
+  const endDate = end ? new Date(end) : new Date()
+  return Math.floor((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
+}
+
+// Helper to get milestone badge
+function getMilestone(daysActive: number): '30d' | '60d' | '90d' | null {
+  if (daysActive >= 90) return '90d'
+  if (daysActive >= 60) return '60d'
+  if (daysActive >= 30) return '30d'
+  return null
+}
+
+// Helper to check if renewal is soon (within 7 days)
+function isRenewalSoon(renewalDate: string | null): boolean {
+  if (!renewalDate) return false
+  const renewal = new Date(renewalDate)
+  const now = new Date()
+  const daysUntil = Math.floor((renewal.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+  return daysUntil >= 0 && daysUntil <= 7
+}
+
 // Fetch all client summaries in parallel for speed
 async function fetchAllClientSummaries(clientNames: string[]): Promise<ClientSummary[]> {
   // Fetch all data in parallel with single queries
-  const [inboxesResult, domainsResult, tagsResult] = await Promise.all([
+  const [inboxesResult, domainsResult, tagsResult, ordersResult] = await Promise.all([
     supabase
         .from('inboxes')
       .select('client, status, lifecycle_status, warmup_enabled, deliverability_score, warmup_reputation, synced_at')
@@ -64,11 +109,17 @@ async function fetchAllClientSummaries(clientNames: string[]): Promise<ClientSum
       .from('inbox_tags')
       .select('client, id, name')
       .in('client', clientNames),
+    supabase
+      .from('provider_orders')
+      .select('id, client, provider, status, quantity, created_at, activated_at, renewal_date, cancelled_at')
+      .in('client', clientNames)
+      .order('created_at', { ascending: false }),
   ])
 
   const inboxes = (inboxesResult.data || []) as any[]
   const domains = (domainsResult.data || []) as any[]
   const tags = (tagsResult.data || []) as any[]
+  const orders = (ordersResult.data || []) as any[]
 
   // Group by client
   const inboxesByClient = inboxes.reduce((acc, inbox) => {
@@ -95,11 +146,20 @@ async function fetchAllClientSummaries(clientNames: string[]): Promise<ClientSum
       return acc
     }, {} as Record<string, any[]>)
 
+  // Group orders by client
+  const ordersByClient = orders.reduce((acc, order) => {
+    const client = order.client || 'Unknown'
+    if (!acc[client]) acc[client] = []
+    acc[client].push(order)
+    return acc
+  }, {} as Record<string, any[]>)
+
   // Build summaries
   return clientNames.map(clientName => {
     const clientInboxes = inboxesByClient[clientName] || []
     const clientDomains = domainsByClient[clientName] || []
     const clientSets = setsByClient[clientName] || []
+    const clientOrders = ordersByClient[clientName] || []
 
     const connected = clientInboxes.filter((i: any) => i.status === 'Connected').length
     const disconnected = clientInboxes.filter((i: any) => i.status === 'Not connected' || i.lifecycle_status === 'disconnected').length
@@ -123,6 +183,27 @@ async function fetchAllClientSummaries(clientNames: string[]): Promise<ClientSum
 
     const domainsUnused = clientDomains.filter((d: any) => d.status === 'purchased' && d.inboxes_ordered === 0).length
 
+    // Process orders - get active orders with milestones
+    const activeOrders: OrderSummary[] = clientOrders
+      .filter((o: any) => o.status !== 'cancelled')
+      .slice(0, 5) // Limit to 5 most recent
+      .map((o: any) => {
+        const daysActive = daysBetween(o.activated_at || o.created_at, o.cancelled_at)
+        return {
+          id: o.id,
+          provider: o.provider,
+          status: o.status,
+          quantity: o.quantity || 0,
+          created_at: o.created_at,
+          activated_at: o.activated_at,
+          renewal_date: o.renewal_date,
+          cancelled_at: o.cancelled_at,
+          daysActive,
+          milestone: getMilestone(daysActive),
+          renewalSoon: isRenewalSoon(o.renewal_date),
+        }
+      })
+
     return {
         client: clientName,
       totalInboxes: clientInboxes.length,
@@ -137,7 +218,9 @@ async function fetchAllClientSummaries(clientNames: string[]): Promise<ClientSum
         avgDeliverability,
         avgWarmupReputation,
         lastSynced,
-      needsAttention: disconnected > 0 || domainsUnused > 0,
+      needsAttention: disconnected > 0 || domainsUnused > 0 || activeOrders.some(o => o.renewalSoon),
+      activeOrders,
+      totalOrders: clientOrders.length,
     }
   })
 }
@@ -254,8 +337,47 @@ function ClientCard({
         </div>
       </div>
 
+      {/* Active Orders Section */}
+      {summary.activeOrders.length > 0 && (
+        <div className="mt-4 pt-4 border-t border-slate-700/50">
+          <div className="flex items-center gap-2 mb-2">
+            <ShoppingCart size={12} className="text-white/60" />
+            <span className="text-xs text-white/60">Active Orders ({summary.totalOrders})</span>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {summary.activeOrders.slice(0, 3).map((order) => (
+              <div 
+                key={order.id}
+                className={`flex items-center gap-1.5 px-2 py-1 rounded text-xs ${
+                  order.renewalSoon 
+                    ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' 
+                    : 'bg-slate-800/50 text-white/80'
+                }`}
+              >
+                <span className="capitalize">{order.provider}</span>
+                {order.milestone && (
+                  <span className={`px-1 py-0.5 rounded text-[10px] font-medium ${
+                    order.milestone === '90d' ? 'bg-emerald-500/30 text-emerald-400' :
+                    order.milestone === '60d' ? 'bg-cyan-500/30 text-cyan-400' :
+                    'bg-slate-600/50 text-white/70'
+                  }`}>
+                    {order.milestone}
+                  </span>
+                )}
+                {order.renewalSoon && (
+                  <Calendar size={10} className="text-amber-400" />
+                )}
+              </div>
+            ))}
+            {summary.activeOrders.length > 3 && (
+              <span className="text-xs text-white/50">+{summary.activeOrders.length - 3} more</span>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Last Updated */}
-      <div className="flex items-center justify-end">
+      <div className="flex items-center justify-end mt-3">
         <span className="text-xs text-white/60">
           {formatDate(summary.lastSynced)}
         </span>
@@ -289,7 +411,7 @@ function ClientDetailView({
       }
 
       // Fetch fresh data
-      const [inboxesRes, domainsRes, tagsRes] = await Promise.all([
+      const [inboxesRes, domainsRes, tagsRes, ordersRes] = await Promise.all([
         supabase
           .from('inboxes')
           .select('*')
@@ -303,6 +425,11 @@ function ClientDetailView({
           .from('inbox_tags')
           .select('*')
           .eq('client', clientName),
+        supabase
+          .from('provider_orders')
+          .select('*')
+          .eq('client', clientName)
+          .order('created_at', { ascending: false }),
       ])
 
       // Filter tags to only those with "Set" in the name
@@ -314,6 +441,7 @@ function ClientDetailView({
         inboxes: inboxesRes.data || [],
         domains: domainsRes.data || [],
         sets,
+        orders: ordersRes.data || [],
       }
 
       dataCache.set(cacheKey, data)
@@ -470,6 +598,86 @@ function ClientDetailView({
                     <td className="px-4 py-2 text-right text-white">{inbox.deliverability_score || '-'}%</td>
                   </tr>
                 ))}
+              </tbody>
+            </table>
+          </div>
+        </motion.div>
+      )}
+
+      {/* Orders History */}
+      {detailData?.orders && detailData.orders.length > 0 && (
+        <motion.div
+          className="bg-rillation-card rounded-xl border border-rillation-border overflow-hidden"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.25 }}
+        >
+          <div className="p-4 border-b border-rillation-border flex items-center gap-2">
+            <ShoppingCart size={16} className="text-white" />
+            <h4 className="font-medium text-white">Orders ({detailData.orders.length})</h4>
+          </div>
+          <div className="max-h-64 overflow-y-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-xs text-white border-b border-rillation-border/30">
+                  <th className="px-4 py-2 text-left">Provider</th>
+                  <th className="px-4 py-2 text-left">Status</th>
+                  <th className="px-4 py-2 text-right">Qty</th>
+                  <th className="px-4 py-2 text-right">Created</th>
+                  <th className="px-4 py-2 text-right">Days Active</th>
+                  <th className="px-4 py-2 text-right">Renewal</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-rillation-border/30">
+                {detailData.orders.map((order: any) => {
+                  const daysActive = daysBetween(order.activated_at || order.created_at, order.cancelled_at)
+                  const milestone = getMilestone(daysActive)
+                  const renewalSoon = isRenewalSoon(order.renewal_date)
+                  
+                  return (
+                    <tr key={order.id} className="hover:bg-rillation-card-hover">
+                      <td className="px-4 py-2 text-white capitalize">{order.provider}</td>
+                      <td className="px-4 py-2">
+                        <span className={`px-2 py-0.5 rounded text-xs ${
+                          order.status === 'completed' ? 'bg-emerald-500/20 text-emerald-400' :
+                          order.status === 'pending' ? 'bg-amber-500/20 text-amber-400' :
+                          order.status === 'cancelled' ? 'bg-red-500/20 text-red-400' :
+                          'bg-slate-500/20 text-white/70'
+                        }`}>
+                          {order.status}
+                        </span>
+                      </td>
+                      <td className="px-4 py-2 text-right text-white">{order.quantity || '-'}</td>
+                      <td className="px-4 py-2 text-right text-white/70">
+                        {new Date(order.created_at).toLocaleDateString()}
+                      </td>
+                      <td className="px-4 py-2 text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <span className="text-white">{daysActive}d</span>
+                          {milestone && (
+                            <span className={`px-1 py-0.5 rounded text-[10px] font-medium ${
+                              milestone === '90d' ? 'bg-emerald-500/30 text-emerald-400' :
+                              milestone === '60d' ? 'bg-cyan-500/30 text-cyan-400' :
+                              'bg-slate-600/50 text-white/70'
+                            }`}>
+                              {milestone}
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-4 py-2 text-right">
+                        {order.renewal_date ? (
+                          <span className={renewalSoon ? 'text-amber-400 font-medium' : 'text-white/70'}>
+                            {new Date(order.renewal_date).toLocaleDateString()}
+                            {renewalSoon && <Clock size={10} className="inline ml-1" />}
+                          </span>
+                        ) : (
+                          <span className="text-white/40">-</span>
+                        )}
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>

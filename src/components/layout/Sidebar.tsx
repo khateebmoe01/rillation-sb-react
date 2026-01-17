@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from 'react-router-dom'
-import { BarChart3, Wrench, Compass, Users, LogOut, LayoutDashboard, Mail, Globe, ShoppingCart } from 'lucide-react'
+import { BarChart3, Wrench, Compass, Users, LogOut, LayoutDashboard, Mail, Globe, ShoppingCart, Activity } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAuth } from '../../contexts/AuthContext'
 
@@ -32,6 +32,7 @@ const sections = [
       { id: 'inboxes', icon: Mail, label: 'Inboxes', path: '/infrastructure/inboxes' },
       { id: 'domains', icon: Globe, label: 'Domains', path: '/infrastructure/domains' },
       { id: 'orders', icon: ShoppingCart, label: 'Orders', path: '/infrastructure/orders' },
+      { id: 'health', icon: Activity, label: 'Health', path: '/infrastructure/health' },
     ],
   },
 ]

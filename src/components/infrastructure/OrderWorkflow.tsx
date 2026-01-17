@@ -57,7 +57,7 @@ export default function OrderWorkflow() {
   const [mailboxConfig, setMailboxConfig] = useState<MailboxConfig>({
     first_names: DEFAULT_FIRST_NAMES,
     last_names: DEFAULT_LAST_NAMES,
-    password_pattern: 'Zxc123{n}',
+    password_pattern: 'Zxc123',
     warmup: 'ON',
     inboxes_per_domain: 3,
   })
@@ -290,24 +290,6 @@ export default function OrderWorkflow() {
               <div className="flex items-center gap-4">
                 <div className="flex-1">
                   <div className="flex items-center justify-between text-sm mb-2">
-                    <span className="text-emerald-400 font-medium">MissionInbox</span>
-                    <span className="text-white">{providerSplit.missioninbox}%</span>
-                  </div>
-                  <input
-                    type="range"
-                    min={0}
-                    max={100}
-                    value={providerSplit.missioninbox}
-                    onChange={(e) => {
-                      const mi = parseInt(e.target.value)
-                      setProviderSplit({ missioninbox: mi, inboxkit: 100 - mi })
-                    }}
-                    className="w-full accent-emerald-500"
-                  />
-                </div>
-                <div className="text-white/40 px-2">|</div>
-                <div className="flex-1">
-                  <div className="flex items-center justify-between text-sm mb-2">
                     <span className="text-cyan-400 font-medium">InboxKit</span>
                     <span className="text-white">{providerSplit.inboxkit}%</span>
                   </div>
@@ -318,12 +300,36 @@ export default function OrderWorkflow() {
                     />
                   </div>
                 </div>
+                <div className="text-white/40 px-2">|</div>
+                <div className="flex-1">
+                  <div className="flex items-center justify-between text-sm mb-2">
+                    <span className="text-emerald-400 font-medium">MissionInbox</span>
+                    <span className="text-white">{providerSplit.missioninbox}%</span>
+                  </div>
+                  <div className="h-2 bg-emerald-500/30 rounded-full">
+                    <div 
+                      className="h-full bg-emerald-500 rounded-full transition-all"
+                      style={{ width: `${providerSplit.missioninbox}%` }}
+                    />
+                  </div>
+                </div>
               </div>
+              <input
+                type="range"
+                min={0}
+                max={100}
+                value={providerSplit.inboxkit}
+                onChange={(e) => {
+                  const ik = parseInt(e.target.value)
+                  setProviderSplit({ inboxkit: ik, missioninbox: 100 - ik })
+                }}
+                className="w-full mt-3 accent-cyan-500"
+              />
               {totalSelectedDomains > 0 && (
                 <div className="mt-3 text-sm text-white/60">
-                  <span className="text-emerald-400">{missionInboxDomains.length} domains</span> → MissionInbox
-                  <span className="mx-2">|</span>
                   <span className="text-cyan-400">{inboxKitDomains.length} domains</span> → InboxKit
+                  <span className="mx-2">|</span>
+                  <span className="text-emerald-400">{missionInboxDomains.length} domains</span> → MissionInbox
                 </div>
               )}
             </div>
@@ -468,7 +474,6 @@ export default function OrderWorkflow() {
                     placeholder="SecurePass{n}$"
                     className="w-full px-3 py-2 bg-rillation-bg border border-rillation-border rounded-lg text-white text-sm focus:outline-none focus:border-emerald-500"
                   />
-                  <p className="text-xs text-white/60 mt-1">{'{n}'} will be replaced with a number</p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-white/80 mb-2">

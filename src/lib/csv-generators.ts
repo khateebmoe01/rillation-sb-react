@@ -25,7 +25,6 @@ export function generateMissionInboxMailboxesCSV(
     return header // Return just header if no names provided
   }
   
-  let passwordCounter = 1
   const totalMailboxes = domains.length * inboxes_per_domain
   
   // Calculate how to distribute names evenly
@@ -44,9 +43,8 @@ export function generateMissionInboxMailboxesCSV(
       const lastName = getNameForIndex(globalIndex, last_names)
       const username = firstName.toLowerCase()
       const email = `${username}@${domain}`
-      const password = password_pattern.replace('{n}', String(passwordCounter++))
       
-      rows.push(`${firstName},${lastName},${email},${password},,${warmup}`)
+      rows.push(`${firstName},${lastName},${email},${password_pattern},,${warmup}`)
       globalIndex++
     }
   }
