@@ -25,6 +25,7 @@ interface ContactsTableProps {
   onContactSelect: (contact: CRMContact) => void
   onContactUpdate: (id: string, updates: Partial<CRMContact>) => Promise<boolean>
   onEstimatedValueUpdate?: (contact: CRMContact, value: number) => Promise<boolean>
+  onCloseWon?: (contact: CRMContact) => void
   sort?: CRMSort
   onSortChange?: (sort: CRMSort | undefined) => void
   selectedRowIndex?: number
@@ -323,15 +324,23 @@ EditableCell.displayName = 'EditableCell'
 interface StageCellProps {
   contact: CRMContact
   onSave: (id: string, updates: Partial<CRMContact>) => Promise<boolean>
+  onCloseWon?: (contact: CRMContact) => void
 }
 
-const StageCell = memo(({ contact, onSave }: StageCellProps) => {
+const StageCell = memo(({ contact, onSave, onCloseWon }: StageCellProps) => {
   const [isOpen, setIsOpen] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
 
   const currentStage = CRM_STAGES.find((s) => s.id === contact.stage) || CRM_STAGES[0]
 
   const handleStageChange = async (stageId: string) => {
+    // Intercept closed_won - show confirmation modal
+    if (stageId === 'closed_won' && onCloseWon) {
+      onCloseWon(contact)
+      setIsOpen(false)
+      return
+    }
+    
     setIsSaving(true)
     await onSave(contact.id, { stage: stageId })
     setIsSaving(false)
@@ -669,9 +678,10 @@ interface RowQuickActionsProps {
   contact: CRMContact
   onSave: (id: string, updates: Partial<CRMContact>) => Promise<boolean>
   onSelect: () => void
+  onCloseWon?: (contact: CRMContact) => void
 }
 
-const RowQuickActions = memo(({ contact, onSave, onSelect }: RowQuickActionsProps) => {
+const RowQuickActions = memo(({ contact, onSave, onSelect, onCloseWon }: RowQuickActionsProps) => {
   const [isCopied, setIsCopied] = useState(false)
   const [isUpdating, setIsUpdating] = useState(false)
 
@@ -691,6 +701,11 @@ const RowQuickActions = memo(({ contact, onSave, onSelect }: RowQuickActionsProp
   const handleAdvanceStage = async (e: React.MouseEvent) => {
     e.stopPropagation()
     if (nextStage && !isUpdating) {
+      // Intercept closed_won - show confirmation modal
+      if (nextStage.id === 'closed_won' && onCloseWon) {
+        onCloseWon(contact)
+        return
+      }
       setIsUpdating(true)
       await onSave(contact.id, { stage: nextStage.id })
       setIsUpdating(false)
@@ -876,7 +891,8 @@ function getCellValue(
   onSelect: () => void,
   rowIndex: number,
   totalRows: number,
-  onEstimatedValueUpdate?: (contact: CRMContact, value: number) => Promise<boolean>
+  onEstimatedValueUpdate?: (contact: CRMContact, value: number) => Promise<boolean>,
+  onCloseWon?: (contact: CRMContact) => void
 ) {
   const key = column.key
 
@@ -919,7 +935,7 @@ function getCellValue(
       )
     
     case 'stage':
-      return <StageCell contact={contact} onSave={onSave} />
+      return <StageCell contact={contact} onSave={onSave} onCloseWon={onCloseWon} />
     
     case 'lead_phone':
     case 'company_phone':
@@ -1068,6 +1084,7 @@ export default function ContactsTable({
   onContactSelect,
   onContactUpdate,
   onEstimatedValueUpdate,
+  onCloseWon,
   sort,
   onSortChange,
   selectedRowIndex = -1,
@@ -1386,6 +1403,7 @@ export default function ContactsTable({
                   contact={contact}
                   onSave={onContactUpdate}
                   onSelect={() => onContactSelect(contact)}
+                  onCloseWon={onCloseWon}
                 />
                 {/* Spacer to align with column picker button in header */}
                 <div className="flex-shrink-0 px-2 py-2 flex items-center border-r border-slate-700/50">
@@ -1397,7 +1415,7 @@ export default function ContactsTable({
                     className={`flex-shrink-0 sticky left-0 z-10 px-3 py-4 text-sm text-white transition-all bg-slate-800 group-hover:bg-slate-700/50 ${isScrolled ? 'shadow-[4px_0_8px_-2px_rgba(0,0,0,0.4)]' : ''}`}
                     style={{ width: `${firstColumnWidth}px` }}
                   >
-                    {getCellValue(contact, firstColumn, onContactUpdate, () => onContactSelect(contact), index, contacts.length, onEstimatedValueUpdate)}
+                    {getCellValue(contact, firstColumn, onContactUpdate, () => onContactSelect(contact), index, contacts.length, onEstimatedValueUpdate, onCloseWon)}
                   </div>
                 )}
                 
@@ -1416,7 +1434,7 @@ export default function ContactsTable({
                         {isMinimized ? (
                           <span className="text-slate-500 text-xs">•</span>
                         ) : (
-                          getCellValue(contact, column, onContactUpdate, () => onContactSelect(contact), index, contacts.length, onEstimatedValueUpdate)
+                          getCellValue(contact, column, onContactUpdate, () => onContactSelect(contact), index, contacts.length, onEstimatedValueUpdate, onCloseWon)
                         )}
                       </div>
                     )

@@ -6,65 +6,89 @@ const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-const FATHOM_API_BASE = 'https://api.fathom.video/v1';
+// Fathom Video API - see https://developers.fathom.ai/api-reference/meetings/list-meetings
+const FATHOM_API_BASE = 'https://api.fathom.ai/external/v1';
 
-interface FathomCall {
-  id: string;
+// Fathom API response structure - see https://developers.fathom.ai/api-reference/meetings/list-meetings
+interface FathomMeeting {
+  recording_id: number;
   title: string;
+  meeting_title?: string;
+  url: string;
+  share_url?: string;
   created_at: string;
-  duration_seconds?: number;
-  recording_url?: string;
-  transcript?: string;
-  summary?: string;
-  action_items?: string[];
-  participants?: { name: string; email?: string }[];
+  scheduled_start_time?: string;
+  scheduled_end_time?: string;
+  recording_start_time?: string;
+  recording_end_time?: string;
+  transcript_language?: string;
+  calendar_invitees?: Array<{
+    name: string;
+    email: string;
+    email_domain: string;
+    is_external: boolean;
+  }>;
+  recorded_by?: {
+    name: string;
+    email: string;
+    team?: string;
+  };
+  transcript?: Array<{
+    speaker: { display_name: string };
+    text: string;
+    timestamp: string;
+  }>;
+  default_summary?: {
+    template_name: string;
+    markdown_formatted: string;
+  };
+  action_items?: Array<{
+    description: string;
+    completed: boolean;
+    assignee?: { name: string; email: string };
+  }>;
 }
 
-// Fetch recent calls from Fathom
-async function fetchRecentCalls(limit: number = 50): Promise<FathomCall[]> {
+// Fetch recent meetings from Fathom
+async function fetchRecentMeetings(limit: number = 50): Promise<FathomMeeting[]> {
   if (!FATHOM_API_KEY) {
     console.error('FATHOM_API_KEY not configured');
     return [];
   }
 
   try {
-    const response = await fetch(`${FATHOM_API_BASE}/calls?limit=${limit}`, {
+    // Fathom API uses "meetings" endpoint - see https://developers.fathom.ai/api-reference/meetings/list-meetings
+    const url = `${FATHOM_API_BASE}/meetings?limit=${limit}`;
+    console.log(`Fetching Fathom meetings from: ${url}`);
+    
+    const response = await fetch(url, {
       headers: {
-        'Authorization': `Bearer ${FATHOM_API_KEY}`,
+        'X-Api-Key': FATHOM_API_KEY,
         'Content-Type': 'application/json',
       },
     });
 
+    console.log(`Fathom API response status: ${response.status}`);
+
     if (!response.ok) {
-      console.error(`Fathom API error: ${response.status}`);
+      const errorText = await response.text();
+      console.error(`Fathom API error: ${response.status}`, errorText);
       return [];
     }
 
     const data = await response.json();
-    return data.calls || data.data || data || [];
+    console.log(`Fathom API returned ${JSON.stringify(data).substring(0, 500)}...`);
+    // API returns { items: [...], limit: n, next_cursor: "..." }
+    return data.items || data.meetings || data.calls || data.data || data || [];
   } catch (error) {
     console.error('Error fetching Fathom calls:', error);
     return [];
   }
 }
 
-// Get call details with transcript
-async function fetchCallDetails(callId: string): Promise<FathomCall | null> {
-  try {
-    const response = await fetch(`${FATHOM_API_BASE}/calls/${callId}`, {
-      headers: {
-        'Authorization': `Bearer ${FATHOM_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-    });
-
-    if (!response.ok) return null;
-    return await response.json();
-  } catch (error) {
-    console.error(`Error fetching call ${callId}:`, error);
-    return null;
-  }
-}
+// Get meeting details with transcript
+// Note: fetchMeetingDetails removed - the /recordings/{id} endpoint returns 404
+// All necessary data comes from the /meetings list endpoint
 
 // Get all clients
 async function getClients(): Promise<string[]> {
@@ -130,20 +154,20 @@ Deno.serve(async (req: Request) => {
     const limit = body.limit || 50;
     const forceRefresh = body.force || false;
 
-    console.log(`Syncing Fathom calls (limit: ${limit}, force: ${forceRefresh})`);
+    console.log(`Syncing Fathom meetings (limit: ${limit}, force: ${forceRefresh})`);
 
-    // Fetch calls from Fathom
-    const fathomCalls = await fetchRecentCalls(limit);
-    console.log(`Fetched ${fathomCalls.length} calls from Fathom`);
+    // Fetch meetings from Fathom
+    const fathomMeetings = await fetchRecentMeetings(limit);
+    console.log(`Fetched ${fathomMeetings.length} meetings from Fathom`);
 
-    if (fathomCalls.length === 0) {
+    if (fathomMeetings.length === 0) {
       return new Response(
-        JSON.stringify({ success: true, synced: 0, message: 'No calls to sync' }),
+        JSON.stringify({ success: true, synced: 0, message: 'No meetings to sync' }),
         { headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } }
       );
     }
 
-    // Get existing call IDs
+    // Get existing recording IDs
     const existingIds = forceRefresh ? new Set<string>() : await getExistingCallIds();
     const clients = await getClients();
 
@@ -151,56 +175,122 @@ Deno.serve(async (req: Request) => {
     let skipped = 0;
     const results: any[] = [];
 
-    for (const call of fathomCalls) {
+    for (const meeting of fathomMeetings) {
+      const recordingIdStr = String(meeting.recording_id);
+      
       // Skip if already exists
-      if (existingIds.has(call.id)) {
+      if (existingIds.has(recordingIdStr)) {
         skipped++;
         continue;
       }
 
-      // Fetch full details if needed
-      let fullCall = call;
-      if (!call.transcript && !call.summary) {
-        const details = await fetchCallDetails(call.id);
-        if (details) fullCall = { ...call, ...details };
-      }
+      // Use the meeting data as-is from the list endpoint
+      // The /recordings/{id} endpoint returns 404, so we skip fetching additional details
+      const fullMeeting = meeting;
 
+      // Use meeting_title or title
+      const meetingTitle = fullMeeting.meeting_title || fullMeeting.title || 'Untitled Meeting';
+      
       // Match to client
-      const { client, confidence } = matchCallToClient(fullCall.title, clients);
-      const callType = determineCallType(fullCall.title);
+      const { client, confidence } = matchCallToClient(meetingTitle, clients);
+      const callType = determineCallType(meetingTitle);
 
-      // Save to database
-      const { data, error } = await supabase
+      // Extract participants from calendar_invitees
+      const participants = fullMeeting.calendar_invitees?.map(inv => ({
+        name: inv.name,
+        email: inv.email,
+      })) || [];
+
+      // Extract action items
+      const actionItems = fullMeeting.action_items?.map(ai => ai.description) || [];
+
+      // Extract transcript as string
+      const transcriptText = fullMeeting.transcript?.map(t => 
+        `${t.speaker.display_name} [${t.timestamp}]: ${t.text}`
+      ).join('\n') || null;
+
+      // Extract summary
+      const summaryText = fullMeeting.default_summary?.markdown_formatted || null;
+
+      // Check if already exists in database
+      const { data: existing } = await supabase
         .from('client_fathom_calls')
-        .upsert({
-          fathom_call_id: fullCall.id,
-          client: client || '',
-          title: fullCall.title,
-          call_date: fullCall.created_at,
-          duration_seconds: fullCall.duration_seconds,
-          transcript: fullCall.transcript,
-          summary: fullCall.summary,
-          participants: fullCall.participants || [],
-          action_items: fullCall.action_items || [],
-          call_type: callType,
-          status: 'pending',
-          auto_matched: client !== null,
-          match_confidence: confidence,
-          fathom_recording_url: fullCall.recording_url,
-          fathom_raw_data: fullCall,
-          updated_at: new Date().toISOString(),
-        }, { onConflict: 'fathom_call_id' })
-        .select()
-        .single();
+        .select('id')
+        .eq('fathom_call_id', recordingIdStr)
+        .maybeSingle();
 
-      if (!error && data) {
-        synced++;
-        results.push({
-          id: data.id,
-          title: fullCall.title,
-          client: client || 'UNASSIGNED',
-          confidence,
-        });
+      if (existing) {
+        // Already exists, update it
+        const { data, error } = await supabase
+          .from('client_fathom_calls')
+          .update({
+            client: client || '',
+            title: meetingTitle,
+            call_date: fullMeeting.created_at,
+            transcript: transcriptText,
+            summary: summaryText,
+            participants: participants,
+            action_items: actionItems,
+            call_type: callType,
+            auto_matched: client !== null,
+            match_confidence: confidence,
+            fathom_recording_url: fullMeeting.url,
+            fathom_raw_data: fullMeeting,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', existing.id)
+          .select()
+          .single();
+
+        if (!error && data) {
+          synced++;
+          results.push({
+            id: data.id,
+            title: meetingTitle,
+            client: client || 'UNASSIGNED',
+            confidence,
+            action: 'updated',
+          });
+        } else if (error) {
+          console.error(`Error updating meeting ${recordingIdStr}:`, error);
+        }
+      } else {
+        // Insert new record
+        const { data, error } = await supabase
+          .from('client_fathom_calls')
+          .insert({
+            fathom_call_id: recordingIdStr,
+            client: client || '',
+            title: meetingTitle,
+            call_date: fullMeeting.created_at,
+            duration_seconds: null,
+            transcript: transcriptText,
+            summary: summaryText,
+            participants: participants,
+            action_items: actionItems,
+            call_type: callType,
+            status: 'pending',
+            auto_matched: client !== null,
+            match_confidence: confidence,
+            fathom_recording_url: fullMeeting.url,
+            fathom_raw_data: fullMeeting,
+            updated_at: new Date().toISOString(),
+          })
+          .select()
+          .single();
+
+        if (!error && data) {
+          synced++;
+          results.push({
+            id: data.id,
+            title: meetingTitle,
+            client: client || 'UNASSIGNED',
+            confidence,
+            action: 'inserted',
+          });
+        } else if (error) {
+          console.error(`Error inserting meeting ${recordingIdStr}:`, error);
+        }
       }
     }
 
@@ -211,7 +301,7 @@ Deno.serve(async (req: Request) => {
         success: true,
         synced,
         skipped,
-        total: fathomCalls.length,
+        total: fathomMeetings.length,
         results,
       }),
       {

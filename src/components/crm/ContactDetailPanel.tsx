@@ -102,6 +102,7 @@ interface ContactDetailPanelProps {
   onClose: () => void
   onUpdate: (id: string, updates: Partial<CRMContact>) => Promise<boolean>
   onDelete: (id: string) => Promise<boolean>
+  onCloseWon?: (contact: CRMContact) => void
 }
 
 interface EditableFieldProps {
@@ -306,7 +307,7 @@ function TrackingCheckbox({ label, checked, timestamp, onToggle }: TrackingCheck
   )
 }
 
-export default function ContactDetailPanel({ contact, onClose, onUpdate, onDelete }: ContactDetailPanelProps) {
+export default function ContactDetailPanel({ contact, onClose, onUpdate, onDelete, onCloseWon }: ContactDetailPanelProps) {
   const [isSaving, setIsSaving] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
@@ -324,6 +325,12 @@ export default function ContactDetailPanel({ contact, onClose, onUpdate, onDelet
   }, [])
 
   const handleFieldSave = async (field: keyof CRMContact, value: any) => {
+    // Intercept stage change to closed_won - show confirmation modal
+    if (field === 'stage' && value === 'closed_won' && onCloseWon) {
+      onCloseWon(contact)
+      return
+    }
+    
     setIsSaving(true)
     await onUpdate(contact.id, { [field]: value })
     setIsSaving(false)

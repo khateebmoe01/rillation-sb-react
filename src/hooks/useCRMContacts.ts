@@ -7,6 +7,14 @@ interface UseCRMContactsOptions {
   sort?: CRMSort
 }
 
+interface CloseWonResult {
+  success: boolean
+  message?: string
+  error?: string
+  clientName?: string
+  teamId?: number
+}
+
 interface UseCRMContactsReturn {
   contacts: CRMContact[]
   loading: boolean
@@ -17,6 +25,7 @@ interface UseCRMContactsReturn {
   deleteContact: (id: string) => Promise<boolean>
   updateStage: (id: string, stage: string) => Promise<boolean>
   updateEstimatedValue: (contact: CRMContact, value: number) => Promise<boolean>
+  handleCloseWon: (contact: CRMContact) => Promise<CloseWonResult>
   // Grouped by stage for kanban
   contactsByStage: Record<string, CRMContact[]>
   // Unique values for filters
@@ -249,6 +258,67 @@ export function useCRMContacts(options: UseCRMContactsOptions = {}): UseCRMConta
     return Array.from(stages)
   }, [contacts])
 
+  // Handle Close Won - calls edge function to onboard client
+  const handleCloseWon = useCallback(async (contact: CRMContact): Promise<CloseWonResult> => {
+    try {
+      const { data, error: invokeError } = await supabase.functions.invoke('close-won', {
+        body: {
+          contact: {
+            id: contact.id,
+            email: contact.email,
+            full_name: contact.full_name,
+            first_name: contact.first_name,
+            last_name: contact.last_name,
+            company: contact.company,
+            company_domain: contact.company_domain,
+            company_website: contact.company_website,
+            job_title: contact.job_title,
+            lead_phone: contact.lead_phone,
+            industry: contact.industry,
+            company_size: contact.company_size,
+            annual_revenue: contact.annual_revenue,
+          },
+          closedBy: 'CRM User', // Could be enhanced to use actual user
+        },
+      })
+
+      if (invokeError) {
+        console.error('Close Won edge function error:', invokeError)
+        return {
+          success: false,
+          error: invokeError.message || 'Failed to process close won',
+        }
+      }
+
+      if (data?.error) {
+        return {
+          success: false,
+          error: data.error,
+        }
+      }
+
+      // Optimistically update the local state
+      setContacts(prev => prev.map(c => 
+        c.id === contact.id 
+          ? { ...c, stage: 'closed_won', closed: true, closed_at: new Date().toISOString() } 
+          : c
+      ))
+
+      return {
+        success: true,
+        message: data?.message || 'Client onboarded successfully',
+        clientName: data?.clientName,
+        teamId: data?.teamId,
+      }
+    } catch (err) {
+      console.error('Error in handleCloseWon:', err)
+      return {
+        success: false,
+        error: err instanceof Error ? err.message : 'Unknown error occurred',
+      }
+    }
+  }, [])
+
   // Update estimated value (creates/updates/deletes in client_opportunities)
   const updateEstimatedValue = useCallback(async (contact: CRMContact, value: number): Promise<boolean> => {
     // Optimistic update
@@ -323,6 +393,7 @@ export function useCRMContacts(options: UseCRMContactsOptions = {}): UseCRMConta
     deleteContact,
     updateStage,
     updateEstimatedValue,
+    handleCloseWon,
     contactsByStage,
     uniqueAssignees,
     uniqueStages,

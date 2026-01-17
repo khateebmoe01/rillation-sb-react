@@ -7,6 +7,7 @@ import ContactsTable from '../components/crm/ContactsTable'
 import ContactDetailPanel from '../components/crm/ContactDetailPanel'
 import QuickAddContact from '../components/crm/QuickAddContact'
 import CRMFilters from '../components/crm/CRMFilters'
+import CloseWonConfirmModal from '../components/crm/CloseWonConfirmModal'
 import type { CRMContact, CRMViewMode, CRMFilters as CRMFiltersType, CRMSort } from '../types/crm'
 
 export default function CRMView() {
@@ -36,9 +37,14 @@ export default function CRMView() {
     deleteContact,
     updateStage,
     updateEstimatedValue,
+    handleCloseWon,
     contactsByStage,
     uniqueAssignees,
   } = useCRMContacts({ filters: activeFilters, sort })
+
+  // Close Won modal state
+  const [closeWonContact, setCloseWonContact] = useState<CRMContact | null>(null)
+  const [isProcessingCloseWon, setIsProcessingCloseWon] = useState(false)
 
   // Handle contact selection
   const handleContactSelect = useCallback((contact: CRMContact) => {
@@ -69,10 +75,50 @@ export default function CRMView() {
     return newContact
   }, [createContact])
 
-  // Handle stage change (for kanban drag)
+  // Handle stage change (for kanban drag) - intercept closed_won
   const handleStageChange = useCallback(async (contactId: string, newStage: string) => {
+    // If moving to closed_won, show confirmation modal
+    if (newStage === 'closed_won') {
+      const contact = contacts.find(c => c.id === contactId)
+      if (contact) {
+        setCloseWonContact(contact)
+        return // Don't update stage yet, wait for confirmation
+      }
+    }
     await updateStage(contactId, newStage)
-  }, [updateStage])
+  }, [updateStage, contacts])
+
+  // Handle Close Won confirmation
+  const handleCloseWonConfirm = useCallback(async () => {
+    if (!closeWonContact) return
+    
+    setIsProcessingCloseWon(true)
+    try {
+      const result = await handleCloseWon(closeWonContact)
+      if (result.success) {
+        // Update selected contact if it's the one being closed
+        if (selectedContact?.id === closeWonContact.id) {
+          setSelectedContact(prev => prev ? { 
+            ...prev, 
+            stage: 'closed_won', 
+            closed: true, 
+            closed_at: new Date().toISOString() 
+          } : null)
+        }
+        setCloseWonContact(null)
+      } else {
+        console.error('Close Won failed:', result.error)
+        // Could show an error toast here
+      }
+    } finally {
+      setIsProcessingCloseWon(false)
+    }
+  }, [closeWonContact, handleCloseWon, selectedContact])
+
+  // Handle Close Won cancel
+  const handleCloseWonCancel = useCallback(() => {
+    setCloseWonContact(null)
+  }, [])
 
   // Keyboard navigation
   useEffect(() => {
@@ -270,6 +316,7 @@ export default function CRMView() {
                 onContactSelect={handleContactSelect}
                 onContactUpdate={handleContactUpdate}
                 onEstimatedValueUpdate={updateEstimatedValue}
+                onCloseWon={(contact) => setCloseWonContact(contact)}
                 sort={sort}
                 onSortChange={setSort}
                 selectedRowIndex={selectedRowIndex}
@@ -288,9 +335,21 @@ export default function CRMView() {
             onClose={handleContactClose}
             onUpdate={handleContactUpdate}
             onDelete={deleteContact}
+            onCloseWon={(contact) => setCloseWonContact(contact)}
           />
         )}
       </AnimatePresence>
+
+      {/* Close Won Confirmation Modal */}
+      {closeWonContact && (
+        <CloseWonConfirmModal
+          isOpen={!!closeWonContact}
+          contact={closeWonContact}
+          onConfirm={handleCloseWonConfirm}
+          onCancel={handleCloseWonCancel}
+          isProcessing={isProcessingCloseWon}
+        />
+      )}
 
       {/* Quick Add Modal */}
       <AnimatePresence>
