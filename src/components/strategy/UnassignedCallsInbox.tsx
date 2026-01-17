@@ -10,6 +10,7 @@ import {
   Loader2,
   RefreshCw,
   AlertCircle,
+  FileText,
 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 
@@ -23,6 +24,7 @@ interface UnassignedCall {
   call_date?: string
   duration_seconds?: number
   summary?: string
+  transcript?: string
   participants: any[]
   match_confidence: number
 }
@@ -161,6 +163,22 @@ function CallCard({ call, clients, onAssign, isAssigning }: CallCardProps) {
                         {typeof p === 'string' ? p : p.name || p.email}
                       </span>
                     ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Transcript Preview */}
+              {call.transcript && (
+                <div>
+                  <h4 className="text-xs font-medium text-rillation-text-muted uppercase tracking-wide mb-1 flex items-center gap-2">
+                    <FileText size={12} />
+                    Transcript
+                  </h4>
+                  <div className="bg-rillation-card rounded-lg p-3 max-h-48 overflow-y-auto">
+                    <pre className="text-xs text-rillation-text-muted whitespace-pre-wrap font-mono">
+                      {call.transcript.slice(0, 1500)}
+                      {call.transcript.length > 1500 && '...'}
+                    </pre>
                   </div>
                 </div>
               )}
