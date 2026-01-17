@@ -13,7 +13,7 @@ import {
 import { useProviderOrders } from '../../hooks/useProviderOrders'
 import { useDomainInventory } from '../../hooks/useDomainInventory'
 import { useClients } from '../../hooks/useClients'
-import type { OrderProvider, MailboxConfig } from '../../types/infrastructure'
+import type { OrderProvider, MailboxConfig, OrderType } from '../../types/infrastructure'
 import {
   generateMissionInboxDomainsCSV,
   generateMissionInboxMailboxesCSV,

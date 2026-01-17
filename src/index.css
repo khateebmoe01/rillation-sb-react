@@ -17,7 +17,7 @@ body {
   font-family: 'Sora', system-ui, sans-serif;
   background: #000000;
   min-height: 100vh;
-  color: #ffffff;
+  color: #faf9f6; /* Pearly white for easy visibility */
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -41,9 +41,9 @@ body {
   background: #333333;
 }
 
-/* Gradient text utility - removed purple gradient */
+/* Gradient text utility - pearly white */
 .gradient-text {
-  color: #ffffff;
+  color: #faf9f6;
 }
 
 /* Card glow effect - removed purple gradient */
@@ -75,7 +75,7 @@ body {
   left: 0;
   right: 0;
   height: 2px;
-  background: #ffffff;
+  background: #faf9f6;
 }
 
 /* Funnel gradient - removed purple gradient */

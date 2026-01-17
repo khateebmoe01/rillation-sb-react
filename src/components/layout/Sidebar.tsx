@@ -19,7 +19,7 @@ const sections = [
   {
     id: 'strategy',
     icon: Compass,
-    label: 'Strategy',
+    label: 'Client Strategy',
     path: '/strategy',
   },
   {

@@ -5,7 +5,7 @@ import ConfigError from './components/ui/ConfigError'
 import PerformanceOverview from './pages/PerformanceOverview'
 import PipelineView from './pages/PipelineView'
 import Infrastructure from './pages/Infrastructure'
-import StrategyView from './pages/StrategyView'
+import ClientStrategyView from './pages/ClientStrategyView'
 import DebugView from './pages/DebugView'
 import ClientDetailView from './pages/ClientDetailView'
 import CustomVariablesDiscovery from './pages/CustomVariablesDiscovery'
@@ -62,7 +62,7 @@ function App() {
                     <Route path="/performance/:clientName" element={<PageTransition><ClientDetailView /></PageTransition>} />
                     <Route path="/pipeline" element={<PageTransition><PipelineView /></PageTransition>} />
                     <Route path="/crm" element={<PageTransition><CRMView /></PageTransition>} />
-                    <Route path="/strategy" element={<PageTransition><StrategyView /></PageTransition>} />
+                    <Route path="/strategy" element={<PageTransition><ClientStrategyView /></PageTransition>} />
                     <Route path="/infrastructure" element={<PageTransition><Infrastructure /></PageTransition>} />
                     <Route path="/infrastructure/overview" element={<PageTransition><Infrastructure defaultTab="overview" /></PageTransition>} />
                     <Route path="/infrastructure/inboxes" element={<PageTransition><Infrastructure defaultTab="inboxes" /></PageTransition>} />

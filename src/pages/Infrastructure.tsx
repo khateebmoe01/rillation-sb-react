@@ -6,9 +6,7 @@ import {
   Flame,
   Sparkles,
   Search,
-  ArrowLeft,
   ShoppingCart,
-  Activity,
 } from 'lucide-react'
 import { useClients } from '../hooks/useClients'
 import ClientFilter from '../components/ui/ClientFilter'
