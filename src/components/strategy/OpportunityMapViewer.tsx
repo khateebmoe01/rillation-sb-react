@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Sparkles,
@@ -98,7 +98,7 @@ function GenerateModal({ isOpen, onClose, fathomCalls, onGenerate, isGenerating 
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="e.g., Opportunity Map V1"
-              className="w-full px-4 py-2.5 bg-rillation-bg border border-rillation-border rounded-lg text-sm text-white placeholder:text-white/40 focus:outline-none focus:border-white/40"
+              className="w-full px-4 py-2.5 bg-rillation-bg border border-rillation-border rounded-lg text-sm text-white placeholder:text-white/70 focus:outline-none focus:border-white/40"
             />
           </div>
 
@@ -132,7 +132,7 @@ function GenerateModal({ isOpen, onClose, fathomCalls, onGenerate, isGenerating 
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="text-sm font-medium text-white truncate">{call.title}</div>
-                        <div className="text-xs text-white/50">
+                        <div className="text-xs text-white/80">
                           {call.call_date ? new Date(call.call_date).toLocaleDateString() : 'No date'}
                         </div>
                       </div>
@@ -222,6 +222,22 @@ function normalizeMapDataForPDF(rawData: any) {
   return data
 }
 
+// Color palette for the PDF (matching the images provided)
+const PDF_COLORS = {
+  darkBlue: [30, 58, 95] as [number, number, number],      // #1e3a5f - headers
+  mediumBlue: [51, 76, 112] as [number, number, number],   // #334c70 - subheaders
+  lightBlue: [96, 125, 166] as [number, number, number],   // #607da6 - accents
+  veryLightBlue: [241, 245, 249] as [number, number, number], // #f1f5f9 - backgrounds
+  white: [255, 255, 255] as [number, number, number],
+  black: [0, 0, 0] as [number, number, number],
+  gray: [100, 116, 139] as [number, number, number],       // #64748b - body text
+  darkGray: [51, 65, 85] as [number, number, number],      // #334155 - dark text
+  lightGray: [226, 232, 240] as [number, number, number],  // #e2e8f0 - borders
+  red: [239, 68, 68] as [number, number, number],          // #ef4444 - deprioritized
+  amber: [245, 158, 11] as [number, number, number],       // #f59e0b - tier 3
+  green: [34, 197, 94] as [number, number, number],        // #22c55e - tier 1
+}
+
 // PDF Generation Function - Creates a professional document-style PDF
 function generatePDF(map: OpportunityMap, client: string) {
   const pdf = new jsPDF({
@@ -232,158 +248,458 @@ function generatePDF(map: OpportunityMap, client: string) {
   
   const pageWidth = pdf.internal.pageSize.getWidth()
   const pageHeight = pdf.internal.pageSize.getHeight()
-  const margin = 20
+  const margin = 18
   const contentWidth = pageWidth - (margin * 2)
   let y = margin
+  let sectionCount = 0
   
-  const checkPageBreak = (neededHeight: number) => {
-    if (y + neededHeight > pageHeight - margin) {
+  // Helper: Check page break and add footer
+  const checkPageBreak = (neededHeight: number): boolean => {
+    if (y + neededHeight > pageHeight - 25) {
+      addPageFooter()
       pdf.addPage()
-      y = margin
+      addPageHeader()
+      y = 35
+      return true
     }
+    return false
   }
   
-  // Title Page
-  pdf.setFontSize(28)
-  pdf.setFont('helvetica', 'bold')
-  pdf.text('OPPORTUNITY MAP', pageWidth / 2, 60, { align: 'center' })
+  // Helper: Add page footer
+  const addPageFooter = () => {
+    pdf.setFontSize(8)
+    pdf.setTextColor(...PDF_COLORS.gray)
+    pdf.setFont('helvetica', 'normal')
+    const pageNum = pdf.getNumberOfPages()
+    pdf.text(`${client} - Opportunity Map`, margin, pageHeight - 10)
+    pdf.text(`Page ${pageNum}`, pageWidth - margin, pageHeight - 10, { align: 'right' })
+  }
   
-  pdf.setFontSize(16)
+  // Helper: Add page header with line
+  const addPageHeader = () => {
+    // Subtle header line
+    pdf.setDrawColor(...PDF_COLORS.lightBlue)
+    pdf.setLineWidth(0.5)
+    pdf.line(margin, 25, pageWidth - margin, 25)
+    
+    // Header text
+    pdf.setFontSize(8)
+    pdf.setTextColor(...PDF_COLORS.lightBlue)
+    pdf.text('OPPORTUNITY MAP', margin, 22)
+    pdf.text(client.toUpperCase(), pageWidth - margin, 22, { align: 'right' })
+  }
+  
+  // Helper: Draw decorative left bar
+  const drawLeftBar = (startY: number, height: number, color: [number, number, number] = PDF_COLORS.darkBlue) => {
+    pdf.setFillColor(...color)
+    pdf.rect(margin - 4, startY - 4, 2, height, 'F')
+  }
+  
+  // ============================================================
+  // TITLE PAGE
+  // ============================================================
+  
+  // Background gradient effect (simulated with rectangles)
+  pdf.setFillColor(...PDF_COLORS.veryLightBlue)
+  pdf.rect(0, 0, pageWidth, 100, 'F')
+  
+  // Decorative elements
+  pdf.setFillColor(...PDF_COLORS.darkBlue)
+  pdf.rect(0, 95, pageWidth, 5, 'F')
+  
+  // Main title
+  pdf.setFontSize(36)
+  pdf.setFont('helvetica', 'bold')
+  pdf.setTextColor(...PDF_COLORS.darkBlue)
+  pdf.text('OPPORTUNITY MAP', pageWidth / 2, 55, { align: 'center' })
+  
+  // Subtitle/Session
+  pdf.setFontSize(14)
   pdf.setFont('helvetica', 'normal')
-  pdf.text(client, pageWidth / 2, 75, { align: 'center' })
+  pdf.setTextColor(...PDF_COLORS.mediumBlue)
+  pdf.text(map.title || 'Strategy Document', pageWidth / 2, 70, { align: 'center' })
+  
+  // Client name and date
+  pdf.setFontSize(18)
+  pdf.setFont('helvetica', 'bold')
+  pdf.setTextColor(...PDF_COLORS.darkBlue)
+  pdf.text(client, pageWidth / 2, 130, { align: 'center' })
   
   pdf.setFontSize(12)
-  pdf.text(map.title || 'Strategy Document', pageWidth / 2, 85, { align: 'center' })
-  pdf.text(new Date(map.created_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }), pageWidth / 2, 95, { align: 'center' })
+  pdf.setFont('helvetica', 'normal')
+  pdf.setTextColor(...PDF_COLORS.gray)
+  const formattedDate = new Date(map.created_at).toLocaleDateString('en-US', { 
+    month: 'long', day: 'numeric', year: 'numeric' 
+  })
+  pdf.text(formattedDate, pageWidth / 2, 140, { align: 'center' })
   
-  // Start content on new page
+  // Version badge
+  pdf.setFillColor(...PDF_COLORS.lightBlue)
+  const versionText = `v${map.version}`
+  const versionWidth = pdf.getTextWidth(versionText) + 6
+  pdf.roundedRect((pageWidth - versionWidth) / 2, 148, versionWidth, 7, 2, 2, 'F')
+  pdf.setFontSize(9)
+  pdf.setTextColor(...PDF_COLORS.white)
+  pdf.text(versionText, pageWidth / 2, 153, { align: 'center' })
+  
+  // Footer line on title page
+  pdf.setDrawColor(...PDF_COLORS.lightGray)
+  pdf.line(margin, pageHeight - 30, pageWidth - margin, pageHeight - 30)
+  pdf.setFontSize(9)
+  pdf.setTextColor(...PDF_COLORS.gray)
+  pdf.text('Confidential', pageWidth / 2, pageHeight - 22, { align: 'center' })
+  
+  // ============================================================
+  // CONTENT PAGES
+  // ============================================================
   pdf.addPage()
-  y = margin
+  addPageHeader()
+  y = 35
   
   // Normalize data for backwards compatibility
   const rawData = map.content_json || {}
   const data = normalizeMapDataForPDF(rawData)
   
-  // Helper functions
-  const addSectionHeader = (title: string, sectionNumber?: number) => {
-    checkPageBreak(15)
-    pdf.setFontSize(14)
+  // --------------------------------------------------------
+  // HELPER: Section Header with number
+  // --------------------------------------------------------
+  const addSectionHeader = (title: string) => {
+    sectionCount++
+    checkPageBreak(20)
+    
+    // Section number and title
+    pdf.setFontSize(16)
     pdf.setFont('helvetica', 'bold')
-    const text = sectionNumber ? `${sectionNumber}. ${title}` : title
-    pdf.text(text, margin, y)
+    pdf.setTextColor(...PDF_COLORS.darkBlue)
+    pdf.text(`${sectionCount}. ${title}`, margin, y)
+    y += 3
+    
+    // Underline
+    pdf.setDrawColor(...PDF_COLORS.darkBlue)
+    pdf.setLineWidth(1)
+    pdf.line(margin, y, margin + pdf.getTextWidth(`${sectionCount}. ${title}`), y)
     y += 8
-    // Add line
-    pdf.setDrawColor(200, 200, 200)
-    pdf.line(margin, y, pageWidth - margin, y)
-    y += 6
   }
   
-  const addSubsectionHeader = (title: string) => {
-    checkPageBreak(12)
-    pdf.setFontSize(12)
+  // --------------------------------------------------------
+  // HELPER: Subsection Header (bold, dark blue)
+  // --------------------------------------------------------
+  const addSubsectionHeader = (title: string, color: [number, number, number] = PDF_COLORS.mediumBlue) => {
+    checkPageBreak(14)
+    pdf.setFontSize(11)
     pdf.setFont('helvetica', 'bold')
+    pdf.setTextColor(...color)
     pdf.text(title, margin, y)
     y += 6
   }
   
-  const addParagraph = (text: string) => {
-    checkPageBreak(10)
+  // --------------------------------------------------------
+  // HELPER: Paragraph text
+  // --------------------------------------------------------
+  const addParagraph = (text: string, indent: number = 0) => {
+    checkPageBreak(12)
     pdf.setFontSize(10)
     pdf.setFont('helvetica', 'normal')
-    const lines = pdf.splitTextToSize(text, contentWidth)
-    pdf.text(lines, margin, y)
-    y += lines.length * 5 + 4
+    pdf.setTextColor(...PDF_COLORS.darkGray)
+    const lines = pdf.splitTextToSize(text, contentWidth - indent)
+    pdf.text(lines, margin + indent, y)
+    y += lines.length * 4.5 + 3
   }
   
-  const addBulletList = (items: string[]) => {
+  // --------------------------------------------------------
+  // HELPER: Bullet list
+  // --------------------------------------------------------
+  const addBulletList = (items: string[], indent: number = 4) => {
     items.forEach((item) => {
-      checkPageBreak(8)
+      checkPageBreak(10)
       pdf.setFontSize(10)
       pdf.setFont('helvetica', 'normal')
-      const lines = pdf.splitTextToSize(`• ${item}`, contentWidth - 5)
-      pdf.text(lines, margin + 3, y)
-      y += lines.length * 5 + 2
+      pdf.setTextColor(...PDF_COLORS.darkGray)
+      
+      // Bullet point
+      pdf.setFillColor(...PDF_COLORS.mediumBlue)
+      pdf.circle(margin + indent, y - 1.2, 0.8, 'F')
+      
+      const lines = pdf.splitTextToSize(item, contentWidth - indent - 6)
+      pdf.text(lines, margin + indent + 4, y)
+      y += lines.length * 4.5 + 2
     })
     y += 2
   }
   
-  // Section 1: How We Operate
+  // --------------------------------------------------------
+  // HELPER: Two-column table (for job titles)
+  // --------------------------------------------------------
+  const addTwoColumnTable = (
+    leftHeader: string, 
+    rightHeader: string, 
+    leftItems: string[], 
+    rightItems: string[]
+  ) => {
+    const tableWidth = contentWidth
+    const colWidth = tableWidth / 2
+    const cellPadding = 6 // padding inside each cell
+    const textWidth = colWidth - cellPadding - 8 // available width for text (minus bullet and padding)
+    const lineHeight = 4
+    const headerHeight = 8
+    
+    // Pre-calculate wrapped text for each item to determine row heights
+    pdf.setFontSize(9)
+    pdf.setFont('helvetica', 'normal')
+    
+    const maxRows = Math.max(leftItems.length, rightItems.length)
+    const rowHeights: number[] = []
+    const leftWrapped: string[][] = []
+    const rightWrapped: string[][] = []
+    
+    for (let i = 0; i < maxRows; i++) {
+      const leftText = leftItems[i] || ''
+      const rightText = rightItems[i] || ''
+      
+      const leftLines = leftText ? pdf.splitTextToSize(leftText, textWidth) : []
+      const rightLines = rightText ? pdf.splitTextToSize(rightText, textWidth) : []
+      
+      leftWrapped.push(leftLines)
+      rightWrapped.push(rightLines)
+      
+      const maxLines = Math.max(leftLines.length || 1, rightLines.length || 1)
+      rowHeights.push(maxLines * lineHeight + 3) // Add padding between rows
+    }
+    
+    const totalTableHeight = headerHeight + rowHeights.reduce((sum, h) => sum + h, 0) + 4
+    
+    checkPageBreak(totalTableHeight + 10)
+    
+    const tableY = y
+    
+    // Header row
+    pdf.setFillColor(...PDF_COLORS.darkBlue)
+    pdf.rect(margin, tableY, tableWidth, headerHeight, 'F')
+    
+    pdf.setFontSize(9)
+    pdf.setFont('helvetica', 'bold')
+    pdf.setTextColor(...PDF_COLORS.white)
+    pdf.text(leftHeader, margin + 4, tableY + 5.5)
+    pdf.text(rightHeader, margin + colWidth + 4, tableY + 5.5)
+    
+    // Vertical divider in header
+    pdf.setDrawColor(...PDF_COLORS.white)
+    pdf.line(margin + colWidth, tableY, margin + colWidth, tableY + headerHeight)
+    
+    // Content rows
+    let rowY = tableY + headerHeight + 2
+    pdf.setFontSize(9)
+    pdf.setFont('helvetica', 'normal')
+    pdf.setTextColor(...PDF_COLORS.darkGray)
+    
+    for (let i = 0; i < maxRows; i++) {
+      const leftLines = leftWrapped[i]
+      const rightLines = rightWrapped[i]
+      
+      // Draw bullet and text for left column
+      if (leftLines.length > 0) {
+        pdf.setFillColor(...PDF_COLORS.mediumBlue)
+        pdf.circle(margin + 4, rowY - 0.5, 0.6, 'F')
+        pdf.setTextColor(...PDF_COLORS.darkGray)
+        leftLines.forEach((line: string, lineIdx: number) => {
+          pdf.text(line, margin + 8, rowY + (lineIdx * lineHeight))
+        })
+      }
+      
+      // Draw bullet and text for right column
+      if (rightLines.length > 0) {
+        pdf.setFillColor(...PDF_COLORS.mediumBlue)
+        pdf.circle(margin + colWidth + 4, rowY - 0.5, 0.6, 'F')
+        pdf.setTextColor(...PDF_COLORS.darkGray)
+        rightLines.forEach((line: string, lineIdx: number) => {
+          pdf.text(line, margin + colWidth + 8, rowY + (lineIdx * lineHeight))
+        })
+      }
+      
+      rowY += rowHeights[i]
+    }
+    
+    // Table border
+    pdf.setDrawColor(...PDF_COLORS.lightGray)
+    pdf.setLineWidth(0.3)
+    pdf.rect(margin, tableY, tableWidth, rowY - tableY + 2)
+    // Vertical divider for content area
+    pdf.line(margin + colWidth, tableY + headerHeight, margin + colWidth, rowY + 2)
+    
+    y = rowY + 6
+  }
+  
+  // --------------------------------------------------------
+  // HELPER: Geography table
+  // --------------------------------------------------------
+  const addGeographyTable = (
+    tierLabel: string, 
+    geos: any[], 
+    tierColor: [number, number, number] = PDF_COLORS.darkBlue
+  ) => {
+    if (!geos?.length) return
+    
+    const tableWidth = contentWidth
+    const headerHeight = 8
+    const geoColWidth = 60 // Fixed width for geography column
+    const whyColWidth = tableWidth - geoColWidth // Rest for "Why" column
+    const lineHeight = 4
+    const minRowHeight = 7
+    
+    // Pre-calculate row heights based on text wrapping
+    pdf.setFontSize(9)
+    pdf.setFont('helvetica', 'normal')
+    
+    const rowData: { geoName: string; reasonLines: string[]; rowHeight: number }[] = []
+    
+    geos.forEach((geo) => {
+      const geoName = geo.geography || geo
+      const reason = geo.reason || ''
+      const reasonLines = pdf.splitTextToSize(reason, whyColWidth - 8) // 8 = padding
+      const rowHeight = Math.max(minRowHeight, reasonLines.length * lineHeight + 3)
+      rowData.push({ geoName, reasonLines, rowHeight })
+    })
+    
+    const totalTableHeight = headerHeight + rowData.reduce((sum, r) => sum + r.rowHeight, 0) + 4
+    
+    checkPageBreak(totalTableHeight + 15)
+    
+    // Tier label
+    pdf.setFontSize(10)
+    pdf.setFont('helvetica', 'bold')
+    pdf.setTextColor(...tierColor)
+    pdf.text(tierLabel, margin, y)
+    y += 5
+    
+    const tableY = y
+    
+    // Header row
+    pdf.setFillColor(...PDF_COLORS.darkBlue)
+    pdf.rect(margin, tableY, tableWidth, headerHeight, 'F')
+    
+    pdf.setFontSize(9)
+    pdf.setFont('helvetica', 'bold')
+    pdf.setTextColor(...PDF_COLORS.white)
+    pdf.text('Geography', margin + 4, tableY + 5.5)
+    pdf.text('Why', margin + geoColWidth + 4, tableY + 5.5)
+    
+    // Content rows
+    let rowY = tableY + headerHeight
+    pdf.setFontSize(9)
+    pdf.setFont('helvetica', 'normal')
+    
+    rowData.forEach((row, i) => {
+      const { geoName, reasonLines, rowHeight } = row
+      
+      // Alternating row background
+      if (i % 2 === 0) {
+        pdf.setFillColor(...PDF_COLORS.veryLightBlue)
+        pdf.rect(margin, rowY, tableWidth, rowHeight, 'F')
+      }
+      
+      // Geography name
+      pdf.setTextColor(...PDF_COLORS.darkGray)
+      pdf.text(geoName, margin + 4, rowY + 5)
+      
+      // Why text (with wrapping)
+      reasonLines.forEach((line: string, lineIdx: number) => {
+        pdf.text(line, margin + geoColWidth + 4, rowY + 5 + (lineIdx * lineHeight))
+      })
+      
+      rowY += rowHeight
+    })
+    
+    // Table border
+    pdf.setDrawColor(...PDF_COLORS.lightGray)
+    pdf.setLineWidth(0.3)
+    pdf.rect(margin, tableY, tableWidth, rowY - tableY)
+    
+    y = rowY + 6
+  }
+  
+  // ============================================================
+  // SECTION 1: How We Operate
+  // ============================================================
   if (data.how_we_operate) {
-    addSectionHeader('How We Operate', 1)
+    addSectionHeader('How We Operate')
     addParagraph("Before we dive into the strategy, here's how our campaigns work:")
-    y += 4
+    y += 2
     
     if (data.how_we_operate.tracking) {
       addSubsectionHeader('Everything In Is Tracked, Everything Out Is Tracked')
-      addParagraph(data.how_we_operate.tracking)
+      addParagraph(data.how_we_operate.tracking, 0)
     }
     
     if (data.how_we_operate.segmentation) {
       addSubsectionHeader('Industry-First Segmentation')
-      addParagraph(data.how_we_operate.segmentation)
+      addParagraph(data.how_we_operate.segmentation, 0)
     }
     
     if (data.how_we_operate.test_then_scale) {
       addSubsectionHeader('Test-Then-Scale')
-      addParagraph(data.how_we_operate.test_then_scale)
+      addParagraph(data.how_we_operate.test_then_scale, 0)
     }
     
     if (data.how_we_operate.tracking_variables?.length > 0) {
       addSubsectionHeader('Tracking Variables (Defined Upfront)')
       addBulletList(data.how_we_operate.tracking_variables)
     }
-    y += 6
+    y += 4
   }
   
-  // Section 2: Tier 1 Campaign Segments
+  // ============================================================
+  // SECTION 2: Tier 1 Campaign Segments
+  // ============================================================
   if (data.tier1_segments?.length > 0) {
-    addSectionHeader('Tier 1 Campaign Segments', 2)
+    addSectionHeader('Tier 1 Campaign Segments')
     
     data.tier1_segments.forEach((segment: any, index: number) => {
-      checkPageBreak(40)
+      checkPageBreak(50)
+      
+      // Segment header with colored bar
+      drawLeftBar(y, 6, PDF_COLORS.darkBlue)
+      
       pdf.setFontSize(12)
       pdf.setFont('helvetica', 'bold')
+      pdf.setTextColor(...PDF_COLORS.darkBlue)
       pdf.text(`Segment ${index + 1}: ${segment.name}`, margin, y)
       y += 5
       
       if (segment.description) {
         pdf.setFontSize(10)
         pdf.setFont('helvetica', 'italic')
+        pdf.setTextColor(...PDF_COLORS.gray)
         const descLines = pdf.splitTextToSize(segment.description, contentWidth)
         pdf.text(descLines, margin, y)
-        y += descLines.length * 5 + 4
+        y += descLines.length * 4.5 + 4
       }
       
+      // The Pain
       if (segment.pain_points?.length > 0) {
-        addSubsectionHeader('The Pain')
+        addSubsectionHeader('The Pain', PDF_COLORS.mediumBlue)
         addBulletList(segment.pain_points)
       }
       
+      // The Value Proposition
       if (segment.value_proposition) {
-        addSubsectionHeader('The Value Proposition')
+        addSubsectionHeader('The Value Proposition', PDF_COLORS.mediumBlue)
         addParagraph(segment.value_proposition)
       }
       
+      // Job Titles Table
       if (segment.job_titles) {
-        addSubsectionHeader('Job Titles to Target')
-        if (segment.job_titles.primary_buyers?.length > 0) {
-          pdf.setFontSize(10)
-          pdf.setFont('helvetica', 'bold')
-          pdf.text('Primary Buyers (Decision Makers)', margin, y)
-          y += 5
-          addBulletList(segment.job_titles.primary_buyers)
-        }
-        if (segment.job_titles.champions?.length > 0) {
-          pdf.setFontSize(10)
-          pdf.setFont('helvetica', 'bold')
-          pdf.text('Champions / Influencers', margin, y)
-          y += 5
-          addBulletList(segment.job_titles.champions)
-        }
+        addSubsectionHeader('Job Titles to Target', PDF_COLORS.mediumBlue)
+        addTwoColumnTable(
+          'Primary Buyers (Decision Makers)',
+          'Champions / Influencers',
+          segment.job_titles.primary_buyers || [],
+          segment.job_titles.champions || []
+        )
       }
       
+      // Signals
       if (segment.signals?.length > 0) {
-        addSubsectionHeader('Potential Signals (To Validate)')
+        addSubsectionHeader('Potential Signals (To Validate)', PDF_COLORS.mediumBlue)
         addBulletList(segment.signals)
       }
       
@@ -391,83 +707,106 @@ function generatePDF(map: OpportunityMap, client: string) {
     })
   }
   
-  // Section 3: Tier 2 Campaign Segments
+  // ============================================================
+  // SECTION 3: Tier 2 Campaign Segments
+  // ============================================================
   if (data.tier2_segments?.length > 0) {
-    addSectionHeader('Tier 2 Campaign Segments', 3)
+    addSectionHeader('Tier 2 Campaign Segments')
     
     data.tier2_segments.forEach((segment: any, index: number) => {
-      checkPageBreak(30)
+      checkPageBreak(35)
+      
+      drawLeftBar(y, 6, PDF_COLORS.lightBlue)
+      
       pdf.setFontSize(12)
       pdf.setFont('helvetica', 'bold')
+      pdf.setTextColor(...PDF_COLORS.mediumBlue)
       pdf.text(`Segment ${index + 1}: ${segment.name}`, margin, y)
       y += 5
       
       if (segment.description) {
         pdf.setFontSize(10)
         pdf.setFont('helvetica', 'italic')
+        pdf.setTextColor(...PDF_COLORS.gray)
         const descLines = pdf.splitTextToSize(segment.description, contentWidth)
         pdf.text(descLines, margin, y)
-        y += descLines.length * 5 + 4
+        y += descLines.length * 4.5 + 4
       }
       
       if (segment.pain_points?.length > 0) {
-        addSubsectionHeader('The Pain')
+        addSubsectionHeader('The Pain', PDF_COLORS.mediumBlue)
         addBulletList(segment.pain_points)
       }
       
       if (segment.value_proposition) {
-        addSubsectionHeader('The Value Proposition')
+        addSubsectionHeader('The Value Proposition', PDF_COLORS.mediumBlue)
         addParagraph(segment.value_proposition)
+      }
+      
+      if (segment.job_titles) {
+        addSubsectionHeader('Job Titles to Target', PDF_COLORS.mediumBlue)
+        addTwoColumnTable(
+          'Primary Buyers (Decision Makers)',
+          'Champions / Influencers',
+          segment.job_titles.primary_buyers || [],
+          segment.job_titles.champions || []
+        )
       }
       
       y += 4
     })
   }
   
-  // Section 4: Geographies
+  // ============================================================
+  // SECTION 4: Geographies
+  // ============================================================
   if (data.geographies) {
-    addSectionHeader('Geographies', 4)
+    addSectionHeader('Geographies')
     addParagraph('All campaigns include all approved geographies. We track performance by geography to identify where to focus.')
     y += 4
     
-    const addGeoList = (title: string, geos: any[]) => {
-      if (geos?.length > 0) {
-        addSubsectionHeader(title)
-        geos.forEach((geo) => {
-          checkPageBreak(8)
-          pdf.setFontSize(10)
-          pdf.setFont('helvetica', 'normal')
-          const geoName = geo.geography || geo
-          const reason = geo.reason || ''
-          const text = reason ? `${geoName} - ${reason}` : geoName
-          const lines = pdf.splitTextToSize(`• ${text}`, contentWidth - 5)
-          pdf.text(lines, margin + 3, y)
-          y += lines.length * 5 + 2
-        })
-        y += 4
-      }
-    }
-    
-    addGeoList('Tier 1: Registered + Not Price Sensitive + Strategic Priority', data.geographies.tier1)
-    addGeoList('Tier 2: Registered + Good Potential', data.geographies.tier2)
-    addGeoList('Tier 3: Can Sell + Less Certain', data.geographies.tier3)
-    addGeoList('Deprioritized', data.geographies.deprioritized)
+    addGeographyTable('Tier 1: Registered + Not Price Sensitive + Strategic Priority', data.geographies.tier1, PDF_COLORS.green)
+    addGeographyTable('Tier 2: Registered + Good Potential', data.geographies.tier2, PDF_COLORS.mediumBlue)
+    addGeographyTable('Tier 3: Can Sell + Less Certain', data.geographies.tier3, PDF_COLORS.amber)
+    addGeographyTable('Deprioritized', data.geographies.deprioritized, PDF_COLORS.red)
     
     if (data.geographies.off_limits?.length > 0) {
-      addSubsectionHeader('Off Limits')
+      addSubsectionHeader('Off Limits', PDF_COLORS.red)
       addParagraph(data.geographies.off_limits.join(', '))
     }
   }
   
-  // Section 5: Company Size & Revenue
+  // ============================================================
+  // SECTION 5: Company Size & Revenue Tracking
+  // ============================================================
   if (data.company_tracking) {
-    addSectionHeader('Company Size & Revenue Tracking', 5)
+    addSectionHeader('Company Size & Revenue Tracking')
     addParagraph('We will track responses by company size to identify patterns in who converts best.')
     y += 4
     
     if (data.company_tracking.employee_size_bands?.length > 0) {
       addSubsectionHeader('Employee Size Bands')
-      addBulletList(data.company_tracking.employee_size_bands)
+      
+      // Draw as horizontal bar chart
+      const bands = data.company_tracking.employee_size_bands
+      const barHeight = 8
+      const maxBarWidth = contentWidth - 40
+      checkPageBreak(bands.length * (barHeight + 4) + 10)
+      
+      bands.forEach((band: string, i: number) => {
+        const barWidth = maxBarWidth * (1 - i * 0.1) // Decreasing sizes for visual effect
+        
+        pdf.setFillColor(...PDF_COLORS.mediumBlue)
+        pdf.roundedRect(margin + 40, y, Math.max(barWidth, 30), barHeight, 2, 2, 'F')
+        
+        pdf.setFontSize(9)
+        pdf.setFont('helvetica', 'normal')
+        pdf.setTextColor(...PDF_COLORS.darkGray)
+        pdf.text(band, margin, y + 5.5)
+        
+        y += barHeight + 4
+      })
+      y += 4
     }
     
     if (data.company_tracking.revenue_bands?.length > 0) {
@@ -476,89 +815,186 @@ function generatePDF(map: OpportunityMap, client: string) {
     }
   }
   
-  // Section 6: Social Proof
+  // ============================================================
+  // SECTION 6: Social Proof Inventory
+  // ============================================================
   if (data.social_proof) {
-    addSectionHeader('Social Proof Inventory', 6)
+    const hasContent = Object.values(data.social_proof).some((v: any) => Array.isArray(v) && v.length > 0)
     
-    const proofSections = [
-      { key: 'case_studies', label: 'Case Studies' },
-      { key: 'testimonials', label: 'Testimonials' },
-      { key: 'publications', label: 'Publications' },
-      { key: 'certifications', label: 'Certifications' },
-      { key: 'pilots', label: 'Notable Pilots' },
-      { key: 'data_points', label: 'Known Data Points' },
-    ]
-    
-    proofSections.forEach(({ key, label }) => {
-      const items = data.social_proof[key]
-      if (items?.length > 0) {
-        addSubsectionHeader(label)
-        addBulletList(items)
-      }
-    })
-  }
-  
-  // Section 7: Campaign Architecture
-  if (data.campaign_architecture) {
-    addSectionHeader('Campaign Architecture', 7)
-    
-    const arch = data.campaign_architecture
-    if (arch.monthly_volume) {
-      addParagraph(`Volume: ${arch.monthly_volume.toLocaleString()} emails/month = ${(arch.unique_prospects_per_month || arch.monthly_volume / 3).toLocaleString()} unique prospects (${arch.emails_per_prospect || 2}-3 emails per prospect per quarter)`)
-    }
-    if (arch.segment_distribution) {
-      addParagraph(`Segment Distribution: ${arch.segment_distribution}`)
-    }
-    
-    if (arch.monthly_plan?.length > 0) {
-      y += 4
-      addSubsectionHeader('Month-by-Month Plan')
-      arch.monthly_plan.forEach((month: any) => {
-        checkPageBreak(8)
-        pdf.setFontSize(10)
-        pdf.setFont('helvetica', 'bold')
-        pdf.text(`Month ${month.month}:`, margin, y)
-        pdf.setFont('helvetica', 'normal')
-        const focusLines = pdf.splitTextToSize(month.focus, contentWidth - 25)
-        pdf.text(focusLines, margin + 25, y)
-        y += focusLines.length * 5 + 3
+    if (hasContent) {
+      addSectionHeader('Social Proof Inventory')
+      
+      const proofSections = [
+        { key: 'case_studies', label: 'Case Studies', icon: '📋' },
+        { key: 'testimonials', label: 'Testimonials', icon: '💬' },
+        { key: 'publications', label: 'Publications', icon: '📰' },
+        { key: 'certifications', label: 'Certifications', icon: '🏆' },
+        { key: 'pilots', label: 'Notable Pilots', icon: '🚀' },
+        { key: 'data_points', label: 'Known Data Points', icon: '📊' },
+      ]
+      
+      proofSections.forEach(({ key, label }) => {
+        const items = data.social_proof[key]
+        if (items?.length > 0) {
+          addSubsectionHeader(label)
+          addBulletList(items)
+        }
       })
     }
   }
   
-  // Section 8: Events & Conferences
-  if (data.events_conferences?.length > 0) {
-    addSectionHeader('Events & Conferences', 8)
-    data.events_conferences.forEach((event: any) => {
-      checkPageBreak(8)
+  // ============================================================
+  // SECTION 7: Campaign Architecture
+  // ============================================================
+  if (data.campaign_architecture) {
+    addSectionHeader('Campaign Architecture')
+    
+    const arch = data.campaign_architecture
+    
+    // Volume metrics in a styled box
+    if (arch.monthly_volume) {
+      checkPageBreak(35)
+      
+      pdf.setFillColor(...PDF_COLORS.veryLightBlue)
+      pdf.roundedRect(margin, y, contentWidth, 25, 3, 3, 'F')
+      
+      pdf.setFontSize(11)
+      pdf.setFont('helvetica', 'bold')
+      pdf.setTextColor(...PDF_COLORS.darkBlue)
+      pdf.text('Volume Target', margin + 6, y + 8)
+      
+      pdf.setFontSize(22)
+      pdf.text(arch.monthly_volume.toLocaleString(), margin + 6, y + 19)
+      
       pdf.setFontSize(10)
       pdf.setFont('helvetica', 'normal')
-      const eventText = event.event + (event.date ? ` (${event.date})` : '') + (event.notes ? ` - ${event.notes}` : '')
-      const lines = pdf.splitTextToSize(`• ${eventText}`, contentWidth - 5)
-      pdf.text(lines, margin + 3, y)
-      y += lines.length * 5 + 2
+      pdf.setTextColor(...PDF_COLORS.gray)
+      pdf.text('emails/month', margin + 50, y + 19)
+      
+      // Unique prospects
+      const uniqueProspects = arch.unique_prospects_per_month || Math.round(arch.monthly_volume / 3)
+      pdf.setFont('helvetica', 'bold')
+      pdf.setTextColor(...PDF_COLORS.darkBlue)
+      pdf.text(uniqueProspects.toLocaleString(), margin + 100, y + 19)
+      pdf.setFont('helvetica', 'normal')
+      pdf.setTextColor(...PDF_COLORS.gray)
+      pdf.text('unique prospects', margin + 130, y + 19)
+      
+      y += 32
+    }
+    
+    if (arch.segment_distribution) {
+      addParagraph(`Segment Distribution: ${arch.segment_distribution}`)
+    }
+    
+    // Monthly plan as timeline
+    if (arch.monthly_plan?.length > 0) {
+      addSubsectionHeader('Month-by-Month Plan')
+      
+      arch.monthly_plan.forEach((month: any) => {
+        checkPageBreak(15)
+        
+        // Month badge
+        pdf.setFillColor(...PDF_COLORS.darkBlue)
+        pdf.roundedRect(margin, y - 3, 22, 10, 2, 2, 'F')
+        pdf.setFontSize(9)
+        pdf.setFont('helvetica', 'bold')
+        pdf.setTextColor(...PDF_COLORS.white)
+        pdf.text(`Month ${month.month}`, margin + 3, y + 3)
+        
+        // Focus text
+        pdf.setFont('helvetica', 'normal')
+        pdf.setTextColor(...PDF_COLORS.darkGray)
+        const focusLines = pdf.splitTextToSize(month.focus, contentWidth - 30)
+        pdf.text(focusLines, margin + 28, y + 3)
+        y += Math.max(focusLines.length * 4.5 + 6, 12)
+      })
+    }
+  }
+  
+  // ============================================================
+  // SECTION 8: Events & Conferences
+  // ============================================================
+  if (data.events_conferences?.length > 0) {
+    addSectionHeader('Events & Conferences')
+    
+    data.events_conferences.forEach((event: any) => {
+      checkPageBreak(12)
+      
+      pdf.setFontSize(10)
+      pdf.setFont('helvetica', 'bold')
+      pdf.setTextColor(...PDF_COLORS.darkGray)
+      pdf.text(event.event, margin + 4, y)
+      
+      if (event.date) {
+        pdf.setFont('helvetica', 'normal')
+        pdf.setTextColor(...PDF_COLORS.gray)
+        pdf.text(` (${event.date})`, margin + 4 + pdf.getTextWidth(event.event), y)
+      }
+      y += 4
+      
+      if (event.notes) {
+        pdf.setFontSize(9)
+        pdf.setFont('helvetica', 'normal')
+        pdf.setTextColor(...PDF_COLORS.gray)
+        const lines = pdf.splitTextToSize(event.notes, contentWidth - 8)
+        pdf.text(lines, margin + 8, y)
+        y += lines.length * 4 + 4
+      } else {
+        y += 4
+      }
     })
   }
   
-  // Section 9: Next Steps
+  // ============================================================
+  // SECTION 9: Next Steps
+  // ============================================================
   if (data.next_steps?.length > 0) {
-    addSectionHeader('Next Steps', 9)
-    data.next_steps.forEach((step: any) => {
-      checkPageBreak(10)
-      pdf.setFontSize(10)
-      pdf.setFont('helvetica', 'normal')
+    addSectionHeader('Next Steps')
+    
+    data.next_steps.forEach((step: any, i: number) => {
+      checkPageBreak(14)
+      
       const action = typeof step === 'string' ? step : step.action
-      const owner = typeof step === 'object' && step.owner ? ` (${step.owner})` : ''
-      const deadline = typeof step === 'object' && step.deadline ? ` - ${step.deadline}` : ''
-      const text = `${action}${owner}${deadline}`
-      const lines = pdf.splitTextToSize(`• ${text}`, contentWidth - 5)
-      pdf.text(lines, margin + 3, y)
-      y += lines.length * 5 + 2
+      const owner = typeof step === 'object' && step.owner ? step.owner : ''
+      const deadline = typeof step === 'object' && step.deadline ? step.deadline : ''
+      
+      // Step number circle
+      pdf.setFillColor(...PDF_COLORS.darkBlue)
+      pdf.circle(margin + 4, y - 1, 4, 'F')
+      pdf.setFontSize(9)
+      pdf.setFont('helvetica', 'bold')
+      pdf.setTextColor(...PDF_COLORS.white)
+      pdf.text(`${i + 1}`, margin + 4, y + 0.5, { align: 'center' })
+      
+      // Action text
+      pdf.setFont('helvetica', 'normal')
+      pdf.setTextColor(...PDF_COLORS.darkGray)
+      const actionLines = pdf.splitTextToSize(action, contentWidth - 20)
+      pdf.text(actionLines, margin + 12, y)
+      y += actionLines.length * 4.5
+      
+      // Owner and deadline
+      if (owner || deadline) {
+        pdf.setFontSize(8)
+        pdf.setTextColor(...PDF_COLORS.gray)
+        const meta = [owner, deadline].filter(Boolean).join(' • ')
+        pdf.text(meta, margin + 12, y)
+        y += 5
+      }
+      
+      y += 3
     })
   }
+  
+  // ============================================================
+  // FINAL PAGE FOOTER
+  // ============================================================
+  addPageFooter()
   
   // Save the PDF
-  pdf.save(`opportunity-map-${client.replace(/\s+/g, '-').toLowerCase()}-${new Date().toISOString().split('T')[0]}.pdf`)
+  const filename = `opportunity-map-${client.replace(/\s+/g, '-').toLowerCase()}-${new Date().toISOString().split('T')[0]}.pdf`
+  pdf.save(filename)
 }
 
 interface MapCardProps {
@@ -619,7 +1055,8 @@ function normalizeMapData(rawData: any) {
   return data
 }
 
-function MapCard({ map, client, isExpanded, onToggle, onExportPDF, onDelete, isExporting, isDeleting }: MapCardProps) {
+function MapCard({ map, client: _client, isExpanded, onToggle, onExportPDF, onDelete, isExporting, isDeleting }: MapCardProps) {
+  // Note: _client is received but not used directly; PDF export is handled by parent
   const data = normalizeMapData(map.content_json)
   
   return (
@@ -643,16 +1080,16 @@ function MapCard({ map, client, isExpanded, onToggle, onExportPDF, onDelete, isE
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-3">
             <span className="text-sm font-medium text-white">{map.title}</span>
-            <span className="text-xs text-white/50">v{map.version}</span>
+            <span className="text-xs text-white/80">v{map.version}</span>
             <span className={`text-xs px-2 py-0.5 rounded ${
               map.status === 'confirmed' ? 'bg-green-500/20 text-green-400' :
-              map.status === 'archived' ? 'bg-white/10 text-white/50' :
+              map.status === 'archived' ? 'bg-white/10 text-white/80' :
               'bg-yellow-500/20 text-yellow-400'
             }`}>
               {map.status}
             </span>
           </div>
-          <div className="text-xs text-white/50 mt-0.5">
+          <div className="text-xs text-white/80 mt-0.5">
             {new Date(map.created_at).toLocaleDateString('en-US', { 
               month: 'short', day: 'numeric', year: 'numeric' 
             })}
@@ -759,11 +1196,11 @@ function MapCard({ map, client, isExpanded, onToggle, onExportPDF, onDelete, isE
                           
                           {segment.pain_points?.length > 0 && (
                             <div className="mb-3">
-                              <span className="text-xs font-medium text-white/50 uppercase tracking-wide">The Pain</span>
+                              <span className="text-xs font-medium text-white/80 uppercase tracking-wide">The Pain</span>
                               <ul className="mt-1 space-y-1">
                                 {segment.pain_points.map((p: string, j: number) => (
                                   <li key={j} className="text-sm text-white flex items-start gap-2">
-                                    <span className="text-white/40">•</span> {p}
+                                    <span className="text-white/70">•</span> {p}
                                   </li>
                                 ))}
                               </ul>
@@ -772,7 +1209,7 @@ function MapCard({ map, client, isExpanded, onToggle, onExportPDF, onDelete, isE
 
                           {segment.value_proposition && (
                             <div className="mb-3">
-                              <span className="text-xs font-medium text-white/50 uppercase tracking-wide">The Value Proposition</span>
+                              <span className="text-xs font-medium text-white/80 uppercase tracking-wide">The Value Proposition</span>
                               <p className="mt-1 text-sm text-white">{segment.value_proposition}</p>
                             </div>
                           )}
@@ -781,7 +1218,7 @@ function MapCard({ map, client, isExpanded, onToggle, onExportPDF, onDelete, isE
                             <div className="grid grid-cols-2 gap-4 mb-3">
                               {segment.job_titles.primary_buyers?.length > 0 && (
                                 <div>
-                                  <span className="text-xs font-medium text-white/50 uppercase tracking-wide">Primary Buyers</span>
+                                  <span className="text-xs font-medium text-white/80 uppercase tracking-wide">Primary Buyers</span>
                                   <div className="mt-1 flex flex-wrap gap-1">
                                     {segment.job_titles.primary_buyers.map((t: string, j: number) => (
                                       <span key={j} className="text-xs px-2 py-0.5 bg-white/10 rounded text-white">{t}</span>
@@ -791,7 +1228,7 @@ function MapCard({ map, client, isExpanded, onToggle, onExportPDF, onDelete, isE
                               )}
                               {segment.job_titles.champions?.length > 0 && (
                                 <div>
-                                  <span className="text-xs font-medium text-white/50 uppercase tracking-wide">Champions</span>
+                                  <span className="text-xs font-medium text-white/80 uppercase tracking-wide">Champions</span>
                                   <div className="mt-1 flex flex-wrap gap-1">
                                     {segment.job_titles.champions.map((t: string, j: number) => (
                                       <span key={j} className="text-xs px-2 py-0.5 bg-white/10 rounded text-white">{t}</span>
@@ -804,11 +1241,11 @@ function MapCard({ map, client, isExpanded, onToggle, onExportPDF, onDelete, isE
 
                           {segment.signals?.length > 0 && (
                             <div>
-                              <span className="text-xs font-medium text-white/50 uppercase tracking-wide">Potential Signals</span>
+                              <span className="text-xs font-medium text-white/80 uppercase tracking-wide">Potential Signals</span>
                               <ul className="mt-1 space-y-1">
                                 {segment.signals.map((s: string, j: number) => (
                                   <li key={j} className="text-sm text-white flex items-start gap-2">
-                                    <span className="text-white/40">•</span> {s}
+                                    <span className="text-white/70">•</span> {s}
                                   </li>
                                 ))}
                               </ul>
@@ -854,9 +1291,9 @@ function MapCard({ map, client, isExpanded, onToggle, onExportPDF, onDelete, isE
                       <table className="w-full">
                         <thead>
                           <tr className="bg-white/5">
-                            <th className="px-4 py-2 text-left text-xs font-medium text-white/50 uppercase">Tier</th>
-                            <th className="px-4 py-2 text-left text-xs font-medium text-white/50 uppercase">Geography</th>
-                            <th className="px-4 py-2 text-left text-xs font-medium text-white/50 uppercase">Reason</th>
+                            <th className="px-4 py-2 text-left text-xs font-medium text-white/80 uppercase">Tier</th>
+                            <th className="px-4 py-2 text-left text-xs font-medium text-white/80 uppercase">Geography</th>
+                            <th className="px-4 py-2 text-left text-xs font-medium text-white/80 uppercase">Reason</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -885,7 +1322,7 @@ function MapCard({ map, client, isExpanded, onToggle, onExportPDF, onDelete, isE
                     <div className="grid grid-cols-2 gap-4">
                       {data.company_tracking.employee_size_bands?.length > 0 && (
                         <div className="bg-white/5 border border-white/10 rounded-lg p-4">
-                          <span className="text-xs font-medium text-white/50 uppercase tracking-wide">Employee Size Bands</span>
+                          <span className="text-xs font-medium text-white/80 uppercase tracking-wide">Employee Size Bands</span>
                           <div className="mt-2 flex flex-wrap gap-2">
                             {data.company_tracking.employee_size_bands.map((b: string, i: number) => (
                               <span key={i} className="text-xs px-2 py-1 bg-white/10 rounded text-white">{b}</span>
@@ -895,7 +1332,7 @@ function MapCard({ map, client, isExpanded, onToggle, onExportPDF, onDelete, isE
                       )}
                       {data.company_tracking.revenue_bands?.length > 0 && (
                         <div className="bg-white/5 border border-white/10 rounded-lg p-4">
-                          <span className="text-xs font-medium text-white/50 uppercase tracking-wide">Revenue Bands</span>
+                          <span className="text-xs font-medium text-white/80 uppercase tracking-wide">Revenue Bands</span>
                           <div className="mt-2 flex flex-wrap gap-2">
                             {data.company_tracking.revenue_bands.map((b: string, i: number) => (
                               <span key={i} className="text-xs px-2 py-1 bg-white/10 rounded text-white">{b}</span>
@@ -927,7 +1364,7 @@ function MapCard({ map, client, isExpanded, onToggle, onExportPDF, onDelete, isE
                         }
                         return (
                           <div key={key} className="bg-white/5 border border-white/10 rounded-lg p-4">
-                            <span className="text-xs font-medium text-white/50 uppercase tracking-wide">{labels[key] || key}</span>
+                            <span className="text-xs font-medium text-white/80 uppercase tracking-wide">{labels[key] || key}</span>
                             <ul className="mt-2 space-y-1">
                               {(items as string[]).map((item, i) => (
                                 <li key={i} className="text-sm text-white">• {item}</li>
@@ -960,7 +1397,7 @@ function MapCard({ map, client, isExpanded, onToggle, onExportPDF, onDelete, isE
                       )}
                       {data.campaign_architecture.monthly_plan?.length > 0 && (
                         <div>
-                          <span className="text-xs font-medium text-white/50 uppercase tracking-wide">Monthly Plan</span>
+                          <span className="text-xs font-medium text-white/80 uppercase tracking-wide">Monthly Plan</span>
                           <ul className="mt-2 space-y-2">
                             {data.campaign_architecture.monthly_plan.map((m: any, i: number) => (
                               <li key={i} className="text-sm text-white">
@@ -1101,7 +1538,7 @@ export default function OpportunityMapViewer({
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <Loader2 size={24} className="animate-spin text-white/50" />
+        <Loader2 size={24} className="animate-spin text-white/80" />
       </div>
     )
   }
@@ -1113,7 +1550,7 @@ export default function OpportunityMapViewer({
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-lg font-semibold text-white">Opportunity Maps</h2>
-            <p className="text-sm text-white/50 mt-0.5">
+            <p className="text-sm text-white/80 mt-0.5">
               AI-generated strategy documents for {client}
             </p>
           </div>
@@ -1147,7 +1584,7 @@ export default function OpportunityMapViewer({
             <Map size={compact ? 20 : 32} className="text-purple-400" />
           </div>
           <h3 className="text-sm font-medium text-white mb-1">No opportunity maps yet</h3>
-          <p className="text-xs text-white/50 mb-3 max-w-sm mx-auto">
+          <p className="text-xs text-white/80 mb-3 max-w-sm mx-auto">
             Generate your first map from Fathom calls using AI.
           </p>
           <button

@@ -14,20 +14,23 @@ import {
   CheckCircle2,
   Circle,
   Inbox,
+  PenTool,
 } from 'lucide-react'
 import { useClients } from '../hooks/useClients'
 import { useClientStrategy, useClientStrategyStats } from '../hooks/useClientStrategy'
+import { useCopywriting } from '../hooks/useCopywriting'
 import ClientStrategyList from '../components/strategy/ClientStrategyList'
 import FathomCallLibrary from '../components/strategy/FathomCallLibrary'
 import OpportunityMapViewer from '../components/strategy/OpportunityMapViewer'
 import KnowledgeBaseEditor from '../components/strategy/KnowledgeBaseEditor'
+import CopywritingEditor from '../components/strategy/CopywritingEditor'
 import PlanOfActionEditor from '../components/strategy/PlanOfActionEditor'
 import AnalysisPanel from '../components/strategy/AnalysisPanel'
 import IterationLogPanel from '../components/strategy/IterationLogPanel'
 import UnassignedCallsInbox from '../components/strategy/UnassignedCallsInbox'
 
 // Section configuration
-type SectionId = 'calls' | 'opportunity-map' | 'knowledge' | 'plan' | 'analysis' | 'updates'
+type SectionId = 'calls' | 'opportunity-map' | 'knowledge' | 'copywriting' | 'plan' | 'analysis' | 'updates'
 
 interface Section {
   id: SectionId
@@ -40,6 +43,7 @@ const SECTIONS: Section[] = [
   { id: 'calls', label: 'Fathom Calls', icon: Phone, description: 'Recorded calls and transcripts' },
   { id: 'opportunity-map', label: 'Opportunity Map', icon: Map, description: 'AI-generated strategy document' },
   { id: 'knowledge', label: 'Knowledge Base', icon: BookOpen, description: 'Client information and ICP' },
+  { id: 'copywriting', label: 'Copywriting', icon: PenTool, description: 'Email sequences and Clay prompts' },
   { id: 'plan', label: 'Plan of Action', icon: ListTodo, description: 'Clay config, prompts, tasks' },
   { id: 'analysis', label: 'Analysis', icon: BarChart3, description: 'What to surface and track' },
   { id: 'updates', label: 'Iteration Log', icon: RefreshCw, description: 'Change history' },
@@ -59,6 +63,7 @@ function getInitialSectionState(): Record<SectionId, boolean> {
     'calls': true,
     'opportunity-map': true,
     'knowledge': false,
+    'copywriting': false,
     'plan': false,
     'analysis': false,
     'updates': false,
@@ -153,6 +158,13 @@ export default function ClientStrategyView() {
     deleteOpportunityMap,
   } = useClientStrategy(selectedClient)
 
+  // Fetch copywriting data
+  const {
+    copywriting,
+    loading: copywritingLoading,
+    saveCopywriting,
+  } = useCopywriting(selectedClient)
+
   // Save section states to localStorage
   useEffect(() => {
     localStorage.setItem(SECTION_STATE_KEY, JSON.stringify(sectionStates))
@@ -180,6 +192,8 @@ export default function ClientStrategyView() {
                opportunityMaps.length > 0 ? 'partial' : 'empty'
       case 'knowledge':
         return knowledgeBase ? 'partial' : 'empty'
+      case 'copywriting':
+        return (copywriting?.copy_structures?.length ?? 0) > 0 ? 'partial' : 'empty'
       case 'plan':
         return (planOfAction?.tasks?.length ?? 0) > 0 ? 'partial' : 'empty'
       default:
@@ -344,7 +358,7 @@ export default function ClientStrategyView() {
                 </AnimatePresence>
               </div>
 
-              {/* Knowledge Base Section */}
+              {/* Knowledge Base Section - Always mounted to preserve state */}
               <div>
                 <SectionHeader
                   section={SECTIONS[2]}
@@ -352,33 +366,63 @@ export default function ClientStrategyView() {
                   onToggle={() => toggleSection('knowledge')}
                   status={getSectionStatus('knowledge')}
                 />
-                <AnimatePresence>
-                  {sectionStates['knowledge'] && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: 'auto', opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.2 }}
-                      className="overflow-hidden"
-                    >
-                      <div className="pt-3">
-                        <KnowledgeBaseEditor
-                          client={selectedClient}
-                          knowledgeBase={knowledgeBase}
-                          loading={dataLoading}
-                          onSave={saveKnowledgeBase}
-                          compact
-                        />
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+                <motion.div
+                  initial={false}
+                  animate={{ 
+                    height: sectionStates['knowledge'] ? 'auto' : 0,
+                    opacity: sectionStates['knowledge'] ? 1 : 0,
+                  }}
+                  transition={{ duration: 0.2 }}
+                  className="overflow-hidden"
+                >
+                  <div className="pt-3">
+                    <KnowledgeBaseEditor
+                      client={selectedClient}
+                      knowledgeBase={knowledgeBase}
+                      fathomCalls={fathomCalls}
+                      loading={dataLoading}
+                      onSave={saveKnowledgeBase}
+                      compact
+                    />
+                  </div>
+                </motion.div>
+              </div>
+
+              {/* Copywriting Section - Always mounted to preserve state */}
+              <div>
+                <SectionHeader
+                  section={SECTIONS[3]}
+                  isOpen={sectionStates['copywriting']}
+                  onToggle={() => toggleSection('copywriting')}
+                  status={getSectionStatus('copywriting')}
+                  count={copywriting?.copy_structures?.length}
+                />
+                <motion.div
+                  initial={false}
+                  animate={{ 
+                    height: sectionStates['copywriting'] ? 'auto' : 0,
+                    opacity: sectionStates['copywriting'] ? 1 : 0,
+                  }}
+                  transition={{ duration: 0.2 }}
+                  className="overflow-hidden"
+                >
+                  <div className="pt-3">
+                    <CopywritingEditor
+                      client={selectedClient}
+                      copywriting={copywriting}
+                      knowledgeBase={knowledgeBase}
+                      fathomCalls={fathomCalls}
+                      loading={copywritingLoading}
+                      onSave={saveCopywriting}
+                    />
+                  </div>
+                </motion.div>
               </div>
 
               {/* Plan of Action Section */}
               <div>
                 <SectionHeader
-                  section={SECTIONS[3]}
+                  section={SECTIONS[4]}
                   isOpen={sectionStates['plan']}
                   onToggle={() => toggleSection('plan')}
                   status={getSectionStatus('plan')}
@@ -409,7 +453,7 @@ export default function ClientStrategyView() {
               {/* Analysis Section */}
               <div>
                 <SectionHeader
-                  section={SECTIONS[4]}
+                  section={SECTIONS[5]}
                   isOpen={sectionStates['analysis']}
                   onToggle={() => toggleSection('analysis')}
                 />
@@ -438,7 +482,7 @@ export default function ClientStrategyView() {
               {/* Iteration Log Section */}
               <div>
                 <SectionHeader
-                  section={SECTIONS[5]}
+                  section={SECTIONS[6]}
                   isOpen={sectionStates['updates']}
                   onToggle={() => toggleSection('updates')}
                 />

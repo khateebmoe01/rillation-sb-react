@@ -25,7 +25,7 @@ export default {
           'red': '#ef4444', // Use for negative trends, targets missed
           'yellow': '#eab308', // Use for neutral/caution states
           'text': '#faf9f6', // Pearly white - warm, soft white for main text
-          'text-muted': '#b8b8b8', // Brighter muted text for better visibility
+          'text-muted': '#e8e8e8', // Pearly white muted - much brighter for visibility
         },
         // CRM-specific dark blue theme
         'crm': {
@@ -34,7 +34,7 @@ export default {
           'card-hover': '#1c2128',
           'border': '#30363d',
           'text': '#f5f5f7', // Brighter pearly white
-          'text-muted': '#a8b2bc', // Brighter muted text
+          'text-muted': '#e0e4e8', // Pearly white muted for visibility
           'checkbox': '#238636',
           'checkbox-hover': '#2ea043',
         }
