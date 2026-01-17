@@ -14,6 +14,7 @@ import {
   Award,
 } from 'lucide-react'
 import html2canvas from 'html2canvas'
+import { jsPDF } from 'jspdf'
 import type { OpportunityMap, FathomCall } from '../../hooks/useClientStrategy'
 import { supabase } from '../../lib/supabase'
 
@@ -482,16 +483,32 @@ export default function OpportunityMapViewer({
     
     try {
       const canvas = await html2canvas(mapRef, {
-        background: '#141414',
+        backgroundColor: '#141414',
         scale: 2,
         logging: false,
-      } as any)
+        useCORS: true,
+      })
       
-      // Create download link
-      const link = document.createElement('a')
-      link.download = `opportunity-map-${client}-${new Date().toISOString().split('T')[0]}.png`
-      link.href = canvas.toDataURL('image/png')
-      link.click()
+      // Get canvas dimensions
+      const imgWidth = canvas.width
+      const imgHeight = canvas.height
+      
+      // Create PDF with proper dimensions (A4 or auto-sized)
+      const pdfWidth = 210 // A4 width in mm
+      const pdfHeight = (imgHeight * pdfWidth) / imgWidth
+      
+      const pdf = new jsPDF({
+        orientation: pdfHeight > pdfWidth ? 'portrait' : 'landscape',
+        unit: 'mm',
+        format: [pdfWidth, pdfHeight],
+      })
+      
+      // Add the image to PDF
+      const imgData = canvas.toDataURL('image/png')
+      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight)
+      
+      // Download the PDF
+      pdf.save(`opportunity-map-${client}-${new Date().toISOString().split('T')[0]}.pdf`)
     } catch (err) {
       console.error('Error exporting PDF:', err)
     } finally {
