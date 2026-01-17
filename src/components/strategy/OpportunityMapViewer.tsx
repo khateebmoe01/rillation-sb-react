@@ -175,10 +175,10 @@ interface MapCardProps {
   onToggle: () => void
   onExportPDF: () => void
   isExporting: boolean
-  mapRef: React.RefObject<HTMLDivElement>
+  onRefChange: (el: HTMLDivElement | null) => void
 }
 
-function MapCard({ map, isExpanded, onToggle, onExportPDF, isExporting, mapRef }: MapCardProps) {
+function MapCard({ map, isExpanded, onToggle, onExportPDF, isExporting, onRefChange }: MapCardProps) {
   return (
     <div className="bg-rillation-card border border-rillation-border rounded-xl overflow-hidden">
       {/* Header */}
@@ -239,7 +239,7 @@ function MapCard({ map, isExpanded, onToggle, onExportPDF, isExporting, mapRef }
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.2 }}
           >
-            <div ref={mapRef} className="border-t border-rillation-border/50 bg-rillation-bg/30 p-6">
+            <div ref={onRefChange} className="border-t border-rillation-border/50 bg-rillation-bg/30 p-6">
               {/* Opportunity Map Content - Styled for PDF export */}
               <div className="space-y-8">
                 {/* Segments */}
@@ -556,20 +556,11 @@ export default function OpportunityMapViewer({
               onToggle={() => setExpandedMapId(expandedMapId === map.id ? null : map.id)}
               onExportPDF={() => handleExportPDF(map.id)}
               isExporting={exportingId === map.id}
-              mapRef={{ current: mapRefs.current[map.id] } as React.RefObject<HTMLDivElement>}
+              onRefChange={(el) => { mapRefs.current[map.id] = el }}
             />
           ))}
         </div>
       )}
-
-      {/* Hidden refs for map content */}
-      {opportunityMaps.map((map) => (
-        <div 
-          key={`ref-${map.id}`}
-          ref={(el) => { mapRefs.current[map.id] = el }}
-          style={{ display: expandedMapId === map.id ? 'block' : 'none' }}
-        />
-      ))}
 
       {/* Generate Modal */}
       <AnimatePresence>

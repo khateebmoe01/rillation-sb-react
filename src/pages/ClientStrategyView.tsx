@@ -189,17 +189,9 @@ export default function ClientStrategyView() {
   return (
     <div className="h-full flex bg-rillation-bg">
       {/* Left Panel - Client List */}
-      <div className="w-72 flex-shrink-0">
-        <ClientStrategyList
-          clients={clients}
-          selectedClient={selectedClient}
-          onClientSelect={handleClientSelect}
-          clientStats={clientStats}
-          loading={clientsLoading || statsLoading}
-        />
-        
-        {/* Unassigned Calls Button */}
-        <div className="p-2 border-t border-rillation-border">
+      <div className="w-72 flex-shrink-0 flex flex-col">
+        {/* Unassigned Calls Button - At Top */}
+        <div className="p-2 border-b border-rillation-border flex-shrink-0">
           <button
             onClick={() => {
               setSelectedClient(null)
@@ -215,6 +207,14 @@ export default function ClientStrategyView() {
             <span className="text-sm font-medium">Unassigned Calls</span>
           </button>
         </div>
+        
+        <ClientStrategyList
+          clients={clients}
+          selectedClient={selectedClient}
+          onClientSelect={handleClientSelect}
+          clientStats={clientStats}
+          loading={clientsLoading || statsLoading}
+        />
       </div>
 
       {/* Right Panel - Strategy Content */}
