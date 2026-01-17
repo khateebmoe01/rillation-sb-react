@@ -86,9 +86,79 @@ async function fetchRecentMeetings(limit: number = 50): Promise<FathomMeeting[]>
   }
 }
 
-// Get meeting details with transcript
-// Note: fetchMeetingDetails removed - the /recordings/{id} endpoint returns 404
-// All necessary data comes from the /meetings list endpoint
+// Fetch transcript for a meeting
+// See: https://developers.fathom.ai/api-reference/recordings/get-transcript
+async function fetchTranscript(recordingId: number): Promise<string | null> {
+  if (!FATHOM_API_KEY) return null;
+  
+  try {
+    const url = `${FATHOM_API_BASE}/recordings/${recordingId}/transcript`;
+    console.log(`Fetching transcript from: ${url}`);
+    
+    const response = await fetch(url, {
+      headers: {
+        'X-Api-Key': FATHOM_API_KEY,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      console.error(`Failed to fetch transcript for ${recordingId}: ${response.status}`);
+      return null;
+    }
+    
+    const data = await response.json();
+    // Convert transcript array to text
+    if (data.transcript && Array.isArray(data.transcript)) {
+      return data.transcript.map((t: any) => 
+        `${t.speaker?.display_name || 'Unknown'} [${t.timestamp}]: ${t.text}`
+      ).join('\n');
+    }
+    return null;
+  } catch (error) {
+    console.error(`Error fetching transcript for ${recordingId}:`, error);
+    return null;
+  }
+}
+
+// Fetch summary for a meeting
+// See: https://developers.fathom.ai/api-reference/recordings/get-summary
+async function fetchSummary(recordingId: number): Promise<string | null> {
+  if (!FATHOM_API_KEY) return null;
+  
+  try {
+    const url = `${FATHOM_API_BASE}/recordings/${recordingId}/summary`;
+    console.log(`Fetching summary from: ${url}`);
+    
+    const response = await fetch(url, {
+      headers: {
+        'X-Api-Key': FATHOM_API_KEY,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      console.error(`Failed to fetch summary for ${recordingId}: ${response.status}`);
+      return null;
+    }
+    
+    const data = await response.json();
+    // Summary might be in different formats
+    if (typeof data.summary === 'string') {
+      return data.summary;
+    }
+    if (data.markdown_formatted) {
+      return data.markdown_formatted;
+    }
+    if (data.default_summary?.markdown_formatted) {
+      return data.default_summary.markdown_formatted;
+    }
+    return null;
+  } catch (error) {
+    console.error(`Error fetching summary for ${recordingId}:`, error);
+    return null;
+  }
+}
 
 // Get all clients
 async function getClients(): Promise<string[]> {
@@ -184,33 +254,30 @@ Deno.serve(async (req: Request) => {
         continue;
       }
 
-      // Use the meeting data as-is from the list endpoint
-      // The /recordings/{id} endpoint returns 404, so we skip fetching additional details
-      const fullMeeting = meeting;
-
       // Use meeting_title or title
-      const meetingTitle = fullMeeting.meeting_title || fullMeeting.title || 'Untitled Meeting';
+      const meetingTitle = meeting.meeting_title || meeting.title || 'Untitled Meeting';
       
       // Match to client
       const { client, confidence } = matchCallToClient(meetingTitle, clients);
       const callType = determineCallType(meetingTitle);
 
       // Extract participants from calendar_invitees
-      const participants = fullMeeting.calendar_invitees?.map(inv => ({
+      const participants = meeting.calendar_invitees?.map(inv => ({
         name: inv.name,
         email: inv.email,
       })) || [];
 
       // Extract action items
-      const actionItems = fullMeeting.action_items?.map(ai => ai.description) || [];
+      const actionItems = meeting.action_items?.map(ai => ai.description) || [];
 
-      // Extract transcript as string
-      const transcriptText = fullMeeting.transcript?.map(t => 
-        `${t.speaker.display_name} [${t.timestamp}]: ${t.text}`
-      ).join('\n') || null;
-
-      // Extract summary
-      const summaryText = fullMeeting.default_summary?.markdown_formatted || null;
+      // Fetch transcript and summary from Fathom API
+      // See: https://developers.fathom.ai/api-reference/recordings/get-transcript
+      console.log(`Fetching transcript/summary for recording ${meeting.recording_id}...`);
+      const [transcriptText, summaryText] = await Promise.all([
+        fetchTranscript(meeting.recording_id),
+        fetchSummary(meeting.recording_id),
+      ]);
+      console.log(`Got transcript: ${transcriptText ? 'yes' : 'no'}, summary: ${summaryText ? 'yes' : 'no'}`);
 
       // Check if already exists in database
       const { data: existing } = await supabase
@@ -226,7 +293,7 @@ Deno.serve(async (req: Request) => {
           .update({
             client: client || '',
             title: meetingTitle,
-            call_date: fullMeeting.created_at,
+            call_date: meeting.created_at,
             transcript: transcriptText,
             summary: summaryText,
             participants: participants,
@@ -234,8 +301,8 @@ Deno.serve(async (req: Request) => {
             call_type: callType,
             auto_matched: client !== null,
             match_confidence: confidence,
-            fathom_recording_url: fullMeeting.url,
-            fathom_raw_data: fullMeeting,
+            fathom_recording_url: meeting.url,
+            fathom_raw_data: meeting,
             updated_at: new Date().toISOString(),
           })
           .eq('id', existing.id)
@@ -262,7 +329,7 @@ Deno.serve(async (req: Request) => {
             fathom_call_id: recordingIdStr,
             client: client || '',
             title: meetingTitle,
-            call_date: fullMeeting.created_at,
+            call_date: meeting.created_at,
             duration_seconds: null,
             transcript: transcriptText,
             summary: summaryText,
@@ -272,8 +339,8 @@ Deno.serve(async (req: Request) => {
             status: 'pending',
             auto_matched: client !== null,
             match_confidence: confidence,
-            fathom_recording_url: fullMeeting.url,
-            fathom_raw_data: fullMeeting,
+            fathom_recording_url: meeting.url,
+            fathom_raw_data: meeting,
             updated_at: new Date().toISOString(),
           })
           .select()
