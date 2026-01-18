@@ -65,10 +65,16 @@ PERSONA NOTES: ${knowledgeBase.prospect_people?.persona_notes || 'Not provided'}
 
     const transcriptContext = transcripts ? `\n\nADDITIONAL CONTEXT FROM CALLS:\n${transcripts}` : '';
 
-    const userMessage = `Create email sequences for the following client. Generate 2-3 email sequences (each with 3 emails) for different testing angles or segments.
+    const userMessage = `Create email copy for the following client. Generate a sequence with A/B variations for testing.
 
 ${kbContext}
 ${transcriptContext}
+
+IMPORTANT FORMAT: 
+- Email 1 should have 2-3 variations labeled 1A, 1B, 1C
+- Email 2 should have 2 variations labeled 2A, 2B  
+- Email 3 should have 1-2 variations labeled 3A, 3B
+- Each variation tests a different angle/approach
 
 Return a JSON object with this exact structure:
 
@@ -76,40 +82,61 @@ Return a JSON object with this exact structure:
   "sequences": [
     {
       "id": "seq_1",
-      "name": "Primary Sequence - [Angle Name]",
+      "name": "Campaign Copy - [Client/Segment Name]",
       "phase": "PHASE 1 TESTING",
-      "description": "Brief description of the angle/approach",
+      "description": "Brief description of the overall campaign approach",
       "emails": [
         {
-          "id": "email_1",
-          "subject": "Optional subject line",
-          "body": "The email body with {{variables}} for personalization. Keep it short and conversational.",
-          "variables": ["first_name", "wywn", "pain_point"],
-          "notes": "Optional notes about this email"
+          "id": "email_1A",
+          "subject": "Subject line A with {spintax|variations}",
+          "body": "Email 1 Variation A - The opener. Short, intriguing, personal. Under 75 words.",
+          "variables": ["first_name", "wywn"],
+          "notes": "Angle: [describe what this variation tests]"
         },
         {
-          "id": "email_2",
-          "body": "Follow-up email body...",
-          "variables": ["first_name", "ICP"]
+          "id": "email_1B",
+          "subject": "Subject line B with {spintax|variations}",
+          "body": "Email 1 Variation B - Different angle/hook for the opener.",
+          "variables": ["first_name", "pain_point"],
+          "notes": "Angle: [describe what this variation tests]"
         },
         {
-          "id": "email_3", 
-          "body": "Final touch email...",
-          "variables": ["first_name"]
+          "id": "email_2A",
+          "subject": "Follow-up subject A",
+          "body": "Email 2 Variation A - Value-add or follow-up with different context.",
+          "variables": ["first_name"],
+          "notes": "Timing: Day X"
+        },
+        {
+          "id": "email_2B",
+          "body": "Email 2 Variation B - Alternative follow-up approach.",
+          "variables": ["first_name"],
+          "notes": "Timing: Day X"
+        },
+        {
+          "id": "email_3A",
+          "body": "Email 3 - Final touch, direct ask or referral request.",
+          "variables": ["first_name"],
+          "notes": "Timing: Day X"
         }
       ]
     }
   ],
-  "variables_used": ["first_name", "wywn", "pain_point", "ICP", "etc"]
+  "variables_used": ["first_name", "wywn", "pain_point", "etc"]
 }
 
 Guidelines:
-- Use {{variable}} syntax for all personalization
-- Keep emails under 100 words
-- End with soft CTAs
+- Use {{variable}} syntax for all personalization  
+- Use {spintax|alternative} syntax for subject line variations
+- Email 1 variations (1A, 1B, 1C): Under 75 words each, different hooks/angles
+- Email 2 variations (2A, 2B): Follow-ups with different value props
+- Email 3: Final touch, can have 1-2 variations
+- End with soft CTAs like "Worth a convo?" or "Worth sharing some thoughts?"
 - Make it sound human, not robotic
-- Include multiple angle variations for A/B testing
-- Add optional notes explaining the strategy
+- 5th grade reading level
+- No company name in pain questions
+- Pre-sale focus (growth, not retention)
+- Single CTA per email
 
 Return ONLY valid JSON, no other text.`;
 
