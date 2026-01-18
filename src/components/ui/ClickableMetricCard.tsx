@@ -90,7 +90,7 @@ export default function ClickableMetricCard({
       
       {/* Percentage Label */}
       {percentageLabel && (
-        <p className="relative z-10 text-xs text-white/70 mt-1">
+        <p className="relative z-10 text-xs text-white/90 mt-1">
           {percentageLabel}
         </p>
       )}

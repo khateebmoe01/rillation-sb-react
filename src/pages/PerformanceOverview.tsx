@@ -170,13 +170,13 @@ export default function PerformanceOverview() {
           <div className="flex flex-wrap items-center gap-3">
             {!isClientView && (
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-white/50" size={18} />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-white/80" size={18} />
                 <input
                   type="text"
                   placeholder="Search clients..."
                   value={clientSearchQuery}
                   onChange={(e) => setClientSearchQuery(e.target.value)}
-                  className="pl-10 pr-4 py-2 text-sm bg-rillation-bg border border-rillation-border rounded-lg text-white placeholder:text-white/40 focus:outline-none focus:border-rillation-purple w-64"
+                  className="pl-10 pr-4 py-2 text-sm bg-rillation-bg border border-rillation-border rounded-lg text-white placeholder:text-white/80 focus:outline-none focus:border-rillation-purple w-64"
                 />
               </div>
             )}
@@ -210,13 +210,13 @@ export default function PerformanceOverview() {
                 
                 {/* Campaign Search */}
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-white/50" size={16} />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-white/80" size={16} />
                   <input
                     type="text"
                     placeholder="Search campaigns..."
                     value={campaignSearchQuery}
                     onChange={(e) => setCampaignSearchQuery(e.target.value)}
-                    className="pl-10 pr-4 py-2 text-sm bg-slate-800/80 backdrop-blur-sm border border-slate-600/50 rounded-lg text-white placeholder:text-white/40 focus:outline-none focus:border-white/40 w-56"
+                    className="pl-10 pr-4 py-2 text-sm bg-slate-800/80 backdrop-blur-sm border border-slate-600/50 rounded-lg text-white placeholder:text-white/80 focus:outline-none focus:border-white/40 w-56"
                   />
                 </div>
               </>

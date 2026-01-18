@@ -80,7 +80,7 @@ export default function StatusFilter({
           animate={{ rotate: isOpen ? 180 : 0 }}
           transition={{ duration: 0.2 }}
         >
-          <ChevronDown size={16} className="text-white/60" />
+          <ChevronDown size={16} className="text-white/90" />
         </motion.div>
       </motion.button>
 

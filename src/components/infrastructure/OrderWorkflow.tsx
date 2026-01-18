@@ -240,7 +240,7 @@ export default function OrderWorkflow() {
           {/* Provider & Client */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-white mb-2">Provider(s) * <span className="text-white/50 font-normal">(select one or both)</span></label>
+              <label className="block text-sm font-medium text-white mb-2">Provider(s) * <span className="text-white/80 font-normal">(select one or both)</span></label>
               <div className="grid grid-cols-2 gap-3">
                 {(['missioninbox', 'inboxkit'] as OrderProvider[]).map((p) => {
                   const isSelected = selectedProviders.has(p)
@@ -263,7 +263,7 @@ export default function OrderWorkflow() {
                       }`}
                     >
                       <p className="font-semibold text-white capitalize">{p}</p>
-                      <p className="text-xs text-white/60 mt-1">
+                      <p className="text-xs text-white/90 mt-1">
                         {p === 'missioninbox' ? 'SMTP/IMAP inboxes' : 'Google Workspace inboxes'}
                       </p>
                     </button>
@@ -300,7 +300,7 @@ export default function OrderWorkflow() {
                     />
                   </div>
                 </div>
-                <div className="text-white/40 px-2">|</div>
+                <div className="text-white/80 px-2">|</div>
                 <div className="flex-1">
                   <div className="flex items-center justify-between text-sm mb-2">
                     <span className="text-emerald-400 font-medium">MissionInbox</span>
@@ -326,7 +326,7 @@ export default function OrderWorkflow() {
                 className="w-full mt-3 accent-cyan-500"
               />
               {totalSelectedDomains > 0 && (
-                <div className="mt-3 text-sm text-white/60">
+                <div className="mt-3 text-sm text-white/90">
                   <span className="text-cyan-400">{inboxKitDomains.length} domains</span> → InboxKit
                   <span className="mx-2">|</span>
                   <span className="text-emerald-400">{missionInboxDomains.length} domains</span> → MissionInbox
@@ -355,7 +355,7 @@ export default function OrderWorkflow() {
               </div>
               
               {availableDomains.length === 0 ? (
-                <div className="text-center py-8 text-white/60 bg-rillation-bg/50 rounded-lg">
+                <div className="text-center py-8 text-white/90 bg-rillation-bg/50 rounded-lg">
                   No unused domains found for {selectedClient}. Add domains to inventory first.
                 </div>
               ) : (
@@ -373,7 +373,7 @@ export default function OrderWorkflow() {
                       >
                         <div className="flex-1">
                           <p className="font-medium text-white">{date}</p>
-                          <p className="text-sm text-white/60">{domains.length} domains available</p>
+                          <p className="text-sm text-white/90">{domains.length} domains available</p>
                         </div>
                         
                         <div className="flex items-center gap-3">
@@ -382,7 +382,7 @@ export default function OrderWorkflow() {
                             className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
                               selection.useAll 
                                 ? 'bg-emerald-500 text-white' 
-                                : 'bg-rillation-bg text-white/60 hover:text-white'
+                                : 'bg-rillation-bg text-white/90 hover:text-white'
                             }`}
                           >
                             Use All
@@ -400,7 +400,7 @@ export default function OrderWorkflow() {
                               }}
                               className="w-16 px-2 py-1.5 bg-rillation-bg border border-rillation-border rounded text-white text-sm text-center focus:outline-none focus:border-emerald-500"
                             />
-                            <span className="text-white/60 text-sm">%</span>
+                            <span className="text-white/90 text-sm">%</span>
                           </div>
                           
                           {(selection.useAll || selection.percentage > 0) && (
@@ -412,7 +412,7 @@ export default function OrderWorkflow() {
                           {(selection.useAll || selection.percentage > 0) && (
                             <button
                               onClick={() => handleDateGroupChange(date, { useAll: false, percentage: 0 })}
-                              className="text-white/40 hover:text-red-400 transition-colors"
+                              className="text-white/80 hover:text-red-400 transition-colors"
                             >
                               <X size={16} />
                             </button>
@@ -424,7 +424,7 @@ export default function OrderWorkflow() {
                 </div>
               )}
               
-              <div className="mt-3 text-sm text-white/60">
+              <div className="mt-3 text-sm text-white/90">
                 Total selected: <span className="text-white font-medium">{totalSelectedDomains}</span> domains
               </div>
             </div>
@@ -519,7 +519,7 @@ export default function OrderWorkflow() {
                   Will generate: <strong>{totalSelectedDomains}</strong> domains × <strong>{mailboxConfig.inboxes_per_domain}</strong> inboxes = <strong className="text-emerald-400">{totalMailboxes} mailboxes</strong>
                 </p>
                 {bothProvidersSelected && totalSelectedDomains > 0 && (
-                  <p className="text-sm text-white/60 mt-1">
+                  <p className="text-sm text-white/90 mt-1">
                     MissionInbox: {missionInboxDomains.length} domains ({missionInboxDomains.length * mailboxConfig.inboxes_per_domain} mailboxes) 
                     <span className="mx-2">|</span>
                     InboxKit: {inboxKitDomains.length} domains ({inboxKitDomains.length * mailboxConfig.inboxes_per_domain} mailboxes)
@@ -554,14 +554,14 @@ export default function OrderWorkflow() {
                               {file.name}
                               <button
                                 onClick={() => setProfilePictures(profilePictures.filter((_, i) => i !== idx))}
-                                className="text-white/50 hover:text-red-400"
+                                className="text-white/80 hover:text-red-400"
                               >
                                 <X size={12} />
                               </button>
                             </div>
                           ))}
                         </div>
-                        <p className="text-xs text-white/60 mt-1">{profilePictures.length} images will be assigned to mailboxes</p>
+                        <p className="text-xs text-white/90 mt-1">{profilePictures.length} images will be assigned to mailboxes</p>
                       </div>
                     )}
                   </div>

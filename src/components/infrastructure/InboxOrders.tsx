@@ -169,7 +169,7 @@ export default function InboxOrders() {
             </div>
             <div>
               <h3 className="text-lg font-semibold text-white">Upcoming Renewals</h3>
-              <p className="text-xs text-white/70">
+              <p className="text-xs text-white/90">
                 {renewalGroups.reduce((sum, g) => sum + g.inboxCount, 0)} inboxes across {renewalGroups.length} date{renewalGroups.length !== 1 ? 's' : ''}
               </p>
             </div>
@@ -209,8 +209,8 @@ export default function InboxOrders() {
             </div>
           ) : renewalGroups.length === 0 ? (
             <div className="p-8 text-center">
-              <Calendar size={32} className="mx-auto text-white/40 mb-3" />
-              <p className="text-sm text-white/60">
+              <Calendar size={32} className="mx-auto text-white/80 mb-3" />
+              <p className="text-sm text-white/90">
                 No upcoming renewals found
               </p>
             </div>
@@ -254,13 +254,13 @@ export default function InboxOrders() {
                       <div className="flex items-center gap-4">
                         <div className="text-center min-w-[60px]">
                           <div className="text-2xl font-bold text-white">{group.inboxCount}</div>
-                          <div className="text-[10px] uppercase tracking-wide text-white/60">
+                          <div className="text-[10px] uppercase tracking-wide text-white/90">
                             inbox{group.inboxCount !== 1 ? 'es' : ''}
                           </div>
                         </div>
                         <div className="border-l border-white/20 pl-4">
                           <div className="font-medium text-white">{group.client}</div>
-                          <div className="text-xs text-white/70 mt-0.5">
+                          <div className="text-xs text-white/90 mt-0.5">
                             {group.domains.length} domain{group.domains.length !== 1 ? 's' : ''}
                           </div>
                         </div>
@@ -281,7 +281,7 @@ export default function InboxOrders() {
                           group.urgency === 'past' ? 'text-red-400' :
                           group.urgency === 'urgent' ? 'text-red-400' :
                           group.urgency === 'soon' ? 'text-amber-400' :
-                          'text-white/60'
+                          'text-white/90'
                         }`}>
                           {group.daysUntil < 0 
                             ? `${Math.abs(group.daysUntil)} days overdue`
@@ -297,7 +297,7 @@ export default function InboxOrders() {
                         animate={{ rotate: isExpanded ? 180 : 0 }}
                         transition={{ duration: 0.2 }}
                       >
-                        <ChevronDown size={18} className="text-white/60" />
+                        <ChevronDown size={18} className="text-white/90" />
                       </motion.div>
                     </div>
                   </button>
@@ -316,7 +316,7 @@ export default function InboxOrders() {
                           <div className="bg-rillation-bg rounded-lg p-4 space-y-3">
                             <div className="grid grid-cols-2 gap-4">
                               <div>
-                                <span className="text-xs text-white/50 uppercase tracking-wide">Domains</span>
+                                <span className="text-xs text-white/80 uppercase tracking-wide">Domains</span>
                                 <div className="mt-1 flex flex-wrap gap-1">
                                   {group.domains.slice(0, 5).map(domain => (
                                     <span key={domain} className="px-2 py-0.5 bg-rillation-card rounded text-xs text-white">
@@ -324,17 +324,17 @@ export default function InboxOrders() {
                                     </span>
                                   ))}
                                   {group.domains.length > 5 && (
-                                    <span className="px-2 py-0.5 bg-rillation-card rounded text-xs text-white/60">
+                                    <span className="px-2 py-0.5 bg-rillation-card rounded text-xs text-white/90">
                                       +{group.domains.length - 5} more
                                     </span>
                                   )}
                                 </div>
                               </div>
                               <div>
-                                <span className="text-xs text-white/50 uppercase tracking-wide">Est. Cost</span>
+                                <span className="text-xs text-white/80 uppercase tracking-wide">Est. Cost</span>
                                 <div className="mt-1 text-lg font-semibold text-white">
                                   ${(group.inboxCount * 3).toFixed(2)}
-                                  <span className="text-xs text-white/60 font-normal ml-1">/ month</span>
+                                  <span className="text-xs text-white/90 font-normal ml-1">/ month</span>
                                 </div>
                               </div>
                             </div>

@@ -150,7 +150,7 @@ export default function FunnelChart({
                       {formatNumber(stage.value)}
                     </span>
                     {stage.percentage !== undefined && index > 0 && (
-                      <span className="text-xs text-white/70 whitespace-nowrap flex-shrink-0">
+                      <span className="text-xs text-white/90 whitespace-nowrap flex-shrink-0">
                         {formatPercentage(stage.percentage)}
                       </span>
                     )}

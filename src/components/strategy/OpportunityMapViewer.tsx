@@ -80,11 +80,11 @@ function GenerateModal({ isOpen, onClose, fathomCalls, onGenerate, isGenerating 
             </div>
             <div>
               <h2 className="text-lg font-semibold text-white">Generate Opportunity Map</h2>
-              <p className="text-xs text-white/60">AI will analyze calls to create the map</p>
+              <p className="text-xs text-white/90">AI will analyze calls to create the map</p>
             </div>
           </div>
           <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-lg">
-            <X size={18} className="text-white/60" />
+            <X size={18} className="text-white/90" />
           </button>
         </div>
 
@@ -98,7 +98,7 @@ function GenerateModal({ isOpen, onClose, fathomCalls, onGenerate, isGenerating 
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="e.g., Opportunity Map V1"
-              className="w-full px-4 py-2.5 bg-rillation-bg border border-rillation-border rounded-lg text-sm text-white placeholder:text-white/70 focus:outline-none focus:border-white/40"
+              className="w-full px-4 py-2.5 bg-rillation-bg border border-rillation-border rounded-lg text-sm text-white placeholder:text-white/90 focus:outline-none focus:border-white/40"
             />
           </div>
 
@@ -108,7 +108,7 @@ function GenerateModal({ isOpen, onClose, fathomCalls, onGenerate, isGenerating 
               Select Fathom Calls to Analyze
             </label>
             {fathomCalls.length === 0 ? (
-              <div className="text-center py-6 bg-rillation-bg rounded-lg text-sm text-white/60">
+              <div className="text-center py-6 bg-rillation-bg rounded-lg text-sm text-white/90">
                 No calls available. Add Fathom calls first.
               </div>
             ) : (
@@ -148,7 +148,7 @@ function GenerateModal({ isOpen, onClose, fathomCalls, onGenerate, isGenerating 
         <div className="flex items-center justify-end gap-3 p-4 border-t border-rillation-border">
           <button
             onClick={onClose}
-            className="px-4 py-2 text-sm text-white/60 hover:text-white transition-colors"
+            className="px-4 py-2 text-sm text-white/90 hover:text-white transition-colors"
           >
             Cancel
           </button>
@@ -1083,7 +1083,7 @@ function MapCard({ map, client: _client, isExpanded, onToggle, onExportPDF, onDe
           animate={{ rotate: isExpanded ? 90 : 0 }}
           transition={{ duration: 0.15 }}
         >
-          <ChevronRight size={18} className="text-white/60" />
+          <ChevronRight size={18} className="text-white/90" />
         </motion.div>
 
         <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center">
@@ -1160,19 +1160,19 @@ function MapCard({ map, client: _client, isExpanded, onToggle, onExportPDF, onDe
                       {data.how_we_operate.tracking && (
                         <div>
                           <h4 className="text-sm font-medium text-white mb-1">Everything In Is Tracked, Everything Out Is Tracked</h4>
-                          <p className="text-sm text-white/70">{data.how_we_operate.tracking}</p>
+                          <p className="text-sm text-white/90">{data.how_we_operate.tracking}</p>
                         </div>
                       )}
                       {data.how_we_operate.segmentation && (
                         <div>
                           <h4 className="text-sm font-medium text-white mb-1">Industry-First Segmentation</h4>
-                          <p className="text-sm text-white/70">{data.how_we_operate.segmentation}</p>
+                          <p className="text-sm text-white/90">{data.how_we_operate.segmentation}</p>
                         </div>
                       )}
                       {data.how_we_operate.test_then_scale && (
                         <div>
                           <h4 className="text-sm font-medium text-white mb-1">Test-Then-Scale</h4>
-                          <p className="text-sm text-white/70">{data.how_we_operate.test_then_scale}</p>
+                          <p className="text-sm text-white/90">{data.how_we_operate.test_then_scale}</p>
                         </div>
                       )}
                       {data.how_we_operate.tracking_variables?.length > 0 && (
@@ -1204,7 +1204,7 @@ function MapCard({ map, client: _client, isExpanded, onToggle, onExportPDF, onDe
                             <h4 className="font-medium text-white">{segment.name}</h4>
                           </div>
                           {segment.description && (
-                            <p className="text-sm text-white/60 mb-3 italic">{segment.description}</p>
+                            <p className="text-sm text-white/90 mb-3 italic">{segment.description}</p>
                           )}
                           
                           {segment.pain_points?.length > 0 && (
@@ -1213,7 +1213,7 @@ function MapCard({ map, client: _client, isExpanded, onToggle, onExportPDF, onDe
                               <ul className="mt-1 space-y-1">
                                 {segment.pain_points.map((p: string, j: number) => (
                                   <li key={j} className="text-sm text-white flex items-start gap-2">
-                                    <span className="text-white/70">•</span> {p}
+                                    <span className="text-white/90">•</span> {p}
                                   </li>
                                 ))}
                               </ul>
@@ -1258,7 +1258,7 @@ function MapCard({ map, client: _client, isExpanded, onToggle, onExportPDF, onDe
                               <ul className="mt-1 space-y-1">
                                 {segment.signals.map((s: string, j: number) => (
                                   <li key={j} className="text-sm text-white flex items-start gap-2">
-                                    <span className="text-white/70">•</span> {s}
+                                    <span className="text-white/90">•</span> {s}
                                   </li>
                                 ))}
                               </ul>
@@ -1285,7 +1285,7 @@ function MapCard({ map, client: _client, isExpanded, onToggle, onExportPDF, onDe
                             <h4 className="font-medium text-white">{segment.name}</h4>
                           </div>
                           {segment.description && (
-                            <p className="text-sm text-white/60">{segment.description}</p>
+                            <p className="text-sm text-white/90">{segment.description}</p>
                           )}
                         </div>
                       ))}
@@ -1315,7 +1315,7 @@ function MapCard({ map, client: _client, isExpanded, onToggle, onExportPDF, onDe
                               <tr key={`${tierKey}-${i}`} className="border-t border-white/5">
                                 <td className="px-4 py-2 text-sm text-white">{tierKey.replace('tier', 'Tier ')}</td>
                                 <td className="px-4 py-2 text-sm text-white">{geo.geography}</td>
-                                <td className="px-4 py-2 text-sm text-white/60">{geo.reason}</td>
+                                <td className="px-4 py-2 text-sm text-white/90">{geo.reason}</td>
                               </tr>
                             ))
                           )}
@@ -1438,7 +1438,7 @@ function MapCard({ map, client: _client, isExpanded, onToggle, onExportPDF, onDe
                           const owner = typeof step === 'object' && step.owner ? ` (${step.owner})` : ''
                           return (
                             <li key={i} className="flex items-start gap-3 text-sm text-white">
-                              <span className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center text-xs font-medium text-white/60 flex-shrink-0">
+                              <span className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center text-xs font-medium text-white/90 flex-shrink-0">
                                 {i + 1}
                               </span>
                               {action}{owner}

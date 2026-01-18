@@ -248,12 +248,12 @@ export default function CompactSalesMetrics({ summary, dailyMetrics }: CompactSa
                   <div style={{ color: config.color }}>
                     <Icon size={16} />
                   </div>
-                  <span className="text-[10px] font-medium text-white/70 uppercase tracking-wider">
+                  <span className="text-[10px] font-medium text-white/90 uppercase tracking-wider">
                     {config.title}
                   </span>
                 </div>
                 <div
-                  className={`text-white/50 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
+                  className={`text-white/80 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
                 >
                   <ChevronUp size={12} />
                 </div>
@@ -266,7 +266,7 @@ export default function CompactSalesMetrics({ summary, dailyMetrics }: CompactSa
                     {config.formatter(metric.value)}
                   </span>
                   {metric.subtitle && (
-                    <span className="text-[10px] text-white/50">{metric.subtitle}</span>
+                    <span className="text-[10px] text-white/80">{metric.subtitle}</span>
                   )}
                 </div>
               </div>

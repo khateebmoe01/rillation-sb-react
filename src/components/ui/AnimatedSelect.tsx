@@ -76,7 +76,7 @@ export default function AnimatedSelect({
     <div ref={containerRef} className={`relative ${className}`}>
       {/* Label */}
       {label && (
-        <label className="block text-sm font-medium text-white/70 mb-1.5">
+        <label className="block text-sm font-medium text-white/90 mb-1.5">
           {labelIcon && <span className="inline mr-1.5">{labelIcon}</span>}
           {label}
         </label>
@@ -97,7 +97,7 @@ export default function AnimatedSelect({
         whileHover={disabled ? {} : { scale: 1.005 }}
         whileTap={disabled ? {} : { scale: 0.995 }}
       >
-        <span className={`truncate ${!selectedOption ? 'text-white/40' : ''}`}>
+        <span className={`truncate ${!selectedOption ? 'text-white/80' : ''}`}>
           {displayValue}
         </span>
         <motion.div
@@ -105,7 +105,7 @@ export default function AnimatedSelect({
           transition={{ duration: 0.2 }}
           className="flex-shrink-0"
         >
-          <ChevronDown size={size === 'sm' ? 12 : 14} className="text-white/60" />
+          <ChevronDown size={size === 'sm' ? 12 : 14} className="text-white/90" />
         </motion.div>
       </motion.button>
 
@@ -157,7 +157,7 @@ export default function AnimatedSelect({
                   )
                 })}
                 {options.length === 0 && (
-                  <div className="px-3 py-4 text-center text-white/40 text-sm">
+                  <div className="px-3 py-4 text-center text-white/80 text-sm">
                     No options available
                   </div>
                 )}

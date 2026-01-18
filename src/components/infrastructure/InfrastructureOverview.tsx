@@ -341,8 +341,8 @@ function ClientCard({
       {summary.activeOrders.length > 0 && (
         <div className="mt-4 pt-4 border-t border-slate-700/50">
           <div className="flex items-center gap-2 mb-2">
-            <ShoppingCart size={12} className="text-white/60" />
-            <span className="text-xs text-white/60">Active Orders ({summary.totalOrders})</span>
+            <ShoppingCart size={12} className="text-white/90" />
+            <span className="text-xs text-white/90">Active Orders ({summary.totalOrders})</span>
           </div>
           <div className="flex flex-wrap gap-2">
             {summary.activeOrders.slice(0, 3).map((order) => (
@@ -359,7 +359,7 @@ function ClientCard({
                   <span className={`px-1 py-0.5 rounded text-[10px] font-medium ${
                     order.milestone === '90d' ? 'bg-emerald-500/30 text-emerald-400' :
                     order.milestone === '60d' ? 'bg-cyan-500/30 text-cyan-400' :
-                    'bg-slate-600/50 text-white/70'
+                    'bg-slate-600/50 text-white/90'
                   }`}>
                     {order.milestone}
                   </span>
@@ -370,7 +370,7 @@ function ClientCard({
               </div>
             ))}
             {summary.activeOrders.length > 3 && (
-              <span className="text-xs text-white/50">+{summary.activeOrders.length - 3} more</span>
+              <span className="text-xs text-white/80">+{summary.activeOrders.length - 3} more</span>
             )}
           </div>
         </div>
@@ -378,7 +378,7 @@ function ClientCard({
 
       {/* Last Updated */}
       <div className="flex items-center justify-end mt-3">
-        <span className="text-xs text-white/60">
+        <span className="text-xs text-white/90">
           {formatDate(summary.lastSynced)}
         </span>
       </div>
@@ -642,13 +642,13 @@ function ClientDetailView({
                           order.status === 'completed' ? 'bg-emerald-500/20 text-emerald-400' :
                           order.status === 'pending' ? 'bg-amber-500/20 text-amber-400' :
                           order.status === 'cancelled' ? 'bg-red-500/20 text-red-400' :
-                          'bg-slate-500/20 text-white/70'
+                          'bg-slate-500/20 text-white/90'
                         }`}>
                           {order.status}
                         </span>
                       </td>
                       <td className="px-4 py-2 text-right text-white">{order.quantity || '-'}</td>
-                      <td className="px-4 py-2 text-right text-white/70">
+                      <td className="px-4 py-2 text-right text-white/90">
                         {new Date(order.created_at).toLocaleDateString()}
                       </td>
                       <td className="px-4 py-2 text-right">
@@ -658,7 +658,7 @@ function ClientDetailView({
                             <span className={`px-1 py-0.5 rounded text-[10px] font-medium ${
                               milestone === '90d' ? 'bg-emerald-500/30 text-emerald-400' :
                               milestone === '60d' ? 'bg-cyan-500/30 text-cyan-400' :
-                              'bg-slate-600/50 text-white/70'
+                              'bg-slate-600/50 text-white/90'
                             }`}>
                               {milestone}
                             </span>
@@ -667,12 +667,12 @@ function ClientDetailView({
                       </td>
                       <td className="px-4 py-2 text-right">
                         {order.renewal_date ? (
-                          <span className={renewalSoon ? 'text-amber-400 font-medium' : 'text-white/70'}>
+                          <span className={renewalSoon ? 'text-amber-400 font-medium' : 'text-white/90'}>
                             {new Date(order.renewal_date).toLocaleDateString()}
                             {renewalSoon && <Clock size={10} className="inline ml-1" />}
                           </span>
                         ) : (
-                          <span className="text-white/40">-</span>
+                          <span className="text-white/80">-</span>
                         )}
                       </td>
                     </tr>

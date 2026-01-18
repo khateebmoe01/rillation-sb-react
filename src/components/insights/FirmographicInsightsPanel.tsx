@@ -155,7 +155,7 @@ function getRankingStyle(index: number, total: number): {
   } else {
     return { 
       barClass: 'bg-gradient-to-r from-amber-500/60 to-amber-400/40',
-      textClass: 'text-white/70',
+      textClass: 'text-white/90',
       bgClass: 'bg-white/5 border-slate-700/30',
       label: 'average'
     }
@@ -265,7 +265,7 @@ function DimensionTab({
             className={`px-2 py-1 rounded-lg text-xs font-medium pointer-events-none ${
               isSelected
                 ? 'bg-slate-400/30 text-slate-200 border border-slate-400/50'
-                : 'bg-slate-700/50 text-white/60'
+                : 'bg-slate-700/50 text-white/90'
             }`}
           >
             {isSelected ? 'Selected' : isLocked ? 'Click to swap' : 'Click to compare'}
@@ -277,7 +277,7 @@ function DimensionTab({
               e.stopPropagation()
               onAskAI()
             }}
-            className="p-1.5 rounded bg-black/60 border border-white/20 text-white/70 hover:border-white/40 hover:text-white transition-all"
+            className="p-1.5 rounded bg-black/60 border border-white/20 text-white/90 hover:border-white/40 hover:text-white transition-all"
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             title="Ask AI about this dimension"
@@ -339,7 +339,7 @@ function DimensionTab({
                   <span className={`text-sm font-mono font-bold ${rankStyle.textClass}`}>
                     {formatPercentage(bookingRate * 100, 0)}
                   </span>
-                  <span className="text-xs text-white/40">
+                  <span className="text-xs text-white/80">
                     ({item.booked}/{item.leadsIn})
                   </span>
                 </div>
@@ -349,7 +349,7 @@ function DimensionTab({
           
           {dimension && dimension.items.length > 3 && (
             <motion.div 
-              className="text-xs text-white/40 text-center pt-1"
+              className="text-xs text-white/80 text-center pt-1"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: index * 0.05 + 0.4 }}
@@ -590,7 +590,7 @@ function DimensionModal({
                         ? 'bg-emerald-500/20 text-emerald-400' 
                         : isLoser 
                           ? 'bg-red-500/20 text-red-400'
-                          : 'bg-white/5 text-white/40'
+                          : 'bg-white/5 text-white/80'
                     }`}
                   >
                     {isWinner ? (
@@ -621,7 +621,7 @@ function DimensionModal({
                     <div className="text-base font-bold font-mono text-blue-400">
                       {formatPercentage(repliedRate * 100, 0)}
                     </div>
-                    <div className="text-xs text-white/40">
+                    <div className="text-xs text-white/80">
                       {item.engaged}/{item.leadsIn}
                     </div>
                   </div>
@@ -631,7 +631,7 @@ function DimensionModal({
                     <div className="text-base font-bold font-mono text-amber-400">
                       {formatPercentage(engagedRate * 100, 0)}
                     </div>
-                    <div className="text-xs text-white/40">
+                    <div className="text-xs text-white/80">
                       {item.positive}/{item.leadsIn}
                     </div>
                   </div>
@@ -641,7 +641,7 @@ function DimensionModal({
                     <div className={`text-base font-bold font-mono ${rankStyle.textClass}`}>
                       {formatPercentage(bookedRate * 100, 0)}
                     </div>
-                    <div className="text-xs text-white/40">
+                    <div className="text-xs text-white/80">
                       {item.booked}/{item.leadsIn}
                     </div>
                   </div>

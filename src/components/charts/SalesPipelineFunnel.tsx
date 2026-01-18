@@ -200,7 +200,7 @@ export default function SalesPipelineFunnel({
                     <div className="flex items-center gap-3">
                       <span className="text-lg font-bold text-white">{formatNumber(stage.value)}</span>
                       {stage.percentage !== undefined && index > 0 && (
-                        <span className="text-xs text-white/70 bg-black/20 px-2 py-0.5 rounded">
+                        <span className="text-xs text-white/90 bg-black/20 px-2 py-0.5 rounded">
                           {formatPercentage(stage.percentage)}
                         </span>
                       )}

@@ -189,7 +189,7 @@ export default function InboxAnalytics() {
           <div className="bg-rillation-bg rounded-lg p-4 border border-rillation-border/50">
             <div className="flex items-center gap-2 mb-2">
               <WifiOff size={16} className="text-red-400" />
-              <span className="text-xs text-white/40">Disconnected</span>
+              <span className="text-xs text-white/80">Disconnected</span>
             </div>
             <p className="text-2xl font-bold text-red-400">{disconnectedCount}</p>
             <p className="text-xs text-white mt-1">

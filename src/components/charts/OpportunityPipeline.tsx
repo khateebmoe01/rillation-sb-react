@@ -229,7 +229,7 @@ export default function OpportunityPipeline({
               </div>
 
               {/* Opportunity Count */}
-              <p className="text-xs text-white/60 font-medium">
+              <p className="text-xs text-white/90 font-medium">
                 {stage.count} {stage.count === 1 ? 'opportunity' : 'opportunities'}
               </p>
             </motion.div>

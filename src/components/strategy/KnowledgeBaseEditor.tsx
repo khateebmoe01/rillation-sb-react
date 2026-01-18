@@ -85,11 +85,11 @@ function GenerateModal({ isOpen, onClose, fathomCalls, onGenerate, isGenerating 
             </div>
             <div>
               <h2 className="text-lg font-semibold text-white">Generate Knowledge Base</h2>
-              <p className="text-xs text-white/60">AI will analyze calls to extract client info</p>
+              <p className="text-xs text-white/90">AI will analyze calls to extract client info</p>
             </div>
           </div>
           <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-lg">
-            <X size={18} className="text-white/60" />
+            <X size={18} className="text-white/90" />
           </button>
         </div>
 
@@ -99,7 +99,7 @@ function GenerateModal({ isOpen, onClose, fathomCalls, onGenerate, isGenerating 
               Select Fathom Calls to Analyze
             </label>
             {fathomCalls.length === 0 ? (
-              <div className="text-center py-6 bg-rillation-bg rounded-lg text-sm text-white/60">
+              <div className="text-center py-6 bg-rillation-bg rounded-lg text-sm text-white/90">
                 No calls available. Add Fathom calls first.
               </div>
             ) : (
@@ -138,7 +138,7 @@ function GenerateModal({ isOpen, onClose, fathomCalls, onGenerate, isGenerating 
         <div className="flex items-center justify-end gap-3 p-4 border-t border-rillation-border">
           <button
             onClick={onClose}
-            className="px-4 py-2 text-sm text-white/60 hover:text-white transition-colors"
+            className="px-4 py-2 text-sm text-white/90 hover:text-white transition-colors"
           >
             Cancel
           </button>
@@ -369,12 +369,12 @@ function TagInput({ tags, onChange, placeholder }: { tags: string[]; onChange: (
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addTag())}
           placeholder={placeholder}
-          className="flex-1 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm text-white placeholder:text-white/60 focus:outline-none focus:border-white/30 transition-colors"
+          className="flex-1 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm text-white placeholder:text-white/90 focus:outline-none focus:border-white/30 transition-colors"
         />
         <button
           onClick={addTag}
           disabled={!input.trim()}
-          className="px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white/60 hover:text-white hover:bg-white/10 transition-colors disabled:opacity-30"
+          className="px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white/90 hover:text-white hover:bg-white/10 transition-colors disabled:opacity-30"
         >
           <Plus size={16} />
         </button>
@@ -431,7 +431,7 @@ function InputField({
   icon?: React.ElementType
   multiline?: boolean
 }) {
-  const inputClasses = "w-full px-3 py-2.5 bg-white/5 border border-white/10 rounded-lg text-sm text-white placeholder:text-white/60 focus:outline-none focus:border-white/30 focus:bg-white/[0.07] transition-all"
+  const inputClasses = "w-full px-3 py-2.5 bg-white/5 border border-white/10 rounded-lg text-sm text-white placeholder:text-white/90 focus:outline-none focus:border-white/30 focus:bg-white/[0.07] transition-all"
   
   return (
     <div className="space-y-1.5">
@@ -470,12 +470,12 @@ function PersonCard({ person, onRemove }: { person: any; onRemove: () => void })
       <div className="flex-1 min-w-0">
         <div className="font-medium text-white text-sm">{person.name}</div>
         {person.title && <div className="text-xs text-white/80">{person.title}</div>}
-        {person.email && <div className="text-xs text-white/70 mt-0.5">{person.email}</div>}
-        {person.notes && <div className="text-xs text-white/60 mt-1 italic">{person.notes}</div>}
+        {person.email && <div className="text-xs text-white/90 mt-0.5">{person.email}</div>}
+        {person.notes && <div className="text-xs text-white/90 mt-1 italic">{person.notes}</div>}
       </div>
       <button
         onClick={onRemove}
-        className="p-1.5 text-white/60 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"
+        className="p-1.5 text-white/90 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"
       >
         <X size={14} />
       </button>
@@ -516,14 +516,14 @@ function AddPersonForm({ onAdd }: { onAdd: (person: any) => void }) {
           value={person.name}
           onChange={(e) => setPerson({ ...person, name: e.target.value })}
           placeholder="Name"
-          className="px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm text-white placeholder:text-white/60 focus:outline-none focus:border-white/30"
+          className="px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm text-white placeholder:text-white/90 focus:outline-none focus:border-white/30"
         />
         <input
           type="text"
           value={person.title}
           onChange={(e) => setPerson({ ...person, title: e.target.value })}
           placeholder="Title"
-          className="px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm text-white placeholder:text-white/60 focus:outline-none focus:border-white/30"
+          className="px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm text-white placeholder:text-white/90 focus:outline-none focus:border-white/30"
         />
       </div>
       <input
@@ -531,7 +531,7 @@ function AddPersonForm({ onAdd }: { onAdd: (person: any) => void }) {
         value={person.email}
         onChange={(e) => setPerson({ ...person, email: e.target.value })}
         placeholder="Email"
-        className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm text-white placeholder:text-white/60 focus:outline-none focus:border-white/30"
+        className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm text-white placeholder:text-white/90 focus:outline-none focus:border-white/30"
       />
       <div className="flex gap-2">
         <button
@@ -648,7 +648,7 @@ export default function KnowledgeBaseEditor({
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <Loader2 size={32} className="animate-spin text-white/60" />
+        <Loader2 size={32} className="animate-spin text-white/90" />
       </div>
     )
   }
@@ -660,7 +660,7 @@ export default function KnowledgeBaseEditor({
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-xl font-semibold text-white">Knowledge Base</h2>
-            <p className="text-sm text-white/70 mt-0.5">Everything about {client}</p>
+            <p className="text-sm text-white/90 mt-0.5">Everything about {client}</p>
           </div>
           <div className="flex items-center gap-2">
             <button
@@ -684,7 +684,7 @@ export default function KnowledgeBaseEditor({
               className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all ${
                 hasChanges 
                   ? 'bg-white text-black hover:bg-white/90' 
-                  : 'bg-white/5 border border-white/10 text-white/70'
+                  : 'bg-white/5 border border-white/10 text-white/90'
               }`}
             >
               {isSaving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}

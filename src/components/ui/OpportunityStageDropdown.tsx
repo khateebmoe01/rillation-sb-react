@@ -400,7 +400,7 @@ export default function OpportunityStageDropdown({
               animate={{ rotate: isExpanded ? 180 : 0 }}
               transition={{ duration: 0.2 }}
             >
-              <ChevronDown size={16} className="text-white/60" />
+              <ChevronDown size={16} className="text-white/90" />
             </motion.div>
           </div>
           <p className="text-xl font-bold text-white ml-4 flex-shrink-0">
@@ -417,7 +417,7 @@ export default function OpportunityStageDropdown({
           />
         </div>
 
-        <p className="text-xs text-white/60 font-medium">
+        <p className="text-xs text-white/90 font-medium">
           {stageCount} {stageCount === 1 ? 'opportunity' : 'opportunities'}
         </p>
       </motion.button>
@@ -438,14 +438,14 @@ export default function OpportunityStageDropdown({
                   <div className="w-6 h-6 border-2 border-[#EB1A1A] border-t-transparent rounded-full animate-spin" />
                 </div>
               ) : leads.length === 0 ? (
-                <div className="text-center py-6 text-white/60 text-sm">
+                <div className="text-center py-6 text-white/90 text-sm">
                   No leads found at this stage
                 </div>
               ) : (
                 <>
                   {/* Header with summary and save button */}
                   <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-700/50">
-                    <span className="text-sm text-white/70">
+                    <span className="text-sm text-white/90">
                       {leads.length} lead{leads.length !== 1 ? 's' : ''} • Total: <span className="font-semibold text-white">{formatCurrency(totalValue)}</span>
                     </span>
                     {hasChanges && (
@@ -463,7 +463,7 @@ export default function OpportunityStageDropdown({
                   </div>
 
                   {/* Table Header */}
-                  <div className="grid grid-cols-12 gap-2 px-3 py-2 bg-slate-700/30 rounded-lg mb-2 text-xs font-semibold text-white/60 uppercase tracking-wide">
+                  <div className="grid grid-cols-12 gap-2 px-3 py-2 bg-slate-700/30 rounded-lg mb-2 text-xs font-semibold text-white/90 uppercase tracking-wide">
                     <div className="col-span-4">Name</div>
                     <div className="col-span-3">Company</div>
                     <div className="col-span-2">Title</div>
@@ -486,7 +486,7 @@ export default function OpportunityStageDropdown({
                             {lead.full_name || lead.first_name || 'Unknown'}
                           </p>
                           {lead.created_time && (
-                            <p className="text-[10px] text-white/40 mt-0.5">
+                            <p className="text-[10px] text-white/80 mt-0.5">
                               {formatDate(lead.created_time)}
                             </p>
                           )}
@@ -495,13 +495,13 @@ export default function OpportunityStageDropdown({
                         {/* Company */}
                         <div className="col-span-3 min-w-0">
                           <div className="flex items-center gap-1.5">
-                            <Building2 size={12} className="text-white/40 flex-shrink-0" />
+                            <Building2 size={12} className="text-white/80 flex-shrink-0" />
                             <p className="text-sm text-white/80 truncate">
                               {lead.company || '-'}
                             </p>
                           </div>
                           {lead.industry && (
-                            <p className="text-[10px] text-white/40 mt-0.5 truncate pl-4">
+                            <p className="text-[10px] text-white/80 mt-0.5 truncate pl-4">
                               {lead.industry}
                             </p>
                           )}
@@ -510,8 +510,8 @@ export default function OpportunityStageDropdown({
                         {/* Title */}
                         <div className="col-span-2 min-w-0">
                           <div className="flex items-center gap-1.5">
-                            <Briefcase size={12} className="text-white/40 flex-shrink-0" />
-                            <p className="text-sm text-white/70 truncate">
+                            <Briefcase size={12} className="text-white/80 flex-shrink-0" />
+                            <p className="text-sm text-white/90 truncate">
                               {lead.title || '-'}
                             </p>
                           </div>
@@ -519,7 +519,7 @@ export default function OpportunityStageDropdown({
 
                         {/* Estimated Value Input */}
                         <div className="col-span-3 flex items-center justify-end gap-1.5">
-                          <span className="text-white/50 text-xs">$</span>
+                          <span className="text-white/80 text-xs">$</span>
                           <input
                             type="number"
                             step="0.01"
@@ -552,7 +552,7 @@ export default function OpportunityStageDropdown({
                             >
                               <Trash2 
                                 size={12} 
-                                className={`text-white/40 hover:text-red-400 ${lead.markedForDeletion ? 'text-red-400' : ''}`}
+                                className={`text-white/80 hover:text-red-400 ${lead.markedForDeletion ? 'text-red-400' : ''}`}
                               />
                             </button>
                           )}
@@ -564,24 +564,24 @@ export default function OpportunityStageDropdown({
                   {/* Pagination */}
                   {totalPages > 1 && (
                     <div className="flex items-center justify-between mt-4 pt-3 border-t border-slate-700/50">
-                      <span className="text-xs text-white/50">
+                      <span className="text-xs text-white/80">
                         Showing {(currentPage - 1) * ITEMS_PER_PAGE + 1}-{Math.min(currentPage * ITEMS_PER_PAGE, leads.length)} of {leads.length}
                       </span>
                       <div className="flex items-center gap-2">
                         <button
                           onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                           disabled={currentPage === 1}
-                          className="p-1.5 rounded-lg bg-slate-700/50 text-white/70 hover:bg-slate-600/50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                          className="p-1.5 rounded-lg bg-slate-700/50 text-white/90 hover:bg-slate-600/50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                         >
                           <ChevronLeft size={16} />
                         </button>
-                        <span className="text-xs text-white/70 min-w-[60px] text-center">
+                        <span className="text-xs text-white/90 min-w-[60px] text-center">
                           Page {currentPage} of {totalPages}
                         </span>
                         <button
                           onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                           disabled={currentPage === totalPages}
-                          className="p-1.5 rounded-lg bg-slate-700/50 text-white/70 hover:bg-slate-600/50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                          className="p-1.5 rounded-lg bg-slate-700/50 text-white/90 hover:bg-slate-600/50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                         >
                           <ChevronRight size={16} />
                         </button>

@@ -128,7 +128,7 @@ const PipelineProgressCell = memo(({ contact, onSave }: PipelineProgressCellProp
         className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs ${
           deepestStage 
             ? `${deepestStage.bgColor} ${deepestStage.textColor}` 
-            : 'bg-slate-700/50 text-white/50'
+            : 'bg-slate-700/50 text-white/80'
         }`}
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
@@ -161,7 +161,7 @@ const PipelineProgressCell = memo(({ contact, onSave }: PipelineProgressCellProp
             >
               <div className="bg-slate-900/95 backdrop-blur-xl border border-slate-600/50 rounded-xl shadow-2xl overflow-hidden">
                 <div className="px-3 py-2 border-b border-slate-700/50">
-                  <span className="text-xs font-medium text-white/60 uppercase tracking-wider">Pipeline Progress</span>
+                  <span className="text-xs font-medium text-white/90 uppercase tracking-wider">Pipeline Progress</span>
                 </div>
                 <div className="max-h-80 overflow-y-auto py-1">
                   {PIPELINE_STAGES.map((stage, index) => {
@@ -196,7 +196,7 @@ const PipelineProgressCell = memo(({ contact, onSave }: PipelineProgressCellProp
                         <div className="flex-1 min-w-0">
                           <div className="text-sm text-white/90">{stage.label}</div>
                           {isChecked && timestamp && (
-                            <div className="text-xs text-white/40 flex items-center gap-1 mt-0.5">
+                            <div className="text-xs text-white/80 flex items-center gap-1 mt-0.5">
                               <Calendar size={10} />
                               {new Date(timestamp).toLocaleDateString('en-US', {
                                 month: 'short',
@@ -396,7 +396,7 @@ const StageCell = memo(({ contact, onSave, onCloseWon }: StageCellProps) => {
             >
               <div className="bg-slate-900/95 backdrop-blur-xl border border-slate-600/50 rounded-xl shadow-2xl overflow-hidden">
                 <div className="px-3 py-2 border-b border-slate-700/50">
-                  <span className="text-xs font-medium text-white/60 uppercase tracking-wider">Select Stage</span>
+                  <span className="text-xs font-medium text-white/90 uppercase tracking-wider">Select Stage</span>
                 </div>
                 <div className="max-h-64 overflow-y-auto py-1">
                   {CRM_STAGES.map((stage, index) => (
@@ -404,7 +404,7 @@ const StageCell = memo(({ contact, onSave, onCloseWon }: StageCellProps) => {
                       key={stage.id}
                       onClick={() => handleStageChange(stage.id)}
                       className={`w-full flex items-center gap-3 px-3 py-2.5 text-sm text-left transition-colors ${
-                        stage.id === contact.stage ? 'bg-white/10 text-white' : 'text-white/70 hover:bg-white/5'
+                        stage.id === contact.stage ? 'bg-white/10 text-white' : 'text-white/90 hover:bg-white/5'
                       }`}
                       initial={{ opacity: 0, x: -10 }}
                       animate={{ opacity: 1, x: 0 }}
@@ -469,11 +469,11 @@ function SortableHeader({ label, field, sortable, currentSort, onSort }: Sortabl
       <div className="flex flex-col">
         <ChevronUp 
           size={10} 
-          className={`-mb-1 ${isActive && direction === 'asc' ? 'text-white' : 'text-white/40 group-hover:text-white/60'}`} 
+          className={`-mb-1 ${isActive && direction === 'asc' ? 'text-white' : 'text-white/80 group-hover:text-white/90'}`} 
         />
         <ChevronDown 
           size={10} 
-          className={`${isActive && direction === 'desc' ? 'text-white' : 'text-white/40 group-hover:text-white/60'}`} 
+          className={`${isActive && direction === 'desc' ? 'text-white' : 'text-white/80 group-hover:text-white/90'}`} 
         />
       </div>
     </button>
@@ -1243,8 +1243,8 @@ export default function ContactsTable({
                 >
                   <div className="bg-slate-900/95 backdrop-blur-xl border border-slate-600/50 rounded-xl shadow-2xl overflow-hidden">
                     <div className="px-3 py-2 border-b border-slate-700/50">
-                      <span className="text-xs font-medium text-white/60 uppercase tracking-wider">Show Columns</span>
-                      <p className="text-xs text-white/40 mt-0.5">
+                      <span className="text-xs font-medium text-white/90 uppercase tracking-wider">Show Columns</span>
+                      <p className="text-xs text-white/80 mt-0.5">
                         {visibleColumns.size} of {COLUMNS.length} visible
                       </p>
                     </div>
@@ -1271,11 +1271,11 @@ export default function ContactsTable({
                               {isVisible && <Check size={10} className="text-white" />}
                             </div>
                             {isVisible ? (
-                              <Eye size={14} className="text-white/60" />
+                              <Eye size={14} className="text-white/90" />
                             ) : (
                               <EyeOff size={14} className="text-white/30" />
                             )}
-                            <span className={isVisible ? 'text-white/90 flex-1' : 'text-white/50 flex-1'}>
+                            <span className={isVisible ? 'text-white/90 flex-1' : 'text-white/80 flex-1'}>
                               {col.label}
                             </span>
                             {isLocked && (
@@ -1288,7 +1288,7 @@ export default function ContactsTable({
                     <div className="px-3 py-2 border-t border-slate-700/50">
                       <motion.button
                         onClick={() => setVisibleColumns(new Set(DEFAULT_VISIBLE_COLUMNS))}
-                        className="text-xs text-white/50 hover:text-white transition-colors"
+                        className="text-xs text-white/80 hover:text-white transition-colors"
                         whileHover={{ x: 2 }}
                       >
                         Reset to defaults

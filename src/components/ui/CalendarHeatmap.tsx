@@ -189,7 +189,7 @@ export default function CalendarHeatmap({ data, dateRange, onDayClick }: Calenda
           {/* Day labels */}
           <div className="flex gap-1 mb-2 pl-12">
             {['Mon', 'Tue', 'Wed', 'Thu', 'Fri'].map(day => (
-              <div key={day} className="w-12 text-center text-xs text-white/60 font-medium">
+              <div key={day} className="w-12 text-center text-xs text-white/90 font-medium">
                 {day}
               </div>
             ))}
@@ -200,7 +200,7 @@ export default function CalendarHeatmap({ data, dateRange, onDayClick }: Calenda
             {weeks.map((week, weekIndex) => (
               <div key={weekIndex} className="flex gap-1 items-center">
                 {/* Week label */}
-                <div className="w-10 text-xs text-white/50 text-right pr-2">
+                <div className="w-10 text-xs text-white/80 text-right pr-2">
                   {formatDateLabel(week[0])}
                 </div>
                 
@@ -255,7 +255,7 @@ export default function CalendarHeatmap({ data, dateRange, onDayClick }: Calenda
 
       {/* Intensity Legend */}
       <div className="flex items-center justify-end gap-2 mt-4">
-        <span className="text-xs text-white/50">Less</span>
+        <span className="text-xs text-white/80">Less</span>
         <div className="flex gap-0.5">
           {[0.2, 0.4, 0.6, 0.8, 1].map((opacity) => (
             <div
@@ -267,7 +267,7 @@ export default function CalendarHeatmap({ data, dateRange, onDayClick }: Calenda
             />
           ))}
         </div>
-        <span className="text-xs text-white/50">More</span>
+        <span className="text-xs text-white/80">More</span>
       </div>
 
       {/* Detail Panel */}
@@ -295,7 +295,7 @@ export default function CalendarHeatmap({ data, dateRange, onDayClick }: Calenda
                 }}
                 className="p-1 rounded hover:bg-slate-700/50 transition-colors"
               >
-                <X size={16} className="text-white/60" />
+                <X size={16} className="text-white/90" />
               </button>
             </div>
             
@@ -309,7 +309,7 @@ export default function CalendarHeatmap({ data, dateRange, onDayClick }: Calenda
                   <div className="text-lg font-bold text-white">
                     {formatNumber(selectedDay[metric])}
                   </div>
-                  <div className="text-xs text-white/70 mt-1">
+                  <div className="text-xs text-white/90 mt-1">
                     {METRIC_COLORS[metric].label}
                   </div>
                 </div>
@@ -321,7 +321,7 @@ export default function CalendarHeatmap({ data, dateRange, onDayClick }: Calenda
 
       {/* Click hint */}
       {!isDetailOpen && !selectedDay && (
-        <div className="text-center mt-3 text-xs text-white/40">
+        <div className="text-center mt-3 text-xs text-white/80">
           Click any day to view details
         </div>
       )}

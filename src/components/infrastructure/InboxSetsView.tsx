@@ -219,7 +219,7 @@ export default function InboxSetsView() {
               <div key={client}>
                 <div className="px-6 py-3 bg-rillation-bg/50 border-b border-rillation-border/30">
                   <h4 className="font-semibold text-white text-base">{client}</h4>
-                  <p className="text-xs text-white/60 mt-0.5">{clientTags.length} tag{clientTags.length !== 1 ? 's' : ''}</p>
+                  <p className="text-xs text-white/90 mt-0.5">{clientTags.length} tag{clientTags.length !== 1 ? 's' : ''}</p>
                 </div>
                 {clientTags.map((tag) => (
                   <TagRow
@@ -353,7 +353,7 @@ function TagRow({
           {!tag.is_default && (
             <motion.button 
               onClick={onDelete}
-              className="p-2 text-white/60 hover:text-red-400 transition-colors"
+              className="p-2 text-white/90 hover:text-red-400 transition-colors"
               title="Delete tag"
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
@@ -361,7 +361,7 @@ function TagRow({
               <Trash2 size={16} />
             </motion.button>
           )}
-          <button className="p-2 text-white/60 hover:text-white transition-colors">
+          <button className="p-2 text-white/90 hover:text-white transition-colors">
             <MoreHorizontal size={18} />
           </button>
         </div>

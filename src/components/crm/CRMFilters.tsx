@@ -96,7 +96,7 @@ export default function CRMFilters({ filters, onFiltersChange, uniqueAssignees }
             >
               <div className="bg-slate-900/95 backdrop-blur-xl border border-slate-600/50 rounded-xl shadow-2xl overflow-hidden">
                 <div className="px-3 py-2 border-b border-slate-700/50">
-                  <span className="text-xs font-medium text-white/60 uppercase tracking-wider">Filter by Stage</span>
+                  <span className="text-xs font-medium text-white/90 uppercase tracking-wider">Filter by Stage</span>
                 </div>
                 <div className="max-h-64 overflow-y-auto py-1">
                   {CRM_STAGES.map((stage, index) => (
@@ -160,13 +160,13 @@ export default function CRMFilters({ filters, onFiltersChange, uniqueAssignees }
             >
               <div className="bg-slate-900/95 backdrop-blur-xl border border-slate-600/50 rounded-xl shadow-2xl overflow-hidden">
                 <div className="px-3 py-2 border-b border-slate-700/50">
-                  <span className="text-xs font-medium text-white/60 uppercase tracking-wider">Select Assignee</span>
+                  <span className="text-xs font-medium text-white/90 uppercase tracking-wider">Select Assignee</span>
                 </div>
                 <div className="max-h-64 overflow-y-auto py-1">
                   <motion.button
                     onClick={() => handleAssigneeChange(undefined)}
                     className={`w-full flex items-center gap-3 px-3 py-2.5 text-sm text-left transition-colors ${
-                      !filters.assignee ? 'bg-white/10 text-white' : 'text-white/70 hover:bg-white/5'
+                      !filters.assignee ? 'bg-white/10 text-white' : 'text-white/90 hover:bg-white/5'
                     }`}
                     whileHover={{ x: 2 }}
                   >
@@ -182,7 +182,7 @@ export default function CRMFilters({ filters, onFiltersChange, uniqueAssignees }
                       key={assignee}
                       onClick={() => handleAssigneeChange(assignee)}
                       className={`w-full flex items-center gap-3 px-3 py-2.5 text-sm text-left transition-colors ${
-                        filters.assignee === assignee ? 'bg-white/10 text-white' : 'text-white/70 hover:bg-white/5'
+                        filters.assignee === assignee ? 'bg-white/10 text-white' : 'text-white/90 hover:bg-white/5'
                       }`}
                       initial={{ opacity: 0, x: -10 }}
                       animate={{ opacity: 1, x: 0 }}
@@ -198,7 +198,7 @@ export default function CRMFilters({ filters, onFiltersChange, uniqueAssignees }
                     </motion.button>
                   ))}
                   {uniqueAssignees.length === 0 && (
-                    <div className="px-3 py-4 text-center text-white/40 text-sm">No assignees yet</div>
+                    <div className="px-3 py-4 text-center text-white/80 text-sm">No assignees yet</div>
                   )}
                 </div>
               </div>
@@ -238,13 +238,13 @@ export default function CRMFilters({ filters, onFiltersChange, uniqueAssignees }
             >
               <div className="bg-slate-900/95 backdrop-blur-xl border border-slate-600/50 rounded-xl shadow-2xl overflow-hidden">
                 <div className="px-3 py-2 border-b border-slate-700/50">
-                  <span className="text-xs font-medium text-white/60 uppercase tracking-wider">Select Source</span>
+                  <span className="text-xs font-medium text-white/90 uppercase tracking-wider">Select Source</span>
                 </div>
                 <div className="max-h-64 overflow-y-auto py-1">
                   <motion.button
                     onClick={() => handleLeadSourceChange(undefined)}
                     className={`w-full flex items-center gap-3 px-3 py-2.5 text-sm text-left transition-colors ${
-                      !filters.leadSource ? 'bg-white/10 text-white' : 'text-white/70 hover:bg-white/5'
+                      !filters.leadSource ? 'bg-white/10 text-white' : 'text-white/90 hover:bg-white/5'
                     }`}
                     whileHover={{ x: 2 }}
                   >
@@ -260,7 +260,7 @@ export default function CRMFilters({ filters, onFiltersChange, uniqueAssignees }
                       key={source}
                       onClick={() => handleLeadSourceChange(source)}
                       className={`w-full flex items-center gap-3 px-3 py-2.5 text-sm text-left transition-colors ${
-                        filters.leadSource === source ? 'bg-white/10 text-white' : 'text-white/70 hover:bg-white/5'
+                        filters.leadSource === source ? 'bg-white/10 text-white' : 'text-white/90 hover:bg-white/5'
                       }`}
                       initial={{ opacity: 0, x: -10 }}
                       animate={{ opacity: 1, x: 0 }}

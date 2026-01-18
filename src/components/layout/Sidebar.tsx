@@ -106,7 +106,7 @@ export default function Sidebar() {
                             mx-2 h-9 flex items-center gap-2 rounded-lg transition-all duration-200 px-3 text-xs
                             ${isSubActive
                               ? 'bg-white/10 text-white'
-                              : 'text-white/60 hover:text-white hover:bg-white/5'
+                              : 'text-white/90 hover:text-white hover:bg-white/5'
                             }
                           `}
                         >

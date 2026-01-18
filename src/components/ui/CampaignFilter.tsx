@@ -80,14 +80,14 @@ export default function CampaignFilter({
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}
           >
-            <X size={14} className="text-white/60" />
+            <X size={14} className="text-white/90" />
           </motion.button>
         )}
         <motion.div
           animate={{ rotate: isOpen ? 180 : 0 }}
           transition={{ duration: 0.2 }}
         >
-          <ChevronDown size={16} className="text-white/60" />
+          <ChevronDown size={16} className="text-white/90" />
         </motion.div>
       </motion.button>
 
@@ -104,13 +104,13 @@ export default function CampaignFilter({
             <div className="bg-slate-900/95 backdrop-blur-xl border border-slate-600/50 rounded-xl shadow-2xl overflow-hidden">
               {/* Header */}
               <div className="px-4 py-3 border-b border-slate-700/50 flex items-center justify-between">
-                <span className="text-xs font-medium text-white/50 uppercase tracking-wider">
+                <span className="text-xs font-medium text-white/80 uppercase tracking-wider">
                   Filter by Campaign
                 </span>
                 {selectedCampaigns.length > 0 && (
                   <button
                     onClick={clearAll}
-                    className="text-xs text-white/40 hover:text-white transition-colors"
+                    className="text-xs text-white/80 hover:text-white transition-colors"
                   >
                     Clear all
                   </button>
@@ -121,7 +121,7 @@ export default function CampaignFilter({
               <div className="max-h-[300px] overflow-y-auto">
                 {/* Campaign Options */}
                 {campaigns.length === 0 ? (
-                  <div className="px-4 py-8 text-center text-white/40 text-sm">
+                  <div className="px-4 py-8 text-center text-white/80 text-sm">
                     No campaigns available
                   </div>
                 ) : (

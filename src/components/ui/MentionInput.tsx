@@ -254,7 +254,7 @@ export default function MentionInput({
         placeholder={placeholder}
         rows={rows}
         disabled={disabled}
-        className={`w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm placeholder:text-white/40 focus:outline-none focus:border-violet-500 resize-none ${className}`}
+        className={`w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm placeholder:text-white/80 focus:outline-none focus:border-violet-500 resize-none ${className}`}
       />
 
       {/* Hint for @ mention */}
@@ -277,12 +277,12 @@ export default function MentionInput({
             className="absolute z-50 w-full mt-1 bg-slate-800 border border-slate-700 rounded-lg shadow-xl overflow-hidden"
           >
             {usersLoading ? (
-              <div className="flex items-center justify-center py-4 text-white/60">
+              <div className="flex items-center justify-center py-4 text-white/90">
                 <Loader2 size={16} className="animate-spin mr-2" />
                 Loading users...
               </div>
             ) : filteredUsers.length === 0 ? (
-              <div className="px-3 py-2 text-white/60 text-sm">
+              <div className="px-3 py-2 text-white/90 text-sm">
                 No users found matching "{suggestionFilter}"
               </div>
             ) : (
@@ -300,14 +300,14 @@ export default function MentionInput({
                     onMouseEnter={() => setSelectedIndex(index)}
                   >
                     <div className="w-7 h-7 rounded-full bg-slate-700 flex items-center justify-center flex-shrink-0">
-                      <User size={14} className="text-white/60" />
+                      <User size={14} className="text-white/90" />
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="font-medium text-sm truncate">
                         {user.display_name || user.real_name}
                       </div>
                       {user.name && user.name !== user.display_name && (
-                        <div className="text-xs text-white/50 truncate">
+                        <div className="text-xs text-white/80 truncate">
                           @{user.name}
                         </div>
                       )}

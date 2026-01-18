@@ -146,7 +146,7 @@ export default function InboxInventory() {
             <Package size={20} className="text-white" />
             Inbox Inventory ({filteredInboxes.length})
             {selectedTag && (
-              <span className="text-xs bg-white/10 text-white/70 px-2 py-0.5 rounded-full flex items-center gap-1">
+              <span className="text-xs bg-white/10 text-white/90 px-2 py-0.5 rounded-full flex items-center gap-1">
                 <Tag size={10} />
                 Filtered by tag
               </span>
@@ -237,7 +237,7 @@ export default function InboxInventory() {
                           {inboxTagNames.length > 0 && (
                             <div className="flex flex-wrap gap-1 mt-1">
                               {inboxTagNames.slice(0, 2).map((name, i) => (
-                                <span key={i} className="text-xs bg-white/10 text-white/70 px-1.5 py-0.5 rounded">
+                                <span key={i} className="text-xs bg-white/10 text-white/90 px-1.5 py-0.5 rounded">
                                   {name}
                                 </span>
                               ))}

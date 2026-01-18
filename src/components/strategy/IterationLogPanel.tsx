@@ -79,7 +79,7 @@ function ActionTypeFilter({
           <div className={`w-2 h-2 rounded-full ${selectedType.color}`} />
         )}
         <span>{displayValue}</span>
-        <ChevronDown size={12} className={`text-white/60 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+        <ChevronDown size={12} className={`text-white/90 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
       </button>
 
       {/* Dropdown */}
@@ -96,7 +96,7 @@ function ActionTypeFilter({
             <button
               onClick={() => { onChange(null); setIsOpen(false) }}
               className={`w-full flex items-center gap-2 px-3 py-2 text-left text-xs transition-colors ${
-                value === null ? 'bg-white/10 text-white' : 'text-white/70 hover:bg-white/5 hover:text-white'
+                value === null ? 'bg-white/10 text-white' : 'text-white/90 hover:bg-white/5 hover:text-white'
               }`}
             >
               <div className="w-2 h-2" />
@@ -112,7 +112,7 @@ function ActionTypeFilter({
                   key={type.value}
                   onClick={() => { onChange(type.value); setIsOpen(false) }}
                   className={`w-full flex items-center gap-2 px-3 py-2 text-left text-xs transition-colors ${
-                    isSelected ? 'bg-white/10 text-white' : 'text-white/70 hover:bg-white/5 hover:text-white'
+                    isSelected ? 'bg-white/10 text-white' : 'text-white/90 hover:bg-white/5 hover:text-white'
                   }`}
                 >
                   <div className={`w-2 h-2 rounded-full ${type.color}`} />

@@ -68,14 +68,14 @@ export default function ClientFilter({
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}
           >
-            <X size={14} className="text-white/60" />
+            <X size={14} className="text-white/90" />
           </motion.button>
         )}
         <motion.div
           animate={{ rotate: isOpen ? 180 : 0 }}
           transition={{ duration: 0.2 }}
         >
-          <ChevronDown size={16} className="text-white/60" />
+          <ChevronDown size={16} className="text-white/90" />
         </motion.div>
       </motion.button>
 
@@ -166,7 +166,7 @@ export default function ClientFilter({
 
                 {/* Empty State */}
                 {clients.length === 0 && (
-                  <div className="px-4 py-8 text-center text-white/40 text-sm">
+                  <div className="px-4 py-8 text-center text-white/80 text-sm">
                     No clients available
                   </div>
                 )}

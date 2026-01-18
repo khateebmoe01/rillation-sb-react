@@ -132,7 +132,7 @@ export default function IterationLogModal({ isOpen, onClose, client }: Iteration
         <div className="flex items-center justify-between p-5 border-b border-rillation-border">
           <div>
             <h2 className="text-xl font-semibold text-white">Iteration Log</h2>
-            <p className="text-sm text-white/60 mt-1">
+            <p className="text-sm text-white/90 mt-1">
               Track changes and iterations for {client}
             </p>
           </div>
@@ -151,7 +151,7 @@ export default function IterationLogModal({ isOpen, onClose, client }: Iteration
               onClick={onClose}
               className="p-2 hover:bg-white/10 rounded-lg transition-colors"
             >
-              <X size={20} className="text-white/60" />
+              <X size={20} className="text-white/90" />
             </button>
           </div>
         </div>
@@ -180,7 +180,7 @@ export default function IterationLogModal({ isOpen, onClose, client }: Iteration
 
                   {/* Created By */}
                   <div>
-                    <label className="block text-sm font-medium text-white/70 mb-1.5">
+                    <label className="block text-sm font-medium text-white/90 mb-1.5">
                       <User size={14} className="inline mr-1.5" />
                       Your Name
                     </label>
@@ -189,7 +189,7 @@ export default function IterationLogModal({ isOpen, onClose, client }: Iteration
                       value={createdBy}
                       onChange={(e) => setCreatedBy(e.target.value)}
                       placeholder="Enter your name"
-                      className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm placeholder:text-white/40 focus:outline-none focus:border-violet-500"
+                      className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm placeholder:text-white/80 focus:outline-none focus:border-violet-500"
                       required
                     />
                   </div>
@@ -210,10 +210,10 @@ export default function IterationLogModal({ isOpen, onClose, client }: Iteration
 
                 {/* Description with @mentions */}
                 <div>
-                  <label className="block text-sm font-medium text-white/70 mb-1.5">
+                  <label className="block text-sm font-medium text-white/90 mb-1.5">
                     <FileText size={14} className="inline mr-1.5" />
                     Description
-                    <span className="text-white/40 ml-2 text-xs">Type @ to mention team members</span>
+                    <span className="text-white/80 ml-2 text-xs">Type @ to mention team members</span>
                   </label>
                   <MentionInput
                     value={description}
@@ -224,7 +224,7 @@ export default function IterationLogModal({ isOpen, onClose, client }: Iteration
                   />
                   {mentionedUsers.length > 0 && (
                     <div className="mt-2 flex flex-wrap gap-1">
-                      <span className="text-xs text-white/50">Will notify:</span>
+                      <span className="text-xs text-white/80">Will notify:</span>
                       {mentionedUsers.map((user) => (
                         <span
                           key={user.slack_id}
@@ -283,8 +283,8 @@ export default function IterationLogModal({ isOpen, onClose, client }: Iteration
           ) : logs.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
               <FileText size={40} className="text-white/20 mb-3" />
-              <p className="text-white/60 text-sm">No iteration logs yet</p>
-              <p className="text-white/40 text-xs mt-1">
+              <p className="text-white/90 text-sm">No iteration logs yet</p>
+              <p className="text-white/80 text-xs mt-1">
                 Click "Add Entry" to start tracking changes
               </p>
             </div>
@@ -338,7 +338,7 @@ export default function IterationLogModal({ isOpen, onClose, client }: Iteration
                             </span>
                           )}
                         </div>
-                        <div className="flex items-center gap-4 text-xs text-white/50">
+                        <div className="flex items-center gap-4 text-xs text-white/80">
                           <span className="flex items-center gap-1">
                             <User size={12} />
                             {log.created_by}

@@ -374,9 +374,9 @@ export default function AICopilotPanel() {
               animate={{ rotate: [0, 360] }}
               transition={{ duration: 8, repeat: Infinity, ease: 'linear' }}
             >
-              <Cpu size={18} className="text-white/70 group-hover:text-white transition-colors" />
+              <Cpu size={18} className="text-white/90 group-hover:text-white transition-colors" />
             </motion.div>
-            <ChevronRight size={14} className="text-white/50 group-hover:text-white transition-colors" />
+            <ChevronRight size={14} className="text-white/80 group-hover:text-white transition-colors" />
           </motion.button>
         )}
       </AnimatePresence>
@@ -436,7 +436,7 @@ export default function AICopilotPanel() {
                       animate={{ opacity: [1, 0.5, 1] }}
                       transition={{ duration: 2, repeat: Infinity }}
                     />
-                    <span className="text-[10px] font-mono text-white/40 uppercase tracking-wider">Claude Online</span>
+                    <span className="text-[10px] font-mono text-white/80 uppercase tracking-wider">Claude Online</span>
                   </div>
                 </div>
               </div>
@@ -450,9 +450,9 @@ export default function AICopilotPanel() {
                   title={panelMode === 'sidebar' ? 'Expand' : 'Minimize'}
                 >
                   {panelMode === 'sidebar' ? (
-                    <Maximize2 size={16} className="text-white/50" />
+                    <Maximize2 size={16} className="text-white/80" />
                   ) : (
-                    <Minimize2 size={16} className="text-white/50" />
+                    <Minimize2 size={16} className="text-white/80" />
                   )}
                 </motion.button>
                 <motion.button
@@ -461,7 +461,7 @@ export default function AICopilotPanel() {
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                 >
-                  <ChevronLeft size={18} className="text-white/50" />
+                  <ChevronLeft size={18} className="text-white/80" />
                 </motion.button>
               </div>
             </motion.div>
@@ -478,8 +478,8 @@ export default function AICopilotPanel() {
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <BarChart2 size={14} className="text-white/60" />
-                      <span className="text-xs font-mono text-white/60">
+                      <BarChart2 size={14} className="text-white/90" />
+                      <span className="text-xs font-mono text-white/90">
                         TARGET: <span className="text-white/90">{chartContext.chartTitle}</span>
                       </span>
                     </div>
@@ -489,7 +489,7 @@ export default function AICopilotPanel() {
                       whileHover={{ scale: 1.1 }}
                       whileTap={{ scale: 0.9 }}
                     >
-                      <X size={12} className="text-white/40 hover:text-white" />
+                      <X size={12} className="text-white/80 hover:text-white" />
                     </motion.button>
                   </div>
                 </motion.div>
@@ -507,13 +507,13 @@ export default function AICopilotPanel() {
                   className="px-5 py-3 bg-white/5 border-b border-white/10 overflow-hidden"
                 >
                   <div className="flex items-center gap-2 mb-2">
-                    <ImageIcon size={14} className="text-white/60" />
-                    <span className="text-xs font-mono text-white/60">
+                    <ImageIcon size={14} className="text-white/90" />
+                    <span className="text-xs font-mono text-white/90">
                       {screenshots.length} screenshot{screenshots.length > 1 ? 's' : ''} attached
                     </span>
                     <button
                       onClick={clearScreenshots}
-                      className="ml-auto text-[10px] text-white/40 hover:text-white transition-colors"
+                      className="ml-auto text-[10px] text-white/80 hover:text-white transition-colors"
                     >
                       Clear all
                     </button>
@@ -604,7 +604,7 @@ export default function AICopilotPanel() {
                         }`}>
                           {parseMarkdown(message.content)}
                     </div>
-                        <div className="text-[10px] mt-2 font-mono text-white/40">
+                        <div className="text-[10px] mt-2 font-mono text-white/80">
                       {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </div>
                   </div>
@@ -627,9 +627,9 @@ export default function AICopilotPanel() {
                         animate={{ rotate: 360 }}
                         transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
                       >
-                        <Cpu size={14} className="text-white/60" />
+                        <Cpu size={14} className="text-white/90" />
                       </motion.div>
-                      <span className="text-xs font-mono text-white/60">
+                      <span className="text-xs font-mono text-white/90">
                         Processing<TypingCursor />
                       </span>
                     </div>
@@ -687,7 +687,7 @@ export default function AICopilotPanel() {
                   className={`p-3 rounded-lg border transition-all flex-shrink-0 ${
                     isElementPickerActive
                       ? 'bg-violet-600 text-white border-violet-500'
-                      : 'bg-slate-800/80 text-white/60 border-slate-700/50 hover:bg-slate-700/80 hover:border-slate-600/50'
+                      : 'bg-slate-800/80 text-white/90 border-slate-700/50 hover:bg-slate-700/80 hover:border-slate-600/50'
                   }`}
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
@@ -742,7 +742,7 @@ export default function AICopilotPanel() {
                     initial={{ opacity: 0, y: -5 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -5 }}
-                    className="mt-2 flex items-center gap-2 text-xs font-mono text-white/60"
+                    className="mt-2 flex items-center gap-2 text-xs font-mono text-white/90"
                   >
                     <motion.div
                       animate={{ scale: [1, 1.2, 1] }}

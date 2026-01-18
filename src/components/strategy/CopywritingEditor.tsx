@@ -76,11 +76,11 @@ function GenerateCopyModal({ isOpen, onClose, fathomCalls, hasKnowledgeBase, onG
             </div>
             <div>
               <h2 className="text-lg font-semibold text-white">Generate Copy Structures</h2>
-              <p className="text-xs text-white/60">AI will create email sequences</p>
+              <p className="text-xs text-white/90">AI will create email sequences</p>
             </div>
           </div>
           <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-lg">
-            <X size={18} className="text-white/60" />
+            <X size={18} className="text-white/90" />
           </button>
         </div>
 
@@ -134,7 +134,7 @@ function GenerateCopyModal({ isOpen, onClose, fathomCalls, hasKnowledgeBase, onG
         </div>
 
         <div className="flex items-center justify-end gap-3 p-4 border-t border-rillation-border">
-          <button onClick={onClose} className="px-4 py-2 text-sm text-white/60 hover:text-white transition-colors">
+          <button onClick={onClose} className="px-4 py-2 text-sm text-white/90 hover:text-white transition-colors">
             Cancel
           </button>
           <button
@@ -203,11 +203,11 @@ function GeneratePromptsModal({ isOpen, onClose, variables, existingPrompts, onG
             </div>
             <div>
               <h2 className="text-lg font-semibold text-white">Generate Clay Prompts</h2>
-              <p className="text-xs text-white/60">Create Claygent prompts for variables</p>
+              <p className="text-xs text-white/90">Create Claygent prompts for variables</p>
             </div>
           </div>
           <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-lg">
-            <X size={18} className="text-white/60" />
+            <X size={18} className="text-white/90" />
           </button>
         </div>
 
@@ -251,7 +251,7 @@ function GeneratePromptsModal({ isOpen, onClose, variables, existingPrompts, onG
         </div>
 
         <div className="flex items-center justify-end gap-3 p-4 border-t border-rillation-border">
-          <button onClick={onClose} className="px-4 py-2 text-sm text-white/60 hover:text-white transition-colors">
+          <button onClick={onClose} className="px-4 py-2 text-sm text-white/90 hover:text-white transition-colors">
             Cancel
           </button>
           <button
@@ -593,7 +593,7 @@ function SequenceCard({
             {onDelete && (
               <button
                 onClick={onDelete}
-                className="p-1.5 text-white/60 hover:text-red-400 transition-colors"
+                className="p-1.5 text-white/90 hover:text-red-400 transition-colors"
               >
                 <Trash2 size={14} />
               </button>
@@ -663,10 +663,10 @@ function ClayPromptCard({
           </button>
           
           <div className="flex items-center gap-1">
-            <button onClick={onCopy} className="p-1.5 text-white/60 hover:text-white transition-colors">
+            <button onClick={onCopy} className="p-1.5 text-white/90 hover:text-white transition-colors">
               <Copy size={14} />
             </button>
-            <button onClick={onDelete} className="p-1.5 text-white/60 hover:text-red-400 transition-colors">
+            <button onClick={onDelete} className="p-1.5 text-white/90 hover:text-red-400 transition-colors">
               <Trash2 size={14} />
             </button>
           </div>
@@ -696,9 +696,9 @@ function ClayPromptCard({
 
               {prompt.columns_used && prompt.columns_used.length > 0 && (
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-xs text-white/70">Columns:</span>
+                  <span className="text-xs text-white/90">Columns:</span>
                   {prompt.columns_used.map((col, i) => (
-                    <span key={i} className="px-2 py-0.5 bg-white/5 rounded text-xs text-white/60 font-mono">
+                    <span key={i} className="px-2 py-0.5 bg-white/5 rounded text-xs text-white/90 font-mono">
                       {col}
                     </span>
                   ))}
@@ -987,7 +987,7 @@ export default function CopywritingEditor({
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <Loader2 size={32} className="animate-spin text-white/60" />
+        <Loader2 size={32} className="animate-spin text-white/90" />
       </div>
     )
   }
@@ -1002,7 +1002,7 @@ export default function CopywritingEditor({
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-xl font-semibold text-white">Copywriting</h2>
-            <p className="text-sm text-white/70 mt-0.5">Email sequences & Clay prompts for {client}</p>
+            <p className="text-sm text-white/90 mt-0.5">Email sequences & Clay prompts for {client}</p>
           </div>
           
           <div className="flex items-center gap-2">
@@ -1038,7 +1038,7 @@ export default function CopywritingEditor({
               onClick={handleSave}
               disabled={!hasChanges || isSaving}
               className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all ${
-                hasChanges ? 'bg-white text-black hover:bg-white/90' : 'bg-white/5 border border-white/10 text-white/70'
+                hasChanges ? 'bg-white text-black hover:bg-white/90' : 'bg-white/5 border border-white/10 text-white/90'
               }`}
             >
               {isSaving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
@@ -1052,7 +1052,7 @@ export default function CopywritingEditor({
           <button
             onClick={() => setActiveTab('copy')}
             className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-              activeTab === 'copy' ? 'bg-white text-black' : 'text-white/60 hover:text-white'
+              activeTab === 'copy' ? 'bg-white text-black' : 'text-white/90 hover:text-white'
             }`}
           >
             <Mail size={16} />
@@ -1066,7 +1066,7 @@ export default function CopywritingEditor({
           <button
             onClick={() => setActiveTab('prompts')}
             className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-              activeTab === 'prompts' ? 'bg-white text-black' : 'text-white/60 hover:text-white'
+              activeTab === 'prompts' ? 'bg-white text-black' : 'text-white/90 hover:text-white'
             }`}
           >
             <Variable size={16} />
@@ -1151,7 +1151,7 @@ export default function CopywritingEditor({
                 })}
               </div>
               {allVariables.length > existingPromptVars.length && (
-                <p className="text-xs text-white/70 mt-2">
+                <p className="text-xs text-white/90 mt-2">
                   {allVariables.length - existingPromptVars.length} variables need prompts
                 </p>
               )}
@@ -1175,14 +1175,14 @@ export default function CopywritingEditor({
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-medium text-white">Prompt Templates</h3>
-              <span className="text-xs text-white/50">Reusable prompts for common variables</span>
+              <span className="text-xs text-white/80">Reusable prompts for common variables</span>
             </div>
 
             {existingPromptVars.length === 0 ? (
               <div className="text-center py-12 border-2 border-dashed border-white/10 rounded-2xl">
                 <Code size={32} className="mx-auto text-white/20 mb-3" />
                 <h3 className="text-sm font-medium text-white mb-1">No Templates Yet</h3>
-                <p className="text-xs text-white/60 mb-3">
+                <p className="text-xs text-white/90 mb-3">
                   Generate templates for common variables to reuse across emails.
                 </p>
                 <button

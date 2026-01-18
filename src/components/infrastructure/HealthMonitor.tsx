@@ -238,7 +238,7 @@ export default function HealthMonitor() {
         animate={{ opacity: 1, y: 0 }}
       >
         <div className="bg-rillation-card rounded-xl p-4 border border-rillation-border">
-          <p className="text-xs text-white/60 mb-1">Inboxes Analyzed</p>
+          <p className="text-xs text-white/90 mb-1">Inboxes Analyzed</p>
           <p className="text-2xl font-bold text-white">{stats.total}</p>
         </div>
         <div className="bg-rillation-card rounded-xl p-4 border border-emerald-500/30">
@@ -254,7 +254,7 @@ export default function HealthMonitor() {
           <p className="text-2xl font-bold text-red-400">{stats.critical}</p>
         </div>
         <div className="bg-rillation-card rounded-xl p-4 border border-rillation-border">
-          <p className="text-xs text-white/60 mb-1">Avg Reply Rate</p>
+          <p className="text-xs text-white/90 mb-1">Avg Reply Rate</p>
           <p className="text-2xl font-bold text-white">{stats.avgReply.toFixed(2)}%</p>
         </div>
       </motion.div>
@@ -266,7 +266,7 @@ export default function HealthMonitor() {
           className={`px-4 py-2 rounded-t-lg text-sm font-medium transition-colors ${
             activeTab === 'health'
               ? 'bg-white text-slate-900'
-              : 'text-white/60 hover:text-white'
+              : 'text-white/90 hover:text-white'
           }`}
         >
           Domain Health
@@ -276,7 +276,7 @@ export default function HealthMonitor() {
           className={`px-4 py-2 rounded-t-lg text-sm font-medium transition-colors ${
             activeTab === 'rebatch'
               ? 'bg-white text-slate-900'
-              : 'text-white/60 hover:text-white'
+              : 'text-white/90 hover:text-white'
           }`}
         >
           Rebatch History ({rebatchRuns.length})
@@ -293,13 +293,13 @@ export default function HealthMonitor() {
             className="bg-rillation-card rounded-xl border border-rillation-border overflow-hidden"
           >
             {domainHealth.length === 0 ? (
-              <div className="p-8 text-center text-white/60">
+              <div className="p-8 text-center text-white/90">
                 No health data yet. Run a preview to analyze inbox health.
               </div>
             ) : (
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="text-xs text-white/60 border-b border-rillation-border">
+                  <tr className="text-xs text-white/90 border-b border-rillation-border">
                     <th className="px-4 py-3 text-left">Domain</th>
                     <th className="px-4 py-3 text-left">Client</th>
                     <th className="px-4 py-3 text-right">Inboxes</th>
@@ -352,7 +352,7 @@ export default function HealthMonitor() {
             className="space-y-4"
           >
             {rebatchRuns.length === 0 ? (
-              <div className="bg-rillation-card rounded-xl p-8 text-center text-white/60 border border-rillation-border">
+              <div className="bg-rillation-card rounded-xl p-8 text-center text-white/90 border border-rillation-border">
                 No rebatch runs yet. Click "Preview Rebatch" to generate recommendations.
               </div>
             ) : (
@@ -372,12 +372,12 @@ export default function HealthMonitor() {
                           run.status === 'approved' ? 'bg-cyan-500/20 text-cyan-400' :
                           run.status === 'preview' ? 'bg-amber-500/20 text-amber-400' :
                           run.status === 'failed' ? 'bg-red-500/20 text-red-400' :
-                          'bg-slate-500/20 text-white/60'
+                          'bg-slate-500/20 text-white/90'
                         }`}>
                           {run.status}
                         </span>
                       </div>
-                      <p className="text-xs text-white/60">
+                      <p className="text-xs text-white/90">
                         {new Date(run.created_at).toLocaleString()}
                       </p>
                     </div>
@@ -409,19 +409,19 @@ export default function HealthMonitor() {
 
                   <div className="grid grid-cols-6 gap-4 text-sm">
                     <div>
-                      <p className="text-xs text-white/60 mb-1">Daily Goal</p>
+                      <p className="text-xs text-white/90 mb-1">Daily Goal</p>
                       <p className="text-white font-medium">{run.daily_send_goal}</p>
                     </div>
                     <div>
-                      <p className="text-xs text-white/60 mb-1">Active</p>
+                      <p className="text-xs text-white/90 mb-1">Active</p>
                       <p className="text-white font-medium">{run.active_domains}</p>
                     </div>
                     <div>
-                      <p className="text-xs text-white/60 mb-1">Insurance</p>
+                      <p className="text-xs text-white/90 mb-1">Insurance</p>
                       <p className="text-white font-medium">{run.insurance_domains}</p>
                     </div>
                     <div>
-                      <p className="text-xs text-white/60 mb-1">Avg Reply</p>
+                      <p className="text-xs text-white/90 mb-1">Avg Reply</p>
                       <p className="text-white font-medium">{run.avg_reply_rate?.toFixed(2) || 0}%</p>
                     </div>
                     <div>
@@ -446,7 +446,7 @@ export default function HealthMonitor() {
                               </span>
                             ))}
                             {run.domains_to_cancel.length > 10 && (
-                              <span className="text-xs text-white/50">+{run.domains_to_cancel.length - 10} more</span>
+                              <span className="text-xs text-white/80">+{run.domains_to_cancel.length - 10} more</span>
                             )}
                           </div>
                         </div>
@@ -461,7 +461,7 @@ export default function HealthMonitor() {
                               </span>
                             ))}
                             {run.domains_to_activate.length > 10 && (
-                              <span className="text-xs text-white/50">+{run.domains_to_activate.length - 10} more</span>
+                              <span className="text-xs text-white/80">+{run.domains_to_activate.length - 10} more</span>
                             )}
                           </div>
                         </div>

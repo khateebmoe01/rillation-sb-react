@@ -224,18 +224,18 @@ export default function ElementPickerOverlay({
               }}
             >
               <div className="flex items-center gap-2 text-xs font-mono">
-                <Camera size={12} className="text-white/60" />
+                <Camera size={12} className="text-white/90" />
                 <span className="text-white/80">
                   {hoverInfo.tagName}
-                  {hoverInfo.id && <span className="text-white/50"> #{hoverInfo.id.slice(0, 20)}</span>}
+                  {hoverInfo.id && <span className="text-white/80"> #{hoverInfo.id.slice(0, 20)}</span>}
                 </span>
               </div>
               {hoverInfo.textContent && (
-                <div className="text-[10px] text-white/50 mt-1 truncate max-w-[200px]">
+                <div className="text-[10px] text-white/80 mt-1 truncate max-w-[200px]">
                   "{hoverInfo.textContent}"
                 </div>
               )}
-              <div className="text-[10px] text-white/40 mt-1">
+              <div className="text-[10px] text-white/80 mt-1">
                 Click to capture • ESC to cancel
               </div>
             </motion.div>
@@ -278,7 +278,7 @@ export default function ElementPickerOverlay({
               onClick={onCancel}
               className="p-1 hover:bg-white/10 rounded transition-colors"
             >
-              <X size={14} className="text-white/60" />
+              <X size={14} className="text-white/90" />
             </button>
           </div>
         </motion.div>
