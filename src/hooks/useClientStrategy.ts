@@ -292,8 +292,14 @@ export function useClientStrategy(selectedClient: string | null) {
     if (!selectedClient) return null
 
     try {
-      // Get next version number
-      const currentVersion = opportunityMaps.length > 0 ? Math.max(...opportunityMaps.map(m => m.version)) : 0
+      // Get next version number from DATABASE (not local state) to avoid stale data
+      const { data: existingMaps } = await getTable('client_opportunity_maps')
+        .select('version')
+        .eq('client', selectedClient)
+        .order('version', { ascending: false })
+        .limit(1)
+      
+      const currentVersion = existingMaps && existingMaps.length > 0 ? existingMaps[0].version : 0
       
       const { data, error } = await getTable('client_opportunity_maps')
         .insert({
@@ -311,7 +317,7 @@ export function useClientStrategy(selectedClient: string | null) {
       console.error('Error creating opportunity map:', err)
       return null
     }
-  }, [selectedClient, opportunityMaps])
+  }, [selectedClient])
 
   const updateOpportunityMap = useCallback(async (id: string, updates: Partial<OpportunityMap>) => {
     try {
