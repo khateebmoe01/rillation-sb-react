@@ -19,9 +19,7 @@ import {
   Briefcase,
   Globe,
   MapPin,
-  Calendar,
   Link,
-  Mail,
   User,
   MessageSquare,
   Zap,
@@ -561,7 +559,6 @@ export default function KnowledgeBaseEditor({
   fathomCalls = [],
   loading,
   onSave,
-  compact = false,
 }: KnowledgeBaseEditorProps) {
   const [localData, setLocalData] = useState<Partial<KnowledgeBase>>({})
   const [isSaving, setIsSaving] = useState(false)

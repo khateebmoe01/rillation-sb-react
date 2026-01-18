@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   FileText,
@@ -8,7 +8,6 @@ import {
   Download,
   Save,
   Loader2,
-  Plus,
   X,
   Check,
   ChevronDown,
@@ -18,7 +17,6 @@ import {
   AlertCircle,
   Zap,
   Variable,
-  Edit3,
 } from 'lucide-react'
 import { jsPDF } from 'jspdf'
 import { supabase } from '../../lib/supabase'
@@ -525,7 +523,7 @@ function generateCopyPDF(copywriting: ClientCopywriting, client: string) {
   pdf.text(new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }), pageWidth / 2, 95, { align: 'center' })
 
   // Content Pages
-  copywriting.copy_structures?.forEach((sequence, seqIndex) => {
+  copywriting.copy_structures?.forEach((sequence) => {
     pdf.addPage()
     pdf.setFillColor(243, 244, 246)
     pdf.rect(0, 0, pageWidth, pageHeight, 'F')
