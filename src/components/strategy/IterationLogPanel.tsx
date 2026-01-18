@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   RefreshCw,
@@ -11,6 +11,8 @@ import {
   Settings,
   FileText,
   X,
+  ChevronDown,
+  Check,
 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 
@@ -41,6 +43,90 @@ const ACTION_TYPES = [
   { value: 'meeting_notes', label: 'Meeting Notes', icon: MessageSquare, color: 'bg-green-500' },
   { value: 'general', label: 'General', icon: RefreshCw, color: 'bg-gray-500' },
 ]
+
+// Compact Action Type Filter Dropdown
+function ActionTypeFilter({ 
+  value, 
+  onChange 
+}: { 
+  value: string | null
+  onChange: (value: string | null) => void 
+}) {
+  const [isOpen, setIsOpen] = useState(false)
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  // Close on click outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setIsOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  const selectedType = value ? ACTION_TYPES.find(t => t.value === value) : null
+  const displayValue = selectedType ? selectedType.label : 'All Types'
+
+  return (
+    <div ref={containerRef} className="relative inline-block">
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="flex items-center gap-2 px-3 py-1.5 bg-rillation-card border border-rillation-border rounded-lg text-xs text-white hover:border-white/30 transition-colors"
+      >
+        {selectedType && (
+          <div className={`w-2 h-2 rounded-full ${selectedType.color}`} />
+        )}
+        <span>{displayValue}</span>
+        <ChevronDown size={12} className={`text-white/60 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+      </button>
+
+      {/* Dropdown */}
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: -4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -4 }}
+            transition={{ duration: 0.1 }}
+            className="absolute top-full left-0 mt-1 min-w-[140px] z-50 bg-rillation-card border border-rillation-border rounded-lg shadow-xl overflow-hidden"
+          >
+            {/* All Option */}
+            <button
+              onClick={() => { onChange(null); setIsOpen(false) }}
+              className={`w-full flex items-center gap-2 px-3 py-2 text-left text-xs transition-colors ${
+                value === null ? 'bg-white/10 text-white' : 'text-white/70 hover:bg-white/5 hover:text-white'
+              }`}
+            >
+              <div className="w-2 h-2" />
+              <span>All Types</span>
+              {value === null && <Check size={10} className="ml-auto text-emerald-400" />}
+            </button>
+
+            {/* Action Type Options */}
+            {ACTION_TYPES.map((type) => {
+              const isSelected = value === type.value
+              return (
+                <button
+                  key={type.value}
+                  onClick={() => { onChange(type.value); setIsOpen(false) }}
+                  className={`w-full flex items-center gap-2 px-3 py-2 text-left text-xs transition-colors ${
+                    isSelected ? 'bg-white/10 text-white' : 'text-white/70 hover:bg-white/5 hover:text-white'
+                  }`}
+                >
+                  <div className={`w-2 h-2 rounded-full ${type.color}`} />
+                  <span>{type.label}</span>
+                  {isSelected && <Check size={10} className="ml-auto text-emerald-400" />}
+                </button>
+              )
+            })}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
 
 interface AddLogModalProps {
   isOpen: boolean
@@ -327,36 +413,8 @@ export default function IterationLogPanel({ client, compact = false }: Iteration
         </div>
       )}
 
-      {/* Filters */}
-      <div className="flex gap-2 overflow-x-auto pb-2">
-        <button
-          onClick={() => setFilter(null)}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors ${
-            filter === null
-              ? 'bg-white text-black'
-              : 'bg-rillation-card border border-rillation-border text-rillation-text-muted hover:text-rillation-text'
-          }`}
-        >
-          All
-        </button>
-        {ACTION_TYPES.map((type) => {
-          const Icon = type.icon
-          return (
-            <button
-              key={type.value}
-              onClick={() => setFilter(type.value)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors ${
-                filter === type.value
-                  ? 'bg-white text-black'
-                  : 'bg-rillation-card border border-rillation-border text-rillation-text-muted hover:text-rillation-text'
-              }`}
-            >
-              <Icon size={12} />
-              {type.label}
-            </button>
-          )
-        })}
-      </div>
+      {/* Filter Dropdown */}
+      <ActionTypeFilter value={filter} onChange={setFilter} />
 
       {/* Log List */}
       {loading ? (

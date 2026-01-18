@@ -106,6 +106,27 @@ export async function getLastSyncTime() {
   return (data as any)?.synced_at
 }
 
+// Sync InboxKit mailbox renewal dates to our inboxes table
+export async function syncInboxKitRenewals(includeDetails = false) {
+  const { data, error } = await supabase.functions.invoke('inboxkit-api', {
+    body: { 
+      action: 'sync-inboxes',
+      include_details: includeDetails
+    },
+  })
+  if (error) throw error
+  return data
+}
+
+// Get InboxKit renewal data directly (no DB linking required)
+export async function getInboxKitRenewals() {
+  const { data, error } = await supabase.functions.invoke('inboxkit-api', {
+    body: { action: 'get-renewals' },
+  })
+  if (error) throw error
+  return data?.data || { total_mailboxes: 0, renewals: [] }
+}
+
 
 
 

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   FileText,
@@ -277,8 +277,57 @@ function GeneratePromptsModal({ isOpen, onClose, variables, existingPrompts, onG
   )
 }
 
-// Email Card Component - Beautiful display matching screenshots
-function EmailCard({ email, emailIndex }: { email: CopyEmail; emailIndex: number }) {
+// Email Card Component - Beautiful display with copy button and expandable prompts
+function EmailCard({ 
+  email, 
+  emailIndex,
+  onUpdatePrompt,
+  onCopyEmail
+}: { 
+  email: CopyEmail
+  emailIndex: number
+  onUpdatePrompt?: (emailId: string, variable: string, prompt: ClayPrompt) => void
+  onCopyEmail?: (email: CopyEmail) => void
+}) {
+  const [showPrompts, setShowPrompts] = useState(false)
+  const [copied, setCopied] = useState(false)
+  const [editingPrompt, setEditingPrompt] = useState<string | null>(null)
+  const [promptDraft, setPromptDraft] = useState('')
+
+  // Extract variables from this email
+  const emailVariables = useMemo(() => {
+    const vars = new Set<string>()
+    email.variables?.forEach(v => vars.add(v))
+    const matches = email.body.match(/\{\{([^}]+)\}\}/g)
+    matches?.forEach(m => vars.add(m.replace(/\{\{|\}\}/g, '').trim()))
+    if (email.subject) {
+      const subjectMatches = email.subject.match(/\{\{([^}]+)\}\}/g)
+      subjectMatches?.forEach(m => vars.add(m.replace(/\{\{|\}\}/g, '').trim()))
+    }
+    return Array.from(vars).sort()
+  }, [email])
+
+  const handleCopy = () => {
+    const content = email.subject 
+      ? `Subject: ${email.subject}\n\n${email.body}`
+      : email.body
+    navigator.clipboard.writeText(content)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+    onCopyEmail?.(email)
+  }
+
+  const handleSavePrompt = (variable: string) => {
+    if (promptDraft.trim() && onUpdatePrompt) {
+      onUpdatePrompt(email.id, variable, {
+        prompt: promptDraft,
+        updated_at: new Date().toISOString()
+      })
+    }
+    setEditingPrompt(null)
+    setPromptDraft('')
+  }
+
   // Function to render text with highlighted variables
   const renderHighlightedText = (text: string) => {
     const parts = text.split(/(\{\{[^}]+\}\}|\{[^}]+\|[^}]+\})/g)
@@ -311,19 +360,180 @@ function EmailCard({ email, emailIndex }: { email: CopyEmail; emailIndex: number
   }
 
   return (
-    <div className="bg-slate-100 rounded-lg p-5 space-y-3">
-      <div className="font-semibold text-slate-800">Email #{emailIndex + 1}:</div>
-      {email.subject && (
-        <div className="text-sm text-slate-600">
-          <span className="font-medium">Subject:</span> {renderHighlightedText(email.subject)}
-        </div>
-      )}
-      <div className="text-slate-700 leading-relaxed whitespace-pre-wrap">
-        {renderHighlightedText(email.body)}
+    <div className="bg-slate-100 rounded-lg overflow-hidden">
+      {/* Email Header with Copy Button */}
+      <div className="flex items-center justify-between px-5 pt-4 pb-2">
+        <div className="font-semibold text-slate-800">Email #{emailIndex + 1}</div>
+        <button
+          onClick={handleCopy}
+          className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-all ${
+            copied 
+              ? 'bg-emerald-100 text-emerald-700' 
+              : 'bg-slate-200 text-slate-600 hover:bg-slate-300'
+          }`}
+        >
+          {copied ? (
+            <>
+              <Check size={12} />
+              Copied!
+            </>
+          ) : (
+            <>
+              <Copy size={12} />
+              Copy
+            </>
+          )}
+        </button>
       </div>
-      {email.notes && (
-        <div className="text-xs text-slate-500 italic border-t border-slate-200 pt-2 mt-2">
-          Note: {email.notes}
+
+      {/* Email Content */}
+      <div className="px-5 pb-4 space-y-3">
+        {email.subject && (
+          <div className="text-sm text-slate-600">
+            <span className="font-medium">Subject:</span> {renderHighlightedText(email.subject)}
+          </div>
+        )}
+        <div className="text-slate-700 leading-relaxed whitespace-pre-wrap">
+          {renderHighlightedText(email.body)}
+        </div>
+        {email.notes && (
+          <div className="text-xs text-slate-500 italic border-t border-slate-200 pt-2 mt-2">
+            Note: {email.notes}
+          </div>
+        )}
+      </div>
+
+      {/* Clay Prompts Section */}
+      {emailVariables.length > 0 && (
+        <div className="border-t border-slate-200">
+          <button
+            onClick={() => setShowPrompts(!showPrompts)}
+            className="w-full flex items-center justify-between px-5 py-3 text-left hover:bg-slate-200/50 transition-colors"
+          >
+            <div className="flex items-center gap-2">
+              <Code size={14} className="text-violet-600" />
+              <span className="text-xs font-medium text-slate-600">Clay Prompts</span>
+              <span className="text-xs text-slate-400">({emailVariables.length} variables)</span>
+            </div>
+            <ChevronDown 
+              size={14} 
+              className={`text-slate-400 transition-transform ${showPrompts ? 'rotate-180' : ''}`} 
+            />
+          </button>
+
+          <AnimatePresence>
+            {showPrompts && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.15 }}
+                className="overflow-hidden"
+              >
+                <div className="px-5 pb-4 space-y-2">
+                  {emailVariables.map(variable => {
+                    const prompt = email.clay_prompts?.[variable]
+                    const isEditing = editingPrompt === variable
+                    
+                    return (
+                      <div key={variable} className="bg-white rounded-lg border border-slate-200 overflow-hidden">
+                        <div className="flex items-center justify-between px-3 py-2">
+                          <span className="px-2 py-0.5 bg-amber-100 text-amber-700 rounded text-xs font-mono">
+                            {`{{${variable}}}`}
+                          </span>
+                          <div className="flex items-center gap-1">
+                            {prompt && (
+                              <button
+                                onClick={() => {
+                                  navigator.clipboard.writeText(prompt.prompt)
+                                }}
+                                className="p-1 text-slate-400 hover:text-slate-600"
+                                title="Copy prompt"
+                              >
+                                <Copy size={12} />
+                              </button>
+                            )}
+                            <button
+                              onClick={() => {
+                                if (isEditing) {
+                                  setEditingPrompt(null)
+                                  setPromptDraft('')
+                                } else {
+                                  setEditingPrompt(variable)
+                                  setPromptDraft(prompt?.prompt || '')
+                                }
+                              }}
+                              className="p-1 text-slate-400 hover:text-violet-600"
+                              title={isEditing ? 'Cancel' : 'Edit prompt'}
+                            >
+                              {isEditing ? <X size={12} /> : <Zap size={12} />}
+                            </button>
+                          </div>
+                        </div>
+
+                        {prompt && !isEditing && (
+                          <div className="px-3 pb-3">
+                            {prompt.example_output && (
+                              <div className="text-xs text-emerald-600 mb-1">
+                                Example: {prompt.example_output}
+                              </div>
+                            )}
+                            <pre className="text-xs text-slate-500 whitespace-pre-wrap font-mono bg-slate-50 rounded p-2 max-h-24 overflow-y-auto">
+                              {prompt.prompt}
+                            </pre>
+                          </div>
+                        )}
+
+                        {isEditing && (
+                          <div className="px-3 pb-3 space-y-2">
+                            <textarea
+                              value={promptDraft}
+                              onChange={(e) => setPromptDraft(e.target.value)}
+                              placeholder="Enter Clay prompt for this variable..."
+                              rows={4}
+                              className="w-full px-3 py-2 text-xs font-mono bg-slate-50 border border-slate-200 rounded-lg resize-none focus:outline-none focus:border-violet-300"
+                            />
+                            <div className="flex justify-end gap-2">
+                              <button
+                                onClick={() => {
+                                  setEditingPrompt(null)
+                                  setPromptDraft('')
+                                }}
+                                className="px-2 py-1 text-xs text-slate-500 hover:text-slate-700"
+                              >
+                                Cancel
+                              </button>
+                              <button
+                                onClick={() => handleSavePrompt(variable)}
+                                disabled={!promptDraft.trim()}
+                                className="px-3 py-1 text-xs bg-violet-500 text-white rounded hover:bg-violet-600 disabled:opacity-50"
+                              >
+                                Save Prompt
+                              </button>
+                            </div>
+                          </div>
+                        )}
+
+                        {!prompt && !isEditing && (
+                          <div className="px-3 pb-3">
+                            <button
+                              onClick={() => {
+                                setEditingPrompt(variable)
+                                setPromptDraft('')
+                              }}
+                              className="text-xs text-violet-500 hover:text-violet-600"
+                            >
+                              + Add prompt for this variable
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       )}
     </div>
@@ -331,7 +541,15 @@ function EmailCard({ email, emailIndex }: { email: CopyEmail; emailIndex: number
 }
 
 // Sequence Card Component
-function SequenceCard({ sequence, onDelete }: { sequence: CopySequence; onDelete?: () => void }) {
+function SequenceCard({ 
+  sequence, 
+  onDelete,
+  onUpdateEmailPrompt
+}: { 
+  sequence: CopySequence
+  onDelete?: () => void
+  onUpdateEmailPrompt?: (emailId: string, variable: string, prompt: ClayPrompt) => void
+}) {
   const [isExpanded, setIsExpanded] = useState(true)
 
   return (
@@ -394,7 +612,12 @@ function SequenceCard({ sequence, onDelete }: { sequence: CopySequence; onDelete
               className="space-y-3 overflow-hidden"
             >
               {sequence.emails.map((email, i) => (
-                <EmailCard key={email.id} email={email} emailIndex={i} />
+                <EmailCard 
+                  key={email.id} 
+                  email={email} 
+                  emailIndex={i}
+                  onUpdatePrompt={onUpdateEmailPrompt}
+                />
               ))}
             </motion.div>
           )}
@@ -738,6 +961,29 @@ export default function CopywritingEditor({
     navigator.clipboard.writeText(prompt.prompt)
   }
 
+  // Handler to update a prompt on a specific email within a sequence
+  const handleUpdateEmailPrompt = useCallback((emailId: string, variable: string, prompt: ClayPrompt) => {
+    setLocalData(prev => {
+      const updatedStructures = prev.copy_structures?.map(seq => ({
+        ...seq,
+        emails: seq.emails.map(email => {
+          if (email.id === emailId) {
+            return {
+              ...email,
+              clay_prompts: {
+                ...(email.clay_prompts || {}),
+                [variable]: prompt
+              }
+            }
+          }
+          return email
+        })
+      }))
+      return { ...prev, copy_structures: updatedStructures }
+    })
+    setHasChanges(true)
+  }, [])
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -872,6 +1118,7 @@ export default function CopywritingEditor({
                 key={sequence.id}
                 sequence={sequence}
                 onDelete={() => handleDeleteSequence(sequence.id)}
+                onUpdateEmailPrompt={handleUpdateEmailPrompt}
               />
             ))
           )}
@@ -911,36 +1158,56 @@ export default function CopywritingEditor({
             </div>
           )}
 
-          {/* Clay Prompts */}
-          {existingPromptVars.length === 0 ? (
-            <div className="text-center py-16 border-2 border-dashed border-white/10 rounded-2xl">
-              <Code size={40} className="mx-auto text-white/20 mb-4" />
-              <h3 className="text-lg font-medium text-white mb-2">No Clay Prompts Yet</h3>
-              <p className="text-sm text-white/80 mb-4">
-                Generate Clay/Claygent prompts for your copy variables.
-              </p>
-              <button
-                onClick={() => setIsGeneratePromptsOpen(true)}
-                disabled={allVariables.length === 0}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-violet-500 to-purple-500 text-white text-sm font-medium rounded-lg hover:opacity-90 disabled:opacity-50"
-              >
-                <Zap size={16} />
-                Generate Clay Prompts
-              </button>
+          {/* Info about per-email prompts */}
+          <div className="p-4 bg-violet-500/10 border border-violet-500/30 rounded-xl">
+            <div className="flex items-start gap-3">
+              <Code size={18} className="text-violet-400 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm text-violet-200 font-medium">Prompts are now per-email</p>
+                <p className="text-xs text-violet-200/70 mt-1">
+                  Each email in your copy structures has its own Clay prompts. Expand any email in the "Copy Structures" tab to view and edit prompts for that specific email.
+                </p>
+              </div>
             </div>
-          ) : (
-            <div className="space-y-3">
-              {existingPromptVars.map(varName => (
-                <ClayPromptCard
-                  key={varName}
-                  variableName={varName}
-                  prompt={localData.clay_prompts![varName]}
-                  onDelete={() => handleDeletePrompt(varName)}
-                  onCopy={() => handleCopyPrompt(localData.clay_prompts![varName])}
-                />
-              ))}
+          </div>
+
+          {/* Prompt Templates Library */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-medium text-white">Prompt Templates</h3>
+              <span className="text-xs text-white/50">Reusable prompts for common variables</span>
             </div>
-          )}
+
+            {existingPromptVars.length === 0 ? (
+              <div className="text-center py-12 border-2 border-dashed border-white/10 rounded-2xl">
+                <Code size={32} className="mx-auto text-white/20 mb-3" />
+                <h3 className="text-sm font-medium text-white mb-1">No Templates Yet</h3>
+                <p className="text-xs text-white/60 mb-3">
+                  Generate templates for common variables to reuse across emails.
+                </p>
+                <button
+                  onClick={() => setIsGeneratePromptsOpen(true)}
+                  disabled={allVariables.length === 0}
+                  className="inline-flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-violet-500 to-purple-500 text-white text-xs font-medium rounded-lg hover:opacity-90 disabled:opacity-50"
+                >
+                  <Zap size={14} />
+                  Generate Templates
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {existingPromptVars.map(varName => (
+                  <ClayPromptCard
+                    key={varName}
+                    variableName={varName}
+                    prompt={localData.clay_prompts![varName]}
+                    onDelete={() => handleDeletePrompt(varName)}
+                    onCopy={() => handleCopyPrompt(localData.clay_prompts![varName])}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       )}
 

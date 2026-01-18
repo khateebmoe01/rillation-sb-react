@@ -289,10 +289,11 @@ function generatePDF(map: OpportunityMap, client: string) {
     pdf.text(client.toUpperCase(), pageWidth - margin, 22, { align: 'right' })
   }
   
-  // Helper: Draw decorative left bar
+  // Helper: Draw decorative left bar (aligned to text baseline)
   const drawLeftBar = (startY: number, height: number, color: [number, number, number] = PDF_COLORS.darkBlue) => {
     pdf.setFillColor(...color)
-    pdf.rect(margin - 4, startY - 4, 2, height, 'F')
+    // Draw bar starting slightly above text baseline (for visual alignment)
+    pdf.rect(margin - 4, startY - 3, 2, height + 2, 'F')
   }
   
   // ============================================================
@@ -313,11 +314,13 @@ function generatePDF(map: OpportunityMap, client: string) {
   pdf.setTextColor(...PDF_COLORS.darkBlue)
   pdf.text('OPPORTUNITY MAP', pageWidth / 2, 55, { align: 'center' })
   
-  // Subtitle/Session
+  // Subtitle/Session - validate title to filter garbage text
   pdf.setFontSize(14)
   pdf.setFont('helvetica', 'normal')
   pdf.setTextColor(...PDF_COLORS.mediumBlue)
-  pdf.text(map.title || 'Strategy Document', pageWidth / 2, 70, { align: 'center' })
+  const isValidTitle = map.title && map.title.length > 3 && !/^[a-z]{2,3}$/i.test(map.title.trim())
+  const displayTitle = isValidTitle ? map.title : 'Strategy Document'
+  pdf.text(displayTitle, pageWidth / 2, 70, { align: 'center' })
   
   // Client name and date
   pdf.setFontSize(18)
@@ -411,18 +414,21 @@ function generatePDF(map: OpportunityMap, client: string) {
   // --------------------------------------------------------
   const addBulletList = (items: string[], indent: number = 4) => {
     items.forEach((item) => {
-      checkPageBreak(10)
+      checkPageBreak(12)
       pdf.setFontSize(10)
       pdf.setFont('helvetica', 'normal')
       pdf.setTextColor(...PDF_COLORS.darkGray)
       
-      // Bullet point
-      pdf.setFillColor(...PDF_COLORS.mediumBlue)
-      pdf.circle(margin + indent, y - 1.2, 0.8, 'F')
-      
+      // Text first (baseline at y + 3 to leave room for bullet alignment)
       const lines = pdf.splitTextToSize(item, contentWidth - indent - 6)
-      pdf.text(lines, margin + indent + 4, y)
-      y += lines.length * 4.5 + 2
+      const textY = y + 3
+      pdf.text(lines, margin + indent + 4, textY)
+      
+      // Bullet point aligned with first line of text
+      pdf.setFillColor(...PDF_COLORS.mediumBlue)
+      pdf.circle(margin + indent, textY - 1.2, 0.8, 'F')
+      
+      y = textY + (lines.length - 1) * 4.5 + 5
     })
     y += 2
   }
@@ -463,10 +469,10 @@ function generatePDF(map: OpportunityMap, client: string) {
       rightWrapped.push(rightLines)
       
       const maxLines = Math.max(leftLines.length || 1, rightLines.length || 1)
-      rowHeights.push(maxLines * lineHeight + 3) // Add padding between rows
+      rowHeights.push(maxLines * lineHeight + 6) // Add padding between rows (includes top padding)
     }
     
-    const totalTableHeight = headerHeight + rowHeights.reduce((sum, h) => sum + h, 0) + 4
+    const totalTableHeight = headerHeight + rowHeights.reduce((sum, h) => sum + h, 0) + 6
     
     checkPageBreak(totalTableHeight + 10)
     
@@ -496,23 +502,26 @@ function generatePDF(map: OpportunityMap, client: string) {
       const leftLines = leftWrapped[i]
       const rightLines = rightWrapped[i]
       
-      // Draw bullet and text for left column
-      if (leftLines.length > 0) {
+      // Text baseline position (add padding from row start)
+      const textY = rowY + 3
+      
+      // Draw bullet and text for left column (only if there's actual content)
+      if (leftLines.length > 0 && leftLines[0]?.trim()) {
         pdf.setFillColor(...PDF_COLORS.mediumBlue)
-        pdf.circle(margin + 4, rowY - 0.5, 0.6, 'F')
+        pdf.circle(margin + 4, textY - 1, 0.6, 'F')
         pdf.setTextColor(...PDF_COLORS.darkGray)
         leftLines.forEach((line: string, lineIdx: number) => {
-          pdf.text(line, margin + 8, rowY + (lineIdx * lineHeight))
+          pdf.text(line, margin + 8, textY + (lineIdx * lineHeight))
         })
       }
       
-      // Draw bullet and text for right column
-      if (rightLines.length > 0) {
+      // Draw bullet and text for right column (only if there's actual content)
+      if (rightLines.length > 0 && rightLines[0]?.trim()) {
         pdf.setFillColor(...PDF_COLORS.mediumBlue)
-        pdf.circle(margin + colWidth + 4, rowY - 0.5, 0.6, 'F')
+        pdf.circle(margin + colWidth + 4, textY - 1, 0.6, 'F')
         pdf.setTextColor(...PDF_COLORS.darkGray)
         rightLines.forEach((line: string, lineIdx: number) => {
-          pdf.text(line, margin + colWidth + 8, rowY + (lineIdx * lineHeight))
+          pdf.text(line, margin + colWidth + 8, textY + (lineIdx * lineHeight))
         })
       }
       
@@ -892,22 +901,23 @@ function generatePDF(map: OpportunityMap, client: string) {
       addSubsectionHeader('Month-by-Month Plan')
       
       arch.monthly_plan.forEach((month: any) => {
-        checkPageBreak(15)
+        checkPageBreak(18)
         
-        // Month badge
+        // Month badge (draw at y, not y - 3)
+        const badgeY = y
         pdf.setFillColor(...PDF_COLORS.darkBlue)
-        pdf.roundedRect(margin, y - 3, 22, 10, 2, 2, 'F')
+        pdf.roundedRect(margin, badgeY, 22, 10, 2, 2, 'F')
         pdf.setFontSize(9)
         pdf.setFont('helvetica', 'bold')
         pdf.setTextColor(...PDF_COLORS.white)
-        pdf.text(`Month ${month.month}`, margin + 3, y + 3)
+        pdf.text(`Month ${month.month}`, margin + 3, badgeY + 6.5)
         
         // Focus text
         pdf.setFont('helvetica', 'normal')
         pdf.setTextColor(...PDF_COLORS.darkGray)
         const focusLines = pdf.splitTextToSize(month.focus, contentWidth - 30)
-        pdf.text(focusLines, margin + 28, y + 3)
-        y += Math.max(focusLines.length * 4.5 + 6, 12)
+        pdf.text(focusLines, margin + 28, badgeY + 6.5)
+        y = badgeY + Math.max(focusLines.length * 4.5 + 10, 14)
       })
     }
   }
@@ -953,26 +963,29 @@ function generatePDF(map: OpportunityMap, client: string) {
     addSectionHeader('Next Steps')
     
     data.next_steps.forEach((step: any, i: number) => {
-      checkPageBreak(14)
+      checkPageBreak(18)
       
       const action = typeof step === 'string' ? step : step.action
       const owner = typeof step === 'object' && step.owner ? step.owner : ''
       const deadline = typeof step === 'object' && step.deadline ? step.deadline : ''
       
+      // Position elements relative to starting y
+      const stepY = y + 4
+      
       // Step number circle
       pdf.setFillColor(...PDF_COLORS.darkBlue)
-      pdf.circle(margin + 4, y - 1, 4, 'F')
+      pdf.circle(margin + 4, stepY, 4, 'F')
       pdf.setFontSize(9)
       pdf.setFont('helvetica', 'bold')
       pdf.setTextColor(...PDF_COLORS.white)
-      pdf.text(`${i + 1}`, margin + 4, y + 0.5, { align: 'center' })
+      pdf.text(`${i + 1}`, margin + 4, stepY + 1.5, { align: 'center' })
       
       // Action text
       pdf.setFont('helvetica', 'normal')
       pdf.setTextColor(...PDF_COLORS.darkGray)
       const actionLines = pdf.splitTextToSize(action, contentWidth - 20)
-      pdf.text(actionLines, margin + 12, y)
-      y += actionLines.length * 4.5
+      pdf.text(actionLines, margin + 12, stepY + 1)
+      y = stepY + actionLines.length * 4.5 + 2
       
       // Owner and deadline
       if (owner || deadline) {

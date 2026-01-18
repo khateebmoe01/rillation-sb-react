@@ -111,9 +111,9 @@ Return a JSON object with this exact structure:
 
 {
   "how_we_operate": {
-    "tracking": "Everything In Is Tracked, Everything Out Is Tracked - We define all variables upfront so when results come in, we analyze exactly what's working. We do not guess.",
-    "segmentation": "Industry-First Segmentation - We segment by vertical/industry. Within each campaign, we reach all relevant job titles, geographies, and company sizes, then review data to find winning combinations.",
-    "test_then_scale": "Test-Then-Scale - Month 1 gets signals across segments. Month 2-3, we scale winners, cut losers, test new segments.",
+    "tracking": "We define all variables upfront so when results come in, we analyze exactly what's working. We do not guess.",
+    "segmentation": "We segment by vertical/industry. Within each campaign, we reach all relevant job titles, geographies, and company sizes, then review data to find winning combinations.",
+    "test_then_scale": "Month 1 gets signals across segments. Month 2-3, we scale winners, cut losers, test new segments.",
     "tracking_variables": ["Industry/Vertical", "Geography", "Company Size", "Revenue Range", "Job Title / Seniority", "Signal/Trigger"]
   },
   "tier1_segments": [
@@ -196,7 +196,11 @@ Return a JSON object with this exact structure:
   ]
 }
 
-Be thorough and extract ALL relevant information from the transcript. If something wasn't discussed, use reasonable defaults or leave as empty array. Return ONLY valid JSON, no other text.`,
+Be thorough and extract ALL relevant information from the transcript. If something wasn't discussed, use reasonable defaults or leave as empty array.
+
+IMPORTANT: Do NOT include page numbers, page references, or any pagination markers in the output. Do NOT reference "Page X" anywhere.
+
+Return ONLY valid JSON, no other text.`,
           },
         ],
       }),

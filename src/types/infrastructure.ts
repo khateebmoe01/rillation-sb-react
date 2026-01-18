@@ -31,6 +31,7 @@ export interface Inbox {
   bounced_count?: number
   provider_inbox_id?: string
   ordered_at?: string
+  renewal_date?: string  // InboxKit renewal date for the mailbox
   created_at: string
   updated_at?: string
   synced_at: string

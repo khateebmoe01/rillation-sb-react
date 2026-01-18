@@ -8,6 +8,8 @@ export interface CopyEmail {
   body: string
   variables: string[]
   notes?: string
+  // Per-email Clay prompts - each variable in this email can have its own prompt
+  clay_prompts?: Record<string, ClayPrompt>
 }
 
 export interface CopySequence {
