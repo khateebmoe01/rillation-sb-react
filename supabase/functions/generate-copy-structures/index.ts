@@ -2,32 +2,8 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 
 const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY');
 
-const SYSTEM_PROMPT = `You are an expert B2B cold email copywriter at Rillation Revenue, a lead generation agency. You create high-converting email sequences for outbound campaigns.
-
-Your copy is:
-- Conversational and human (sounds like a real person, not AI)
-- Short and punchy (3rd grade reading level)
-- Value-focused (what's in it for them)
-- Personalized using variables that will be filled by Clay/data enrichment
-
-You use variables in the format {{variable_name}} that will be replaced with personalized data. Common variables include:
-- {{first_name}} - Recipient's first name
-- {{company}} - Recipient's company name
-- {{wywn}} - "What you're working on" - personalized observation about their business
-- {{pain_point}} - Specific pain point relevant to their industry/role
-- {{ICP}} - Ideal customer profile description
-- {{relevant_services}} - Services they provide that are relevant
-- {{specific_costly_outcome}} - Costly outcome they want to avoid
-- {{unique_mechanism}} - Your client's unique approach/method
-- {{what_they_offer}} - What the client offers
-- {{specific_big_gain}} - Big benefit they could achieve
-
-When creating email sequences:
-1. Email 1: The opener - short, intriguing, personal. Get attention.
-2. Email 2: Value-add or follow-up - provide more context or a different angle
-3. Email 3: Last touch - direct ask, or referral request
-
-Keep emails under 100 words each. End with soft CTAs like "Worth a convo?" or "Worth sharing some thoughts?"`;
+// Skill ID for the email-copy skill - can be overridden via request
+const DEFAULT_SKILL_ID = Deno.env.get('EMAIL_COPY_SKILL_ID') || 'email-copy';
 
 interface KnowledgeBase {
   company?: { name?: string; description?: string };
@@ -41,6 +17,8 @@ interface RequestBody {
   knowledgeBase: KnowledgeBase;
   transcripts?: string;
   existingSequences?: any[];
+  skillId?: string; // Optional override for skill ID
+  useSkill?: boolean; // Whether to use Claude Skill (default: true)
 }
 
 Deno.serve(async (req: Request) => {
@@ -60,7 +38,7 @@ Deno.serve(async (req: Request) => {
       throw new Error('ANTHROPIC_API_KEY not configured');
     }
 
-    const { client, knowledgeBase, transcripts, existingSequences } = await req.json() as RequestBody;
+    const { client, knowledgeBase, transcripts, existingSequences, skillId, useSkill = true } = await req.json() as RequestBody;
 
     if (!knowledgeBase || Object.keys(knowledgeBase).length === 0) {
       return new Response(
@@ -87,22 +65,7 @@ PERSONA NOTES: ${knowledgeBase.prospect_people?.persona_notes || 'Not provided'}
 
     const transcriptContext = transcripts ? `\n\nADDITIONAL CONTEXT FROM CALLS:\n${transcripts}` : '';
 
-    // Call Claude API
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': ANTHROPIC_API_KEY,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 8192,
-        system: SYSTEM_PROMPT,
-        messages: [
-          {
-            role: 'user',
-            content: `Create email sequences for the following client. Generate 2-3 email sequences (each with 3 emails) for different testing angles or segments.
+    const userMessage = `Create email sequences for the following client. Generate 2-3 email sequences (each with 3 emails) for different testing angles or segments.
 
 ${kbContext}
 ${transcriptContext}
@@ -148,16 +111,120 @@ Guidelines:
 - Include multiple angle variations for A/B testing
 - Add optional notes explaining the strategy
 
-Return ONLY valid JSON, no other text.`,
-          },
-        ],
-      }),
+Return ONLY valid JSON, no other text.`;
+
+    // Build request body - with or without skill
+    const requestBody: any = {
+      model: 'claude-opus-4-20250514',
+      max_tokens: 8192,
+      messages: [
+        {
+          role: 'user',
+          content: userMessage,
+        },
+      ],
+    };
+
+    // Add skill container if using skills
+    if (useSkill) {
+      requestBody.container = {
+        skill_id: skillId || DEFAULT_SKILL_ID,
+        type: 'custom',
+        version: 'latest',
+      };
+    }
+
+    // Build headers - include beta headers for skills
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      'x-api-key': ANTHROPIC_API_KEY,
+      'anthropic-version': '2023-06-01',
+    };
+
+    // Add beta headers for Skills API
+    if (useSkill) {
+      headers['anthropic-beta'] = 'skills-2025-10-02,code-execution-2025-08-25,files-api-2025-04-14';
+    }
+
+    console.log(`[generate-copy-structures] Calling Claude API with skill: ${useSkill ? (skillId || DEFAULT_SKILL_ID) : 'none'}`);
+
+    // Call Claude API
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(requestBody),
     });
 
     if (!response.ok) {
       const errorText = await response.text();
       console.error('Anthropic API error:', errorText);
-      throw new Error(`Anthropic API error: ${response.status}`);
+      
+      // If skill fails, retry without skill
+      if (useSkill && (response.status === 400 || response.status === 404)) {
+        console.log('[generate-copy-structures] Skill failed, retrying without skill...');
+        
+        // Retry without skill - use fallback system prompt
+        const fallbackResponse = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': ANTHROPIC_API_KEY,
+            'anthropic-version': '2023-06-01',
+          },
+          body: JSON.stringify({
+            model: 'claude-opus-4-20250514',
+            max_tokens: 8192,
+            system: `You are an expert B2B cold email copywriter. Create high-converting email sequences for outbound campaigns.
+
+Your copy is:
+- Conversational and human (5th grade reading level)
+- Short and punchy (under 75 words for Email 1)
+- Value-focused (what's in it for them)
+- Personalized using {{variables}} that will be filled by Clay/data enrichment
+- Pre-sale focused (growth, not retention)
+- Single CTA per email
+- Grammatically correct
+- No company name in pain questions`,
+            messages: [
+              {
+                role: 'user',
+                content: userMessage,
+              },
+            ],
+          }),
+        });
+        
+        if (!fallbackResponse.ok) {
+          throw new Error(`Anthropic API error: ${fallbackResponse.status}`);
+        }
+        
+        const fallbackData = await fallbackResponse.json();
+        const fallbackContent = fallbackData.content?.[0]?.text;
+        
+        if (!fallbackContent) {
+          throw new Error('No content in Anthropic response');
+        }
+        
+        let result;
+        const jsonMatch = fallbackContent.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          result = JSON.parse(jsonMatch[0]);
+        } else {
+          result = JSON.parse(fallbackContent);
+        }
+        
+        return new Response(
+          JSON.stringify({ ...result, _skillUsed: false, _fallback: true }),
+          {
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*',
+            },
+          }
+        );
+      }
+      
+      throw new Error(`Anthropic API error: ${response.status} - ${errorText}`);
     }
 
     const data = await response.json();
@@ -182,7 +249,7 @@ Return ONLY valid JSON, no other text.`,
     }
 
     return new Response(
-      JSON.stringify(result),
+      JSON.stringify({ ...result, _skillUsed: useSkill, _skillId: skillId || DEFAULT_SKILL_ID }),
       {
         headers: {
           'Content-Type': 'application/json',

@@ -62,7 +62,7 @@ async function inboxKitRequest(
   }
 
   console.log(`InboxKit API: ${method} ${url}`, workspaceId ? `(workspace: ${workspaceId})` : "");
-  
+
   const response = await fetch(url, options);
   
   if (!response.ok) {
