@@ -1500,7 +1500,7 @@ export default function OpportunityMapViewer({
         source_call_ids: callIds,
         content_json: data || {},
         generated_by: 'ai',
-        ai_model: 'claude-sonnet-4',
+        ai_model: 'claude-opus-4',
       })
 
       setIsGenerateModalOpen(false)
