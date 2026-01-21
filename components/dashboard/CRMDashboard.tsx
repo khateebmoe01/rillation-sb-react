@@ -136,7 +136,7 @@ export function CRMDashboard() {
         />
         <StatCard
           icon={<Building2 size={20} />}
-          iconColor={theme.accent.secondary || '#a78bfa'}
+          iconColor={'#a78bfa'}
           label="Companies"
           value={stats.uniqueCompanies}
           subValue="Unique organizations"

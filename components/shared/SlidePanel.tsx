@@ -105,13 +105,14 @@ export function SlidePanel({
                 </h2>
               )}
               {showClose && (
-                <IconButton
-                  icon={<X size={20} />}
-                  label="Close"
-                  onClick={onClose}
-                  size="md"
-                  style={{ marginLeft: 12, flexShrink: 0 }}
-                />
+                <div style={{ marginLeft: 12, flexShrink: 0 }}>
+                  <IconButton
+                    icon={<X size={20} />}
+                    label="Close"
+                    onClick={onClose}
+                    size="md"
+                  />
+                </div>
               )}
             </div>
             

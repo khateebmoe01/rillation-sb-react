@@ -433,8 +433,9 @@ interface DealCardProps {
 function DealCard({ deal, onClick, onDelete, compact = false }: DealCardProps) {
   const [showMenu, setShowMenu] = useState(false)
   const [isDragging, setIsDragging] = useState(false)
+  const [isHovered, setIsHovered] = useState(false)
   
-  const handleDragStart = (e: React.DragEvent<HTMLDivElement>) => {
+  const handleDragStart = (e: React.DragEvent) => {
     e.dataTransfer.setData('dealId', deal.id)
     setIsDragging(true)
   }
@@ -444,27 +445,26 @@ function DealCard({ deal, onClick, onDelete, compact = false }: DealCardProps) {
   }
   
   return (
-    <motion.div
+    <div
       draggable
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
       onClick={onClick}
-      initial={false}
-      whileHover={{
-        boxShadow: `0 0 0 1px rgba(255, 255, 255, 0.15), 0 0 20px rgba(17, 119, 84, 0.15), 0 1px 3px rgba(0, 0, 0, 0.5)`,
-        borderColor: 'rgba(255, 255, 255, 0.15)',
-        y: -2,
-      }}
-      transition={{ duration: 0.15 }}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
       style={{
         padding: compact ? 10 : 14,
         backgroundColor: theme.bg.elevated,
         borderRadius: theme.radius.lg,
-        border: `1px solid ${theme.border.subtle}`,
-        boxShadow: `0 0 0 1px rgba(255, 255, 255, 0.05), 0 1px 3px rgba(0, 0, 0, 0.5)`,
+        border: `1px solid ${isHovered ? 'rgba(255, 255, 255, 0.15)' : theme.border.subtle}`,
+        boxShadow: isHovered
+          ? `0 0 0 1px rgba(255, 255, 255, 0.15), 0 0 20px rgba(17, 119, 84, 0.15), 0 1px 3px rgba(0, 0, 0, 0.5)`
+          : `0 0 0 1px rgba(255, 255, 255, 0.05), 0 1px 3px rgba(0, 0, 0, 0.5)`,
         cursor: 'grab',
         opacity: isDragging ? 0.5 : 1,
         position: 'relative',
+        transform: isHovered ? 'translateY(-2px)' : 'translateY(0)',
+        transition: `all ${theme.transition.fast}`,
       }}
     >
       {/* Deal Name & Amount */}
@@ -652,7 +652,7 @@ function DealCard({ deal, onClick, onDelete, compact = false }: DealCardProps) {
           </div>
         )}
       </div>
-    </motion.div>
+    </div>
   )
 }
 
