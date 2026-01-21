@@ -260,17 +260,19 @@ export function ContactList() {
 
   // Grid column widths - CRM scanning flow: identity → company → status → role → recency → action
   // Name, Company, Stage, Pipeline, Title, Last Activity, Actions
-  // More space for Stage/Pipeline/Title area
-  const gridColumns = 'minmax(200px, 1.5fr) minmax(400px, 1.2fr) 250px 280px minmax(100px, 1.2fr) 90px 70px'
-  const minTableWidth = 980
+  // Compact layout for better data density
+  const gridColumns = 'minmax(160px, 1.2fr) minmax(140px, 1fr) 130px 140px minmax(100px, 1fr) 80px 60px'
+  const minTableWidth = 810
   
   return (
     <div style={{ 
-      padding: 20, 
+      padding: 16, 
       width: '100%', 
       maxWidth: '100%',
       boxSizing: 'border-box',
-      minHeight: '100%',
+      height: '100%',
+      display: 'flex',
+      flexDirection: 'column',
     }}>
       {/* Header */}
       <div
@@ -430,10 +432,12 @@ export function ContactList() {
           }
         />
       ) : (
-        <Card padding="none" style={{ width: '100%', overflow: 'hidden' }}>
+        <Card padding="none" style={{ width: '100%', overflow: 'hidden', flex: 1, display: 'flex', flexDirection: 'column' }}>
           <div style={{ 
             overflowX: 'auto', 
+            overflowY: 'auto',
             width: '100%',
+            flex: 1,
             // Custom scrollbar styling
             scrollbarWidth: 'thin',
             scrollbarColor: `${theme.border.default} transparent`,
@@ -443,12 +447,15 @@ export function ContactList() {
               style={{
                 display: 'grid',
                 gridTemplateColumns: gridColumns,
-                gap: '0 24px',
+                gap: '0 20px',
                 alignItems: 'center',
-                padding: '14px 20px',
+                padding: '10px 16px',
                 borderBottom: `1px solid ${theme.border.subtle}`,
                 backgroundColor: theme.bg.muted,
                 minWidth: minTableWidth,
+                position: 'sticky',
+                top: 0,
+                zIndex: 10,
               }}
             >
               <TableHeader>Name</TableHeader>
@@ -538,9 +545,9 @@ function ContactRow({ contact, isSelected, gridColumns, minWidth, onClick, onUpd
       style={{
         display: 'grid',
         gridTemplateColumns: gridColumns,
-        gap: '0 24px',
+        gap: '0 20px',
         alignItems: 'center',
-        padding: '14px 20px',
+        padding: '8px 16px',
         borderBottom: `1px solid ${theme.border.subtle}`,
         backgroundColor: isSelected ? theme.bg.hover : 'transparent',
         cursor: 'pointer',
@@ -558,12 +565,12 @@ function ContactRow({ contact, isSelected, gridColumns, minWidth, onClick, onUpd
       }}
     >
       {/* Name */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
-        <Avatar name={displayName} size="sm" />
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+        <Avatar name={displayName} size="xs" />
         <div style={{ minWidth: 0, flex: 1 }}>
           <p
             style={{
-              fontSize: theme.fontSize.lg,
+              fontSize: theme.fontSize.sm,
               fontWeight: theme.fontWeight.medium,
               color: theme.text.primary,
               margin: 0,
@@ -577,7 +584,7 @@ function ContactRow({ contact, isSelected, gridColumns, minWidth, onClick, onUpd
           {contact.email && (
             <p
               style={{
-                fontSize: theme.fontSize.sm,
+                fontSize: theme.fontSize.xs,
                 color: theme.text.muted,
                 margin: 0,
                 overflow: 'hidden',
@@ -592,14 +599,14 @@ function ContactRow({ contact, isSelected, gridColumns, minWidth, onClick, onUpd
       </div>
       
       {/* Company */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
         {contact.company ? (
           <>
-            <Building2 size={20} style={{ color: theme.text.muted, flexShrink: 0 }} />
+            <Building2 size={14} style={{ color: theme.text.muted, flexShrink: 0 }} />
             <div style={{ minWidth: 0, flex: 1 }}>
               <span
                 style={{
-                  fontSize: theme.fontSize.sm,
+                  fontSize: theme.fontSize.xs,
                   color: theme.text.secondary,
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',
@@ -609,20 +616,6 @@ function ContactRow({ contact, isSelected, gridColumns, minWidth, onClick, onUpd
               >
                 {contact.company}
               </span>
-              {contact.industry && (
-                <span
-                  style={{
-                    fontSize: theme.fontSize.xs,
-                    color: theme.text.muted,
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
-                    display: 'block',
-                  }}
-                >
-                  {contact.industry}
-                </span>
-              )}
             </div>
           </>
         ) : (
@@ -659,7 +652,7 @@ function ContactRow({ contact, isSelected, gridColumns, minWidth, onClick, onUpd
       <div style={{ display: 'flex', alignItems: 'center', minWidth: 0 }}>
         <span
           style={{
-            fontSize: theme.fontSize.sm,
+            fontSize: theme.fontSize.xs,
             color: contact.job_title ? theme.text.secondary : theme.text.muted,
             overflow: 'hidden',
             textOverflow: 'ellipsis',

@@ -3,11 +3,12 @@ import { theme } from '../../config/theme'
 interface AvatarProps {
   src?: string | null
   name?: string | null
-  size?: 'sm' | 'md' | 'lg' | 'xl'
+  size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl'
   className?: string
 }
 
 const sizeMap = {
+  xs: 24,
   sm: 28,
   md: 36,
   lg: 44,
@@ -15,6 +16,7 @@ const sizeMap = {
 }
 
 const fontSizeMap = {
+  xs: '10px',
   sm: theme.fontSize.xs,
   md: theme.fontSize.sm,
   lg: theme.fontSize.md,
