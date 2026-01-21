@@ -13,8 +13,7 @@ interface ContactModalProps {
 }
 
 const STAGE_OPTIONS = [
-  { value: 'new', label: 'New', color: '#6b7280' },
-  { value: 'contacted', label: 'Contacted', color: '#3b82f6' },
+  { value: 'interested', label: 'Interested', color: '#60a5fa' },
   { value: 'engaged', label: 'Engaged', color: '#8b5cf6' },
   { value: 'qualified', label: 'Qualified', color: '#f59e0b' },
   { value: 'disqualified', label: 'Disqualified', color: '#6b7280' },
@@ -81,7 +80,7 @@ export function ContactModal({ isOpen, onClose, contact }: ContactModalProps) {
     funding_stage: '',
     
     // Pipeline/Sales
-    stage: 'new',
+    stage: 'interested',
     epv: '',
     context: '',
     next_touchpoint: '',
@@ -176,7 +175,7 @@ export function ContactModal({ isOpen, onClose, contact }: ContactModalProps) {
         year_founded: '',
         business_model: '',
         funding_stage: '',
-        stage: 'new',
+        stage: 'interested',
         epv: '',
         context: '',
         next_touchpoint: '',
@@ -312,13 +311,13 @@ export function ContactModal({ isOpen, onClose, contact }: ContactModalProps) {
       isOpen={isOpen}
       onClose={onClose}
       header={panelHeader}
-      width={640}
+      width={760}
     >
-      <form onSubmit={onFormSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+      <form onSubmit={onFormSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
         {/* Personal Info Section */}
         <SectionHeader icon={<User size={16} />} title="Personal Info" />
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
             <Input
               label="First Name"
               value={formData.first_name}
@@ -347,7 +346,7 @@ export function ContactModal({ isOpen, onClose, contact }: ContactModalProps) {
             placeholder="+1 (555) 000-0000"
             icon={<Phone size={14} />}
           />
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
             <Input
               label="Job Title"
               value={formData.job_title}
@@ -373,7 +372,7 @@ export function ContactModal({ isOpen, onClose, contact }: ContactModalProps) {
         
         {/* Company Info Section */}
         <SectionHeader icon={<Building2 size={16} />} title="Company Info" />
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
           <Input
             label="Company Name"
             value={formData.company}
@@ -381,7 +380,7 @@ export function ContactModal({ isOpen, onClose, contact }: ContactModalProps) {
             placeholder="Acme Inc"
             icon={<Building2 size={14} />}
           />
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
             <Input
               label="Company Domain"
               value={formData.company_domain}
@@ -409,7 +408,7 @@ export function ContactModal({ isOpen, onClose, contact }: ContactModalProps) {
             placeholder="https://linkedin.com/company/..."
             icon={<Linkedin size={14} />}
           />
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
             <Input
               label="Company Phone"
               value={formData.company_phone}
@@ -432,7 +431,7 @@ export function ContactModal({ isOpen, onClose, contact }: ContactModalProps) {
           />
           
           <SectionHeader icon={<MapPin size={16} />} title="Location" />
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16 }}>
             <Input
               label="City"
               value={formData.company_hq_city}
@@ -453,7 +452,7 @@ export function ContactModal({ isOpen, onClose, contact }: ContactModalProps) {
             />
           </div>
           
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
             <Input
               label="Year Founded"
               value={formData.year_founded}
@@ -478,7 +477,7 @@ export function ContactModal({ isOpen, onClose, contact }: ContactModalProps) {
         
         {/* Pipeline Section */}
         <SectionHeader icon={<DollarSign size={16} />} title="Pipeline & Sales" />
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
           {/* Pipeline Progress Dropdown */}
           <PipelineProgressMultiSelect
             steps={PIPELINE_STEPS}
@@ -486,7 +485,7 @@ export function ContactModal({ isOpen, onClose, contact }: ContactModalProps) {
             onToggle={(key: string, checked: boolean) => setFormData({ ...formData, [key]: checked })}
           />
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
             <Select
               label="Stage"
               options={STAGE_OPTIONS}
@@ -500,7 +499,7 @@ export function ContactModal({ isOpen, onClose, contact }: ContactModalProps) {
               placeholder="John Doe"
             />
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
             <Input
               label="EPV (Estimated Pipeline Value)"
               value={formData.epv}
@@ -517,7 +516,7 @@ export function ContactModal({ isOpen, onClose, contact }: ContactModalProps) {
               placeholder="Select source..."
             />
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
             <Input
               label="Next Touchpoint"
               value={formData.next_touchpoint}

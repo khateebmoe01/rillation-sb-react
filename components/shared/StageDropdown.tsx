@@ -10,17 +10,13 @@ interface Stage {
 }
 
 const STAGES: Stage[] = [
-  { value: 'new', label: 'New', color: '#d4d3cf' },
-  { value: 'contacted', label: 'Contacted', color: '#60a5fa' },
-  { value: 'follow_up', label: 'Follow Up', color: '#a78bfa' },
-  { value: 'qualified', label: 'Qualified', color: '#22c55e' },
-  { value: 'demo_booked', label: 'Demo Booked', color: '#fbbf24' },
-  { value: 'demo_showed', label: 'Demo Showed', color: '#fb923c' },
-  { value: 'proposal_sent', label: 'Proposal Sent', color: '#ec4899' },
-  { value: 'negotiation', label: 'Negotiation', color: '#14b8a6' },
-  { value: 'closed_won', label: 'Closed Won', color: '#22c55e' },
-  { value: 'closed_lost', label: 'Closed Lost', color: '#ef4444' },
-  { value: 'disqualified', label: 'Disqualified', color: '#d4d3cf' },
+  { value: 'interested', label: 'Interested', color: '#60a5fa' },
+  { value: 'engaged', label: 'Engaged', color: '#8b5cf6' },
+  { value: 'qualified', label: 'Qualified', color: '#f59e0b' },
+  { value: 'demo', label: 'Demo', color: '#f97316' },
+  { value: 'proposal', label: 'Proposal', color: '#14b8a6' },
+  { value: 'closed', label: 'Closed Won', color: '#22c55e' },
+  { value: 'disqualified', label: 'Disqualified', color: '#6b7280' },
 ]
 
 interface StageDropdownProps {

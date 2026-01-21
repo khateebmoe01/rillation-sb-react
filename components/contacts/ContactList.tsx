@@ -10,8 +10,7 @@ import type { Contact } from '../../types'
 // Stage options for filter
 const STAGE_OPTIONS = [
   { value: '', label: 'All Stages' },
-  { value: 'new', label: 'New' },
-  { value: 'contacted', label: 'Contacted' },
+  { value: 'interested', label: 'Interested' },
   { value: 'engaged', label: 'Engaged' },
   { value: 'qualified', label: 'Qualified' },
   { value: 'disqualified', label: 'Disqualified' },
@@ -212,6 +211,49 @@ export function ContactList() {
     setSelectedContact(null)
   }
   
+  // Keyboard navigation: up/down arrows to navigate between leads when side panel is open
+  useEffect(() => {
+    if (!isModalOpen || isCreating || !selectedContact) return
+    
+    const currentContact = selectedContact // Capture for closure
+    
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return
+      
+      // Don't navigate if focus is in an input field
+      const activeElement = document.activeElement
+      if (activeElement?.tagName === 'INPUT' || activeElement?.tagName === 'TEXTAREA' || activeElement?.tagName === 'SELECT') {
+        return
+      }
+      
+      e.preventDefault()
+      
+      const currentIndex = filteredContacts.findIndex(c => c.id === currentContact.id)
+      if (currentIndex === -1) return
+      
+      let newIndex: number
+      if (e.key === 'ArrowUp') {
+        newIndex = currentIndex > 0 ? currentIndex - 1 : filteredContacts.length - 1
+      } else {
+        newIndex = currentIndex < filteredContacts.length - 1 ? currentIndex + 1 : 0
+      }
+      
+      const newContact = filteredContacts[newIndex]
+      if (newContact) {
+        setSelectedContact(newContact)
+        
+        // Scroll the row into view
+        const row = document.querySelector(`[data-contact-id="${newContact.id}"]`)
+        if (row) {
+          row.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+        }
+      }
+    }
+    
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [isModalOpen, isCreating, selectedContact, filteredContacts])
+  
   if (loading.contacts) {
     return <LoadingSkeleton rows={8} />
   }
@@ -228,6 +270,7 @@ export function ContactList() {
       width: '100%', 
       maxWidth: '100%',
       boxSizing: 'border-box',
+      minHeight: '100%',
     }}>
       {/* Header */}
       <div
@@ -490,6 +533,7 @@ function ContactRow({ contact, isSelected, gridColumns, minWidth, onClick, onUpd
   
   return (
     <div
+      data-contact-id={contact.id}
       onClick={onClick}
       style={{
         display: 'grid',

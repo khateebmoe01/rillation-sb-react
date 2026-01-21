@@ -108,7 +108,7 @@ export function SlidePanel({
               style={{
                 flex: 1,
                 overflow: 'auto',
-                padding: 24,
+                padding: 32,
               }}
             >
               {children}

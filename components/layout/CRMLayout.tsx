@@ -171,9 +171,12 @@ export function CRMLayout({ children }: CRMLayoutProps) {
           flex: 1,
           overflow: 'auto',
           backgroundColor: theme.bg.page,
+          minHeight: 0, // Allow flex child to scroll properly
         }}
       >
-        {children}
+        <div style={{ minHeight: '100%' }}>
+          {children}
+        </div>
       </main>
     </div>
   )
