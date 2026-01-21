@@ -31,7 +31,7 @@ export function CRMLayout({ children }: CRMLayoutProps) {
     <div
       style={{
         display: 'flex',
-        height: 'calc(100vh - 64px)', // Account for main header
+        height: '100%',
         backgroundColor: theme.bg.page,
       }}
     >
