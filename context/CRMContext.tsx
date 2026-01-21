@@ -3,6 +3,10 @@ import { supabase } from '../../../lib/supabase'
 import { useFilters } from '../../../contexts/FilterContext'
 import type { Company, Contact, Deal, Task, Note, CRMStats, CRMFilters } from '../types'
 
+// Create an untyped supabase client for CRM tables that aren't in the generated types
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const db = supabase as any
+
 // ============================================
 // CONTEXT TYPE
 // ============================================
@@ -105,14 +109,14 @@ export function CRMProvider({ children }: { children: ReactNode }) {
     setLoading(prev => ({ ...prev, companies: true }))
     
     try {
-      const { data, error: fetchError } = await supabase
-        .from('crm_companies' as 'clients')
+      const { data, error: fetchError } = await db
+        .from('crm_companies')
         .select('*')
         .eq('client', selectedClient)
         .order('created_at', { ascending: false })
       
       if (fetchError) throw fetchError
-      setCompanies((data || []) as unknown as Company[])
+      setCompanies((data || []) as Company[])
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch companies')
     } finally {
@@ -124,16 +128,15 @@ export function CRMProvider({ children }: { children: ReactNode }) {
     if (!selectedClient) return null
     
     try {
-      const { data: created, error: createError } = await supabase
-        .from('crm_companies' as 'clients')
-        .insert({ ...companyData, client: selectedClient } as Record<string, unknown>)
+      const { data: created, error: createError } = await db
+        .from('crm_companies')
+        .insert({ ...companyData, client: selectedClient })
         .select()
         .single()
       
       if (createError) throw createError
-      const newCompany = created as unknown as Company
-      setCompanies(prev => [newCompany, ...prev])
-      return newCompany
+      setCompanies(prev => [created as Company, ...prev])
+      return created as Company
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create company')
       return null
@@ -142,9 +145,9 @@ export function CRMProvider({ children }: { children: ReactNode }) {
 
   const updateCompany = useCallback(async (id: string, companyData: Partial<Company>): Promise<boolean> => {
     try {
-      const { error: updateError } = await supabase
-        .from('crm_companies' as 'clients')
-        .update(companyData as Record<string, unknown>)
+      const { error: updateError } = await db
+        .from('crm_companies')
+        .update(companyData)
         .eq('id', id)
       
       if (updateError) throw updateError
@@ -158,8 +161,8 @@ export function CRMProvider({ children }: { children: ReactNode }) {
 
   const deleteCompany = useCallback(async (id: string): Promise<boolean> => {
     try {
-      const { error: deleteError } = await supabase
-        .from('crm_companies' as 'clients')
+      const { error: deleteError } = await db
+        .from('crm_companies')
         .delete()
         .eq('id', id)
       
@@ -180,15 +183,15 @@ export function CRMProvider({ children }: { children: ReactNode }) {
     setLoading(prev => ({ ...prev, contacts: true }))
     
     try {
-      const { data, error: fetchError } = await supabase
-        .from('crm_contacts' as 'clients')
+      const { data, error: fetchError } = await db
+        .from('crm_contacts')
         .select('*')
         .eq('client', selectedClient)
         .is('deleted_at', null)
         .order('created_at', { ascending: false })
       
       if (fetchError) throw fetchError
-      setContacts((data || []) as unknown as Contact[])
+      setContacts((data || []) as Contact[])
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch contacts')
     } finally {
@@ -200,16 +203,15 @@ export function CRMProvider({ children }: { children: ReactNode }) {
     if (!selectedClient) return null
     
     try {
-      const { data: created, error: createError } = await supabase
-        .from('crm_contacts' as 'clients')
-        .insert({ ...contactData, client: selectedClient } as Record<string, unknown>)
+      const { data: created, error: createError } = await db
+        .from('crm_contacts')
+        .insert({ ...contactData, client: selectedClient })
         .select()
         .single()
       
       if (createError) throw createError
-      const newContact = created as unknown as Contact
-      setContacts(prev => [newContact, ...prev])
-      return newContact
+      setContacts(prev => [created as Contact, ...prev])
+      return created as Contact
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create contact')
       return null
@@ -218,9 +220,9 @@ export function CRMProvider({ children }: { children: ReactNode }) {
 
   const updateContact = useCallback(async (id: string, contactData: Partial<Contact>): Promise<boolean> => {
     try {
-      const { error: updateError } = await supabase
-        .from('crm_contacts' as 'clients')
-        .update(contactData as Record<string, unknown>)
+      const { error: updateError } = await db
+        .from('crm_contacts')
+        .update(contactData)
         .eq('id', id)
       
       if (updateError) throw updateError
@@ -235,9 +237,9 @@ export function CRMProvider({ children }: { children: ReactNode }) {
   const deleteContact = useCallback(async (id: string): Promise<boolean> => {
     try {
       // Soft delete
-      const { error: deleteError } = await supabase
-        .from('crm_contacts' as 'clients')
-        .update({ deleted_at: new Date().toISOString() } as Record<string, unknown>)
+      const { error: deleteError } = await db
+        .from('crm_contacts')
+        .update({ deleted_at: new Date().toISOString() })
         .eq('id', id)
       
       if (deleteError) throw deleteError
@@ -257,15 +259,15 @@ export function CRMProvider({ children }: { children: ReactNode }) {
     setLoading(prev => ({ ...prev, deals: true }))
     
     try {
-      const { data, error: fetchError } = await supabase
-        .from('crm_deals' as 'clients')
+      const { data, error: fetchError } = await db
+        .from('crm_deals')
         .select('*')
         .eq('client', selectedClient)
         .is('deleted_at', null)
         .order('index', { ascending: true })
       
       if (fetchError) throw fetchError
-      setDeals((data || []) as unknown as Deal[])
+      setDeals((data || []) as Deal[])
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch deals')
     } finally {
@@ -281,16 +283,15 @@ export function CRMProvider({ children }: { children: ReactNode }) {
       const stageDeals = deals.filter(d => d.stage === (dealData.stage || 'lead'))
       const maxIndex = stageDeals.length > 0 ? Math.max(...stageDeals.map(d => d.index)) + 1 : 0
       
-      const { data: created, error: createError } = await supabase
-        .from('crm_deals' as 'clients')
-        .insert({ ...dealData, client: selectedClient, index: maxIndex } as Record<string, unknown>)
+      const { data: created, error: createError } = await db
+        .from('crm_deals')
+        .insert({ ...dealData, client: selectedClient, index: maxIndex })
         .select()
         .single()
       
       if (createError) throw createError
-      const newDeal = created as unknown as Deal
-      setDeals(prev => [...prev, newDeal])
-      return newDeal
+      setDeals(prev => [...prev, created as Deal])
+      return created as Deal
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create deal')
       return null
@@ -299,9 +300,9 @@ export function CRMProvider({ children }: { children: ReactNode }) {
 
   const updateDeal = useCallback(async (id: string, dealData: Partial<Deal>): Promise<boolean> => {
     try {
-      const { error: updateError } = await supabase
-        .from('crm_deals' as 'clients')
-        .update(dealData as Record<string, unknown>)
+      const { error: updateError } = await db
+        .from('crm_deals')
+        .update(dealData)
         .eq('id', id)
       
       if (updateError) throw updateError
@@ -315,9 +316,9 @@ export function CRMProvider({ children }: { children: ReactNode }) {
 
   const moveDealToStage = useCallback(async (dealId: string, stage: string, index: number): Promise<boolean> => {
     try {
-      const { error: updateError } = await supabase
-        .from('crm_deals' as 'clients')
-        .update({ stage, index } as Record<string, unknown>)
+      const { error: updateError } = await db
+        .from('crm_deals')
+        .update({ stage, index })
         .eq('id', dealId)
       
       if (updateError) throw updateError
@@ -331,9 +332,9 @@ export function CRMProvider({ children }: { children: ReactNode }) {
 
   const deleteDeal = useCallback(async (id: string): Promise<boolean> => {
     try {
-      const { error: deleteError } = await supabase
-        .from('crm_deals' as 'clients')
-        .update({ deleted_at: new Date().toISOString() } as Record<string, unknown>)
+      const { error: deleteError } = await db
+        .from('crm_deals')
+        .update({ deleted_at: new Date().toISOString() })
         .eq('id', id)
       
       if (deleteError) throw deleteError
@@ -353,14 +354,14 @@ export function CRMProvider({ children }: { children: ReactNode }) {
     setLoading(prev => ({ ...prev, tasks: true }))
     
     try {
-      const { data, error: fetchError } = await supabase
-        .from('crm_tasks' as 'clients')
+      const { data, error: fetchError } = await db
+        .from('crm_tasks')
         .select('*')
         .eq('client', selectedClient)
         .order('due_date', { ascending: true, nullsFirst: false })
       
       if (fetchError) throw fetchError
-      setTasks((data || []) as unknown as Task[])
+      setTasks((data || []) as Task[])
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch tasks')
     } finally {
@@ -372,16 +373,15 @@ export function CRMProvider({ children }: { children: ReactNode }) {
     if (!selectedClient) return null
     
     try {
-      const { data: created, error: createError } = await supabase
-        .from('crm_tasks' as 'clients')
-        .insert({ ...taskData, client: selectedClient } as Record<string, unknown>)
+      const { data: created, error: createError } = await db
+        .from('crm_tasks')
+        .insert({ ...taskData, client: selectedClient })
         .select()
         .single()
       
       if (createError) throw createError
-      const newTask = created as unknown as Task
-      setTasks(prev => [newTask, ...prev])
-      return newTask
+      setTasks(prev => [created as Task, ...prev])
+      return created as Task
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create task')
       return null
@@ -390,9 +390,9 @@ export function CRMProvider({ children }: { children: ReactNode }) {
 
   const updateTask = useCallback(async (id: string, taskData: Partial<Task>): Promise<boolean> => {
     try {
-      const { error: updateError } = await supabase
-        .from('crm_tasks' as 'clients')
-        .update(taskData as Record<string, unknown>)
+      const { error: updateError } = await db
+        .from('crm_tasks')
+        .update(taskData)
         .eq('id', id)
       
       if (updateError) throw updateError
@@ -419,8 +419,8 @@ export function CRMProvider({ children }: { children: ReactNode }) {
 
   const deleteTask = useCallback(async (id: string): Promise<boolean> => {
     try {
-      const { error: deleteError } = await supabase
-        .from('crm_tasks' as 'clients')
+      const { error: deleteError } = await db
+        .from('crm_tasks')
         .delete()
         .eq('id', id)
       
@@ -447,14 +447,14 @@ export function CRMProvider({ children }: { children: ReactNode }) {
         deal: 'deal_id',
       }
       
-      const { data, error: fetchError } = await supabase
-        .from('crm_notes' as 'clients')
+      const { data, error: fetchError } = await db
+        .from('crm_notes')
         .select('*')
         .eq(columnMap[entityType], entityId)
         .order('created_at', { ascending: false })
       
       if (fetchError) throw fetchError
-      return (data || []) as unknown as Note[]
+      return (data || []) as Note[]
     } catch {
       return []
     }
@@ -464,14 +464,14 @@ export function CRMProvider({ children }: { children: ReactNode }) {
     if (!selectedClient) return null
     
     try {
-      const { data: created, error: createError } = await supabase
-        .from('crm_notes' as 'clients')
-        .insert({ ...noteData, client: selectedClient } as Record<string, unknown>)
+      const { data: created, error: createError } = await db
+        .from('crm_notes')
+        .insert({ ...noteData, client: selectedClient })
         .select()
         .single()
       
       if (createError) throw createError
-      return created as unknown as Note
+      return created as Note
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create note')
       return null
@@ -482,7 +482,7 @@ export function CRMProvider({ children }: { children: ReactNode }) {
   // STATS
   // ============================================
   
-  // Type definitions for stats queries (since Supabase doesn't know our new tables)
+  // Type definitions for stats queries
   type CompanyStatsRow = { status: string }
   type ContactStatsRow = { status: string }
   type DealStatsRow = { stage: string; amount: number | null; probability: number | null }
@@ -493,19 +493,18 @@ export function CRMProvider({ children }: { children: ReactNode }) {
     setLoading(prev => ({ ...prev, stats: true }))
     
     try {
-      // Fetch all counts in parallel using raw queries with type casting
+      // Fetch all counts in parallel
       const [companiesRes, contactsRes, dealsRes, tasksRes] = await Promise.all([
-        supabase.from('crm_companies' as 'clients').select('status').eq('client', selectedClient),
-        supabase.from('crm_contacts' as 'clients').select('status').eq('client', selectedClient).is('deleted_at', null),
-        supabase.from('crm_deals' as 'clients').select('stage, amount, probability').eq('client', selectedClient).is('deleted_at', null),
-        supabase.from('crm_tasks' as 'clients').select('done, due_date, done_at').eq('client', selectedClient),
+        db.from('crm_companies').select('status').eq('client', selectedClient),
+        db.from('crm_contacts').select('status').eq('client', selectedClient).is('deleted_at', null),
+        db.from('crm_deals').select('stage, amount, probability').eq('client', selectedClient).is('deleted_at', null),
+        db.from('crm_tasks').select('done, due_date, done_at').eq('client', selectedClient),
       ])
       
-      // Cast the data to our expected types
-      const companiesData = (companiesRes.data || []) as unknown as CompanyStatsRow[]
-      const contactsData = (contactsRes.data || []) as unknown as ContactStatsRow[]
-      const dealsData = (dealsRes.data || []) as unknown as DealStatsRow[]
-      const tasksData = (tasksRes.data || []) as unknown as TaskStatsRow[]
+      const companiesData = (companiesRes.data || []) as CompanyStatsRow[]
+      const contactsData = (contactsRes.data || []) as ContactStatsRow[]
+      const dealsData = (dealsRes.data || []) as DealStatsRow[]
+      const tasksData = (tasksRes.data || []) as TaskStatsRow[]
       
       const now = new Date()
       const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
