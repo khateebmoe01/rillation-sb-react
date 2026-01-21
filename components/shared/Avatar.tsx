@@ -24,7 +24,7 @@ const fontSizeMap = {
 // Generate a consistent color from a string
 function stringToColor(str: string): string {
   const colors = [
-    '#6366f1', // indigo
+    '#117754', // rillation green
     '#8b5cf6', // violet
     '#ec4899', // pink
     '#f43f5e', // rose

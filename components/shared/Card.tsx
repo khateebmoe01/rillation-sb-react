@@ -29,11 +29,21 @@ export function Card({
   className = '',
   ...motionProps
 }: CardProps) {
+  const baseBoxShadow = `0 0 0 1px rgba(255, 255, 255, 0.05), 0 1px 3px rgba(0, 0, 0, 0.5)`
+  const hoverBoxShadow = `0 0 0 1px rgba(255, 255, 255, 0.15), 0 0 20px rgba(17, 119, 84, 0.15), 0 1px 3px rgba(0, 0, 0, 0.5)`
+  const selectedBoxShadow = `0 0 0 1px ${theme.accent.primary}, 0 0 25px rgba(17, 119, 84, 0.25), 0 1px 3px rgba(0, 0, 0, 0.5)`
+  
   return (
     <motion.div
       className={className}
       onClick={onClick}
-      whileHover={hover ? { scale: 1.01, y: -2 } : undefined}
+      initial={false}
+      whileHover={hover ? { 
+        scale: 1.01, 
+        y: -2,
+        boxShadow: hoverBoxShadow,
+        borderColor: 'rgba(255, 255, 255, 0.15)',
+      } : undefined}
       whileTap={onClick ? { scale: 0.99 } : undefined}
       transition={{ duration: 0.15 }}
       style={{
@@ -42,8 +52,7 @@ export function Card({
         border: `1px solid ${selected ? theme.accent.primary : theme.border.default}`,
         padding: paddingMap[padding],
         cursor: onClick ? 'pointer' : 'default',
-        boxShadow: selected ? theme.shadow.glow : 'none',
-        transition: `border-color ${theme.transition.normal}, box-shadow ${theme.transition.normal}`,
+        boxShadow: selected ? selectedBoxShadow : baseBoxShadow,
         ...style,
       }}
       {...motionProps}

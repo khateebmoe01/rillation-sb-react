@@ -12,6 +12,7 @@ interface ModalProps {
   children: ReactNode
   size?: 'sm' | 'md' | 'lg' | 'xl' | 'full'
   showClose?: boolean
+  onKeyDown?: (e: React.KeyboardEvent) => void
 }
 
 const sizeMap = {
@@ -29,6 +30,7 @@ export function Modal({
   children,
   size = 'md',
   showClose = true,
+  onKeyDown,
 }: ModalProps) {
   // Lock body scroll when modal is open
   useEffect(() => {
@@ -146,6 +148,7 @@ export function Modal({
                   overflow: 'auto',
                   padding: 20,
                 }}
+                onKeyDown={onKeyDown}
               >
                 {children}
               </div>

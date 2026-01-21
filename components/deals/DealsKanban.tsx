@@ -22,7 +22,7 @@ export function DealsKanban() {
     const query = searchQuery.toLowerCase()
     return deals.filter(d => 
       d.name?.toLowerCase().includes(query) ||
-      d.company?.name?.toLowerCase().includes(query) ||
+      d.contact?.company_name?.toLowerCase().includes(query) ||
       d.contact?.full_name?.toLowerCase().includes(query)
     )
   }, [deals, searchQuery])
@@ -274,6 +274,9 @@ function KanbanColumn({
         backgroundColor: isDragOver ? theme.accent.primaryBg : theme.bg.card,
         borderRadius: theme.radius.xl,
         border: `1px solid ${isDragOver ? theme.accent.primary : theme.border.subtle}`,
+        boxShadow: isDragOver 
+          ? `0 0 0 1px ${theme.accent.primary}, 0 0 25px rgba(17, 119, 84, 0.25), 0 1px 3px rgba(0, 0, 0, 0.5)`
+          : `0 0 0 1px rgba(255, 255, 255, 0.05), 0 1px 3px rgba(0, 0, 0, 0.5)`,
         transition: `all ${theme.transition.fast}`,
       }}
     >
@@ -441,20 +444,27 @@ function DealCard({ deal, onClick, onDelete, compact = false }: DealCardProps) {
   }
   
   return (
-    <div
+    <motion.div
       draggable
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
       onClick={onClick}
+      initial={false}
+      whileHover={{
+        boxShadow: `0 0 0 1px rgba(255, 255, 255, 0.15), 0 0 20px rgba(17, 119, 84, 0.15), 0 1px 3px rgba(0, 0, 0, 0.5)`,
+        borderColor: 'rgba(255, 255, 255, 0.15)',
+        y: -2,
+      }}
+      transition={{ duration: 0.15 }}
       style={{
         padding: compact ? 10 : 14,
         backgroundColor: theme.bg.elevated,
         borderRadius: theme.radius.lg,
         border: `1px solid ${theme.border.subtle}`,
+        boxShadow: `0 0 0 1px rgba(255, 255, 255, 0.05), 0 1px 3px rgba(0, 0, 0, 0.5)`,
         cursor: 'grab',
         opacity: isDragging ? 0.5 : 1,
         position: 'relative',
-        transition: 'transform 0.15s ease, opacity 0.15s ease',
       }}
     >
       {/* Deal Name & Amount */}
@@ -491,7 +501,7 @@ function DealCard({ deal, onClick, onDelete, compact = false }: DealCardProps) {
       {/* Company & Contact */}
       {!compact && (
         <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 4 }}>
-          {deal.company && (
+          {deal.contact?.company_name && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <Building2 size={12} style={{ color: theme.text.muted }} />
               <span
@@ -503,7 +513,7 @@ function DealCard({ deal, onClick, onDelete, compact = false }: DealCardProps) {
                   whiteSpace: 'nowrap',
                 }}
               >
-                {deal.company.name}
+                {deal.contact.company_name}
               </span>
             </div>
           )}
@@ -642,7 +652,7 @@ function DealCard({ deal, onClick, onDelete, compact = false }: DealCardProps) {
           </div>
         )}
       </div>
-    </div>
+    </motion.div>
   )
 }
 

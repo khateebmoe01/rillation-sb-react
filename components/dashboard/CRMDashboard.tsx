@@ -1,9 +1,9 @@
 import { useMemo } from 'react'
 import { motion } from 'framer-motion'
 import { 
-  Building2, Users, DollarSign, CheckSquare, 
+  Users, DollarSign, CheckSquare, 
   TrendingUp, AlertCircle,
-  Clock
+  Clock, Building2
 } from 'lucide-react'
 import { theme } from '../../config/theme'
 import { useCRM } from '../../context/CRMContext'
@@ -11,12 +11,15 @@ import { Card, CardHeader, Badge, LoadingSkeleton } from '../shared'
 import { DEAL_STAGE_INFO, type DealStage } from '../../types'
 
 export function CRMDashboard() {
-  const { companies, contacts, deals, tasks, loading } = useCRM()
+  const { contacts, deals, tasks, loading } = useCRM()
   
   // Calculate stats
   const stats = useMemo(() => {
     const now = new Date()
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    
+    // Contact stats - group by company
+    const uniqueCompanies = new Set(contacts.map(c => c.company_name).filter(Boolean)).size
     
     // Deal stats
     const activeDeals = deals.filter(d => d.stage !== 'won' && d.stage !== 'lost')
@@ -40,8 +43,8 @@ export function CRMDashboard() {
     })
     
     return {
-      companies: companies.length,
       contacts: contacts.length,
+      uniqueCompanies,
       activeDeals: activeDeals.length,
       totalPipeline,
       weightedPipeline,
@@ -51,14 +54,18 @@ export function CRMDashboard() {
       overdueTasks: overdueTasks.length,
       todayTasks: todayTasks.length,
     }
-  }, [companies, contacts, deals, tasks])
+  }, [contacts, deals, tasks])
   
-  // Recent deals
+  // Recent deals with contact info
   const recentDeals = useMemo(() => {
     return [...deals]
       .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
       .slice(0, 5)
-  }, [deals])
+      .map(deal => {
+        const contact = contacts.find(c => c.id === deal.contact_id)
+        return { ...deal, contact }
+      })
+  }, [deals, contacts])
   
   // Upcoming tasks
   const upcomingTasks = useMemo(() => {
@@ -78,7 +85,7 @@ export function CRMDashboard() {
     }))
   }, [deals])
   
-  if (loading.deals || loading.tasks || loading.contacts || loading.companies) {
+  if (loading.deals || loading.tasks || loading.contacts) {
     return (
       <div style={{ padding: 20 }}>
         <LoadingSkeleton rows={8} />
@@ -121,16 +128,18 @@ export function CRMDashboard() {
         }}
       >
         <StatCard
-          icon={<Building2 size={20} />}
-          iconColor={theme.entity.company}
-          label="Companies"
-          value={stats.companies}
-        />
-        <StatCard
           icon={<Users size={20} />}
           iconColor={theme.entity.contact}
           label="Contacts"
           value={stats.contacts}
+          subValue={`${stats.uniqueCompanies} companies`}
+        />
+        <StatCard
+          icon={<Building2 size={20} />}
+          iconColor={theme.accent.secondary || '#a78bfa'}
+          label="Companies"
+          value={stats.uniqueCompanies}
+          subValue="Unique organizations"
         />
         <StatCard
           icon={<DollarSign size={20} />}
@@ -284,7 +293,7 @@ export function CRMDashboard() {
                           margin: '2px 0 0 0',
                         }}
                       >
-                        {deal.company?.name || 'No company'}
+                        {deal.contact?.company_name || deal.contact?.full_name || 'No contact'}
                       </p>
                     </div>
                     <Badge color={info.color} bgColor={info.bgColor}>

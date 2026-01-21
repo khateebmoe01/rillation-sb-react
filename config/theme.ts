@@ -1,5 +1,5 @@
-// Atomic CRM Design Theme
-// A distinctive, modern dark theme with Midnight Blue accents
+// Rillation CRM Design Theme
+// A distinctive, modern dark theme with Rillation Green accents
 
 export const theme = {
   // Background layers
@@ -17,31 +17,31 @@ export const theme = {
     subtle: '#1f1f23',
     default: '#27272a',     // zinc-800
     strong: '#3f3f46',      // zinc-700
-    focus: '#6366f1',       // indigo-500
+    focus: '#117754',       // rillation-green
   },
   
   // Text
   text: {
     primary: '#fafafa',     // zinc-50
-    secondary: '#a1a1aa',   // zinc-400
-    muted: '#71717a',       // zinc-500
-    disabled: '#52525b',    // zinc-600
+    secondary: '#e8e7e3',   // pearly white - warm off-white
+    muted: '#d4d3cf',       // pearly white muted - soft luminous
+    disabled: '#a8a7a3',    // pearly white disabled
     inverse: '#09090b',
   },
   
-  // Primary accent - Indigo/Violet gradient feel
+  // Primary accent - Rillation Green
   accent: {
-    primary: '#6366f1',     // indigo-500
-    primaryHover: '#4f46e5', // indigo-600
-    primaryLight: '#818cf8', // indigo-400
-    primaryBg: 'rgba(99, 102, 241, 0.15)',
+    primary: '#117754',     // rillation-green
+    primaryHover: '#0d5f43', // rillation-green-dark
+    primaryLight: '#15a374', // rillation-green-light
+    primaryBg: 'rgba(17, 119, 84, 0.15)',
   },
   
-  // Secondary accent - Cyan
+  // Secondary accent - Teal
   secondary: {
-    main: '#22d3ee',        // cyan-400
-    hover: '#06b6d4',       // cyan-500
-    bg: 'rgba(34, 211, 238, 0.15)',
+    main: '#14b8a6',        // teal-500
+    hover: '#0d9488',       // teal-600
+    bg: 'rgba(20, 184, 166, 0.15)',
   },
   
   // Status colors
@@ -70,22 +70,22 @@ export const theme = {
   
   // Contact status colors
   contactStatus: {
-    cold: { color: '#94a3b8', bg: '#1e293b' },
+    cold: { color: '#c4c3bf', bg: '#1e293b' },  // pearly gray-blue
     warm: { color: '#fbbf24', bg: '#422006' },
     hot: { color: '#f87171', bg: '#450a0a' },
     'in-contract': { color: '#a78bfa', bg: '#3d2f5c' },
     customer: { color: '#22c55e', bg: '#14532d' },
-    inactive: { color: '#71717a', bg: '#27272a' },
+    inactive: { color: '#d4d3cf', bg: '#27272a' },  // pearly white
   },
   
   // Company status colors
   companyStatus: {
-    prospect: { color: '#94a3b8', bg: '#1e293b' },
+    prospect: { color: '#c4c3bf', bg: '#1e293b' },  // pearly gray-blue
     lead: { color: '#60a5fa', bg: '#1e3a5f' },
     customer: { color: '#22c55e', bg: '#14532d' },
     partner: { color: '#a78bfa', bg: '#3d2f5c' },
     churned: { color: '#f87171', bg: '#450a0a' },
-    inactive: { color: '#71717a', bg: '#27272a' },
+    inactive: { color: '#d4d3cf', bg: '#27272a' },  // pearly white
   },
   
   // Shadows

@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useCallback, useEffect, ReactNode } from 'react'
-import { supabase } from '../../../lib/supabase'
+import { supabase, isSupabaseConfigured } from '../../../lib/supabase'
 import { useFilters } from '../../../contexts/FilterContext'
-import type { Company, Contact, Deal, Task, Note, CRMStats, CRMFilters } from '../types'
+import type { Contact, Deal, Task, Note, CRMStats, CRMFilters } from '../types'
 
 // Create an untyped supabase client for CRM tables that aren't in the generated types
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -12,7 +12,6 @@ const db = supabase as any
 // ============================================
 interface CRMContextType {
   // Data
-  companies: Company[]
   contacts: Contact[]
   deals: Deal[]
   tasks: Task[]
@@ -20,7 +19,6 @@ interface CRMContextType {
   
   // Loading states
   loading: {
-    companies: boolean
     contacts: boolean
     deals: boolean
     tasks: boolean
@@ -33,12 +31,6 @@ interface CRMContextType {
   // Filters
   filters: CRMFilters
   setFilters: (filters: CRMFilters) => void
-  
-  // CRUD - Companies
-  fetchCompanies: () => Promise<void>
-  createCompany: (data: Partial<Company>) => Promise<Company | null>
-  updateCompany: (id: string, data: Partial<Company>) => Promise<boolean>
-  deleteCompany: (id: string) => Promise<boolean>
   
   // CRUD - Contacts
   fetchContacts: () => Promise<void>
@@ -61,7 +53,7 @@ interface CRMContextType {
   deleteTask: (id: string) => Promise<boolean>
   
   // Notes
-  fetchNotes: (entityType: 'company' | 'contact' | 'deal', entityId: string) => Promise<Note[]>
+  fetchNotes: (entityType: 'contact' | 'deal', entityId: string) => Promise<Note[]>
   createNote: (data: Partial<Note>) => Promise<Note | null>
   
   // Stats
@@ -80,7 +72,6 @@ export function CRMProvider({ children }: { children: ReactNode }) {
   const { selectedClient } = useFilters()
   
   // Data state
-  const [companies, setCompanies] = useState<Company[]>([])
   const [contacts, setContacts] = useState<Contact[]>([])
   const [deals, setDeals] = useState<Deal[]>([])
   const [tasks, setTasks] = useState<Task[]>([])
@@ -88,7 +79,6 @@ export function CRMProvider({ children }: { children: ReactNode }) {
   
   // Loading state
   const [loading, setLoading] = useState({
-    companies: true,
     contacts: true,
     deals: true,
     tasks: true,
@@ -100,80 +90,6 @@ export function CRMProvider({ children }: { children: ReactNode }) {
   
   // Filters
   const [filters, setFilters] = useState<CRMFilters>({})
-
-  // ============================================
-  // COMPANIES
-  // ============================================
-  const fetchCompanies = useCallback(async () => {
-    if (!selectedClient) return
-    setLoading(prev => ({ ...prev, companies: true }))
-    
-    try {
-      const { data, error: fetchError } = await db
-        .from('crm_companies')
-        .select('*')
-        .eq('client', selectedClient)
-        .order('created_at', { ascending: false })
-      
-      if (fetchError) throw fetchError
-      setCompanies((data || []) as Company[])
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch companies')
-    } finally {
-      setLoading(prev => ({ ...prev, companies: false }))
-    }
-  }, [selectedClient])
-
-  const createCompany = useCallback(async (companyData: Partial<Company>): Promise<Company | null> => {
-    if (!selectedClient) return null
-    
-    try {
-      const { data: created, error: createError } = await db
-        .from('crm_companies')
-        .insert({ ...companyData, client: selectedClient })
-        .select()
-        .single()
-      
-      if (createError) throw createError
-      setCompanies(prev => [created as Company, ...prev])
-      return created as Company
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create company')
-      return null
-    }
-  }, [selectedClient])
-
-  const updateCompany = useCallback(async (id: string, companyData: Partial<Company>): Promise<boolean> => {
-    try {
-      const { error: updateError } = await db
-        .from('crm_companies')
-        .update(companyData)
-        .eq('id', id)
-      
-      if (updateError) throw updateError
-      setCompanies(prev => prev.map(c => c.id === id ? { ...c, ...companyData } : c))
-      return true
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update company')
-      return false
-    }
-  }, [])
-
-  const deleteCompany = useCallback(async (id: string): Promise<boolean> => {
-    try {
-      const { error: deleteError } = await db
-        .from('crm_companies')
-        .delete()
-        .eq('id', id)
-      
-      if (deleteError) throw deleteError
-      setCompanies(prev => prev.filter(c => c.id !== id))
-      return true
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete company')
-      return false
-    }
-  }, [])
 
   // ============================================
   // CONTACTS
@@ -200,20 +116,44 @@ export function CRMProvider({ children }: { children: ReactNode }) {
   }, [selectedClient])
 
   const createContact = useCallback(async (contactData: Partial<Contact>): Promise<Contact | null> => {
-    if (!selectedClient) return null
+    if (!isSupabaseConfigured()) {
+      setError('Supabase is not configured. Please check your environment variables.')
+      return null
+    }
+    
+    if (!selectedClient) {
+      setError('No client selected. Please ensure you are logged in with a valid client assignment.')
+      return null
+    }
+    
+    // Check if we have a valid session
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session) {
+      setError('You are not authenticated. Please log in again.')
+      return null
+    }
     
     try {
+      console.log('Creating contact with client:', selectedClient, 'data:', contactData)
       const { data: created, error: createError } = await db
         .from('crm_contacts')
         .insert({ ...contactData, client: selectedClient })
         .select()
         .single()
       
-      if (createError) throw createError
+      if (createError) {
+        const errorMessage = createError.message || createError.details || 'Failed to create contact'
+        setError(errorMessage)
+        console.error('Create contact error:', createError)
+        throw createError
+      }
       setContacts(prev => [created as Contact, ...prev])
+      setError(null) // Clear error on success
       return created as Contact
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create contact')
+      const errorMessage = err instanceof Error ? err.message : 'Failed to create contact'
+      setError(errorMessage)
+      console.error('Create contact exception:', err)
       return null
     }
   }, [selectedClient])
@@ -276,7 +216,10 @@ export function CRMProvider({ children }: { children: ReactNode }) {
   }, [selectedClient])
 
   const createDeal = useCallback(async (dealData: Partial<Deal>): Promise<Deal | null> => {
-    if (!selectedClient) return null
+    if (!selectedClient) {
+      setError('No client selected. Please ensure you are logged in with a valid client assignment.')
+      return null
+    }
     
     try {
       // Get max index for the stage
@@ -289,11 +232,19 @@ export function CRMProvider({ children }: { children: ReactNode }) {
         .select()
         .single()
       
-      if (createError) throw createError
+      if (createError) {
+        const errorMessage = createError.message || createError.details || 'Failed to create deal'
+        setError(errorMessage)
+        console.error('Create deal error:', createError)
+        throw createError
+      }
       setDeals(prev => [...prev, created as Deal])
+      setError(null) // Clear error on success
       return created as Deal
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create deal')
+      const errorMessage = err instanceof Error ? err.message : 'Failed to create deal'
+      setError(errorMessage)
+      console.error('Create deal exception:', err)
       return null
     }
   }, [selectedClient, deals])
@@ -370,7 +321,10 @@ export function CRMProvider({ children }: { children: ReactNode }) {
   }, [selectedClient])
 
   const createTask = useCallback(async (taskData: Partial<Task>): Promise<Task | null> => {
-    if (!selectedClient) return null
+    if (!selectedClient) {
+      setError('No client selected. Please ensure you are logged in with a valid client assignment.')
+      return null
+    }
     
     try {
       const { data: created, error: createError } = await db
@@ -379,11 +333,19 @@ export function CRMProvider({ children }: { children: ReactNode }) {
         .select()
         .single()
       
-      if (createError) throw createError
+      if (createError) {
+        const errorMessage = createError.message || createError.details || 'Failed to create task'
+        setError(errorMessage)
+        console.error('Create task error:', createError)
+        throw createError
+      }
       setTasks(prev => [created as Task, ...prev])
+      setError(null) // Clear error on success
       return created as Task
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create task')
+      const errorMessage = err instanceof Error ? err.message : 'Failed to create task'
+      setError(errorMessage)
+      console.error('Create task exception:', err)
       return null
     }
   }, [selectedClient])
@@ -437,12 +399,11 @@ export function CRMProvider({ children }: { children: ReactNode }) {
   // NOTES
   // ============================================
   const fetchNotes = useCallback(async (
-    entityType: 'company' | 'contact' | 'deal',
+    entityType: 'contact' | 'deal',
     entityId: string
   ): Promise<Note[]> => {
     try {
       const columnMap = {
-        company: 'company_id',
         contact: 'contact_id',
         deal: 'deal_id',
       }
@@ -483,8 +444,7 @@ export function CRMProvider({ children }: { children: ReactNode }) {
   // ============================================
   
   // Type definitions for stats queries
-  type CompanyStatsRow = { status: string }
-  type ContactStatsRow = { status: string }
+  type ContactStatsRow = { status: string; stage: string | null }
   type DealStatsRow = { stage: string; amount: number | null; probability: number | null }
   type TaskStatsRow = { done: boolean; due_date: string | null; done_at: string | null }
   
@@ -494,14 +454,12 @@ export function CRMProvider({ children }: { children: ReactNode }) {
     
     try {
       // Fetch all counts in parallel
-      const [companiesRes, contactsRes, dealsRes, tasksRes] = await Promise.all([
-        db.from('crm_companies').select('status').eq('client', selectedClient),
-        db.from('crm_contacts').select('status').eq('client', selectedClient).is('deleted_at', null),
+      const [contactsRes, dealsRes, tasksRes] = await Promise.all([
+        db.from('crm_contacts').select('status, stage').eq('client', selectedClient).is('deleted_at', null),
         db.from('crm_deals').select('stage, amount, probability').eq('client', selectedClient).is('deleted_at', null),
         db.from('crm_tasks').select('done, due_date, done_at').eq('client', selectedClient),
       ])
       
-      const companiesData = (companiesRes.data || []) as CompanyStatsRow[]
       const contactsData = (contactsRes.data || []) as ContactStatsRow[]
       const dealsData = (dealsRes.data || []) as DealStatsRow[]
       const tasksData = (tasksRes.data || []) as TaskStatsRow[]
@@ -510,17 +468,15 @@ export function CRMProvider({ children }: { children: ReactNode }) {
       const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
       
       const stats: CRMStats = {
-        companies: {
-          total: companiesData.length,
-          byStatus: companiesData.reduce((acc, c) => {
-            acc[c.status] = (acc[c.status] || 0) + 1
-            return acc
-          }, {} as Record<string, number>),
-        },
         contacts: {
           total: contactsData.length,
           byStatus: contactsData.reduce((acc, c) => {
             acc[c.status] = (acc[c.status] || 0) + 1
+            return acc
+          }, {} as Record<string, number>),
+          byStage: contactsData.reduce((acc, c) => {
+            const stage = c.stage || 'new'
+            acc[stage] = (acc[stage] || 0) + 1
             return acc
           }, {} as Record<string, number>),
         },
@@ -560,13 +516,12 @@ export function CRMProvider({ children }: { children: ReactNode }) {
   // ============================================
   const refreshAll = useCallback(async () => {
     await Promise.all([
-      fetchCompanies(),
       fetchContacts(),
       fetchDeals(),
       fetchTasks(),
       fetchStats(),
     ])
-  }, [fetchCompanies, fetchContacts, fetchDeals, fetchTasks, fetchStats])
+  }, [fetchContacts, fetchDeals, fetchTasks, fetchStats])
 
   // Initial fetch
   useEffect(() => {
@@ -578,7 +533,6 @@ export function CRMProvider({ children }: { children: ReactNode }) {
   return (
     <CRMContext.Provider
       value={{
-        companies,
         contacts,
         deals,
         tasks,
@@ -587,10 +541,6 @@ export function CRMProvider({ children }: { children: ReactNode }) {
         error,
         filters,
         setFilters,
-        fetchCompanies,
-        createCompany,
-        updateCompany,
-        deleteCompany,
         fetchContacts,
         createContact,
         updateContact,

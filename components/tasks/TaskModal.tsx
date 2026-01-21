@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Calendar, User, Trash2 } from 'lucide-react'
 import { theme } from '../../config/theme'
 import { useCRM } from '../../context/CRMContext'
@@ -17,9 +17,10 @@ const TYPE_OPTIONS: { value: TaskType; label: string }[] = Object.entries(TASK_T
 )
 
 export function TaskModal({ isOpen, onClose, task }: TaskModalProps) {
-  const { contacts, deals, createTask, updateTask, deleteTask } = useCRM()
+  const { contacts, deals, createTask, updateTask, deleteTask, error } = useCRM()
   const [loading, setLoading] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [formError, setFormError] = useState<string | null>(null)
   
   const [formData, setFormData] = useState({
     text: '',
@@ -30,10 +31,13 @@ export function TaskModal({ isOpen, onClose, task }: TaskModalProps) {
     assigned_to: '',
   })
   
-  // Build options
+  // Build options with company name for better context
   const contactOptions = [
     { value: '', label: 'No contact' },
-    ...contacts.map(c => ({ value: c.id, label: c.full_name || c.email || 'Unknown' }))
+    ...contacts.map(c => ({ 
+      value: c.id, 
+      label: `${c.full_name || c.email || 'Unknown'}${c.company_name ? ` (${c.company_name})` : ''}` 
+    }))
   ]
   
   const dealOptions = [
@@ -67,12 +71,20 @@ export function TaskModal({ isOpen, onClose, task }: TaskModalProps) {
       })
     }
     setShowDeleteConfirm(false)
+    setFormError(null)
   }, [task, isOpen])
   
-  const handleSubmit = async () => {
-    if (!formData.text.trim()) return
+  // Check if form can be submitted
+  const canSubmit = formData.text.trim()
+  
+  const handleSubmit = useCallback(async () => {
+    if (!formData.text.trim()) {
+      setFormError('Please provide a task description')
+      return
+    }
     
     setLoading(true)
+    setFormError(null)
     try {
       const data = {
         text: formData.text,
@@ -84,13 +96,43 @@ export function TaskModal({ isOpen, onClose, task }: TaskModalProps) {
       }
       
       if (task) {
-        await updateTask(task.id, data)
+        const success = await updateTask(task.id, data)
+        if (success) {
+          onClose()
+        } else {
+          setFormError(error || 'Failed to update task')
+        }
       } else {
-        await createTask(data)
+        const created = await createTask(data)
+        if (created) {
+          onClose()
+        } else {
+          setFormError(error || 'Failed to create task')
+        }
       }
-      onClose()
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : 'An error occurred')
     } finally {
       setLoading(false)
+    }
+  }, [formData, task, updateTask, createTask, onClose, error])
+  
+  // Handle Enter key to save - passed to Modal
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    // Don't trigger if typing in a textarea
+    const target = e.target as HTMLElement
+    if (target.tagName === 'TEXTAREA') return
+    
+    // Don't trigger if delete confirmation is showing
+    if (showDeleteConfirm) return
+    
+    // Don't trigger if already loading
+    if (loading) return
+    
+    // Enter key to submit
+    if (e.key === 'Enter' && canSubmit) {
+      e.preventDefault()
+      handleSubmit()
     }
   }
   
@@ -112,6 +154,7 @@ export function TaskModal({ isOpen, onClose, task }: TaskModalProps) {
       onClose={onClose}
       title={task ? 'Edit Task' : 'New Task'}
       size="md"
+      onKeyDown={handleKeyDown}
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         {/* Task Text */}
@@ -164,6 +207,28 @@ export function TaskModal({ isOpen, onClose, task }: TaskModalProps) {
           placeholder="Team member name"
           icon={<User size={14} />}
         />
+        
+        {/* Error Message */}
+        {formError && (
+          <div
+            style={{
+              padding: 12,
+              backgroundColor: theme.status.errorBg,
+              borderRadius: theme.radius.lg,
+              border: `1px solid ${theme.status.error}`,
+            }}
+          >
+            <p
+              style={{
+                fontSize: theme.fontSize.sm,
+                color: theme.status.error,
+                margin: 0,
+              }}
+            >
+              {formError}
+            </p>
+          </div>
+        )}
       </div>
       
       {/* Delete Confirmation */}

@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import { DollarSign, Building2, Calendar, Percent, FileText, Trash2 } from 'lucide-react'
+import { useState, useEffect, useCallback } from 'react'
+import { DollarSign, Users, Calendar, Percent, FileText, Trash2 } from 'lucide-react'
 import { theme } from '../../config/theme'
 import { useCRM } from '../../context/CRMContext'
 import { Modal, ModalFooter, Button, Input, Select, Textarea } from '../shared'
@@ -13,14 +13,14 @@ interface DealModalProps {
 }
 
 export function DealModal({ isOpen, onClose, deal, defaultStage }: DealModalProps) {
-  const { companies, contacts, createDeal, updateDeal, deleteDeal } = useCRM()
+  const { contacts, createDeal, updateDeal, deleteDeal, error } = useCRM()
   const [loading, setLoading] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [formError, setFormError] = useState<string | null>(null)
   
   const [formData, setFormData] = useState({
     name: '',
     description: '',
-    company_id: '',
     contact_id: '',
     stage: 'lead' as DealStage,
     amount: '',
@@ -28,18 +28,13 @@ export function DealModal({ isOpen, onClose, deal, defaultStage }: DealModalProp
     expected_close_date: '',
   })
   
-  // Build options
-  const companyOptions = [
-    { value: '', label: 'No company' },
-    ...companies.map(c => ({ value: c.id, label: c.name }))
-  ]
-  
-  // Filter contacts by selected company
+  // Build contact options with company name
   const contactOptions = [
     { value: '', label: 'No contact' },
-    ...contacts
-      .filter(c => !formData.company_id || c.company_id === formData.company_id)
-      .map(c => ({ value: c.id, label: c.full_name || c.email || 'Unknown' }))
+    ...contacts.map(c => ({ 
+      value: c.id, 
+      label: `${c.full_name || c.email || 'Unknown'}${c.company_name ? ` (${c.company_name})` : ''}` 
+    }))
   ]
   
   const stageOptions = DEAL_STAGES.map(stage => ({
@@ -53,7 +48,6 @@ export function DealModal({ isOpen, onClose, deal, defaultStage }: DealModalProp
       setFormData({
         name: deal.name || '',
         description: deal.description || '',
-        company_id: deal.company_id || '',
         contact_id: deal.contact_id || '',
         stage: deal.stage || 'lead',
         amount: deal.amount?.toString() || '',
@@ -64,7 +58,6 @@ export function DealModal({ isOpen, onClose, deal, defaultStage }: DealModalProp
       setFormData({
         name: '',
         description: '',
-        company_id: '',
         contact_id: '',
         stage: defaultStage || 'lead',
         amount: '',
@@ -73,6 +66,7 @@ export function DealModal({ isOpen, onClose, deal, defaultStage }: DealModalProp
       })
     }
     setShowDeleteConfirm(false)
+    setFormError(null)
   }, [deal, isOpen, defaultStage])
   
   // Auto-update probability when stage changes
@@ -84,15 +78,24 @@ export function DealModal({ isOpen, onClose, deal, defaultStage }: DealModalProp
     })
   }
   
-  const handleSubmit = async () => {
-    if (!formData.name.trim()) return
+  // Get selected contact info for display
+  const selectedContact = contacts.find(c => c.id === formData.contact_id)
+  
+  // Check if form can be submitted
+  const canSubmit = formData.name.trim()
+  
+  const handleSubmit = useCallback(async () => {
+    if (!formData.name.trim()) {
+      setFormError('Please provide a deal name')
+      return
+    }
     
     setLoading(true)
+    setFormError(null)
     try {
       const data = {
         name: formData.name,
         description: formData.description || null,
-        company_id: formData.company_id || null,
         contact_id: formData.contact_id || null,
         stage: formData.stage,
         amount: parseFloat(formData.amount) || 0,
@@ -101,13 +104,43 @@ export function DealModal({ isOpen, onClose, deal, defaultStage }: DealModalProp
       }
       
       if (deal) {
-        await updateDeal(deal.id, data)
+        const success = await updateDeal(deal.id, data)
+        if (success) {
+          onClose()
+        } else {
+          setFormError(error || 'Failed to update deal')
+        }
       } else {
-        await createDeal(data)
+        const created = await createDeal(data)
+        if (created) {
+          onClose()
+        } else {
+          setFormError(error || 'Failed to create deal')
+        }
       }
-      onClose()
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : 'An error occurred')
     } finally {
       setLoading(false)
+    }
+  }, [formData, deal, updateDeal, createDeal, onClose, error])
+  
+  // Handle Enter key to save - passed to Modal
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    // Don't trigger if typing in a textarea
+    const target = e.target as HTMLElement
+    if (target.tagName === 'TEXTAREA') return
+    
+    // Don't trigger if delete confirmation is showing
+    if (showDeleteConfirm) return
+    
+    // Don't trigger if already loading
+    if (loading) return
+    
+    // Enter key to submit
+    if (e.key === 'Enter' && canSubmit) {
+      e.preventDefault()
+      handleSubmit()
     }
   }
   
@@ -134,6 +167,7 @@ export function DealModal({ isOpen, onClose, deal, defaultStage }: DealModalProp
       onClose={onClose}
       title={deal ? 'Edit Deal' : 'New Deal'}
       size="lg"
+      onKeyDown={handleKeyDown}
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
         {/* Deal Summary */}
@@ -159,6 +193,18 @@ export function DealModal({ isOpen, onClose, deal, defaultStage }: DealModalProp
               >
                 {formData.name || 'New Deal'}
               </p>
+              {selectedContact && (
+                <p
+                  style={{
+                    fontSize: theme.fontSize.sm,
+                    color: theme.text.secondary,
+                    margin: '4px 0',
+                  }}
+                >
+                  {selectedContact.full_name || selectedContact.email}
+                  {selectedContact.company_name && ` @ ${selectedContact.company_name}`}
+                </p>
+              )}
               <div
                 style={{
                   display: 'flex',
@@ -254,23 +300,27 @@ export function DealModal({ isOpen, onClose, deal, defaultStage }: DealModalProp
           </div>
         </div>
         
-        {/* Relations Section */}
+        {/* Contact Section */}
         <div>
-          <SectionHeader icon={<Building2 size={16} />} title="Related Records" />
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-            <Select
-              label="Company"
-              options={companyOptions}
-              value={formData.company_id}
-              onChange={(v) => setFormData({ ...formData, company_id: v, contact_id: '' })}
-            />
-            <Select
-              label="Contact"
-              options={contactOptions}
-              value={formData.contact_id}
-              onChange={(v) => setFormData({ ...formData, contact_id: v })}
-            />
-          </div>
+          <SectionHeader icon={<Users size={16} />} title="Related Contact" />
+          <Select
+            label="Contact"
+            options={contactOptions}
+            value={formData.contact_id}
+            onChange={(v) => setFormData({ ...formData, contact_id: v })}
+          />
+          {selectedContact && selectedContact.company_name && (
+            <p
+              style={{
+                fontSize: theme.fontSize.sm,
+                color: theme.text.muted,
+                margin: '8px 0 0 0',
+              }}
+            >
+              Company: {selectedContact.company_name}
+              {selectedContact.company_industry && ` • ${selectedContact.company_industry}`}
+            </p>
+          )}
         </div>
         
         {/* Description Section */}
@@ -283,6 +333,28 @@ export function DealModal({ isOpen, onClose, deal, defaultStage }: DealModalProp
             style={{ minHeight: 80 }}
           />
         </div>
+        
+        {/* Error Message */}
+        {formError && (
+          <div
+            style={{
+              padding: 12,
+              backgroundColor: theme.status.errorBg,
+              borderRadius: theme.radius.lg,
+              border: `1px solid ${theme.status.error}`,
+            }}
+          >
+            <p
+              style={{
+                fontSize: theme.fontSize.sm,
+                color: theme.status.error,
+                margin: 0,
+              }}
+            >
+              {formError}
+            </p>
+          </div>
+        )}
       </div>
       
       {/* Delete Confirmation */}

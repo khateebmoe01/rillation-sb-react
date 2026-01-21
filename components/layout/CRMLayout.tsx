@@ -2,8 +2,8 @@ import { useState, ReactNode } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { 
-  LayoutDashboard, Building2, Users, DollarSign, 
-  CheckSquare, ChevronLeft, ChevronRight, Sparkles
+  LayoutDashboard, Users, DollarSign, 
+  CheckSquare, ChevronLeft, ChevronRight
 } from 'lucide-react'
 import { theme } from '../../config/theme'
 
@@ -13,7 +13,6 @@ interface CRMLayoutProps {
 
 const NAV_ITEMS = [
   { path: '/crm', icon: LayoutDashboard, label: 'Dashboard', exact: true },
-  { path: '/crm/companies', icon: Building2, label: 'Companies' },
   { path: '/crm/contacts', icon: Users, label: 'Contacts' },
   { path: '/crm/deals', icon: DollarSign, label: 'Deals' },
   { path: '/crm/tasks', icon: CheckSquare, label: 'Tasks' },
@@ -51,22 +50,9 @@ export function CRMLayout({ children }: CRMLayoutProps) {
             gap: 12,
             padding: collapsed ? '16px 12px' : '16px 20px',
             borderBottom: `1px solid ${theme.border.subtle}`,
+            justifyContent: collapsed ? 'center' : 'flex-start',
           }}
         >
-          <div
-            style={{
-              width: 36,
-              height: 36,
-              borderRadius: theme.radius.lg,
-              background: `linear-gradient(135deg, ${theme.accent.primary}, ${theme.secondary.main})`,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              flexShrink: 0,
-            }}
-          >
-            <Sparkles size={18} style={{ color: 'white' }} />
-          </div>
           {!collapsed && (
             <motion.span
               initial={{ opacity: 0 }}
@@ -79,7 +65,7 @@ export function CRMLayout({ children }: CRMLayoutProps) {
                 whiteSpace: 'nowrap',
               }}
             >
-              Atomic CRM
+              Rillation CRM
             </motion.span>
           )}
         </div>
