@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { Building2, Globe, Phone, MapPin, Users, DollarSign, Calendar, Trash2 } from 'lucide-react'
 import { theme } from '../../config/theme'
 import { useCRM } from '../../context/CRMContext'
-import { Modal, ModalFooter, Button, Input, Select, Textarea } from '../shared'
+import { Modal, ModalFooter, Button, Input, Select } from '../shared'
 import type { Company, CompanyStatus } from '../../types'
 
 interface CompanyModalProps {

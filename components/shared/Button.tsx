@@ -150,9 +150,7 @@ export function IconButton({ icon, variant = 'ghost', size = 'md', label, ...pro
   const s = sizeStyles[size]
   
   return (
-    <motion.button
-      whileHover={{ scale: 1.1 }}
-      whileTap={{ scale: 0.95 }}
+    <button
       aria-label={label}
       title={label}
       style={{
@@ -166,18 +164,20 @@ export function IconButton({ icon, variant = 'ghost', size = 'md', label, ...pro
         border: v.border ? `1px solid ${v.border}` : 'none',
         borderRadius: theme.radius.lg,
         cursor: 'pointer',
-        transition: `background-color ${theme.transition.fast}`,
+        transition: `background-color ${theme.transition.fast}, transform 0.15s ease`,
         outline: 'none',
       }}
       onMouseEnter={(e) => {
         e.currentTarget.style.backgroundColor = v.bgHover
+        e.currentTarget.style.transform = 'scale(1.1)'
       }}
       onMouseLeave={(e) => {
         e.currentTarget.style.backgroundColor = v.bg
+        e.currentTarget.style.transform = 'scale(1)'
       }}
       {...props}
     >
       {icon}
-    </motion.button>
+    </button>
   )
 }

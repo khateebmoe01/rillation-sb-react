@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { User, Mail, Phone, Building2, Briefcase, Linkedin, Trash2, MessageSquare } from 'lucide-react'
+import { User, Mail, Phone, Briefcase, Linkedin, Trash2, MessageSquare } from 'lucide-react'
 import { theme } from '../../config/theme'
 import { useCRM } from '../../context/CRMContext'
 import { Modal, ModalFooter, Button, Input, Select, Textarea, Avatar } from '../shared'

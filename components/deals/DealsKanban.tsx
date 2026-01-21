@@ -1,9 +1,9 @@
 import { useState, useMemo } from 'react'
-import { motion, AnimatePresence, Reorder } from 'framer-motion'
-import { DollarSign, Plus, Building2, User, Calendar, MoreHorizontal, Trash2, Edit2 } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { DollarSign, Plus, Building2, Calendar, MoreHorizontal, Trash2, Edit2 } from 'lucide-react'
 import { theme } from '../../config/theme'
 import { useCRM } from '../../context/CRMContext'
-import { Button, SearchInput, Avatar, EmptyState, LoadingSkeleton } from '../shared'
+import { Button, SearchInput, Avatar, LoadingSkeleton } from '../shared'
 import { DealModal } from './DealModal'
 import { DEAL_STAGES, DEAL_STAGE_INFO, type Deal, type DealStage } from '../../types'
 
@@ -431,7 +431,7 @@ function DealCard({ deal, onClick, onDelete, compact = false }: DealCardProps) {
   const [showMenu, setShowMenu] = useState(false)
   const [isDragging, setIsDragging] = useState(false)
   
-  const handleDragStart = (e: React.DragEvent) => {
+  const handleDragStart = (e: React.DragEvent<HTMLDivElement>) => {
     e.dataTransfer.setData('dealId', deal.id)
     setIsDragging(true)
   }
@@ -441,13 +441,11 @@ function DealCard({ deal, onClick, onDelete, compact = false }: DealCardProps) {
   }
   
   return (
-    <motion.div
+    <div
       draggable
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
       onClick={onClick}
-      whileHover={{ scale: 1.02 }}
-      whileTap={{ scale: 0.98 }}
       style={{
         padding: compact ? 10 : 14,
         backgroundColor: theme.bg.elevated,
@@ -456,6 +454,7 @@ function DealCard({ deal, onClick, onDelete, compact = false }: DealCardProps) {
         cursor: 'grab',
         opacity: isDragging ? 0.5 : 1,
         position: 'relative',
+        transition: 'transform 0.15s ease, opacity 0.15s ease',
       }}
     >
       {/* Deal Name & Amount */}
@@ -643,7 +642,7 @@ function DealCard({ deal, onClick, onDelete, compact = false }: DealCardProps) {
           </div>
         )}
       </div>
-    </motion.div>
+    </div>
   )
 }
 

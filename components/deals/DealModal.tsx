@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { DollarSign, Building2, User, Calendar, Percent, FileText, Trash2 } from 'lucide-react'
+import { DollarSign, Building2, Calendar, Percent, FileText, Trash2 } from 'lucide-react'
 import { theme } from '../../config/theme'
 import { useCRM } from '../../context/CRMContext'
 import { Modal, ModalFooter, Button, Input, Select, Textarea } from '../shared'

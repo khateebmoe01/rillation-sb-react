@@ -1,15 +1,15 @@
 import { useState, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { 
-  CheckSquare, Plus, Calendar, Clock, AlertCircle, 
+  CheckSquare, Plus, Calendar, AlertCircle, 
   Phone, Mail, Users, Bell, RotateCcw, Check,
-  Building2, DollarSign
+  DollarSign
 } from 'lucide-react'
 import { theme } from '../../config/theme'
 import { useCRM } from '../../context/CRMContext'
-import { Card, Button, SearchInput, EmptyState, LoadingSkeleton, Badge } from '../shared'
+import { Card, Button, SearchInput, EmptyState, LoadingSkeleton } from '../shared'
 import { TaskModal } from './TaskModal'
-import type { Task, TaskType } from '../../types'
+import type { Task } from '../../types'
 import { TASK_TYPE_INFO } from '../../types'
 
 type TaskFilter = 'all' | 'pending' | 'overdue' | 'today' | 'completed'
@@ -275,7 +275,7 @@ interface TaskRowProps {
 }
 
 function TaskRow({ task, onClick, onToggle }: TaskRowProps) {
-  const [isHovered, setIsHovered] = useState(false)
+  const [, setIsHovered] = useState(false)
   
   const now = new Date()
   const isOverdue = !task.done && task.due_date && new Date(task.due_date) < now

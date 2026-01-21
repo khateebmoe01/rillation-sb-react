@@ -2,12 +2,12 @@ import { useMemo } from 'react'
 import { motion } from 'framer-motion'
 import { 
   Building2, Users, DollarSign, CheckSquare, 
-  TrendingUp, AlertCircle, Calendar, ArrowUpRight,
+  TrendingUp, AlertCircle,
   Clock
 } from 'lucide-react'
 import { theme } from '../../config/theme'
 import { useCRM } from '../../context/CRMContext'
-import { Card, CardHeader, Avatar, Badge, LoadingSkeleton } from '../shared'
+import { Card, CardHeader, Badge, LoadingSkeleton } from '../shared'
 import { DEAL_STAGE_INFO, type DealStage } from '../../types'
 
 export function CRMDashboard() {

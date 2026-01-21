@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Users, Plus, Mail, Phone, Building2, Linkedin, ExternalLink } from 'lucide-react'
+import { Users, Plus, Mail, Phone, Building2, Linkedin } from 'lucide-react'
 import { theme } from '../../config/theme'
 import { useCRM } from '../../context/CRMContext'
 import { Card, Avatar, StatusBadge, Button, SearchInput, EmptyState, LoadingSkeleton } from '../shared'
