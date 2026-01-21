@@ -74,7 +74,12 @@ export function PipelineProgressDropdown({
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+      const target = event.target as Node
+      const isContained = dropdownRef.current && dropdownRef.current.contains(target)
+      // #region agent log
+      fetch('http://127.0.0.1:7243/ingest/dd30fd30-28f2-438b-a53d-4389ace883b5',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'PipelineProgressDropdown.tsx:handleClickOutside',message:'Click outside check',data:{isContained,targetTag:(target as HTMLElement).tagName,targetClass:(target as HTMLElement).className},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H6'})}).catch(()=>{});
+      // #endregion
+      if (!isContained) {
         setIsOpen(false)
       }
     }
@@ -112,12 +117,25 @@ export function PipelineProgressDropdown({
     <div 
       ref={dropdownRef} 
       style={{ position: 'relative' }}
-      onClick={(e) => e.stopPropagation()}
-      onMouseDown={(e) => e.stopPropagation()}
+      onClick={(e) => {
+        // #region agent log
+        fetch('http://127.0.0.1:7243/ingest/dd30fd30-28f2-438b-a53d-4389ace883b5',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'PipelineProgressDropdown.tsx:wrapper',message:'Wrapper div onClick',data:{eventType:e.type,target:(e.target as HTMLElement).tagName},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H1'})}).catch(()=>{});
+        // #endregion
+        e.stopPropagation()
+      }}
+      onMouseDown={(e) => {
+        // #region agent log
+        fetch('http://127.0.0.1:7243/ingest/dd30fd30-28f2-438b-a53d-4389ace883b5',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'PipelineProgressDropdown.tsx:wrapper',message:'Wrapper div onMouseDown',data:{eventType:e.type,target:(e.target as HTMLElement).tagName},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H1'})}).catch(()=>{});
+        // #endregion
+        e.stopPropagation()
+      }}
     >
       <button
         ref={buttonRef}
         onClick={(e) => {
+          // #region agent log
+          fetch('http://127.0.0.1:7243/ingest/dd30fd30-28f2-438b-a53d-4389ace883b5',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'PipelineProgressDropdown.tsx:button',message:'Button onClick triggered',data:{disabled,currentIsOpen:isOpen,willSetTo:!isOpen},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H2-H3'})}).catch(()=>{});
+          // #endregion
           e.stopPropagation()
           if (!disabled) setIsOpen(!isOpen)
         }}
@@ -178,6 +196,9 @@ export function PipelineProgressDropdown({
         <ChevronDown size={14} style={{ color: theme.text.muted, flexShrink: 0 }} />
       </button>
 
+      {/* #region agent log */}
+      {(() => { fetch('http://127.0.0.1:7243/ingest/dd30fd30-28f2-438b-a53d-4389ace883b5',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'PipelineProgressDropdown.tsx:render',message:'Component render state',data:{isOpen,disabled,zIndex:theme.z.dropdown},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H3-H4'})}).catch(()=>{}); return null; })()}
+      {/* #endregion */}
       <AnimatePresence>
         {isOpen && (
           <motion.div
@@ -229,6 +250,9 @@ export function PipelineProgressDropdown({
                 <button
                   key={stage.key}
                   onClick={(e) => {
+                    // #region agent log
+                    fetch('http://127.0.0.1:7243/ingest/dd30fd30-28f2-438b-a53d-4389ace883b5',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'PipelineProgressDropdown.tsx:checkboxClick',message:'Checkbox button clicked',data:{stageKey:stage.key},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H6'})}).catch(()=>{});
+                    // #endregion
                     e.stopPropagation()
                     handleToggleStage(stage.key)
                   }}

@@ -1,7 +1,7 @@
-// Atomic CRM Types - Updated with merged company fields
+// Atomic CRM Types - Using engaged_leads as single source of truth
 
 // ============================================
-// CONTACT (Now includes company fields)
+// CONTACT (Maps directly to engaged_leads table)
 // ============================================
 export interface Contact {
   id: string
@@ -12,24 +12,19 @@ export interface Contact {
   last_name: string | null
   full_name: string | null
   email: string | null
-  phone: string | null
   lead_phone: string | null
-  avatar_url: string | null
-  title: string | null
   job_title: string | null
-  department: string | null
-  linkedin_url: string | null
-  profile_url: string | null
   seniority_level: string | null
+  linkedin_url: string | null
   
-  // Company Info (embedded - no more separate companies table)
-  company_name: string | null
+  // Company Info (from engaged_leads)
+  company: string | null
   company_domain: string | null
   company_linkedin: string | null
   company_phone: string | null
   company_website: string | null
   company_size: string | null
-  company_industry: string | null
+  industry: string | null
   annual_revenue: string | null
   company_hq_city: string | null
   company_hq_state: string | null
@@ -39,79 +34,98 @@ export interface Contact {
   funding_stage: string | null
   tech_stack: string[] | null
   is_hiring: boolean | null
-  growth_score: string | null
+  growth_score: number | null
   num_locations: number | null
-  company_logo_url: string | null
-  company_address: string | null
-  company_postal_code: string | null
-  company_sector: string | null
+  main_product_service: string | null
+  
+  // Campaign Info
+  campaign_id: string | null
+  campaign_name: string | null
+  lead_source: string | null
+  
+  // Pipeline Stages (boolean flags)
+  meeting_booked: boolean
+  qualified: boolean
+  showed_up_to_disco: boolean
+  demo_booked: boolean
+  showed_up_to_demo: boolean
+  proposal_sent: boolean
+  closed: boolean
+  
+  // Pipeline Timestamps
+  meeting_booked_at: string | null
+  qualified_at: string | null
+  showed_up_to_disco_at: string | null
+  demo_booked_at: string | null
+  showed_up_to_demo_at: string | null
+  proposal_sent_at: string | null
+  closed_at: string | null
+  
+  // Current stage (derived or set)
+  stage: string | null
+  current_stage: string | null
   
   // Pipeline/Sales
-  status: ContactStatus
-  stage: string | null
   epv: number | null
   context: string | null
-  next_touch: string | null
+  next_touchpoint: string | null
   notes: string | null
   assignee: string | null
-  lead_source: string | null
-  campaign_name: string | null
-  campaign_id: string | null
-  
-  // Pipeline Progress
-  pipeline_progress: {
-    meeting_booked?: string | null
-    disco_show?: string | null
-    qualified?: string | null
-    demo_booked?: string | null
-    demo_show?: string | null
-    proposal_sent?: string | null
-    closed?: string | null
-  } | null
+  last_contact: string | null
   
   // Meeting Info
   meeting_date: string | null
   meeting_link: string | null
   rescheduling_link: string | null
   
-  // Contact History
-  last_contacted_at: string | null
-  background: string | null
+  // Date fields
+  date_created: string | null
   
   // Metadata
-  tags: string[]
   custom_variables_jsonb: Record<string, unknown> | null
   created_at: string
   updated_at: string
-  created_by: string | null
   deleted_at: string | null
 }
 
-export type ContactStatus = 'cold' | 'warm' | 'hot' | 'in-contract' | 'customer' | 'inactive'
+// Derived status based on pipeline stage flags
+export type ContactStatus = 'new' | 'engaged' | 'meeting_booked' | 'qualified' | 'demo' | 'proposal' | 'closed'
+
+export function getContactStatus(contact: Contact): ContactStatus {
+  if (contact.closed) return 'closed'
+  if (contact.proposal_sent) return 'proposal'
+  if (contact.showed_up_to_demo || contact.demo_booked) return 'demo'
+  if (contact.qualified) return 'qualified'
+  if (contact.meeting_booked || contact.showed_up_to_disco) return 'meeting_booked'
+  if (contact.stage && contact.stage !== 'new') return 'engaged'
+  return 'new'
+}
 
 // Pipeline stages for contacts
 export const CONTACT_STAGES = [
   'new',
-  'contacted',
+  'engaged',
   'meeting_booked',
+  'showed_up_to_disco',
   'qualified',
-  'proposal',
-  'negotiation',
-  'closed_won',
-  'closed_lost',
+  'demo_booked',
+  'showed_up_to_demo',
+  'proposal_sent',
+  'closed',
 ] as const
 
 export type ContactStage = typeof CONTACT_STAGES[number]
 
 export const CONTACT_STAGE_INFO: Record<string, { label: string; color: string; bgColor: string }> = {
-  new: { label: 'New', color: '#d4d3cf', bgColor: '#1e293b' },
-  contacted: { label: 'Contacted', color: '#60a5fa', bgColor: '#1e3a5f' },
+  new: { label: 'New', color: '#94a3b8', bgColor: '#1e293b' },
+  engaged: { label: 'Engaged', color: '#60a5fa', bgColor: '#1e3a5f' },
   meeting_booked: { label: 'Meeting Booked', color: '#a78bfa', bgColor: '#3d2f5c' },
+  showed_up_to_disco: { label: 'Showed to Disco', color: '#c084fc', bgColor: '#4c1d95' },
   qualified: { label: 'Qualified', color: '#fbbf24', bgColor: '#422006' },
-  proposal: { label: 'Proposal', color: '#fb923c', bgColor: '#431407' },
-  negotiation: { label: 'Negotiation', color: '#2dd4bf', bgColor: '#134e4a' },
-  closed_won: { label: 'Closed Won', color: '#22c55e', bgColor: '#14532d' },
-  closed_lost: { label: 'Closed Lost', color: '#f87171', bgColor: '#450a0a' },
+  demo_booked: { label: 'Demo Booked', color: '#fb923c', bgColor: '#431407' },
+  showed_up_to_demo: { label: 'Showed to Demo', color: '#f97316', bgColor: '#7c2d12' },
+  proposal_sent: { label: 'Proposal Sent', color: '#2dd4bf', bgColor: '#134e4a' },
+  closed: { label: 'Closed Won', color: '#22c55e', bgColor: '#14532d' },
 }
 
 // ============================================
@@ -247,7 +261,7 @@ export interface Tag {
 export interface CRMStats {
   contacts: {
     total: number
-    byStatus: Record<ContactStatus, number>
+    byStatus: Record<string, number>
     byStage: Record<string, number>
   }
   deals: {
@@ -277,7 +291,7 @@ export interface CRMFilters {
   stage?: string
   contact_id?: string
   tags?: string[]
-  company_industry?: string
+  industry?: string
   company_size?: string
   dateRange?: {
     start: Date

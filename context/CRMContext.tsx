@@ -1,9 +1,9 @@
 import { createContext, useContext, useState, useCallback, useEffect, ReactNode } from 'react'
 import { supabase, isSupabaseConfigured } from '../../../lib/supabase'
 import { useFilters } from '../../../contexts/FilterContext'
-import type { Contact, Deal, Task, Note, CRMStats, CRMFilters } from '../types'
+import type { Contact, Deal, Task, Note, CRMStats, CRMFilters, getContactStatus } from '../types'
 
-// Create an untyped supabase client for CRM tables that aren't in the generated types
+// Create an untyped supabase client for tables that aren't in the generated types
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const db = supabase as any
 
@@ -32,7 +32,7 @@ interface CRMContextType {
   filters: CRMFilters
   setFilters: (filters: CRMFilters) => void
   
-  // CRUD - Contacts
+  // CRUD - Contacts (now using engaged_leads)
   fetchContacts: () => Promise<void>
   createContact: (data: Partial<Contact>) => Promise<Contact | null>
   updateContact: (id: string, data: Partial<Contact>) => Promise<boolean>
@@ -92,7 +92,7 @@ export function CRMProvider({ children }: { children: ReactNode }) {
   const [filters, setFilters] = useState<CRMFilters>({})
 
   // ============================================
-  // CONTACTS
+  // CONTACTS (Using engaged_leads table)
   // ============================================
   const fetchContacts = useCallback(async () => {
     if (!selectedClient) return
@@ -100,7 +100,7 @@ export function CRMProvider({ children }: { children: ReactNode }) {
     
     try {
       const { data, error: fetchError } = await db
-        .from('crm_contacts')
+        .from('engaged_leads')
         .select('*')
         .eq('client', selectedClient)
         .is('deleted_at', null)
@@ -126,18 +126,22 @@ export function CRMProvider({ children }: { children: ReactNode }) {
       return null
     }
     
-    // Check if we have a valid session
-    const { data: { session } } = await supabase.auth.getSession()
-    if (!session) {
-      setError('You are not authenticated. Please log in again.')
-      return null
-    }
-    
     try {
-      console.log('Creating contact with client:', selectedClient, 'data:', contactData)
+      console.log('Creating contact in engaged_leads with client:', selectedClient, 'data:', contactData)
       const { data: created, error: createError } = await db
-        .from('crm_contacts')
-        .insert({ ...contactData, client: selectedClient })
+        .from('engaged_leads')
+        .insert({ 
+          ...contactData, 
+          client: selectedClient,
+          stage: contactData.stage || 'new',
+          meeting_booked: false,
+          qualified: false,
+          showed_up_to_disco: false,
+          demo_booked: false,
+          showed_up_to_demo: false,
+          proposal_sent: false,
+          closed: false,
+        })
         .select()
         .single()
       
@@ -148,7 +152,7 @@ export function CRMProvider({ children }: { children: ReactNode }) {
         throw createError
       }
       setContacts(prev => [created as Contact, ...prev])
-      setError(null) // Clear error on success
+      setError(null)
       return created as Contact
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to create contact'
@@ -160,16 +164,62 @@ export function CRMProvider({ children }: { children: ReactNode }) {
 
   const updateContact = useCallback(async (id: string, contactData: Partial<Contact>): Promise<boolean> => {
     try {
+      // Build update object, explicitly including boolean false values
+      const updateData: Record<string, any> = {
+        updated_at: new Date().toISOString(),
+      }
+
+      // Map Contact interface fields to engaged_leads schema fields
+      // This ensures boolean false values are explicitly included
+      for (const [key, value] of Object.entries(contactData)) {
+        if (value === undefined) continue
+        
+        // Map Contact fields to engaged_leads fields
+        switch (key) {
+          case 'company_name':
+            updateData.company = value
+            break
+          case 'company_industry':
+            updateData.industry = value
+            break
+          case 'phone':
+            updateData.lead_phone = value
+            break
+          case 'title':
+            updateData.job_title = value
+            break
+          case 'profile_url':
+            updateData.linkedin_url = value
+            break
+          case 'next_touch':
+            updateData.next_touchpoint = value
+            break
+          case 'last_contacted_at':
+            updateData.last_contact = value
+            break
+          default:
+            // Direct mapping for fields that match (including boolean fields like closed, meeting_booked, etc.)
+            updateData[key] = value
+        }
+      }
+
       const { error: updateError } = await db
-        .from('crm_contacts')
-        .update(contactData)
+        .from('engaged_leads')
+        .update(updateData)
         .eq('id', id)
       
-      if (updateError) throw updateError
+      if (updateError) {
+        console.error('Update contact error:', updateError)
+        throw updateError
+      }
+      
+      // Update local state
       setContacts(prev => prev.map(c => c.id === id ? { ...c, ...contactData } : c))
       return true
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update contact')
+      const errorMessage = err instanceof Error ? err.message : 'Failed to update contact'
+      setError(errorMessage)
+      console.error('Update contact exception:', err)
       return false
     }
   }, [])
@@ -178,7 +228,7 @@ export function CRMProvider({ children }: { children: ReactNode }) {
     try {
       // Soft delete
       const { error: deleteError } = await db
-        .from('crm_contacts')
+        .from('engaged_leads')
         .update({ deleted_at: new Date().toISOString() })
         .eq('id', id)
       
@@ -239,7 +289,7 @@ export function CRMProvider({ children }: { children: ReactNode }) {
         throw createError
       }
       setDeals(prev => [...prev, created as Deal])
-      setError(null) // Clear error on success
+      setError(null)
       return created as Deal
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to create deal'
@@ -340,7 +390,7 @@ export function CRMProvider({ children }: { children: ReactNode }) {
         throw createError
       }
       setTasks(prev => [created as Task, ...prev])
-      setError(null) // Clear error on success
+      setError(null)
       return created as Task
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to create task'
@@ -440,11 +490,19 @@ export function CRMProvider({ children }: { children: ReactNode }) {
   }, [selectedClient])
 
   // ============================================
-  // STATS
+  // STATS (Using engaged_leads)
   // ============================================
   
-  // Type definitions for stats queries
-  type ContactStatsRow = { status: string; stage: string | null }
+  type ContactStatsRow = { 
+    stage: string | null
+    meeting_booked: boolean
+    qualified: boolean
+    showed_up_to_disco: boolean
+    demo_booked: boolean
+    showed_up_to_demo: boolean
+    proposal_sent: boolean
+    closed: boolean
+  }
   type DealStatsRow = { stage: string; amount: number | null; probability: number | null }
   type TaskStatsRow = { done: boolean; due_date: string | null; done_at: string | null }
   
@@ -455,7 +513,10 @@ export function CRMProvider({ children }: { children: ReactNode }) {
     try {
       // Fetch all counts in parallel
       const [contactsRes, dealsRes, tasksRes] = await Promise.all([
-        db.from('crm_contacts').select('status, stage').eq('client', selectedClient).is('deleted_at', null),
+        db.from('engaged_leads')
+          .select('stage, meeting_booked, qualified, showed_up_to_disco, demo_booked, showed_up_to_demo, proposal_sent, closed')
+          .eq('client', selectedClient)
+          .is('deleted_at', null),
         db.from('crm_deals').select('stage, amount, probability').eq('client', selectedClient).is('deleted_at', null),
         db.from('crm_tasks').select('done, due_date, done_at').eq('client', selectedClient),
       ])
@@ -467,18 +528,39 @@ export function CRMProvider({ children }: { children: ReactNode }) {
       const now = new Date()
       const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
       
+      // Calculate status based on pipeline flags
+      const byStatus: Record<string, number> = {
+        new: 0,
+        engaged: 0,
+        meeting_booked: 0,
+        qualified: 0,
+        demo: 0,
+        proposal: 0,
+        closed: 0,
+      }
+      
+      const byStage: Record<string, number> = {}
+      
+      contactsData.forEach(c => {
+        // Count by derived status
+        if (c.closed) byStatus.closed++
+        else if (c.proposal_sent) byStatus.proposal++
+        else if (c.showed_up_to_demo || c.demo_booked) byStatus.demo++
+        else if (c.qualified) byStatus.qualified++
+        else if (c.meeting_booked || c.showed_up_to_disco) byStatus.meeting_booked++
+        else if (c.stage && c.stage !== 'new') byStatus.engaged++
+        else byStatus.new++
+        
+        // Count by stage
+        const stage = c.stage || 'new'
+        byStage[stage] = (byStage[stage] || 0) + 1
+      })
+      
       const stats: CRMStats = {
         contacts: {
           total: contactsData.length,
-          byStatus: contactsData.reduce((acc, c) => {
-            acc[c.status] = (acc[c.status] || 0) + 1
-            return acc
-          }, {} as Record<string, number>),
-          byStage: contactsData.reduce((acc, c) => {
-            const stage = c.stage || 'new'
-            acc[stage] = (acc[stage] || 0) + 1
-            return acc
-          }, {} as Record<string, number>),
+          byStatus,
+          byStage,
         },
         deals: {
           total: dealsData.length,
@@ -499,7 +581,7 @@ export function CRMProvider({ children }: { children: ReactNode }) {
           completedToday: tasksData.filter(t => t.done && t.done_at && new Date(t.done_at) >= today).length,
         },
         activities: {
-          recentCount: 0, // Would need to fetch from notes
+          recentCount: 0,
         },
       }
       

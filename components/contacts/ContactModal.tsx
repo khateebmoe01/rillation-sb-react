@@ -1,9 +1,10 @@
-import { useState, useEffect, useCallback } from 'react'
-import { User, Mail, Phone, Briefcase, Linkedin, Trash2, MessageSquare, Building2, DollarSign, Calendar, Globe, MapPin } from 'lucide-react'
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { User, Mail, Phone, Briefcase, Linkedin, Trash2, MessageSquare, Building2, DollarSign, Calendar, Globe, MapPin, CheckCircle2, ChevronDown } from 'lucide-react'
 import { theme } from '../../config/theme'
 import { useCRM } from '../../context/CRMContext'
 import { SlidePanel, PanelFooter, Button, Input, Select, Textarea, Avatar } from '../shared'
-import type { Contact, ContactStatus } from '../../types'
+import type { Contact } from '../../types'
 
 interface ContactModalProps {
   isOpen: boolean
@@ -11,25 +12,41 @@ interface ContactModalProps {
   contact: Contact | null
 }
 
-const STATUS_OPTIONS: { value: ContactStatus; label: string }[] = [
-  { value: 'cold', label: 'Cold' },
-  { value: 'warm', label: 'Warm' },
-  { value: 'hot', label: 'Hot' },
-  { value: 'in-contract', label: 'In Contract' },
-  { value: 'customer', label: 'Customer' },
-  { value: 'inactive', label: 'Inactive' },
+const STAGE_OPTIONS = [
+  { value: 'new', label: 'New', color: '#6b7280' },
+  { value: 'contacted', label: 'Contacted', color: '#3b82f6' },
+  { value: 'engaged', label: 'Engaged', color: '#8b5cf6' },
+  { value: 'qualified', label: 'Qualified', color: '#f59e0b' },
+  { value: 'disqualified', label: 'Disqualified', color: '#6b7280' },
+  { value: 'demo', label: 'Demo', color: '#f97316' },
+  { value: 'proposal', label: 'Proposal', color: '#14b8a6' },
+  { value: 'closed', label: 'Closed Won', color: '#22c55e' },
 ]
 
-const STAGE_OPTIONS = [
-  { value: 'new', label: 'New' },
-  { value: 'contacted', label: 'Contacted' },
-  { value: 'meeting_booked', label: 'Meeting Booked' },
-  { value: 'qualified', label: 'Qualified' },
-  { value: 'proposal', label: 'Proposal' },
-  { value: 'negotiation', label: 'Negotiation' },
-  { value: 'closed_won', label: 'Closed Won' },
-  { value: 'closed_lost', label: 'Closed Lost' },
+const LEAD_SOURCE_OPTIONS = [
+  { value: 'email_campaign', label: 'Email Campaign' },
+  { value: 'linkedin', label: 'LinkedIn' },
+  { value: 'cold_call', label: 'Cold Call' },
+  { value: 'referral', label: 'Referral' },
+  { value: 'website', label: 'Website' },
+  { value: 'conference', label: 'Conference' },
+  { value: 'webinar', label: 'Webinar' },
+  { value: 'social_media', label: 'Social Media' },
+  { value: 'partner', label: 'Partner' },
+  { value: 'inbound', label: 'Inbound' },
+  { value: 'other', label: 'Other' },
 ]
+
+// Pipeline steps from engaged_leads
+const PIPELINE_STEPS = [
+  { key: 'meeting_booked', label: 'Meeting Booked', color: '#a78bfa' },
+  { key: 'showed_up_to_disco', label: 'Showed Up to Disco', color: '#c084fc' },
+  { key: 'qualified', label: 'Qualified', color: '#fbbf24' },
+  { key: 'demo_booked', label: 'Demo Booked', color: '#fb923c' },
+  { key: 'showed_up_to_demo', label: 'Showed Up to Demo', color: '#f97316' },
+  { key: 'proposal_sent', label: 'Proposal Sent', color: '#2dd4bf' },
+  { key: 'closed', label: 'Closed Won', color: '#22c55e' },
+] as const
 
 export function ContactModal({ isOpen, onClose, contact }: ContactModalProps) {
   const { createContact, updateContact, deleteContact, error } = useCRM()
@@ -43,23 +60,19 @@ export function ContactModal({ isOpen, onClose, contact }: ContactModalProps) {
     first_name: '',
     last_name: '',
     email: '',
-    phone: '',
     lead_phone: '',
-    title: '',
     job_title: '',
-    department: '',
-    linkedin_url: '',
-    profile_url: '',
     seniority_level: '',
+    linkedin_url: '',
     
-    // Company Info
-    company_name: '',
+    // Company Info (engaged_leads uses 'company' not 'company_name')
+    company: '',
     company_domain: '',
     company_linkedin: '',
     company_phone: '',
     company_website: '',
     company_size: '',
-    company_industry: '',
+    industry: '', // engaged_leads uses 'industry' not 'company_industry'
     annual_revenue: '',
     company_hq_city: '',
     company_hq_state: '',
@@ -69,21 +82,31 @@ export function ContactModal({ isOpen, onClose, contact }: ContactModalProps) {
     funding_stage: '',
     
     // Pipeline/Sales
-    status: 'cold' as ContactStatus,
     stage: 'new',
     epv: '',
     context: '',
-    next_touch: '',
+    next_touchpoint: '',
     lead_source: '',
     notes: '',
+    assignee: '',
+    
+    // Pipeline Progress (boolean flags)
+    meeting_booked: false,
+    showed_up_to_disco: false,
+    qualified: false,
+    demo_booked: false,
+    showed_up_to_demo: false,
+    proposal_sent: false,
+    closed: false,
     
     // Meeting Info
     meeting_date: '',
     meeting_link: '',
     rescheduling_link: '',
     
-    // Background
-    background: '',
+    // Campaign info (read-only, synced from API)
+    campaign_name: '',
+    campaign_id: '',
   })
   
   // Reset form when contact changes
@@ -93,21 +116,17 @@ export function ContactModal({ isOpen, onClose, contact }: ContactModalProps) {
         first_name: contact.first_name || '',
         last_name: contact.last_name || '',
         email: contact.email || '',
-        phone: contact.phone || '',
         lead_phone: contact.lead_phone || '',
-        title: contact.title || '',
         job_title: contact.job_title || '',
-        department: contact.department || '',
-        linkedin_url: contact.linkedin_url || '',
-        profile_url: contact.profile_url || '',
         seniority_level: contact.seniority_level || '',
-        company_name: contact.company_name || '',
+        linkedin_url: contact.linkedin_url || '',
+        company: contact.company || '',
         company_domain: contact.company_domain || '',
         company_linkedin: contact.company_linkedin || '',
         company_phone: contact.company_phone || '',
         company_website: contact.company_website || '',
         company_size: contact.company_size || '',
-        company_industry: contact.company_industry || '',
+        industry: contact.industry || '',
         annual_revenue: contact.annual_revenue || '',
         company_hq_city: contact.company_hq_city || '',
         company_hq_state: contact.company_hq_state || '',
@@ -115,38 +134,42 @@ export function ContactModal({ isOpen, onClose, contact }: ContactModalProps) {
         year_founded: contact.year_founded?.toString() || '',
         business_model: contact.business_model || '',
         funding_stage: contact.funding_stage || '',
-        status: contact.status || 'cold',
         stage: contact.stage || 'new',
         epv: contact.epv?.toString() || '',
         context: contact.context || '',
-        next_touch: contact.next_touch ? contact.next_touch.split('T')[0] : '',
+        next_touchpoint: contact.next_touchpoint ? contact.next_touchpoint.split('T')[0] : '',
         lead_source: contact.lead_source || '',
         notes: contact.notes || '',
+        assignee: contact.assignee || '',
+        meeting_booked: contact.meeting_booked || false,
+        showed_up_to_disco: contact.showed_up_to_disco || false,
+        qualified: contact.qualified || false,
+        demo_booked: contact.demo_booked || false,
+        showed_up_to_demo: contact.showed_up_to_demo || false,
+        proposal_sent: contact.proposal_sent || false,
+        closed: contact.closed || false,
         meeting_date: contact.meeting_date ? contact.meeting_date.split('T')[0] : '',
         meeting_link: contact.meeting_link || '',
         rescheduling_link: contact.rescheduling_link || '',
-        background: contact.background || '',
+        campaign_name: contact.campaign_name || '',
+        campaign_id: contact.campaign_id || '',
       })
     } else {
       setFormData({
         first_name: '',
         last_name: '',
         email: '',
-        phone: '',
         lead_phone: '',
-        title: '',
         job_title: '',
-        department: '',
-        linkedin_url: '',
-        profile_url: '',
         seniority_level: '',
-        company_name: '',
+        linkedin_url: '',
+        company: '',
         company_domain: '',
         company_linkedin: '',
         company_phone: '',
         company_website: '',
         company_size: '',
-        company_industry: '',
+        industry: '',
         annual_revenue: '',
         company_hq_city: '',
         company_hq_state: '',
@@ -154,17 +177,25 @@ export function ContactModal({ isOpen, onClose, contact }: ContactModalProps) {
         year_founded: '',
         business_model: '',
         funding_stage: '',
-        status: 'cold',
         stage: 'new',
         epv: '',
         context: '',
-        next_touch: '',
+        next_touchpoint: '',
         lead_source: '',
         notes: '',
+        assignee: '',
+        meeting_booked: false,
+        showed_up_to_disco: false,
+        qualified: false,
+        demo_booked: false,
+        showed_up_to_demo: false,
+        proposal_sent: false,
+        closed: false,
         meeting_date: '',
         meeting_link: '',
         rescheduling_link: '',
-        background: '',
+        campaign_name: '',
+        campaign_id: '',
       })
     }
     setShowDeleteConfirm(false)
@@ -188,7 +219,7 @@ export function ContactModal({ isOpen, onClose, contact }: ContactModalProps) {
         ...formData,
         year_founded: formData.year_founded ? parseInt(formData.year_founded) : null,
         epv: formData.epv ? parseFloat(formData.epv) : null,
-        next_touch: formData.next_touch || null,
+        next_touchpoint: formData.next_touchpoint || null,
         meeting_date: formData.meeting_date || null,
       }
       
@@ -247,7 +278,7 @@ export function ContactModal({ isOpen, onClose, contact }: ContactModalProps) {
   const panelHeader = (
     <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
       <Avatar 
-        name={fullName || formData.email || 'New Contact'} 
+        name={fullName || formData.email || 'New Lead'} 
         size="lg" 
       />
       <div style={{ minWidth: 0, flex: 1 }}>
@@ -262,9 +293,9 @@ export function ContactModal({ isOpen, onClose, contact }: ContactModalProps) {
             whiteSpace: 'nowrap',
           }}
         >
-          {fullName || 'New Contact'}
+          {fullName || 'New Lead'}
         </h2>
-        {(formData.title || formData.company_name) && (
+        {(formData.job_title || formData.company) && (
           <p
             style={{
               fontSize: theme.fontSize.sm,
@@ -275,9 +306,9 @@ export function ContactModal({ isOpen, onClose, contact }: ContactModalProps) {
               whiteSpace: 'nowrap',
             }}
           >
-            {formData.title && formData.company_name 
-              ? `${formData.title} at ${formData.company_name}`
-              : formData.title || formData.company_name}
+            {formData.job_title && formData.company 
+              ? `${formData.job_title} at ${formData.company}`
+              : formData.job_title || formData.company}
           </p>
         )}
         {formData.email && (
@@ -294,6 +325,20 @@ export function ContactModal({ isOpen, onClose, contact }: ContactModalProps) {
             {formData.email}
           </p>
         )}
+        {formData.campaign_name && (
+          <p
+            style={{
+              fontSize: theme.fontSize.xs,
+              color: theme.accent.primary,
+              margin: '4px 0 0 0',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            Campaign: {formData.campaign_name}
+          </p>
+        )}
       </div>
     </div>
   )
@@ -303,7 +348,7 @@ export function ContactModal({ isOpen, onClose, contact }: ContactModalProps) {
       isOpen={isOpen}
       onClose={onClose}
       header={panelHeader}
-      width={480}
+      width={520}
     >
       <form onSubmit={onFormSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 20, height: '100%' }}>
         {/* Tabs */}
@@ -363,16 +408,16 @@ export function ContactModal({ isOpen, onClose, contact }: ContactModalProps) {
             />
             <Input
               label="Phone"
-              value={formData.phone}
-              onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+              value={formData.lead_phone}
+              onChange={(e) => setFormData({ ...formData, lead_phone: e.target.value })}
               placeholder="+1 (555) 000-0000"
               icon={<Phone size={14} />}
             />
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               <Input
                 label="Job Title"
-                value={formData.title}
-                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                value={formData.job_title}
+                onChange={(e) => setFormData({ ...formData, job_title: e.target.value })}
                 placeholder="CEO"
                 icon={<Briefcase size={14} />}
               />
@@ -390,14 +435,6 @@ export function ContactModal({ isOpen, onClose, contact }: ContactModalProps) {
               placeholder="https://linkedin.com/in/..."
               icon={<Linkedin size={14} />}
             />
-            
-            <SectionHeader icon={<MessageSquare size={16} />} title="Background / Notes" />
-            <Textarea
-              value={formData.background}
-              onChange={(e) => setFormData({ ...formData, background: e.target.value })}
-              placeholder="Add notes about this contact..."
-              style={{ minHeight: 100 }}
-            />
           </div>
         )}
         
@@ -406,8 +443,8 @@ export function ContactModal({ isOpen, onClose, contact }: ContactModalProps) {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <Input
               label="Company Name"
-              value={formData.company_name}
-              onChange={(e) => setFormData({ ...formData, company_name: e.target.value })}
+              value={formData.company}
+              onChange={(e) => setFormData({ ...formData, company: e.target.value })}
               placeholder="Acme Inc"
               icon={<Building2 size={14} />}
             />
@@ -421,8 +458,8 @@ export function ContactModal({ isOpen, onClose, contact }: ContactModalProps) {
               />
               <Input
                 label="Industry"
-                value={formData.company_industry}
-                onChange={(e) => setFormData({ ...formData, company_industry: e.target.value })}
+                value={formData.industry}
+                onChange={(e) => setFormData({ ...formData, industry: e.target.value })}
                 placeholder="Technology"
               />
             </div>
@@ -511,18 +548,26 @@ export function ContactModal({ isOpen, onClose, contact }: ContactModalProps) {
         {/* Pipeline Tab */}
         {activeTab === 'pipeline' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            {/* Pipeline Progress Dropdown */}
+            <SectionHeader icon={<CheckCircle2 size={16} />} title="Pipeline Progress" />
+            <PipelineProgressMultiSelect
+              steps={PIPELINE_STEPS}
+              formData={formData}
+              onToggle={(key: string, checked: boolean) => setFormData({ ...formData, [key]: checked })}
+            />
+
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-              <Select
-                label="Status"
-                options={STATUS_OPTIONS}
-                value={formData.status}
-                onChange={(v) => setFormData({ ...formData, status: v as ContactStatus })}
-              />
               <Select
                 label="Stage"
                 options={STAGE_OPTIONS}
                 value={formData.stage}
                 onChange={(v) => setFormData({ ...formData, stage: v })}
+              />
+              <Input
+                label="Assignee"
+                value={formData.assignee}
+                onChange={(e) => setFormData({ ...formData, assignee: e.target.value })}
+                placeholder="John Doe"
               />
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
@@ -534,18 +579,19 @@ export function ContactModal({ isOpen, onClose, contact }: ContactModalProps) {
                 type="number"
                 icon={<DollarSign size={14} />}
               />
-              <Input
+              <Select
                 label="Lead Source"
+                options={LEAD_SOURCE_OPTIONS}
                 value={formData.lead_source}
-                onChange={(e) => setFormData({ ...formData, lead_source: e.target.value })}
-                placeholder="Email Campaign"
+                onChange={(v) => setFormData({ ...formData, lead_source: v })}
+                placeholder="Select source..."
               />
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               <Input
-                label="Next Touch"
-                value={formData.next_touch}
-                onChange={(e) => setFormData({ ...formData, next_touch: e.target.value })}
+                label="Next Touchpoint"
+                value={formData.next_touchpoint}
+                onChange={(e) => setFormData({ ...formData, next_touchpoint: e.target.value })}
                 type="date"
                 icon={<Calendar size={14} />}
               />
@@ -622,7 +668,7 @@ export function ContactModal({ isOpen, onClose, contact }: ContactModalProps) {
                 marginBottom: 12,
               }}
             >
-              Are you sure you want to delete this contact? This action cannot be undone.
+              Are you sure you want to delete this lead? This action cannot be undone.
             </p>
             <div style={{ display: 'flex', gap: 8 }}>
               <Button type="button" variant="danger" size="sm" onClick={handleDelete} loading={loading}>
@@ -637,15 +683,38 @@ export function ContactModal({ isOpen, onClose, contact }: ContactModalProps) {
       
         <PanelFooter>
           {contact && !showDeleteConfirm && (
-            <Button
+            <button
               type="button"
-              variant="ghost"
-              icon={<Trash2 size={16} />}
               onClick={() => setShowDeleteConfirm(true)}
-              style={{ marginRight: 'auto' }}
+              style={{
+                marginRight: 'auto',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '8px 12px',
+                fontSize: theme.fontSize.sm,
+                fontWeight: theme.fontWeight.medium,
+                color: theme.text.muted,
+                backgroundColor: 'transparent',
+                border: `1px solid ${theme.border.subtle}`,
+                borderRadius: theme.radius.md,
+                cursor: 'pointer',
+                transition: `all ${theme.transition.fast}`,
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.color = theme.status.error
+                e.currentTarget.style.borderColor = theme.status.error
+                e.currentTarget.style.backgroundColor = theme.status.errorBg
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.color = theme.text.muted
+                e.currentTarget.style.borderColor = theme.border.subtle
+                e.currentTarget.style.backgroundColor = 'transparent'
+              }}
             >
+              <Trash2 size={14} />
               Delete
-            </Button>
+            </button>
           )}
           <Button type="button" variant="secondary" onClick={onClose}>
             Cancel
@@ -655,11 +724,177 @@ export function ContactModal({ isOpen, onClose, contact }: ContactModalProps) {
             loading={loading}
             disabled={!formData.first_name.trim() && !formData.email.trim()}
           >
-            {contact ? 'Save Changes' : 'Create Contact'}
+            {contact ? 'Save Changes' : 'Create Lead'}
           </Button>
         </PanelFooter>
       </form>
     </SlidePanel>
+  )
+}
+
+// Pipeline Progress Multi-Select Dropdown
+interface PipelineProgressMultiSelectProps {
+  steps: readonly { key: string; label: string; color: string }[]
+  formData: Record<string, any>
+  onToggle: (key: string, checked: boolean) => void
+}
+
+function PipelineProgressMultiSelect({ steps, formData, onToggle }: PipelineProgressMultiSelectProps) {
+  const [isOpen, setIsOpen] = useState(false)
+  const dropdownRef = useRef<HTMLDivElement>(null)
+  
+  // Get completed steps count
+  const completedSteps = steps.filter(step => formData[step.key])
+  const deepestStep = completedSteps.length > 0 ? completedSteps[completedSteps.length - 1] : null
+  
+  // Close on outside click
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+  
+  return (
+    <div ref={dropdownRef} style={{ position: 'relative' }}>
+      {/* Trigger */}
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        style={{
+          width: '100%',
+          height: 40,
+          padding: '0 12px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 8,
+          fontSize: theme.fontSize.base,
+          backgroundColor: theme.bg.card,
+          color: deepestStep ? deepestStep.color : theme.text.muted,
+          border: `1px solid ${isOpen ? theme.border.focus : theme.border.default}`,
+          borderRadius: theme.radius.lg,
+          cursor: 'pointer',
+          textAlign: 'left',
+          transition: `all ${theme.transition.fast}`,
+        }}
+      >
+        <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {deepestStep && (
+            <span
+              style={{
+                width: 8,
+                height: 8,
+                borderRadius: '50%',
+                backgroundColor: deepestStep.color,
+              }}
+            />
+          )}
+          <span>
+            {deepestStep ? deepestStep.label : 'No progress'}
+            {completedSteps.length > 1 && (
+              <span style={{ color: theme.text.muted, marginLeft: 4 }}>
+                (+{completedSteps.length - 1})
+              </span>
+            )}
+          </span>
+        </span>
+        <motion.div
+          animate={{ rotate: isOpen ? 180 : 0 }}
+          transition={{ duration: 0.2 }}
+        >
+          <ChevronDown size={16} style={{ color: theme.text.muted }} />
+        </motion.div>
+      </button>
+      
+      {/* Dropdown */}
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: -8, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -8, scale: 0.96 }}
+            transition={{ duration: 0.15 }}
+            style={{
+              position: 'absolute',
+              top: '100%',
+              left: 0,
+              right: 0,
+              marginTop: 4,
+              backgroundColor: theme.bg.elevated,
+              border: `1px solid ${theme.border.default}`,
+              borderRadius: theme.radius.lg,
+              boxShadow: theme.shadow.dropdown,
+              zIndex: theme.z.dropdown,
+              overflow: 'hidden',
+              padding: 8,
+            }}
+          >
+            {steps.map((step) => {
+              const isChecked = formData[step.key] as boolean
+              return (
+                <button
+                  key={step.key}
+                  type="button"
+                  onClick={() => onToggle(step.key, !isChecked)}
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 10,
+                    fontSize: theme.fontSize.sm,
+                    backgroundColor: isChecked ? `${step.color}15` : 'transparent',
+                    color: isChecked ? step.color : theme.text.primary,
+                    border: 'none',
+                    borderRadius: theme.radius.md,
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    transition: `all ${theme.transition.fast}`,
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!isChecked) {
+                      e.currentTarget.style.backgroundColor = theme.bg.hover
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = isChecked ? `${step.color}15` : 'transparent'
+                  }}
+                >
+                  {/* Custom Checkbox */}
+                  <div
+                    style={{
+                      width: 18,
+                      height: 18,
+                      borderRadius: theme.radius.sm,
+                      border: `2px solid ${isChecked ? step.color : theme.border.default}`,
+                      backgroundColor: isChecked ? step.color : 'transparent',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexShrink: 0,
+                      transition: `all ${theme.transition.fast}`,
+                    }}
+                  >
+                    {isChecked && (
+                      <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
+                        <path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    )}
+                  </div>
+                  <span style={{ fontWeight: isChecked ? theme.fontWeight.medium : theme.fontWeight.normal }}>
+                    {step.label}
+                  </span>
+                </button>
+              )
+            })}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   )
 }
 

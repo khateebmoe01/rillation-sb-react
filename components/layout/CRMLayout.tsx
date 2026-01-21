@@ -6,6 +6,7 @@ import {
   CheckSquare, ChevronLeft, ChevronRight
 } from 'lucide-react'
 import { theme } from '../../config/theme'
+import { useAuth } from '../../../../contexts/AuthContext'
 
 interface CRMLayoutProps {
   children: ReactNode
@@ -21,6 +22,10 @@ const NAV_ITEMS = [
 export function CRMLayout({ children }: CRMLayoutProps) {
   const [collapsed, setCollapsed] = useState(false)
   const location = useLocation()
+  const { client } = useAuth()
+  
+  // Format client name for display (remove "Revenue" suffix if present, add "CRM")
+  const crmTitle = client ? `${client.replace(/ Revenue$/, '')} CRM` : 'CRM'
   
   return (
     <div
@@ -65,7 +70,7 @@ export function CRMLayout({ children }: CRMLayoutProps) {
                 whiteSpace: 'nowrap',
               }}
             >
-              Rillation CRM
+              {crmTitle}
             </motion.span>
           )}
         </div>

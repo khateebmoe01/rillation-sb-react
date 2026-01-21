@@ -42,20 +42,7 @@ export function SlidePanel({
     <AnimatePresence>
       {isOpen && (
         <>
-          {/* Backdrop - semi-transparent to keep table visible */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            onClick={onClose}
-            style={{
-              position: 'fixed',
-              inset: 0,
-              backgroundColor: 'rgba(0, 0, 0, 0.4)',
-              zIndex: theme.z.modal,
-            }}
-          />
+          {/* No backdrop - allows clicking through to table rows to switch contacts */}
           
           {/* Slide Panel */}
           <motion.div
