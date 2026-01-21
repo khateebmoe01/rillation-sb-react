@@ -53,7 +53,6 @@ export function ContactModal({ isOpen, onClose, contact }: ContactModalProps) {
   const [loading, setLoading] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState<'personal' | 'company' | 'pipeline'>('personal')
   
   const [formData, setFormData] = useState({
     // Personal Info
@@ -200,7 +199,6 @@ export function ContactModal({ isOpen, onClose, contact }: ContactModalProps) {
     }
     setShowDeleteConfirm(false)
     setFormError(null)
-    setActiveTab('personal')
   }, [contact, isOpen])
   
   // Check if form can be submitted
@@ -260,12 +258,6 @@ export function ContactModal({ isOpen, onClose, contact }: ContactModalProps) {
   
   const fullName = [formData.first_name, formData.last_name].filter(Boolean).join(' ')
   
-  const tabs = [
-    { id: 'personal', label: 'Personal', icon: <User size={14} /> },
-    { id: 'company', label: 'Company', icon: <Building2 size={14} /> },
-    { id: 'pipeline', label: 'Pipeline', icon: <DollarSign size={14} /> },
-  ] as const
-  
   // Handle form submission (Enter key in form fields)
   const onFormSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -311,34 +303,6 @@ export function ContactModal({ isOpen, onClose, contact }: ContactModalProps) {
               : formData.job_title || formData.company}
           </p>
         )}
-        {formData.email && (
-          <p
-            style={{
-              fontSize: theme.fontSize.sm,
-              color: theme.text.muted,
-              margin: '2px 0 0 0',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            {formData.email}
-          </p>
-        )}
-        {formData.campaign_name && (
-          <p
-            style={{
-              fontSize: theme.fontSize.xs,
-              color: theme.accent.primary,
-              margin: '4px 0 0 0',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            Campaign: {formData.campaign_name}
-          </p>
-        )}
       </div>
     </div>
   )
@@ -348,285 +312,250 @@ export function ContactModal({ isOpen, onClose, contact }: ContactModalProps) {
       isOpen={isOpen}
       onClose={onClose}
       header={panelHeader}
-      width={520}
+      width={640}
     >
-      <form onSubmit={onFormSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 20, height: '100%' }}>
-        {/* Tabs */}
-        <div style={{ display: 'flex', gap: 4, borderBottom: `1px solid ${theme.border.subtle}`, paddingBottom: 0, marginBottom: 4 }}>
-          {tabs.map(tab => (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => setActiveTab(tab.id)}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-                padding: '10px 16px',
-                border: 'none',
-                background: activeTab === tab.id ? theme.bg.card : 'transparent',
-                color: activeTab === tab.id ? theme.accent.primary : theme.text.secondary,
-                cursor: 'pointer',
-                borderRadius: `${theme.radius.md} ${theme.radius.md} 0 0`,
-                borderBottom: activeTab === tab.id ? `2px solid ${theme.accent.primary}` : '2px solid transparent',
-                marginBottom: -1,
-                fontSize: theme.fontSize.sm,
-                fontWeight: activeTab === tab.id ? theme.fontWeight.medium : theme.fontWeight.normal,
-                transition: `all ${theme.transition.fast}`,
-              }}
-            >
-              {tab.icon}
-              {tab.label}
-            </button>
-          ))}
-        </div>
-        
-        {/* Personal Info Tab */}
-        {activeTab === 'personal' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-              <Input
-                label="First Name"
-                value={formData.first_name}
-                onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
-                placeholder="John"
-              />
-              <Input
-                label="Last Name"
-                value={formData.last_name}
-                onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
-                placeholder="Doe"
-              />
-            </div>
+      <form onSubmit={onFormSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+        {/* Personal Info Section */}
+        <SectionHeader icon={<User size={16} />} title="Personal Info" />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <Input
-              label="Email"
-              value={formData.email}
-              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              placeholder="john@example.com"
-              icon={<Mail size={14} />}
-              type="email"
+              label="First Name"
+              value={formData.first_name}
+              onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
+              placeholder="John"
             />
             <Input
-              label="Phone"
-              value={formData.lead_phone}
-              onChange={(e) => setFormData({ ...formData, lead_phone: e.target.value })}
+              label="Last Name"
+              value={formData.last_name}
+              onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
+              placeholder="Doe"
+            />
+          </div>
+          <Input
+            label="Email"
+            value={formData.email}
+            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+            placeholder="john@example.com"
+            icon={<Mail size={14} />}
+            type="email"
+          />
+          <Input
+            label="Phone"
+            value={formData.lead_phone}
+            onChange={(e) => setFormData({ ...formData, lead_phone: e.target.value })}
+            placeholder="+1 (555) 000-0000"
+            icon={<Phone size={14} />}
+          />
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <Input
+              label="Job Title"
+              value={formData.job_title}
+              onChange={(e) => setFormData({ ...formData, job_title: e.target.value })}
+              placeholder="CEO"
+              icon={<Briefcase size={14} />}
+            />
+            <Input
+              label="Seniority Level"
+              value={formData.seniority_level}
+              onChange={(e) => setFormData({ ...formData, seniority_level: e.target.value })}
+              placeholder="Executive"
+            />
+          </div>
+          <Input
+            label="LinkedIn Profile"
+            value={formData.linkedin_url}
+            onChange={(e) => setFormData({ ...formData, linkedin_url: e.target.value })}
+            placeholder="https://linkedin.com/in/..."
+            icon={<Linkedin size={14} />}
+          />
+        </div>
+        
+        {/* Company Info Section */}
+        <SectionHeader icon={<Building2 size={16} />} title="Company Info" />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <Input
+            label="Company Name"
+            value={formData.company}
+            onChange={(e) => setFormData({ ...formData, company: e.target.value })}
+            placeholder="Acme Inc"
+            icon={<Building2 size={14} />}
+          />
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <Input
+              label="Company Domain"
+              value={formData.company_domain}
+              onChange={(e) => setFormData({ ...formData, company_domain: e.target.value })}
+              placeholder="acme.com"
+              icon={<Globe size={14} />}
+            />
+            <Input
+              label="Industry"
+              value={formData.industry}
+              onChange={(e) => setFormData({ ...formData, industry: e.target.value })}
+              placeholder="Technology"
+            />
+          </div>
+          <Input
+            label="Website"
+            value={formData.company_website}
+            onChange={(e) => setFormData({ ...formData, company_website: e.target.value })}
+            placeholder="https://acme.com"
+          />
+          <Input
+            label="Company LinkedIn"
+            value={formData.company_linkedin}
+            onChange={(e) => setFormData({ ...formData, company_linkedin: e.target.value })}
+            placeholder="https://linkedin.com/company/..."
+            icon={<Linkedin size={14} />}
+          />
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <Input
+              label="Company Phone"
+              value={formData.company_phone}
+              onChange={(e) => setFormData({ ...formData, company_phone: e.target.value })}
               placeholder="+1 (555) 000-0000"
               icon={<Phone size={14} />}
             />
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-              <Input
-                label="Job Title"
-                value={formData.job_title}
-                onChange={(e) => setFormData({ ...formData, job_title: e.target.value })}
-                placeholder="CEO"
-                icon={<Briefcase size={14} />}
-              />
-              <Input
-                label="Seniority Level"
-                value={formData.seniority_level}
-                onChange={(e) => setFormData({ ...formData, seniority_level: e.target.value })}
-                placeholder="Executive"
-              />
-            </div>
             <Input
-              label="LinkedIn Profile"
-              value={formData.linkedin_url}
-              onChange={(e) => setFormData({ ...formData, linkedin_url: e.target.value })}
-              placeholder="https://linkedin.com/in/..."
-              icon={<Linkedin size={14} />}
+              label="Company Size"
+              value={formData.company_size}
+              onChange={(e) => setFormData({ ...formData, company_size: e.target.value })}
+              placeholder="11-50"
             />
           </div>
-        )}
-        
-        {/* Company Info Tab */}
-        {activeTab === 'company' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <Input
+            label="Annual Revenue"
+            value={formData.annual_revenue}
+            onChange={(e) => setFormData({ ...formData, annual_revenue: e.target.value })}
+            placeholder="$1M-$10M"
+          />
+          
+          <SectionHeader icon={<MapPin size={16} />} title="Location" />
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
             <Input
-              label="Company Name"
-              value={formData.company}
-              onChange={(e) => setFormData({ ...formData, company: e.target.value })}
-              placeholder="Acme Inc"
-              icon={<Building2 size={14} />}
-            />
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-              <Input
-                label="Company Domain"
-                value={formData.company_domain}
-                onChange={(e) => setFormData({ ...formData, company_domain: e.target.value })}
-                placeholder="acme.com"
-                icon={<Globe size={14} />}
-              />
-              <Input
-                label="Industry"
-                value={formData.industry}
-                onChange={(e) => setFormData({ ...formData, industry: e.target.value })}
-                placeholder="Technology"
-              />
-            </div>
-            <Input
-              label="Website"
-              value={formData.company_website}
-              onChange={(e) => setFormData({ ...formData, company_website: e.target.value })}
-              placeholder="https://acme.com"
+              label="City"
+              value={formData.company_hq_city}
+              onChange={(e) => setFormData({ ...formData, company_hq_city: e.target.value })}
+              placeholder="San Francisco"
             />
             <Input
-              label="Company LinkedIn"
-              value={formData.company_linkedin}
-              onChange={(e) => setFormData({ ...formData, company_linkedin: e.target.value })}
-              placeholder="https://linkedin.com/company/..."
-              icon={<Linkedin size={14} />}
+              label="State"
+              value={formData.company_hq_state}
+              onChange={(e) => setFormData({ ...formData, company_hq_state: e.target.value })}
+              placeholder="CA"
             />
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-              <Input
-                label="Company Phone"
-                value={formData.company_phone}
-                onChange={(e) => setFormData({ ...formData, company_phone: e.target.value })}
-                placeholder="+1 (555) 000-0000"
-                icon={<Phone size={14} />}
-              />
-              <Input
-                label="Company Size"
-                value={formData.company_size}
-                onChange={(e) => setFormData({ ...formData, company_size: e.target.value })}
-                placeholder="11-50"
-              />
-            </div>
             <Input
-              label="Annual Revenue"
-              value={formData.annual_revenue}
-              onChange={(e) => setFormData({ ...formData, annual_revenue: e.target.value })}
-              placeholder="$1M-$10M"
-            />
-            
-            <SectionHeader icon={<MapPin size={16} />} title="Location" />
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
-              <Input
-                label="City"
-                value={formData.company_hq_city}
-                onChange={(e) => setFormData({ ...formData, company_hq_city: e.target.value })}
-                placeholder="San Francisco"
-              />
-              <Input
-                label="State"
-                value={formData.company_hq_state}
-                onChange={(e) => setFormData({ ...formData, company_hq_state: e.target.value })}
-                placeholder="CA"
-              />
-              <Input
-                label="Country"
-                value={formData.company_hq_country}
-                onChange={(e) => setFormData({ ...formData, company_hq_country: e.target.value })}
-                placeholder="USA"
-              />
-            </div>
-            
-            <SectionHeader icon={<Briefcase size={16} />} title="Company Details" />
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-              <Input
-                label="Year Founded"
-                value={formData.year_founded}
-                onChange={(e) => setFormData({ ...formData, year_founded: e.target.value })}
-                placeholder="2015"
-                type="number"
-              />
-              <Input
-                label="Business Model"
-                value={formData.business_model}
-                onChange={(e) => setFormData({ ...formData, business_model: e.target.value })}
-                placeholder="B2B SaaS"
-              />
-            </div>
-            <Input
-              label="Funding Stage"
-              value={formData.funding_stage}
-              onChange={(e) => setFormData({ ...formData, funding_stage: e.target.value })}
-              placeholder="Series A"
+              label="Country"
+              value={formData.company_hq_country}
+              onChange={(e) => setFormData({ ...formData, company_hq_country: e.target.value })}
+              placeholder="USA"
             />
           </div>
-        )}
-        
-        {/* Pipeline Tab */}
-        {activeTab === 'pipeline' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            {/* Pipeline Progress Dropdown */}
-            <SectionHeader icon={<CheckCircle2 size={16} />} title="Pipeline Progress" />
-            <PipelineProgressMultiSelect
-              steps={PIPELINE_STEPS}
-              formData={formData}
-              onToggle={(key: string, checked: boolean) => setFormData({ ...formData, [key]: checked })}
+          
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <Input
+              label="Year Founded"
+              value={formData.year_founded}
+              onChange={(e) => setFormData({ ...formData, year_founded: e.target.value })}
+              placeholder="2015"
+              type="number"
             />
+            <Input
+              label="Business Model"
+              value={formData.business_model}
+              onChange={(e) => setFormData({ ...formData, business_model: e.target.value })}
+              placeholder="B2B SaaS"
+            />
+          </div>
+          <Input
+            label="Funding Stage"
+            value={formData.funding_stage}
+            onChange={(e) => setFormData({ ...formData, funding_stage: e.target.value })}
+            placeholder="Series A"
+          />
+        </div>
+        
+        {/* Pipeline Section */}
+        <SectionHeader icon={<DollarSign size={16} />} title="Pipeline & Sales" />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {/* Pipeline Progress Dropdown */}
+          <PipelineProgressMultiSelect
+            steps={PIPELINE_STEPS}
+            formData={formData}
+            onToggle={(key: string, checked: boolean) => setFormData({ ...formData, [key]: checked })}
+          />
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-              <Select
-                label="Stage"
-                options={STAGE_OPTIONS}
-                value={formData.stage}
-                onChange={(v) => setFormData({ ...formData, stage: v })}
-              />
-              <Input
-                label="Assignee"
-                value={formData.assignee}
-                onChange={(e) => setFormData({ ...formData, assignee: e.target.value })}
-                placeholder="John Doe"
-              />
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-              <Input
-                label="EPV (Estimated Pipeline Value)"
-                value={formData.epv}
-                onChange={(e) => setFormData({ ...formData, epv: e.target.value })}
-                placeholder="10000"
-                type="number"
-                icon={<DollarSign size={14} />}
-              />
-              <Select
-                label="Lead Source"
-                options={LEAD_SOURCE_OPTIONS}
-                value={formData.lead_source}
-                onChange={(v) => setFormData({ ...formData, lead_source: v })}
-                placeholder="Select source..."
-              />
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-              <Input
-                label="Next Touchpoint"
-                value={formData.next_touchpoint}
-                onChange={(e) => setFormData({ ...formData, next_touchpoint: e.target.value })}
-                type="date"
-                icon={<Calendar size={14} />}
-              />
-              <Input
-                label="Meeting Date"
-                value={formData.meeting_date}
-                onChange={(e) => setFormData({ ...formData, meeting_date: e.target.value })}
-                type="date"
-                icon={<Calendar size={14} />}
-              />
-            </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <Select
+              label="Stage"
+              options={STAGE_OPTIONS}
+              value={formData.stage}
+              onChange={(v) => setFormData({ ...formData, stage: v })}
+            />
             <Input
-              label="Meeting Link"
-              value={formData.meeting_link}
-              onChange={(e) => setFormData({ ...formData, meeting_link: e.target.value })}
-              placeholder="https://zoom.us/..."
-            />
-            
-            <SectionHeader icon={<MessageSquare size={16} />} title="Context & Notes" />
-            <Textarea
-              label="Context"
-              value={formData.context}
-              onChange={(e) => setFormData({ ...formData, context: e.target.value })}
-              placeholder="Conversation context, key points discussed..."
-              style={{ minHeight: 80 }}
-            />
-            <Textarea
-              label="Notes"
-              value={formData.notes}
-              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-              placeholder="Additional notes..."
-              style={{ minHeight: 60 }}
+              label="Assignee"
+              value={formData.assignee}
+              onChange={(e) => setFormData({ ...formData, assignee: e.target.value })}
+              placeholder="John Doe"
             />
           </div>
-        )}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <Input
+              label="EPV (Estimated Pipeline Value)"
+              value={formData.epv}
+              onChange={(e) => setFormData({ ...formData, epv: e.target.value })}
+              placeholder="10000"
+              type="number"
+              icon={<DollarSign size={14} />}
+            />
+            <Select
+              label="Lead Source"
+              options={LEAD_SOURCE_OPTIONS}
+              value={formData.lead_source}
+              onChange={(v) => setFormData({ ...formData, lead_source: v })}
+              placeholder="Select source..."
+            />
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <Input
+              label="Next Touchpoint"
+              value={formData.next_touchpoint}
+              onChange={(e) => setFormData({ ...formData, next_touchpoint: e.target.value })}
+              type="date"
+              icon={<Calendar size={14} />}
+            />
+            <Input
+              label="Meeting Date"
+              value={formData.meeting_date}
+              onChange={(e) => setFormData({ ...formData, meeting_date: e.target.value })}
+              type="date"
+              icon={<Calendar size={14} />}
+            />
+          </div>
+          <Input
+            label="Meeting Link"
+            value={formData.meeting_link}
+            onChange={(e) => setFormData({ ...formData, meeting_link: e.target.value })}
+            placeholder="https://zoom.us/..."
+          />
+          
+          <SectionHeader icon={<MessageSquare size={16} />} title="Context & Notes" />
+          <Textarea
+            label="Context"
+            value={formData.context}
+            onChange={(e) => setFormData({ ...formData, context: e.target.value })}
+            placeholder="Conversation context, key points discussed..."
+            style={{ minHeight: 80 }}
+          />
+          <Textarea
+            label="Notes"
+            value={formData.notes}
+            onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+            placeholder="Additional notes..."
+            style={{ minHeight: 60 }}
+          />
+        </div>
         
         {/* Error Message */}
         {formError && (

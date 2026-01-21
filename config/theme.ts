@@ -115,10 +115,10 @@ export const theme = {
   },
   
   fontSize: {
-    xs: '11px',
-    sm: '12px',
-    base: '13px',
-    md: '14px',
+    xs: '12px',
+    sm: '13px',
+    base: '16px',
+    md: '13px',
     lg: '16px',
     xl: '18px',
     '2xl': '20px',

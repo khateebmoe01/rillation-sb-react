@@ -1,35 +1,198 @@
 import { useState, useMemo, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Users, Plus, Mail, Phone, Building2, Linkedin, ChevronDown, Check } from 'lucide-react'
+import { Users, Plus, Mail, Phone, Building2, Linkedin, ChevronDown, Check, ArrowUpDown } from 'lucide-react'
 import { theme } from '../../config/theme'
 import { useCRM } from '../../context/CRMContext'
 import { Card, Avatar, Button, SearchInput, EmptyState, LoadingSkeleton, StageDropdown } from '../shared'
 import { ContactModal } from './ContactModal'
 import type { Contact } from '../../types'
 
+// Stage options for filter
+const STAGE_OPTIONS = [
+  { value: '', label: 'All Stages' },
+  { value: 'new', label: 'New' },
+  { value: 'contacted', label: 'Contacted' },
+  { value: 'engaged', label: 'Engaged' },
+  { value: 'qualified', label: 'Qualified' },
+  { value: 'disqualified', label: 'Disqualified' },
+  { value: 'demo', label: 'Demo' },
+  { value: 'proposal', label: 'Proposal' },
+  { value: 'closed', label: 'Closed Won' },
+]
+
+// Pipeline progress options for filter
+const PIPELINE_OPTIONS = [
+  { value: '', label: 'All Pipeline' },
+  { value: 'no_progress', label: 'No Progress' },
+  { value: 'meeting_booked', label: 'Meeting Booked' },
+  { value: 'showed_up_to_disco', label: 'Showed Up to Disco' },
+  { value: 'qualified', label: 'Qualified' },
+  { value: 'demo_booked', label: 'Demo Booked' },
+  { value: 'showed_up_to_demo', label: 'Showed Up to Demo' },
+  { value: 'proposal_sent', label: 'Proposal Sent' },
+  { value: 'closed', label: 'Closed Won' },
+]
+
+// Last Activity filter options
+const LAST_ACTIVITY_OPTIONS = [
+  { value: '', label: 'All Time' },
+  { value: 'today', label: 'Today' },
+  { value: '7d', label: 'Last 7 Days' },
+  { value: '30d', label: 'Last 30 Days' },
+  { value: '90d', label: 'Last 90 Days' },
+  { value: 'custom', label: 'Custom Range...' },
+]
+
+// Sort options
+const SORT_OPTIONS = [
+  { value: 'last_activity_desc', label: 'Last Activity (Newest)' },
+  { value: 'last_activity_asc', label: 'Last Activity (Oldest)' },
+  { value: 'epv_desc', label: 'EPV (Highest)' },
+  { value: 'epv_asc', label: 'EPV (Lowest)' },
+  { value: 'name_asc', label: 'Name (A-Z)' },
+  { value: 'name_desc', label: 'Name (Z-A)' },
+]
+
+// Format relative time like "2d ago" or "Jan 21"
+function formatRelativeTime(dateStr: string | null | undefined): string {
+  if (!dateStr) return '—'
+  
+  try {
+    const date = new Date(dateStr)
+    const now = new Date()
+    const diffMs = now.getTime() - date.getTime()
+    const diffMins = Math.floor(diffMs / (1000 * 60))
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
+    
+    if (diffMins < 1) return 'Just now'
+    if (diffMins < 60) return `${diffMins}m ago`
+    if (diffHours < 24) return `${diffHours}h ago`
+    if (diffDays < 7) return `${diffDays}d ago`
+    
+    // For older dates, show "Jan 21" format
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  } catch {
+    return '—'
+  }
+}
+
 export function ContactList() {
   const { contacts, loading, updateContact } = useCRM()
   const [searchQuery, setSearchQuery] = useState('')
+  const [debouncedQuery, setDebouncedQuery] = useState('')
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isCreating, setIsCreating] = useState(false)
   
-  // Filter contacts by search
+  // Filter states
+  const [stageFilter, setStageFilter] = useState('')
+  const [pipelineFilter, setPipelineFilter] = useState('')
+  const [lastActivityFilter, setLastActivityFilter] = useState('')
+  const [customDateFrom, setCustomDateFrom] = useState('')
+  const [customDateTo, setCustomDateTo] = useState('')
+  const [sortBy, setSortBy] = useState('last_activity_desc')
+  
+  // Debounce search query for smooth filtering (50ms)
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedQuery(searchQuery), 50)
+    return () => clearTimeout(timer)
+  }, [searchQuery])
+  
+  // Filter and sort contacts
   const filteredContacts = useMemo(() => {
-    if (!searchQuery.trim()) return contacts
+    let result = [...contacts]
     
-    const query = searchQuery.toLowerCase()
-    return contacts.filter(c => 
-      c.full_name?.toLowerCase().includes(query) ||
-      c.first_name?.toLowerCase().includes(query) ||
-      c.last_name?.toLowerCase().includes(query) ||
-      c.email?.toLowerCase().includes(query) ||
-      c.company?.toLowerCase().includes(query) ||
-      c.job_title?.toLowerCase().includes(query) ||
-      c.industry?.toLowerCase().includes(query) ||
-      c.campaign_name?.toLowerCase().includes(query)
-    )
-  }, [contacts, searchQuery])
+    // Search filter
+    if (debouncedQuery.trim()) {
+      const query = debouncedQuery.toLowerCase()
+      result = result.filter(c => 
+        c.full_name?.toLowerCase().includes(query) ||
+        c.first_name?.toLowerCase().includes(query) ||
+        c.last_name?.toLowerCase().includes(query) ||
+        c.email?.toLowerCase().includes(query) ||
+        c.company?.toLowerCase().includes(query) ||
+        c.job_title?.toLowerCase().includes(query) ||
+        c.industry?.toLowerCase().includes(query) ||
+        c.campaign_name?.toLowerCase().includes(query)
+      )
+    }
+    
+    // Stage filter
+    if (stageFilter) {
+      result = result.filter(c => c.stage === stageFilter)
+    }
+    
+    // Pipeline filter
+    if (pipelineFilter) {
+      if (pipelineFilter === 'no_progress') {
+        result = result.filter(c => 
+          !c.meeting_booked && !c.showed_up_to_disco && !c.qualified && 
+          !c.demo_booked && !c.showed_up_to_demo && !c.proposal_sent && !c.closed
+        )
+      } else {
+        result = result.filter(c => c[pipelineFilter as keyof Contact] === true)
+      }
+    }
+    
+    // Last Activity filter
+    if (lastActivityFilter) {
+      if (lastActivityFilter === 'custom' && (customDateFrom || customDateTo)) {
+        const fromDate = customDateFrom ? new Date(customDateFrom) : new Date(0)
+        const toDate = customDateTo ? new Date(customDateTo + 'T23:59:59') : new Date()
+        result = result.filter(c => {
+          if (!c.updated_at) return false
+          const activityDate = new Date(c.updated_at)
+          return activityDate >= fromDate && activityDate <= toDate
+        })
+      } else if (lastActivityFilter !== 'custom') {
+        const now = new Date()
+        let cutoff: Date
+        switch (lastActivityFilter) {
+          case 'today':
+            cutoff = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+            break
+          case '7d':
+            cutoff = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+            break
+          case '30d':
+            cutoff = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
+            break
+          case '90d':
+            cutoff = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000)
+            break
+          default:
+            cutoff = new Date(0)
+        }
+        result = result.filter(c => {
+          if (!c.updated_at) return false
+          return new Date(c.updated_at) >= cutoff
+        })
+      }
+    }
+    
+    // Sorting
+    result.sort((a, b) => {
+      switch (sortBy) {
+        case 'last_activity_desc':
+          return (new Date(b.updated_at || 0).getTime()) - (new Date(a.updated_at || 0).getTime())
+        case 'last_activity_asc':
+          return (new Date(a.updated_at || 0).getTime()) - (new Date(b.updated_at || 0).getTime())
+        case 'epv_desc':
+          return (b.epv || 0) - (a.epv || 0)
+        case 'epv_asc':
+          return (a.epv || 0) - (b.epv || 0)
+        case 'name_asc':
+          return (a.full_name || a.first_name || '').localeCompare(b.full_name || b.first_name || '')
+        case 'name_desc':
+          return (b.full_name || b.first_name || '').localeCompare(a.full_name || a.first_name || '')
+        default:
+          return 0
+      }
+    })
+    
+    return result
+  }, [contacts, debouncedQuery, stageFilter, pipelineFilter, lastActivityFilter, customDateFrom, customDateTo, sortBy])
   
   // Single-click to open or switch contact in side panel
   const handleOpenContact = (contact: Contact) => {
@@ -53,11 +216,11 @@ export function ContactList() {
     return <LoadingSkeleton rows={8} />
   }
 
-  // Grid column widths - balanced layout (removed Campaign column)
-  // Name, Company, Title get flexible space; Stage and Pipeline have fixed widths with more gap between them
-  const gridColumns = 'minmax(180px, 1.2fr) minmax(160px, 1fr) minmax(120px, 0.8fr) 150px 60px 200px 70px'
-  // Note: 60px empty spacer column between Stage and Pipeline for visual separation
-  const minTableWidth = 940
+  // Grid column widths - CRM scanning flow: identity → company → status → role → recency → action
+  // Name, Company, Stage, Pipeline, Title, Last Activity, Actions
+  // More space for Stage/Pipeline/Title area
+  const gridColumns = 'minmax(200px, 1.5fr) minmax(400px, 1.2fr) 250px 280px minmax(100px, 1.2fr) 90px 70px'
+  const minTableWidth = 980
   
   return (
     <div style={{ 
@@ -72,9 +235,8 @@ export function ContactList() {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          marginBottom: 24,
+          marginBottom: 16,
           gap: 16,
-          flexWrap: 'wrap',
         }}
       >
         <div>
@@ -99,24 +261,112 @@ export function ContactList() {
               margin: '4px 0 0 0',
             }}
           >
-            {contacts.length} {contacts.length === 1 ? 'lead' : 'leads'} from engaged_leads
+            {filteredContacts.length} of {contacts.length} {contacts.length === 1 ? 'lead' : 'leads'}
           </p>
         </div>
         
-        <div style={{ display: 'flex', gap: 12 }}>
-          <SearchInput
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            onClear={() => setSearchQuery('')}
-            placeholder="Search leads..."
-            style={{ width: 260 }}
+        <Button
+          icon={<Plus size={16} />}
+          onClick={handleCreateContact}
+        >
+          Add Lead
+        </Button>
+      </div>
+      
+      {/* Filters Bar */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 12,
+          marginBottom: 32,
+          padding: '12px 16px',
+          backgroundColor: theme.bg.card,
+          borderRadius: theme.radius.lg,
+          border: `1px solid ${theme.border.subtle}`,
+          position: 'relative',
+          zIndex: 100,
+          overflow: 'visible',
+        }}
+      >
+        {/* Search */}
+        <SearchInput
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          onClear={() => setSearchQuery('')}
+          placeholder="Search leads..."
+          style={{ width: 200, flexShrink: 0 }}
+        />
+        
+        <div style={{ flex: 1 }} />
+        
+        {/* Filters */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0, overflow: 'visible' }}>
+          <FilterDropdown
+            label="Stage"
+            value={stageFilter}
+            options={STAGE_OPTIONS}
+            onChange={setStageFilter}
           />
-          <Button
-            icon={<Plus size={16} />}
-            onClick={handleCreateContact}
-          >
-            Add Lead
-          </Button>
+          
+          <FilterDropdown
+            label="Pipeline"
+            value={pipelineFilter}
+            options={PIPELINE_OPTIONS}
+            onChange={setPipelineFilter}
+          />
+          
+          <FilterDropdown
+            label="Last Activity"
+            value={lastActivityFilter}
+            options={LAST_ACTIVITY_OPTIONS}
+            onChange={setLastActivityFilter}
+          />
+          
+          {/* Custom Date Range Inputs */}
+          {lastActivityFilter === 'custom' && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <input
+                type="date"
+                value={customDateFrom}
+                onChange={(e) => setCustomDateFrom(e.target.value)}
+                style={{
+                  padding: '6px 10px',
+                  fontSize: theme.fontSize.sm,
+                  backgroundColor: theme.bg.elevated,
+                  color: theme.text.primary,
+                  border: `1px solid ${theme.border.default}`,
+                  borderRadius: theme.radius.md,
+                  outline: 'none',
+                }}
+              />
+              <span style={{ color: theme.text.muted, fontSize: theme.fontSize.sm }}>to</span>
+              <input
+                type="date"
+                value={customDateTo}
+                onChange={(e) => setCustomDateTo(e.target.value)}
+                style={{
+                  padding: '6px 10px',
+                  fontSize: theme.fontSize.sm,
+                  backgroundColor: theme.bg.elevated,
+                  color: theme.text.primary,
+                  border: `1px solid ${theme.border.default}`,
+                  borderRadius: theme.radius.md,
+                  outline: 'none',
+                }}
+              />
+            </div>
+          )}
+          
+          <div style={{ height: 20, width: 1, backgroundColor: theme.border.default }} />
+          
+          <FilterDropdown
+            label="Sort"
+            value={sortBy}
+            options={SORT_OPTIONS}
+            onChange={setSortBy}
+            icon={<ArrowUpDown size={14} />}
+          />
         </div>
       </div>
       
@@ -124,14 +374,14 @@ export function ContactList() {
       {filteredContacts.length === 0 ? (
         <EmptyState
           icon={<Users size={32} />}
-          title={searchQuery ? 'No leads found' : 'No leads yet'}
+          title={debouncedQuery ? 'No leads found' : 'No leads yet'}
           description={
-            searchQuery
+            debouncedQuery
               ? 'Try adjusting your search terms'
               : 'Start by adding your first lead to the CRM'
           }
           action={
-            !searchQuery
+            !debouncedQuery
               ? { label: 'Add Lead', onClick: handleCreateContact, icon: <Plus size={16} /> }
               : undefined
           }
@@ -150,7 +400,7 @@ export function ContactList() {
               style={{
                 display: 'grid',
                 gridTemplateColumns: gridColumns,
-                gap: '0 16px',
+                gap: '0 24px',
                 alignItems: 'center',
                 padding: '14px 20px',
                 borderBottom: `1px solid ${theme.border.subtle}`,
@@ -160,36 +410,26 @@ export function ContactList() {
             >
               <TableHeader>Name</TableHeader>
               <TableHeader>Company</TableHeader>
-              <TableHeader>Title</TableHeader>
               <TableHeader>Stage</TableHeader>
-              <div /> {/* Spacer */}
               <TableHeader>Pipeline</TableHeader>
+              <TableHeader>Title</TableHeader>
+              <TableHeader>Last Activity</TableHeader>
               <TableHeader>Actions</TableHeader>
             </div>
             
-            {/* Table Rows */}
-            <AnimatePresence mode="popLayout">
-              {filteredContacts.map((contact, index) => (
-                <motion.div
-                  key={contact.id}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ delay: index * 0.02 }}
-                  layout
-                >
-                  <ContactRow
-                    contact={contact}
-                    isSelected={selectedContact?.id === contact.id}
-                    gridColumns={gridColumns}
-                    minWidth={minTableWidth}
-                    onClick={() => handleOpenContact(contact)}
-                    onUpdateStage={(stage) => updateContact(contact.id, { stage })}
-                    onUpdatePipelineStep={(step, value) => updateContact(contact.id, { [step]: value })}
-                  />
-                </motion.div>
-              ))}
-            </AnimatePresence>
+            {/* Table Rows - no animation for instant search */}
+            {filteredContacts.map((contact) => (
+              <ContactRow
+                key={contact.id}
+                contact={contact}
+                isSelected={selectedContact?.id === contact.id}
+                gridColumns={gridColumns}
+                minWidth={minTableWidth}
+                onClick={() => handleOpenContact(contact)}
+                onUpdateStage={(stage) => updateContact(contact.id, { stage })}
+                onUpdatePipelineStep={(step, value) => updateContact(contact.id, { [step]: value })}
+              />
+            ))}
           </div>
         </Card>
       )}
@@ -249,18 +489,12 @@ function ContactRow({ contact, isSelected, gridColumns, minWidth, onClick, onUpd
     'Unknown'
   
   return (
-    <motion.div
+    <div
       onClick={onClick}
-      initial={false}
-      whileHover={{
-        backgroundColor: theme.bg.hover,
-        boxShadow: `inset 0 0 0 1px rgba(255, 255, 255, 0.05)`,
-      }}
-      transition={{ duration: 0.15 }}
       style={{
         display: 'grid',
         gridTemplateColumns: gridColumns,
-        gap: '0 16px',
+        gap: '0 24px',
         alignItems: 'center',
         padding: '14px 20px',
         borderBottom: `1px solid ${theme.border.subtle}`,
@@ -268,6 +502,15 @@ function ContactRow({ contact, isSelected, gridColumns, minWidth, onClick, onUpd
         cursor: 'pointer',
         minWidth: minWidth,
         boxShadow: isSelected ? `inset 3px 0 0 0 ${theme.accent.primary}` : 'none',
+        transition: `background-color 0.15s ease`,
+      }}
+      onMouseEnter={(e) => {
+        if (!isSelected) {
+          e.currentTarget.style.backgroundColor = theme.bg.hover
+        }
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.backgroundColor = isSelected ? theme.bg.hover : 'transparent'
       }}
     >
       {/* Name */}
@@ -308,7 +551,7 @@ function ContactRow({ contact, isSelected, gridColumns, minWidth, onClick, onUpd
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
         {contact.company ? (
           <>
-            <Building2 size={14} style={{ color: theme.text.muted, flexShrink: 0 }} />
+            <Building2 size={20} style={{ color: theme.text.muted, flexShrink: 0 }} />
             <div style={{ minWidth: 0, flex: 1 }}>
               <span
                 style={{
@@ -343,6 +586,31 @@ function ContactRow({ contact, isSelected, gridColumns, minWidth, onClick, onUpd
         )}
       </div>
       
+      {/* Stage */}
+      <div 
+        style={{ display: 'flex', alignItems: 'center' }} 
+        onClick={(e) => e.stopPropagation()}
+        onMouseDown={(e) => e.stopPropagation()}
+      >
+        <StageDropdown
+          value={contact.stage}
+          onChange={(stage) => {
+            onUpdateStage(stage)
+          }}
+        />
+      </div>
+      
+      {/* Pipeline Progress Dropdown */}
+      <div 
+        onClick={(e) => e.stopPropagation()}
+        onMouseDown={(e) => e.stopPropagation()}
+      >
+        <PipelineProgressDropdown
+          contact={contact}
+          onUpdateStep={onUpdatePipelineStep}
+        />
+      </div>
+      
       {/* Title */}
       <div style={{ display: 'flex', alignItems: 'center', minWidth: 0 }}>
         <span
@@ -358,32 +626,17 @@ function ContactRow({ contact, isSelected, gridColumns, minWidth, onClick, onUpd
         </span>
       </div>
       
-      {/* Stage */}
-      <div 
-        style={{ display: 'flex', alignItems: 'center' }} 
-        onClick={(e) => e.stopPropagation()}
-        onMouseDown={(e) => e.stopPropagation()}
-      >
-        <StageDropdown
-          value={contact.stage}
-          onChange={(stage) => {
-            onUpdateStage(stage)
+      {/* Last Activity */}
+      <div style={{ display: 'flex', alignItems: 'center', minWidth: 0 }}>
+        <span
+          style={{
+            fontSize: theme.fontSize.xs,
+            color: theme.text.muted,
           }}
-        />
-      </div>
-      
-      {/* Spacer between Stage and Pipeline */}
-      <div />
-      
-      {/* Pipeline Progress Dropdown */}
-      <div 
-        onClick={(e) => e.stopPropagation()}
-        onMouseDown={(e) => e.stopPropagation()}
-      >
-        <PipelineProgressDropdown
-          contact={contact}
-          onUpdateStep={onUpdatePipelineStep}
-        />
+          title={contact.updated_at ? new Date(contact.updated_at).toLocaleString() : undefined}
+        >
+          {formatRelativeTime(contact.updated_at)}
+        </span>
       </div>
       
       {/* Actions */}
@@ -411,7 +664,7 @@ function ContactRow({ contact, isSelected, gridColumns, minWidth, onClick, onUpd
           />
         )}
       </div>
-    </motion.div>
+    </div>
   )
 }
 
@@ -649,5 +902,120 @@ function ActionButton({ href, icon, label, external }: ActionButtonProps) {
     >
       {icon}
     </a>
+  )
+}
+
+// Filter Dropdown Component
+interface FilterDropdownProps {
+  label: string
+  value: string
+  options: { value: string; label: string }[]
+  onChange: (value: string) => void
+  icon?: React.ReactNode
+}
+
+function FilterDropdown({ label, value, options, onChange, icon }: FilterDropdownProps) {
+  const [isOpen, setIsOpen] = useState(false)
+  const dropdownRef = useRef<HTMLDivElement>(null)
+  
+  const selectedOption = options.find(o => o.value === value)
+  const displayLabel = selectedOption?.label || label
+  const hasValue = value !== ''
+  
+  // Close on outside click
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+  
+  return (
+    <div ref={dropdownRef} style={{ position: 'relative' }}>
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 6,
+          padding: '8px 12px',
+          fontSize: theme.fontSize.sm,
+          fontWeight: theme.fontWeight.medium,
+          color: hasValue ? theme.accent.primary : theme.text.secondary,
+          backgroundColor: hasValue ? theme.accent.primaryBg : 'transparent',
+          border: `1px solid ${hasValue ? theme.accent.primary : theme.border.default}`,
+          borderRadius: theme.radius.md,
+          cursor: 'pointer',
+          transition: `all ${theme.transition.fast}`,
+          whiteSpace: 'nowrap',
+        }}
+      >
+        {icon}
+        <span>{displayLabel}</span>
+        <ChevronDown size={14} style={{ opacity: 0.7 }} />
+      </button>
+      
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: -8, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -8, scale: 0.96 }}
+            transition={{ duration: 0.15 }}
+            style={{
+              position: 'absolute',
+              top: '100%',
+              left: 0,
+              marginTop: 4,
+              minWidth: 180,
+              backgroundColor: theme.bg.elevated,
+              border: `1px solid ${theme.border.default}`,
+              borderRadius: theme.radius.lg,
+              boxShadow: '0 10px 40px rgba(0,0,0,0.5)',
+              zIndex: 9999,
+              overflow: 'hidden',
+              padding: 6,
+            }}
+          >
+            {options.map((option) => (
+              <button
+                key={option.value}
+                onClick={() => {
+                  onChange(option.value)
+                  setIsOpen(false)
+                }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  width: '100%',
+                  padding: '8px 12px',
+                  fontSize: theme.fontSize.sm,
+                  color: option.value === value ? theme.accent.primary : theme.text.primary,
+                  backgroundColor: option.value === value ? theme.accent.primaryBg : 'transparent',
+                  border: 'none',
+                  borderRadius: theme.radius.md,
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                  transition: `all ${theme.transition.fast}`,
+                }}
+                onMouseEnter={(e) => {
+                  if (option.value !== value) {
+                    e.currentTarget.style.backgroundColor = theme.bg.hover
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = option.value === value ? theme.accent.primaryBg : 'transparent'
+                }}
+              >
+                {option.label}
+              </button>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   )
 }
