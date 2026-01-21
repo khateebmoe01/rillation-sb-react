@@ -19,7 +19,7 @@ export function CRMDashboard() {
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
     
     // Contact stats - group by company
-    const uniqueCompanies = new Set(contacts.map(c => c.company_name).filter(Boolean)).size
+    const uniqueCompanies = new Set(contacts.map(c => c.company).filter(Boolean)).size
     
     // Deal stats
     const activeDeals = deals.filter(d => d.stage !== 'won' && d.stage !== 'lost')
@@ -293,7 +293,7 @@ export function CRMDashboard() {
                           margin: '2px 0 0 0',
                         }}
                       >
-                        {deal.contact?.company_name || deal.contact?.full_name || 'No contact'}
+                        {deal.contact?.company || deal.contact?.full_name || 'No contact'}
                       </p>
                     </div>
                     <Badge color={info.color} bgColor={info.bgColor}>

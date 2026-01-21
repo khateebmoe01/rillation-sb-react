@@ -22,7 +22,7 @@ export function DealsKanban() {
     const query = searchQuery.toLowerCase()
     return deals.filter(d => 
       d.name?.toLowerCase().includes(query) ||
-      d.contact?.company_name?.toLowerCase().includes(query) ||
+      d.contact?.company?.toLowerCase().includes(query) ||
       d.contact?.full_name?.toLowerCase().includes(query)
     )
   }, [deals, searchQuery])
@@ -501,7 +501,7 @@ function DealCard({ deal, onClick, onDelete, compact = false }: DealCardProps) {
       {/* Company & Contact */}
       {!compact && (
         <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 4 }}>
-          {deal.contact?.company_name && (
+          {deal.contact?.company && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <Building2 size={12} style={{ color: theme.text.muted }} />
               <span
@@ -513,7 +513,7 @@ function DealCard({ deal, onClick, onDelete, compact = false }: DealCardProps) {
                   whiteSpace: 'nowrap',
                 }}
               >
-                {deal.contact.company_name}
+                {deal.contact.company}
               </span>
             </div>
           )}
@@ -521,8 +521,7 @@ function DealCard({ deal, onClick, onDelete, compact = false }: DealCardProps) {
           {deal.contact && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <Avatar
-                src={deal.contact.avatar_url}
-                name={deal.contact.full_name}
+                name={deal.contact.full_name || deal.contact.email || 'Unknown'}
                 size="sm"
               />
               <span

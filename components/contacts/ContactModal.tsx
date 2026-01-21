@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { User, Mail, Phone, Briefcase, Linkedin, Trash2, MessageSquare, Building2, DollarSign, Calendar, Globe, MapPin, CheckCircle2, ChevronDown } from 'lucide-react'
+import { User, Mail, Phone, Briefcase, Linkedin, Trash2, MessageSquare, Building2, DollarSign, Calendar, Globe, MapPin, ChevronDown } from 'lucide-react'
 import { theme } from '../../config/theme'
 import { useCRM } from '../../context/CRMContext'
 import { SlidePanel, PanelFooter, Button, Input, Select, Textarea, Avatar } from '../shared'

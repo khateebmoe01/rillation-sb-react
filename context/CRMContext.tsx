@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useCallback, useEffect, ReactNode } from 'react'
 import { supabase, isSupabaseConfigured } from '../../../lib/supabase'
 import { useFilters } from '../../../contexts/FilterContext'
-import type { Contact, Deal, Task, Note, CRMStats, CRMFilters, getContactStatus } from '../types'
+import type { Contact, Deal, Task, Note, CRMStats, CRMFilters } from '../types'
 
 // Create an untyped supabase client for tables that aren't in the generated types
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

@@ -36,7 +36,7 @@ export function TaskModal({ isOpen, onClose, task }: TaskModalProps) {
     { value: '', label: 'No contact' },
     ...contacts.map(c => ({ 
       value: c.id, 
-      label: `${c.full_name || c.email || 'Unknown'}${c.company_name ? ` (${c.company_name})` : ''}` 
+      label: `${c.full_name || c.email || 'Unknown'}${c.company ? ` (${c.company})` : ''}` 
     }))
   ]
   

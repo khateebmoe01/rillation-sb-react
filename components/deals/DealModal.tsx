@@ -33,7 +33,7 @@ export function DealModal({ isOpen, onClose, deal, defaultStage }: DealModalProp
     { value: '', label: 'No contact' },
     ...contacts.map(c => ({ 
       value: c.id, 
-      label: `${c.full_name || c.email || 'Unknown'}${c.company_name ? ` (${c.company_name})` : ''}` 
+      label: `${c.full_name || c.email || 'Unknown'}${c.company ? ` (${c.company})` : ''}` 
     }))
   ]
   
@@ -202,7 +202,7 @@ export function DealModal({ isOpen, onClose, deal, defaultStage }: DealModalProp
                   }}
                 >
                   {selectedContact.full_name || selectedContact.email}
-                  {selectedContact.company_name && ` @ ${selectedContact.company_name}`}
+                  {selectedContact.company && ` @ ${selectedContact.company}`}
                 </p>
               )}
               <div
@@ -309,7 +309,7 @@ export function DealModal({ isOpen, onClose, deal, defaultStage }: DealModalProp
             value={formData.contact_id}
             onChange={(v) => setFormData({ ...formData, contact_id: v })}
           />
-          {selectedContact && selectedContact.company_name && (
+          {selectedContact && selectedContact.company && (
             <p
               style={{
                 fontSize: theme.fontSize.sm,
@@ -317,8 +317,8 @@ export function DealModal({ isOpen, onClose, deal, defaultStage }: DealModalProp
                 margin: '8px 0 0 0',
               }}
             >
-              Company: {selectedContact.company_name}
-              {selectedContact.company_industry && ` • ${selectedContact.company_industry}`}
+              Company: {selectedContact.company}
+              {selectedContact.industry && ` • ${selectedContact.industry}`}
             </p>
           )}
         </div>
