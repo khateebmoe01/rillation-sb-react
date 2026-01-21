@@ -1,0 +1,628 @@
+import { createContext, useContext, useState, useCallback, useEffect, ReactNode } from 'react'
+import { supabase } from '../../../lib/supabase'
+import { useFilters } from '../../../contexts/FilterContext'
+import type { Company, Contact, Deal, Task, Note, CRMStats, CRMFilters } from '../types'
+
+// ============================================
+// CONTEXT TYPE
+// ============================================
+interface CRMContextType {
+  // Data
+  companies: Company[]
+  contacts: Contact[]
+  deals: Deal[]
+  tasks: Task[]
+  stats: CRMStats | null
+  
+  // Loading states
+  loading: {
+    companies: boolean
+    contacts: boolean
+    deals: boolean
+    tasks: boolean
+    stats: boolean
+  }
+  
+  // Errors
+  error: string | null
+  
+  // Filters
+  filters: CRMFilters
+  setFilters: (filters: CRMFilters) => void
+  
+  // CRUD - Companies
+  fetchCompanies: () => Promise<void>
+  createCompany: (data: Partial<Company>) => Promise<Company | null>
+  updateCompany: (id: string, data: Partial<Company>) => Promise<boolean>
+  deleteCompany: (id: string) => Promise<boolean>
+  
+  // CRUD - Contacts
+  fetchContacts: () => Promise<void>
+  createContact: (data: Partial<Contact>) => Promise<Contact | null>
+  updateContact: (id: string, data: Partial<Contact>) => Promise<boolean>
+  deleteContact: (id: string) => Promise<boolean>
+  
+  // CRUD - Deals
+  fetchDeals: () => Promise<void>
+  createDeal: (data: Partial<Deal>) => Promise<Deal | null>
+  updateDeal: (id: string, data: Partial<Deal>) => Promise<boolean>
+  deleteDeal: (id: string) => Promise<boolean>
+  moveDealToStage: (dealId: string, stage: string, index: number) => Promise<boolean>
+  
+  // CRUD - Tasks
+  fetchTasks: () => Promise<void>
+  createTask: (data: Partial<Task>) => Promise<Task | null>
+  updateTask: (id: string, data: Partial<Task>) => Promise<boolean>
+  toggleTask: (id: string) => Promise<boolean>
+  deleteTask: (id: string) => Promise<boolean>
+  
+  // Notes
+  fetchNotes: (entityType: 'company' | 'contact' | 'deal', entityId: string) => Promise<Note[]>
+  createNote: (data: Partial<Note>) => Promise<Note | null>
+  
+  // Stats
+  fetchStats: () => Promise<void>
+  
+  // Refresh all
+  refreshAll: () => Promise<void>
+}
+
+const CRMContext = createContext<CRMContextType | null>(null)
+
+// ============================================
+// PROVIDER
+// ============================================
+export function CRMProvider({ children }: { children: ReactNode }) {
+  const { selectedClient } = useFilters()
+  
+  // Data state
+  const [companies, setCompanies] = useState<Company[]>([])
+  const [contacts, setContacts] = useState<Contact[]>([])
+  const [deals, setDeals] = useState<Deal[]>([])
+  const [tasks, setTasks] = useState<Task[]>([])
+  const [stats, setStats] = useState<CRMStats | null>(null)
+  
+  // Loading state
+  const [loading, setLoading] = useState({
+    companies: true,
+    contacts: true,
+    deals: true,
+    tasks: true,
+    stats: true,
+  })
+  
+  // Error state
+  const [error, setError] = useState<string | null>(null)
+  
+  // Filters
+  const [filters, setFilters] = useState<CRMFilters>({})
+
+  // ============================================
+  // COMPANIES
+  // ============================================
+  const fetchCompanies = useCallback(async () => {
+    if (!selectedClient) return
+    setLoading(prev => ({ ...prev, companies: true }))
+    
+    try {
+      const { data, error: fetchError } = await supabase
+        .from('crm_companies')
+        .select('*')
+        .eq('client', selectedClient)
+        .order('created_at', { ascending: false })
+      
+      if (fetchError) throw fetchError
+      setCompanies((data || []) as Company[])
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to fetch companies')
+    } finally {
+      setLoading(prev => ({ ...prev, companies: false }))
+    }
+  }, [selectedClient])
+
+  const createCompany = useCallback(async (data: Partial<Company>): Promise<Company | null> => {
+    if (!selectedClient) return null
+    
+    try {
+      const { data: created, error: createError } = await supabase
+        .from('crm_companies')
+        .insert({ ...data, client: selectedClient })
+        .select()
+        .single()
+      
+      if (createError) throw createError
+      setCompanies(prev => [created as Company, ...prev])
+      return created as Company
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create company')
+      return null
+    }
+  }, [selectedClient])
+
+  const updateCompany = useCallback(async (id: string, data: Partial<Company>): Promise<boolean> => {
+    try {
+      const { error: updateError } = await supabase
+        .from('crm_companies')
+        .update(data)
+        .eq('id', id)
+      
+      if (updateError) throw updateError
+      setCompanies(prev => prev.map(c => c.id === id ? { ...c, ...data } : c))
+      return true
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update company')
+      return false
+    }
+  }, [])
+
+  const deleteCompany = useCallback(async (id: string): Promise<boolean> => {
+    try {
+      const { error: deleteError } = await supabase
+        .from('crm_companies')
+        .delete()
+        .eq('id', id)
+      
+      if (deleteError) throw deleteError
+      setCompanies(prev => prev.filter(c => c.id !== id))
+      return true
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete company')
+      return false
+    }
+  }, [])
+
+  // ============================================
+  // CONTACTS
+  // ============================================
+  const fetchContacts = useCallback(async () => {
+    if (!selectedClient) return
+    setLoading(prev => ({ ...prev, contacts: true }))
+    
+    try {
+      const { data, error: fetchError } = await supabase
+        .from('crm_contacts')
+        .select(`
+          *,
+          company:crm_companies(id, name, logo_url)
+        `)
+        .eq('client', selectedClient)
+        .is('deleted_at', null)
+        .order('created_at', { ascending: false })
+      
+      if (fetchError) throw fetchError
+      setContacts((data || []) as Contact[])
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to fetch contacts')
+    } finally {
+      setLoading(prev => ({ ...prev, contacts: false }))
+    }
+  }, [selectedClient])
+
+  const createContact = useCallback(async (data: Partial<Contact>): Promise<Contact | null> => {
+    if (!selectedClient) return null
+    
+    try {
+      const { data: created, error: createError } = await supabase
+        .from('crm_contacts')
+        .insert({ ...data, client: selectedClient })
+        .select()
+        .single()
+      
+      if (createError) throw createError
+      setContacts(prev => [created as Contact, ...prev])
+      return created as Contact
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create contact')
+      return null
+    }
+  }, [selectedClient])
+
+  const updateContact = useCallback(async (id: string, data: Partial<Contact>): Promise<boolean> => {
+    try {
+      const { error: updateError } = await supabase
+        .from('crm_contacts')
+        .update(data)
+        .eq('id', id)
+      
+      if (updateError) throw updateError
+      setContacts(prev => prev.map(c => c.id === id ? { ...c, ...data } : c))
+      return true
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update contact')
+      return false
+    }
+  }, [])
+
+  const deleteContact = useCallback(async (id: string): Promise<boolean> => {
+    try {
+      // Soft delete
+      const { error: deleteError } = await supabase
+        .from('crm_contacts')
+        .update({ deleted_at: new Date().toISOString() })
+        .eq('id', id)
+      
+      if (deleteError) throw deleteError
+      setContacts(prev => prev.filter(c => c.id !== id))
+      return true
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete contact')
+      return false
+    }
+  }, [])
+
+  // ============================================
+  // DEALS
+  // ============================================
+  const fetchDeals = useCallback(async () => {
+    if (!selectedClient) return
+    setLoading(prev => ({ ...prev, deals: true }))
+    
+    try {
+      const { data, error: fetchError } = await supabase
+        .from('crm_deals')
+        .select(`
+          *,
+          company:crm_companies(id, name, logo_url),
+          contact:crm_contacts(id, first_name, last_name, full_name, email, avatar_url)
+        `)
+        .eq('client', selectedClient)
+        .is('deleted_at', null)
+        .order('index', { ascending: true })
+      
+      if (fetchError) throw fetchError
+      setDeals((data || []) as Deal[])
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to fetch deals')
+    } finally {
+      setLoading(prev => ({ ...prev, deals: false }))
+    }
+  }, [selectedClient])
+
+  const createDeal = useCallback(async (data: Partial<Deal>): Promise<Deal | null> => {
+    if (!selectedClient) return null
+    
+    try {
+      // Get max index for the stage
+      const stageDeals = deals.filter(d => d.stage === (data.stage || 'lead'))
+      const maxIndex = stageDeals.length > 0 ? Math.max(...stageDeals.map(d => d.index)) + 1 : 0
+      
+      const { data: created, error: createError } = await supabase
+        .from('crm_deals')
+        .insert({ ...data, client: selectedClient, index: maxIndex })
+        .select()
+        .single()
+      
+      if (createError) throw createError
+      setDeals(prev => [...prev, created as Deal])
+      return created as Deal
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create deal')
+      return null
+    }
+  }, [selectedClient, deals])
+
+  const updateDeal = useCallback(async (id: string, data: Partial<Deal>): Promise<boolean> => {
+    try {
+      const { error: updateError } = await supabase
+        .from('crm_deals')
+        .update(data)
+        .eq('id', id)
+      
+      if (updateError) throw updateError
+      setDeals(prev => prev.map(d => d.id === id ? { ...d, ...data } : d))
+      return true
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update deal')
+      return false
+    }
+  }, [])
+
+  const moveDealToStage = useCallback(async (dealId: string, stage: string, index: number): Promise<boolean> => {
+    try {
+      const { error: updateError } = await supabase
+        .from('crm_deals')
+        .update({ stage, index })
+        .eq('id', dealId)
+      
+      if (updateError) throw updateError
+      setDeals(prev => prev.map(d => d.id === dealId ? { ...d, stage: stage as Deal['stage'], index } : d))
+      return true
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to move deal')
+      return false
+    }
+  }, [])
+
+  const deleteDeal = useCallback(async (id: string): Promise<boolean> => {
+    try {
+      const { error: deleteError } = await supabase
+        .from('crm_deals')
+        .update({ deleted_at: new Date().toISOString() })
+        .eq('id', id)
+      
+      if (deleteError) throw deleteError
+      setDeals(prev => prev.filter(d => d.id !== id))
+      return true
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete deal')
+      return false
+    }
+  }, [])
+
+  // ============================================
+  // TASKS
+  // ============================================
+  const fetchTasks = useCallback(async () => {
+    if (!selectedClient) return
+    setLoading(prev => ({ ...prev, tasks: true }))
+    
+    try {
+      const { data, error: fetchError } = await supabase
+        .from('crm_tasks')
+        .select(`
+          *,
+          contact:crm_contacts(id, first_name, last_name, full_name),
+          deal:crm_deals(id, name)
+        `)
+        .eq('client', selectedClient)
+        .order('due_date', { ascending: true, nullsFirst: false })
+      
+      if (fetchError) throw fetchError
+      setTasks((data || []) as Task[])
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to fetch tasks')
+    } finally {
+      setLoading(prev => ({ ...prev, tasks: false }))
+    }
+  }, [selectedClient])
+
+  const createTask = useCallback(async (data: Partial<Task>): Promise<Task | null> => {
+    if (!selectedClient) return null
+    
+    try {
+      const { data: created, error: createError } = await supabase
+        .from('crm_tasks')
+        .insert({ ...data, client: selectedClient })
+        .select()
+        .single()
+      
+      if (createError) throw createError
+      setTasks(prev => [created as Task, ...prev])
+      return created as Task
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create task')
+      return null
+    }
+  }, [selectedClient])
+
+  const updateTask = useCallback(async (id: string, data: Partial<Task>): Promise<boolean> => {
+    try {
+      const { error: updateError } = await supabase
+        .from('crm_tasks')
+        .update(data)
+        .eq('id', id)
+      
+      if (updateError) throw updateError
+      setTasks(prev => prev.map(t => t.id === id ? { ...t, ...data } : t))
+      return true
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update task')
+      return false
+    }
+  }, [])
+
+  const toggleTask = useCallback(async (id: string): Promise<boolean> => {
+    const task = tasks.find(t => t.id === id)
+    if (!task) return false
+    
+    const newDone = !task.done
+    const updates = {
+      done: newDone,
+      done_at: newDone ? new Date().toISOString() : null,
+    }
+    
+    return updateTask(id, updates)
+  }, [tasks, updateTask])
+
+  const deleteTask = useCallback(async (id: string): Promise<boolean> => {
+    try {
+      const { error: deleteError } = await supabase
+        .from('crm_tasks')
+        .delete()
+        .eq('id', id)
+      
+      if (deleteError) throw deleteError
+      setTasks(prev => prev.filter(t => t.id !== id))
+      return true
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete task')
+      return false
+    }
+  }, [])
+
+  // ============================================
+  // NOTES
+  // ============================================
+  const fetchNotes = useCallback(async (
+    entityType: 'company' | 'contact' | 'deal',
+    entityId: string
+  ): Promise<Note[]> => {
+    try {
+      const columnMap = {
+        company: 'company_id',
+        contact: 'contact_id',
+        deal: 'deal_id',
+      }
+      
+      const { data, error: fetchError } = await supabase
+        .from('crm_notes')
+        .select('*')
+        .eq(columnMap[entityType], entityId)
+        .order('created_at', { ascending: false })
+      
+      if (fetchError) throw fetchError
+      return (data || []) as Note[]
+    } catch {
+      return []
+    }
+  }, [])
+
+  const createNote = useCallback(async (data: Partial<Note>): Promise<Note | null> => {
+    if (!selectedClient) return null
+    
+    try {
+      const { data: created, error: createError } = await supabase
+        .from('crm_notes')
+        .insert({ ...data, client: selectedClient })
+        .select()
+        .single()
+      
+      if (createError) throw createError
+      return created as Note
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create note')
+      return null
+    }
+  }, [selectedClient])
+
+  // ============================================
+  // STATS
+  // ============================================
+  const fetchStats = useCallback(async () => {
+    if (!selectedClient) return
+    setLoading(prev => ({ ...prev, stats: true }))
+    
+    try {
+      // Fetch all counts in parallel
+      const [companiesRes, contactsRes, dealsRes, tasksRes] = await Promise.all([
+        supabase.from('crm_companies').select('status').eq('client', selectedClient),
+        supabase.from('crm_contacts').select('status').eq('client', selectedClient).is('deleted_at', null),
+        supabase.from('crm_deals').select('stage, amount, probability').eq('client', selectedClient).is('deleted_at', null),
+        supabase.from('crm_tasks').select('done, due_date, done_at').eq('client', selectedClient),
+      ])
+      
+      const companiesData = companiesRes.data || []
+      const contactsData = contactsRes.data || []
+      const dealsData = dealsRes.data || []
+      const tasksData = tasksRes.data || []
+      
+      const now = new Date()
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+      
+      const stats: CRMStats = {
+        companies: {
+          total: companiesData.length,
+          byStatus: companiesData.reduce((acc, c) => {
+            acc[c.status as keyof typeof acc] = (acc[c.status as keyof typeof acc] || 0) + 1
+            return acc
+          }, {} as Record<string, number>) as Record<string, number>,
+        },
+        contacts: {
+          total: contactsData.length,
+          byStatus: contactsData.reduce((acc, c) => {
+            acc[c.status as keyof typeof acc] = (acc[c.status as keyof typeof acc] || 0) + 1
+            return acc
+          }, {} as Record<string, number>) as Record<string, number>,
+        },
+        deals: {
+          total: dealsData.length,
+          byStage: dealsData.reduce((acc, d) => {
+            acc[d.stage as keyof typeof acc] = (acc[d.stage as keyof typeof acc] || 0) + 1
+            return acc
+          }, {} as Record<string, number>) as Record<string, number>,
+          totalValue: dealsData.reduce((sum, d) => sum + (d.amount || 0), 0),
+          weightedValue: dealsData.reduce((sum, d) => sum + ((d.amount || 0) * (d.probability || 0) / 100), 0),
+          avgDealSize: dealsData.length > 0 
+            ? dealsData.reduce((sum, d) => sum + (d.amount || 0), 0) / dealsData.length 
+            : 0,
+        },
+        tasks: {
+          total: tasksData.length,
+          pending: tasksData.filter(t => !t.done).length,
+          overdue: tasksData.filter(t => !t.done && t.due_date && new Date(t.due_date) < now).length,
+          completedToday: tasksData.filter(t => t.done && t.done_at && new Date(t.done_at) >= today).length,
+        },
+        activities: {
+          recentCount: 0, // Would need to fetch from notes
+        },
+      }
+      
+      setStats(stats)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to fetch stats')
+    } finally {
+      setLoading(prev => ({ ...prev, stats: false }))
+    }
+  }, [selectedClient])
+
+  // ============================================
+  // REFRESH ALL
+  // ============================================
+  const refreshAll = useCallback(async () => {
+    await Promise.all([
+      fetchCompanies(),
+      fetchContacts(),
+      fetchDeals(),
+      fetchTasks(),
+      fetchStats(),
+    ])
+  }, [fetchCompanies, fetchContacts, fetchDeals, fetchTasks, fetchStats])
+
+  // Initial fetch
+  useEffect(() => {
+    if (selectedClient) {
+      refreshAll()
+    }
+  }, [selectedClient, refreshAll])
+
+  return (
+    <CRMContext.Provider
+      value={{
+        companies,
+        contacts,
+        deals,
+        tasks,
+        stats,
+        loading,
+        error,
+        filters,
+        setFilters,
+        fetchCompanies,
+        createCompany,
+        updateCompany,
+        deleteCompany,
+        fetchContacts,
+        createContact,
+        updateContact,
+        deleteContact,
+        fetchDeals,
+        createDeal,
+        updateDeal,
+        deleteDeal,
+        moveDealToStage,
+        fetchTasks,
+        createTask,
+        updateTask,
+        toggleTask,
+        deleteTask,
+        fetchNotes,
+        createNote,
+        fetchStats,
+        refreshAll,
+      }}
+    >
+      {children}
+    </CRMContext.Provider>
+  )
+}
+
+// ============================================
+// HOOK
+// ============================================
+export function useCRM() {
+  const context = useContext(CRMContext)
+  if (!context) {
+    throw new Error('useCRM must be used within a CRMProvider')
+  }
+  return context
+}
