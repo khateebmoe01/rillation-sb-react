@@ -76,30 +76,37 @@ export function Modal({
             }}
           />
           
-          {/* Modal */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+          {/* Modal Container - handles centering */}
+          <div
             style={{
               position: 'fixed',
               top: '50%',
               left: '50%',
               transform: 'translate(-50%, -50%)',
+              zIndex: theme.z.modal + 1,
               width: typeof sizeMap[size] === 'number' ? sizeMap[size] : sizeMap[size],
               maxWidth: 'calc(100vw - 32px)',
               maxHeight: 'calc(100vh - 64px)',
-              backgroundColor: theme.bg.elevated,
-              borderRadius: theme.radius['2xl'],
-              border: `1px solid ${theme.border.default}`,
-              boxShadow: theme.shadow.xl,
-              zIndex: theme.z.modal + 1,
-              display: 'flex',
-              flexDirection: 'column',
-              overflow: 'hidden',
             }}
           >
+            {/* Modal Content - animated */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+              style={{
+                width: '100%',
+                height: '100%',
+                backgroundColor: theme.bg.elevated,
+                borderRadius: theme.radius['2xl'],
+                border: `1px solid ${theme.border.default}`,
+                boxShadow: theme.shadow.xl,
+                display: 'flex',
+                flexDirection: 'column',
+                overflow: 'hidden',
+              }}
+            >
             {/* Header */}
             {(title || showClose) && (
               <div
@@ -132,17 +139,18 @@ export function Modal({
               </div>
             )}
             
-            {/* Content */}
-            <div
-              style={{
-                flex: 1,
-                overflow: 'auto',
-                padding: 20,
-              }}
-            >
-              {children}
-            </div>
-          </motion.div>
+              {/* Content */}
+              <div
+                style={{
+                  flex: 1,
+                  overflow: 'auto',
+                  padding: 20,
+                }}
+              >
+                {children}
+              </div>
+            </motion.div>
+          </div>
         </>
       )}
     </AnimatePresence>,
