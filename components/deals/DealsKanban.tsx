@@ -684,7 +684,7 @@ export function DealsKanban() {
             display: 'flex',
             gap: 16,
             height: '100%',
-            minWidth: 'fit-content',
+            width: '100%',
           }}
         >
           {activeStages.map(stage => (
@@ -707,7 +707,8 @@ export function DealsKanban() {
               display: 'flex',
               flexDirection: 'column',
               gap: 8,
-              minWidth: 280,
+              flex: 1,
+              minWidth: 320,
             }}
           >
             {closedStages.map(stage => (
@@ -805,8 +806,10 @@ function KanbanColumn({
       style={{
         display: 'flex',
         flexDirection: 'column',
-        width: compact ? '100%' : 280,
-        minWidth: compact ? '100%' : 280,
+        flex: compact ? 'none' : 1,
+        width: compact ? '100%' : 'auto',
+        minWidth: compact ? '100%' : 320,
+        maxWidth: compact ? '100%' : 'none',
         maxHeight: compact ? 200 : '100%',
         backgroundColor: isDragOver ? theme.accent.primaryBg : theme.bg.card,
         borderRadius: theme.radius.xl,
