@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Users, Plus, Mail, Phone, Building2, Linkedin, ChevronDown, Check, ArrowUpDown, Filter, X, SortAsc, Trash2, GripVertical, User, Briefcase, Tag, Clock, Factory, MapPin, DollarSign, Calendar, AtSign, Hash, TrendingUp } from 'lucide-react'
 import { theme } from '../../config/theme'
 import { useCRM } from '../../context/CRMContext'
-import { Card, Avatar, Button, SearchInput, EmptyState, LoadingSkeleton, StageDropdown, FilterSelect, Select } from '../shared'
+import { Card, Avatar, Button, SearchInput, EmptyState, LoadingSkeleton, StageDropdown, FilterSelect } from '../shared'
 import { ContactModal } from './ContactModal'
 import type { Contact } from '../../types'
 
@@ -230,12 +230,6 @@ export function ContactList() {
     setFilterGroups(filterGroups.filter(g => g.id !== groupId))
   }
   
-  // Add a new sort
-  const addSort = (field: string) => {
-    setSorts([...sorts, { id: Date.now().toString(), field, direction: 'desc' }])
-    setShowSortMenu(false)
-  }
-  
   // Update a sort
   const updateSort = (id: string, field?: string, direction?: 'asc' | 'desc') => {
     setSorts(sorts.map(s => s.id === id ? { 
@@ -243,14 +237,6 @@ export function ContactList() {
       field: field ?? s.field, 
       direction: direction ?? s.direction 
     } : s))
-  }
-  
-  // Remove a sort
-  const removeSort = (id: string) => {
-    // Keep at least one sort
-    if (sorts.length > 1) {
-      setSorts(sorts.filter(s => s.id !== id))
-    }
   }
   
   // Toggle sort direction
@@ -611,7 +597,7 @@ export function ContactList() {
           {/* Sort indicator pills */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1 }}>
             <span style={{ fontSize: theme.fontSize.xs, color: theme.text.muted }}>Sort by</span>
-            {sorts.map((sort, index) => {
+            {sorts.map((sort) => {
               const [isSortOpen, setIsSortOpen] = useState(false)
               const sortRef = useRef<HTMLDivElement>(null)
               
@@ -1009,7 +995,7 @@ export function ContactList() {
                         return (
                           <>
                             {/* Ungrouped filters */}
-                            {ungroupedFilters.map((filter, idx) => {
+                            {ungroupedFilters.map((filter) => {
                               const isFirst = globalIndex === 0
                               globalIndex++
                               return renderFilterRow(filter, isFirst ? 'Where' : 'and', false)
