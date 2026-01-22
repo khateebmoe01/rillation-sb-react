@@ -210,6 +210,7 @@ export function CRMDashboard() {
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fit, minmax(380px, 1fr))',
           gap: 20,
+          alignItems: 'stretch',
         }}
       >
         {/* Pipeline Breakdown */}
@@ -217,10 +218,11 @@ export function CRMDashboard() {
           initial={initialLoadComplete ? false : { opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: animationDuration, delay: getDelay(0.35) }}
+          style={{ display: 'flex', flexDirection: 'column', height: '100%' }}
         >
-          <Card padding="lg" hover>
+          <Card padding="lg" hover style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
             <CardHeader title="Pipeline by Stage" subtitle="Active opportunities" />
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, flex: 1 }}>
               {stageBreakdown.map(({ stage, count, value }, index) => {
                 const info = DEAL_STAGE_INFO[stage]
                 const maxValue = Math.max(...stageBreakdown.map(s => s.value))
@@ -309,20 +311,21 @@ export function CRMDashboard() {
           initial={initialLoadComplete ? false : { opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: animationDuration, delay: getDelay(0.4) }}
+          style={{ display: 'flex', flexDirection: 'column', height: '100%' }}
         >
-          <Card padding="lg" hover>
+          <Card padding="lg" hover style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
             <CardHeader title="Recent Deals" subtitle="Latest opportunities" />
             {recentDeals.length === 0 ? (
               <motion.p
                 initial={initialLoadComplete ? false : { opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: getDelay(0.5) }}
-                style={{ color: theme.text.muted, fontSize: theme.fontSize.sm }}
+                style={{ color: theme.text.muted, fontSize: theme.fontSize.sm, flex: 1 }}
               >
                 No deals yet
               </motion.p>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12, flex: 1 }}>
                 <AnimatePresence>
                   {recentDeals.map((deal, index) => {
                     const info = DEAL_STAGE_INFO[deal.stage]
@@ -395,8 +398,9 @@ export function CRMDashboard() {
           initial={initialLoadComplete ? false : { opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: animationDuration, delay: getDelay(0.45) }}
+          style={{ display: 'flex', flexDirection: 'column', height: '100%' }}
         >
-          <Card padding="lg" hover>
+          <Card padding="lg" hover style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
             <CardHeader 
               title="Upcoming Tasks" 
               subtitle={stats.overdueTasks > 0 ? `${stats.overdueTasks} overdue` : 'Stay on track'}
@@ -406,12 +410,12 @@ export function CRMDashboard() {
                 initial={initialLoadComplete ? false : { opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: getDelay(0.5) }}
-                style={{ color: theme.text.muted, fontSize: theme.fontSize.sm }}
+                style={{ color: theme.text.muted, fontSize: theme.fontSize.sm, flex: 1 }}
               >
                 No upcoming tasks
               </motion.p>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flex: 1 }}>
                 <AnimatePresence>
                   {upcomingTasks.map((task, index) => {
                     const now = new Date()

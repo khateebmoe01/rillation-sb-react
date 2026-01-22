@@ -32,8 +32,91 @@ export function FilterSelect({
   const { isOpen, toggle, close } = useDropdown(dropdownId)
   const containerRef = useRef<HTMLDivElement>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
+  const [searchTerm, setSearchTerm] = useState('')
+  const [highlightedIndex, setHighlightedIndex] = useState(-1)
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   
   const selectedOption = options.find(o => o.value === value)
+  
+  // Filter options based on search term
+  const filteredOptions = searchTerm
+    ? options.filter(o => o.label.toLowerCase().startsWith(searchTerm.toLowerCase()))
+    : options
+  
+  // Reset search when dropdown closes
+  useEffect(() => {
+    if (!isOpen) {
+      setSearchTerm('')
+      setHighlightedIndex(-1)
+    }
+  }, [isOpen])
+  
+  // Handle keyboard navigation and search
+  useEffect(() => {
+    if (!isOpen) return
+    
+    function handleKeyDown(e: KeyboardEvent) {
+      // Arrow key navigation
+      if (e.key === 'ArrowDown') {
+        e.preventDefault()
+        setHighlightedIndex(prev => 
+          prev < filteredOptions.length - 1 ? prev + 1 : 0
+        )
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault()
+        setHighlightedIndex(prev => 
+          prev > 0 ? prev - 1 : filteredOptions.length - 1
+        )
+      } else if (e.key === 'Enter' && highlightedIndex >= 0) {
+        e.preventDefault()
+        const option = filteredOptions[highlightedIndex]
+        if (option) {
+          onChange(option.value)
+          close()
+        }
+      } else if (e.key === 'Escape') {
+        close()
+      } else if (e.key.length === 1 && !e.ctrlKey && !e.metaKey) {
+        // Type-ahead search: accumulate typed characters
+        e.preventDefault()
+        
+        // Clear previous timeout
+        if (searchTimeoutRef.current) {
+          clearTimeout(searchTimeoutRef.current)
+        }
+        
+        // Add character to search term
+        const newSearchTerm = searchTerm + e.key
+        setSearchTerm(newSearchTerm)
+        
+        // Find first matching option and highlight it
+        const matchIndex = options.findIndex(o => 
+          o.label.toLowerCase().startsWith(newSearchTerm.toLowerCase())
+        )
+        if (matchIndex >= 0) {
+          setHighlightedIndex(matchIndex)
+          // Scroll the highlighted option into view
+          const optionElements = dropdownRef.current?.querySelectorAll('button')
+          if (optionElements && optionElements[matchIndex]) {
+            optionElements[matchIndex].scrollIntoView({ block: 'nearest' })
+          }
+        }
+        
+        // Clear search term after 1 second of inactivity
+        searchTimeoutRef.current = setTimeout(() => {
+          setSearchTerm('')
+        }, 1000)
+      }
+    }
+    
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown)
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current)
+      }
+    }
+  }, [isOpen, highlightedIndex, filteredOptions, options, searchTerm, onChange, close])
   
   // Calculate dropdown position
   const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0 })
@@ -105,8 +188,21 @@ export function FilterSelect({
             minWidth: minWidth,
           }}
         >
-          {options.map((option) => {
+          {/* Search indicator */}
+          {searchTerm && (
+            <div style={{
+              padding: '6px 12px',
+              fontSize: 11,
+              color: '#6b7280',
+              borderBottom: '1px solid #e5e7eb',
+              backgroundColor: '#f9fafb',
+            }}>
+              Searching: <strong>{searchTerm}</strong>
+            </div>
+          )}
+          {options.map((option, index) => {
             const isSelected = option.value === value
+            const isHighlighted = index === highlightedIndex
             return (
               <button
                 key={option.value}
@@ -115,6 +211,7 @@ export function FilterSelect({
                   onChange(option.value)
                   close()
                 }}
+                onMouseEnter={() => setHighlightedIndex(index)}
                 style={{
                   width: '100%',
                   padding: '8px 12px',
@@ -123,20 +220,12 @@ export function FilterSelect({
                   justifyContent: 'space-between',
                   gap: 8,
                   fontSize: 13,
-                  backgroundColor: isSelected ? '#eff6ff' : 'transparent',
+                  backgroundColor: isHighlighted ? '#e0f2fe' : isSelected ? '#eff6ff' : 'transparent',
                   color: isSelected ? '#3b82f6' : '#111827',
                   border: 'none',
                   cursor: 'pointer',
                   textAlign: 'left',
                   transition: 'background-color 0.1s ease',
-                }}
-                onMouseEnter={(e) => {
-                  if (!isSelected) {
-                    e.currentTarget.style.backgroundColor = '#f3f4f6'
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = isSelected ? '#eff6ff' : 'transparent'
                 }}
               >
                 <span>{option.label}</span>

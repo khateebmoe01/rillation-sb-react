@@ -287,7 +287,7 @@ export function ContactModal({ isOpen, onClose, contact }: ContactModalProps) {
       <div style={{ minWidth: 0, flex: 1 }}>
         <h2
           style={{
-            fontSize: theme.fontSize.xl,
+            fontSize: '22px',
             fontWeight: theme.fontWeight.semibold,
             color: theme.text.primary,
             margin: 0,
@@ -301,7 +301,7 @@ export function ContactModal({ isOpen, onClose, contact }: ContactModalProps) {
         {(formData.job_title || formData.company) && (
           <p
             style={{
-              fontSize: theme.fontSize.sm,
+              fontSize: '16px',
               color: theme.text.secondary,
               margin: '4px 0 0 0',
               overflow: 'hidden',
@@ -325,7 +325,7 @@ export function ContactModal({ isOpen, onClose, contact }: ContactModalProps) {
       header={panelHeader}
       width={760}
     >
-      <form onSubmit={onFormSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <form onSubmit={onFormSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
         {/* Contact Info Section */}
         <CollapsibleSection
           icon={<User size={18} />}
@@ -880,8 +880,8 @@ function CollapsibleSection({ icon, title, isOpen, onToggle, children, isSubSect
           gap: 10,
           width: '100%',
           padding: isSubSection ? '8px 0' : '12px 0',
-          marginTop: isSubSection ? 12 : 16,
-          marginBottom: isOpen ? 16 : 0,
+          marginTop: isSubSection ? 12 : 32,
+          marginBottom: isOpen ? 32 : 0,
           paddingBottom: isOpen ? 12 : 0,
           borderBottom: isOpen ? `1px solid ${theme.border.subtle}` : 'none',
           background: 'none',
@@ -900,7 +900,7 @@ function CollapsibleSection({ icon, title, isOpen, onToggle, children, isSubSect
         <span style={{ color: theme.accent.primary, display: 'flex', alignItems: 'center' }}>{icon}</span>
         <h3
           style={{
-            fontSize: isSubSection ? theme.fontSize.sm : theme.fontSize.base,
+            fontSize: isSubSection ? theme.fontSize.sm : '19px',
             fontWeight: theme.fontWeight.semibold,
             color: isSubSection ? theme.text.secondary : theme.text.primary,
             margin: 0,

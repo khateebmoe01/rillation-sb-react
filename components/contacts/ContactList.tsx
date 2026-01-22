@@ -1,11 +1,13 @@
 import { useState, useMemo, useRef, useEffect, useId } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Users, Plus, Mail, Phone, Building2, Linkedin, ChevronDown, Check, ArrowUpDown, Filter, X, SortAsc, Trash2, GripVertical, User, Briefcase, Tag, Clock, Factory, MapPin, DollarSign, Calendar, AtSign, Hash, TrendingUp } from 'lucide-react'
+import { Users, Plus, Mail, Phone, Building2, Linkedin, ChevronDown, Check, Filter, X, Trash2, GripVertical, User, Briefcase, Tag, Clock, Factory, MapPin, DollarSign, Calendar, AtSign, Hash, TrendingUp } from 'lucide-react'
 import { theme } from '../../config/theme'
 import { useCRM } from '../../context/CRMContext'
 import { useDropdown } from '../../../../contexts/DropdownContext'
-import { Card, Avatar, Button, SearchInput, EmptyState, LoadingSkeleton, StageDropdown, FilterSelect } from '../shared'
+import { Card, Avatar, SearchInput, EmptyState, LoadingSkeleton, StageDropdown, FilterSelect } from '../shared'
 import { ContactModal } from './ContactModal'
+import { SortDropdown, type SortRule } from './SortDropdown'
 import type { Contact } from '../../types'
 
 // Filter field definitions with icons - matching Contact type from engaged_leads
@@ -93,162 +95,18 @@ const SELECT_OPERATORS = [
   { value: 'is_not', label: 'is not' },
 ] as const
 
-// Sort field definitions
-const SORT_FIELDS = [
-  { key: 'last_activity', label: 'Last Activity' },
-  { key: 'epv', label: 'EPV' },
-  { key: 'name', label: 'Name' },
-  { key: 'company', label: 'Company' },
-  { key: 'created_at', label: 'Created Date' },
-] as const
-
 interface StackedFilter {
   id: string
   field: string
   operator: string
   value: string
+  conjunction: 'and' | 'or' // How this filter connects to the previous one
   groupId?: string // Optional group ID for OR conditions
 }
 
 interface FilterGroup {
   id: string
   type: 'and' | 'or'
-}
-
-interface StackedSort {
-  id: string
-  field: string
-  direction: 'asc' | 'desc'
-}
-
-
-// Sort Dropdown Component
-interface SortDropdownProps {
-  sort: StackedSort
-  onUpdateSort: (field: string) => void
-}
-
-function SortDropdown({ sort, onUpdateSort }: SortDropdownProps) {
-  const [isSortOpen, setIsSortOpen] = useState(false)
-  const sortRef = useRef<HTMLDivElement>(null)
-  
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (sortRef.current && !sortRef.current.contains(event.target as Node)) {
-        setIsSortOpen(false)
-      }
-    }
-    if (isSortOpen) {
-      document.addEventListener('mousedown', handleClickOutside)
-      return () => document.removeEventListener('mousedown', handleClickOutside)
-    }
-  }, [isSortOpen])
-  
-  const selectedSortField = SORT_FIELDS.find(f => f.key === sort.field)
-  
-  return (
-    <div
-      ref={sortRef}
-      style={{
-        position: 'relative',
-        display: 'flex',
-        alignItems: 'center',
-        gap: 4,
-        padding: '4px 8px',
-        backgroundColor: theme.bg.elevated,
-        borderRadius: theme.radius.md,
-        border: `1px solid ${theme.border.default}`,
-      }}
-    >
-      <button
-        onClick={() => setIsSortOpen(!isSortOpen)}
-        style={{
-          padding: 0,
-          fontSize: theme.fontSize.sm,
-          fontWeight: theme.fontWeight.medium,
-          backgroundColor: 'transparent',
-          color: theme.text.primary,
-          border: 'none',
-          outline: 'none',
-          cursor: 'pointer',
-          paddingRight: 12,
-          display: 'flex',
-          alignItems: 'center',
-          gap: 4,
-        }}
-      >
-        <span>{selectedSortField?.label}</span>
-        <motion.div
-          animate={{ rotate: isSortOpen ? 180 : 0 }}
-          transition={{ duration: 0.15 }}
-        >
-          <ChevronDown size={12} style={{ color: theme.text.muted }} />
-        </motion.div>
-      </button>
-      
-      <AnimatePresence>
-        {isSortOpen && (
-          <motion.div
-            initial={{ opacity: 0, y: -8, scale: 0.96 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -8, scale: 0.96 }}
-            transition={{ duration: 0.15 }}
-            style={{
-              position: 'absolute',
-              top: '100%',
-              left: 0,
-              marginTop: 4,
-              backgroundColor: theme.bg.elevated,
-              border: `1px solid ${theme.border.default}`,
-              borderRadius: theme.radius.lg,
-              boxShadow: theme.shadow.dropdown,
-              zIndex: 10000,
-              overflow: 'hidden',
-              minWidth: 150,
-            }}
-          >
-            {SORT_FIELDS.map(field => {
-              const isSelected = field.key === sort.field
-              return (
-                <button
-                  key={field.key}
-                  onClick={() => {
-                    onUpdateSort(field.key)
-                    setIsSortOpen(false)
-                  }}
-                  style={{
-                    width: '100%',
-                    padding: '8px 12px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    fontSize: theme.fontSize.sm,
-                    backgroundColor: isSelected ? theme.accent.primaryBg : 'transparent',
-                    color: isSelected ? theme.accent.primary : theme.text.primary,
-                    border: 'none',
-                    cursor: 'pointer',
-                    textAlign: 'left',
-                    transition: `background-color ${theme.transition.fast}`,
-                  }}
-                  onMouseEnter={(e) => {
-                    if (!isSelected) {
-                      e.currentTarget.style.backgroundColor = theme.bg.hover
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = isSelected ? theme.accent.primaryBg : 'transparent'
-                  }}
-                >
-                  <span>{field.label}</span>
-                  {isSelected && <Check size={14} style={{ color: theme.accent.primary }} />}
-                </button>
-              )
-            })}
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  )
 }
 
 // Format relative time like "2d ago" or "Jan 21"
@@ -277,21 +135,36 @@ function formatRelativeTime(dateStr: string | null | undefined): string {
 
 export function ContactList() {
   const { contacts, loading, updateContact } = useCRM()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [searchQuery, setSearchQuery] = useState('')
   const [debouncedQuery, setDebouncedQuery] = useState('')
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isCreating, setIsCreating] = useState(false)
   
-  // Stacked filter and sort states
+  // Handle contactId URL parameter to open specific contact
+  useEffect(() => {
+    const contactId = searchParams.get('contactId')
+    if (contactId && contacts.length > 0) {
+      const contact = contacts.find(c => c.id === contactId)
+      if (contact) {
+        setSelectedContact(contact)
+        setIsModalOpen(true)
+        // Remove the parameter from URL
+        searchParams.delete('contactId')
+        setSearchParams(searchParams, { replace: true })
+      }
+    }
+  }, [searchParams, setSearchParams, contacts])
+  
+  // Stacked filter states
   const [filters, setFilters] = useState<StackedFilter[]>([])
   const [filterGroups, setFilterGroups] = useState<FilterGroup[]>([])
-  const [sorts, setSorts] = useState<StackedSort[]>([
-    { id: 'default', field: 'last_activity', direction: 'desc' }
-  ])
   const [showFilterMenu, setShowFilterMenu] = useState(false)
-  const [showSortMenu, setShowSortMenu] = useState(false)
   const filterPopoverRef = useRef<HTMLDivElement>(null)
+  
+  // Sort state - Airtable-style multi-sort
+  const [sorts, setSorts] = useState<SortRule[]>([])
   
   // Close filter popover when clicking outside
   useEffect(() => {
@@ -310,10 +183,26 @@ export function ContactList() {
     const fieldDef = FILTER_FIELDS.find(f => f.key === fieldKey)
     const defaultOperator = fieldDef?.type === 'select' ? 'has_any_of' : 'contains'
     const defaultValue = ''
-    setFilters([...filters, { id: Date.now().toString(), field: fieldKey, operator: defaultOperator, value: defaultValue, groupId }])
+    setFilters([...filters, { 
+      id: Date.now().toString(), 
+      field: fieldKey, 
+      operator: defaultOperator, 
+      value: defaultValue, 
+      conjunction: 'and', // Default to AND
+      groupId 
+    }])
     if (!keepOpen) {
       setShowFilterMenu(false)
     }
+  }
+  
+  // Toggle conjunction between 'and' and 'or'
+  const toggleConjunction = (filterId: string) => {
+    setFilters(filters.map(f => 
+      f.id === filterId 
+        ? { ...f, conjunction: f.conjunction === 'and' ? 'or' : 'and' }
+        : f
+    ))
   }
   
   // Add a new condition group (OR group)
@@ -358,20 +247,6 @@ export function ContactList() {
   const removeFilterGroup = (groupId: string) => {
     setFilters(filters.filter(f => f.groupId !== groupId))
     setFilterGroups(filterGroups.filter(g => g.id !== groupId))
-  }
-  
-  // Update a sort
-  const updateSort = (id: string, field?: string, direction?: 'asc' | 'desc') => {
-    setSorts(sorts.map(s => s.id === id ? { 
-      ...s, 
-      field: field ?? s.field, 
-      direction: direction ?? s.direction 
-    } : s))
-  }
-  
-  // Toggle sort direction
-  const toggleSortDirection = (id: string) => {
-    setSorts(sorts.map(s => s.id === id ? { ...s, direction: s.direction === 'asc' ? 'desc' : 'asc' } : s))
   }
   
   // Debounce search query for smooth filtering (50ms)
@@ -528,10 +403,27 @@ export function ContactList() {
     const ungroupedFilters = filters.filter(f => !f.groupId)
     const groupedFilters = filters.filter(f => f.groupId)
     
-    // Apply ungrouped filters (AND logic)
-    ungroupedFilters.forEach(filter => {
-      result = result.filter(c => applyFilter(c, filter))
-    })
+    // Apply ungrouped filters with AND/OR logic based on conjunction
+    if (ungroupedFilters.length > 0) {
+      result = result.filter(contact => {
+        // First filter always applies (no conjunction for the first one)
+        let currentResult = applyFilter(contact, ungroupedFilters[0])
+        
+        // Apply subsequent filters based on their conjunction
+        for (let i = 1; i < ungroupedFilters.length; i++) {
+          const filter = ungroupedFilters[i]
+          const filterResult = applyFilter(contact, filter)
+          
+          if (filter.conjunction === 'or') {
+            currentResult = currentResult || filterResult
+          } else {
+            currentResult = currentResult && filterResult
+          }
+        }
+        
+        return currentResult
+      })
+    }
     
     // Apply grouped filters (OR logic within groups, AND between groups)
     filterGroups.forEach(group => {
@@ -544,38 +436,55 @@ export function ContactList() {
       })
     })
     
-    // Apply stacked sorts (in order)
-    result.sort((a, b) => {
-      for (const sort of sorts) {
-        let comparison = 0
-        
-        switch (sort.field) {
-          case 'last_activity':
-            comparison = (new Date(a.updated_at || 0).getTime()) - (new Date(b.updated_at || 0).getTime())
-            break
-          case 'epv':
-            comparison = (a.epv || 0) - (b.epv || 0)
-            break
-          case 'name':
-            comparison = (a.full_name || a.first_name || '').localeCompare(b.full_name || b.first_name || '')
-            break
-          case 'company':
-            comparison = (a.company || '').localeCompare(b.company || '')
-            break
-          case 'created_at':
-            comparison = (new Date(a.created_at || 0).getTime()) - (new Date(b.created_at || 0).getTime())
-            break
+    // Apply multi-sort (priority = array order, index 0 = highest)
+    if (sorts.length > 0) {
+      result.sort((a, b) => {
+        for (const sort of sorts) {
+          let comparison = 0
+          
+          switch (sort.fieldKey) {
+            case 'last_activity':
+              comparison = (new Date(a.updated_at || 0).getTime()) - (new Date(b.updated_at || 0).getTime())
+              break
+            case 'epv':
+              comparison = (a.epv || 0) - (b.epv || 0)
+              break
+            case 'name':
+              comparison = (a.full_name || a.first_name || '').localeCompare(b.full_name || b.first_name || '')
+              break
+            case 'company':
+              comparison = (a.company || '').localeCompare(b.company || '')
+              break
+            case 'created_at':
+              comparison = (new Date(a.created_at || 0).getTime()) - (new Date(b.created_at || 0).getTime())
+              break
+            case 'stage':
+              comparison = (a.stage || '').localeCompare(b.stage || '')
+              break
+            case 'next_touchpoint':
+              comparison = (new Date(a.next_touch || 0).getTime()) - (new Date(b.next_touch || 0).getTime())
+              break
+            case 'meeting_date':
+              comparison = (new Date(a.meeting_date || 0).getTime()) - (new Date(b.meeting_date || 0).getTime())
+              break
+          }
+          
+          if (comparison !== 0) {
+            return sort.direction === 'asc' ? comparison : -comparison
+          }
         }
-        
-        if (comparison !== 0) {
-          return sort.direction === 'asc' ? comparison : -comparison
-        }
-      }
-      return 0
-    })
+        return 0
+      })
+    } else {
+      // Default sort by last activity (desc) when no sorts are active
+      result.sort((a, b) => {
+        const comparison = (new Date(a.updated_at || 0).getTime()) - (new Date(b.updated_at || 0).getTime())
+        return -comparison
+      })
+    }
     
     return result
-  }, [contacts, debouncedQuery, filters, sorts])
+  }, [contacts, debouncedQuery, filters, filterGroups, sorts])
   
   // Single-click to open or switch contact in side panel
   const handleOpenContact = (contact: Contact) => {
@@ -668,38 +577,29 @@ export function ContactList() {
           gap: 16,
         }}
       >
-        <div>
-          <h1
-            style={{
-              fontSize: theme.fontSize['2xl'],
-              fontWeight: theme.fontWeight.bold,
-              color: theme.text.primary,
-              margin: 0,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 12,
-            }}
-          >
-            <Users size={24} style={{ color: theme.entity.contact }} />
-            Contacts
-          </h1>
-          <p
-            style={{
-              fontSize: theme.fontSize.sm,
-              color: theme.text.muted,
-              margin: '4px 0 0 0',
-            }}
-          >
-            {filteredContacts.length} of {contacts.length} {contacts.length === 1 ? 'lead' : 'leads'}
-          </p>
-        </div>
-        
-        <Button
-          icon={<Plus size={16} />}
-          onClick={handleCreateContact}
+        <h1
+          style={{
+            fontSize: theme.fontSize['2xl'],
+            fontWeight: theme.fontWeight.bold,
+            color: theme.text.primary,
+            margin: 0,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 12,
+          }}
         >
-          Add Lead
-        </Button>
+          <Users size={24} style={{ color: theme.entity.contact }} />
+          Contacts
+        </h1>
+        <p
+          style={{
+            fontSize: '1.02rem', // 20% larger than sm (0.85rem)
+            color: theme.text.muted,
+            margin: 0,
+          }}
+        >
+          {filteredContacts.length} of {contacts.length} {contacts.length === 1 ? 'lead' : 'leads'}
+        </p>
       </div>
       
       {/* Search & Filter/Sort Bar */}
@@ -715,7 +615,7 @@ export function ContactList() {
         }}
       >
         {/* Top row: Search + Sort indicator + Filter/Sort buttons */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
           <SearchInput
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -724,61 +624,40 @@ export function ContactList() {
             style={{ width: 200, flexShrink: 0 }}
           />
           
-          {/* Sort indicator pills */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1 }}>
-            <span style={{ fontSize: theme.fontSize.xs, color: theme.text.muted }}>Sort by</span>
-            {sorts.map((sort) => (
-              <SortDropdown
-                key={sort.id}
-                sort={sort}
-                onUpdateSort={(field) => updateSort(sort.id, field)}
-              />
-            ))}
-            <button
-              onClick={() => toggleSortDirection(sorts[0]?.id)}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 4,
-                padding: '4px 8px',
-                fontSize: theme.fontSize.sm,
-                backgroundColor: theme.bg.elevated,
-                color: theme.text.secondary,
-                border: `1px solid ${theme.border.default}`,
-                borderRadius: theme.radius.md,
-                cursor: 'pointer',
-                transition: `all ${theme.transition.fast}`,
-              }}
-            >
-              <ArrowUpDown size={12} />
-              {sorts[0]?.direction === 'asc' ? 'Ascending' : 'Descending'}
-            </button>
+          {/* Sort Dropdown */}
+          <div style={{ flex: 1 }}>
+            <SortDropdown
+              sorts={sorts}
+              onUpdateSorts={setSorts}
+            />
           </div>
           
           {/* Filter Popover Button */}
           <div style={{ position: 'relative' }} ref={filterPopoverRef}>
             <button
-              onClick={() => { setShowFilterMenu(!showFilterMenu); setShowSortMenu(false) }}
+              onClick={() => setShowFilterMenu(!showFilterMenu)}
               style={{
                 display: 'flex',
                 alignItems: 'center',
                 gap: 6,
-                padding: '8px 12px',
+                padding: '8px 16px',
                 fontSize: theme.fontSize.sm,
                 fontWeight: theme.fontWeight.medium,
-                color: filters.length > 0 ? theme.accent.primary : theme.text.secondary,
-                backgroundColor: filters.length > 0 ? theme.accent.primaryBg : 'transparent',
-                border: `1px solid ${filters.length > 0 ? theme.accent.primary : theme.border.default}`,
+                color: '#fff',
+                backgroundColor: theme.accent.primary,
+                border: `1px solid ${theme.accent.primary}`,
                 borderRadius: theme.radius.md,
                 cursor: 'pointer',
                 transition: `all ${theme.transition.fast}`,
               }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = theme.accent.primaryHover}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = theme.accent.primary}
             >
               <Filter size={14} />
               <span>Filter</span>
               {filters.length > 0 && (
                 <span style={{ 
-                  backgroundColor: theme.accent.primary, 
+                  backgroundColor: 'rgba(255, 255, 255, 0.25)', 
                   color: '#fff', 
                   borderRadius: theme.radius.full,
                   padding: '1px 6px',
@@ -790,7 +669,7 @@ export function ContactList() {
               )}
             </button>
             
-            {/* Filter Popover - Light themed like reference */}
+            {/* Filter Popover - Dark themed */}
             <AnimatePresence>
               {showFilterMenu && (
                 <motion.div
@@ -804,10 +683,10 @@ export function ContactList() {
                     right: 0,
                     marginTop: 8,
                     minWidth: 580,
-                    backgroundColor: '#ffffff',
-                    border: '1px solid #e5e7eb',
+                    backgroundColor: theme.bg.elevated,
+                    border: `1px solid ${theme.border.default}`,
                     borderRadius: 12,
-                    boxShadow: '0 10px 40px rgba(0,0,0,0.12), 0 0 0 1px rgba(0,0,0,0.05)',
+                    boxShadow: theme.shadow.dropdown,
                     zIndex: 9999,
                     overflow: 'hidden',
                   }}
@@ -815,7 +694,7 @@ export function ContactList() {
                   {/* Header */}
                   <div style={{ 
                     padding: '12px 16px', 
-                    borderBottom: '1px solid #e5e7eb',
+                    borderBottom: `1px solid ${theme.border.subtle}`,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
@@ -823,7 +702,7 @@ export function ContactList() {
                     <span style={{ 
                       fontSize: 14, 
                       fontWeight: 600, 
-                      color: '#111827',
+                      color: theme.text.primary,
                     }}>
                       Filter
                     </span>
@@ -835,14 +714,14 @@ export function ContactList() {
                         }}
                         style={{
                           fontSize: 12,
-                          color: '#6b7280',
+                          color: theme.text.muted,
                           backgroundColor: 'transparent',
                           border: 'none',
                           cursor: 'pointer',
                           padding: '4px 8px',
                           borderRadius: 4,
                         }}
-                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f3f4f6'}
+                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = theme.bg.hover}
                         onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                       >
                         Clear all
@@ -856,7 +735,7 @@ export function ContactList() {
                       <div style={{ 
                         padding: '16px 0', 
                         textAlign: 'center', 
-                        color: '#9ca3af',
+                        color: theme.text.muted,
                         fontSize: 13,
                       }}>
                         No filters applied
@@ -870,10 +749,8 @@ export function ContactList() {
                           filters: filters.filter(f => f.groupId === group.id)
                         })).filter(g => g.filters.length > 0)
                         
-                        let globalIndex = 0
-                        
                         // Helper function to render a filter row
-                        const renderFilterRow = (filter: StackedFilter, prefix: string | undefined, isInGroup: boolean) => {
+                        const renderFilterRow = (filter: StackedFilter, isFirst: boolean, isInGroup: boolean) => {
                           const fieldDef = FILTER_FIELDS.find(f => f.key === filter.field)
                           const FieldIcon = fieldDef?.icon || Building2
                           const operators = fieldDef?.type === 'select' ? SELECT_OPERATORS : TEXT_OPERATORS
@@ -893,18 +770,37 @@ export function ContactList() {
                                 paddingLeft: isInGroup ? 48 : 0,
                               }}
                             >
-                              {/* Prefix: Where / and / or */}
-                              {prefix && (
+                              {/* Prefix: Where / and / or - clickable to toggle */}
+                              {isFirst ? (
                                 <span style={{ 
                                   fontSize: 13, 
-                                  color: '#6b7280', 
+                                  color: theme.text.muted, 
                                   width: 48,
                                   flexShrink: 0,
                                 }}>
-                                  {prefix}
+                                  Where
                                 </span>
+                              ) : (
+                                <button
+                                  onClick={() => toggleConjunction(filter.id)}
+                                  style={{ 
+                                    fontSize: 13, 
+                                    color: filter.conjunction === 'or' ? theme.accent.primary : theme.text.muted, 
+                                    width: 48,
+                                    flexShrink: 0,
+                                    background: 'none',
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                    padding: 0,
+                                    textAlign: 'left',
+                                    fontWeight: filter.conjunction === 'or' ? 600 : 400,
+                                  }}
+                                  title="Click to toggle between 'and' / 'or'"
+                                >
+                                  {filter.conjunction}
+                                </button>
                               )}
-                              {!prefix && isInGroup && (
+                              {!isFirst && isInGroup && (
                                 <span style={{ width: 48, flexShrink: 0 }} />
                               )}
                               
@@ -950,9 +846,9 @@ export function ContactList() {
                                       flex: 1,
                                       padding: '6px 10px',
                                       fontSize: 13,
-                                      color: '#111827',
-                                      backgroundColor: '#f9fafb',
-                                      border: '1px solid #e5e7eb',
+                                      color: theme.text.primary,
+                                      backgroundColor: theme.bg.surface,
+                                      border: `1px solid ${theme.border.default}`,
                                       borderRadius: 6,
                                       outline: 'none',
                                       minWidth: 120,
@@ -974,16 +870,16 @@ export function ContactList() {
                                     backgroundColor: 'transparent',
                                     border: 'none',
                                     borderRadius: 4,
-                                    color: '#9ca3af',
+                                    color: theme.text.muted,
                                     cursor: 'pointer',
                                   }}
                                   onMouseEnter={(e) => {
-                                    e.currentTarget.style.backgroundColor = '#fef2f2'
+                                    e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.15)'
                                     e.currentTarget.style.color = '#ef4444'
                                   }}
                                   onMouseLeave={(e) => {
                                     e.currentTarget.style.backgroundColor = 'transparent'
-                                    e.currentTarget.style.color = '#9ca3af'
+                                    e.currentTarget.style.color = theme.text.muted
                                   }}
                                 >
                                   <Trash2 size={14} />
@@ -1009,10 +905,9 @@ export function ContactList() {
                         return (
                           <>
                             {/* Ungrouped filters */}
-                            {ungroupedFilters.map((filter) => {
-                              const isFirst = globalIndex === 0
-                              globalIndex++
-                              return renderFilterRow(filter, isFirst ? 'Where' : 'and', false)
+                            {ungroupedFilters.map((filter, idx) => {
+                              const isFirst = idx === 0
+                              return renderFilterRow(filter, isFirst, false)
                             })}
                             
                             {/* Grouped filters */}
@@ -1030,7 +925,7 @@ export function ContactList() {
                                   }}>
                                     <span style={{ 
                                       fontSize: 13, 
-                                      color: '#6b7280',
+                                      color: theme.text.muted,
                                       fontWeight: 500,
                                     }}>
                                       {isFirstGroup ? 'Where' : 'and'} (
@@ -1046,24 +941,24 @@ export function ContactList() {
                                         backgroundColor: 'transparent',
                                         border: 'none',
                                         borderRadius: 4,
-                                        color: '#9ca3af',
+                                        color: theme.text.muted,
                                         cursor: 'pointer',
                                         padding: 0,
                                       }}
                                       onMouseEnter={(e) => {
-                                        e.currentTarget.style.backgroundColor = '#fef2f2'
+                                        e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.15)'
                                         e.currentTarget.style.color = '#ef4444'
                                       }}
                                       onMouseLeave={(e) => {
                                         e.currentTarget.style.backgroundColor = 'transparent'
-                                        e.currentTarget.style.color = '#9ca3af'
+                                        e.currentTarget.style.color = theme.text.muted
                                       }}
                                     >
                                       <X size={12} />
                                     </button>
                                     <span style={{ 
                                       fontSize: 13, 
-                                      color: '#6b7280',
+                                      color: theme.text.muted,
                                       fontWeight: 500,
                                     }}>
                                       )
@@ -1072,7 +967,7 @@ export function ContactList() {
                                   
                                   {/* Group filters */}
                                   {groupFilters.map((filter, idx) => {
-                                    return renderFilterRow(filter, idx === 0 ? undefined : 'or', true)
+                                    return renderFilterRow(filter, idx === 0, true)
                                   })}
                                 </div>
                               )
@@ -1086,7 +981,7 @@ export function ContactList() {
                   {/* Footer: Add condition buttons */}
                   <div style={{ 
                     padding: '12px 16px', 
-                    borderTop: '1px solid #e5e7eb',
+                    borderTop: `1px solid ${theme.border.subtle}`,
                     display: 'flex',
                     alignItems: 'center',
                     gap: 12,
@@ -1100,13 +995,13 @@ export function ContactList() {
                         padding: '6px 10px',
                         fontSize: 13,
                         fontWeight: 500,
-                        color: '#3b82f6',
+                        color: theme.accent.primary,
                         backgroundColor: 'transparent',
-                        border: '1px solid #e5e7eb',
+                        border: `1px solid ${theme.border.default}`,
                         borderRadius: 6,
                         cursor: 'pointer',
                       }}
-                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#eff6ff'}
+                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = theme.accent.primaryBg}
                       onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                     >
                       <Plus size={14} />
@@ -1121,12 +1016,12 @@ export function ContactList() {
                         padding: '6px 10px',
                         fontSize: 13,
                         fontWeight: 500,
-                        color: '#6b7280',
+                        color: theme.text.muted,
                         backgroundColor: 'transparent',
                         border: 'none',
                         cursor: 'pointer',
                       }}
-                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f3f4f6'}
+                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = theme.bg.hover}
                       onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                     >
                       <Plus size={14} />
@@ -1134,7 +1029,7 @@ export function ContactList() {
                       <span style={{ 
                         fontSize: 11, 
                         padding: '1px 4px', 
-                        backgroundColor: '#f3f4f6', 
+                        backgroundColor: theme.bg.hover, 
                         borderRadius: 4,
                         marginLeft: 4,
                       }}>
@@ -1147,27 +1042,30 @@ export function ContactList() {
             </AnimatePresence>
           </div>
           
-          {/* Sort Button */}
+          {/* Add Lead Button */}
           <button
-            onClick={() => { setShowSortMenu(!showSortMenu); setShowFilterMenu(false) }}
+            onClick={handleCreateContact}
             style={{
               display: 'flex',
               alignItems: 'center',
               gap: 6,
-              padding: '8px 12px',
+              padding: '8px 16px',
               fontSize: theme.fontSize.sm,
               fontWeight: theme.fontWeight.medium,
-              color: theme.text.secondary,
-              backgroundColor: 'transparent',
-              border: `1px solid ${theme.border.default}`,
+              color: '#fff',
+              backgroundColor: theme.accent.primary,
+              border: `1px solid ${theme.accent.primary}`,
               borderRadius: theme.radius.md,
               cursor: 'pointer',
               transition: `all ${theme.transition.fast}`,
             }}
+            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = theme.accent.primaryHover}
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = theme.accent.primary}
           >
-            <SortAsc size={14} />
-            <span>Sort</span>
+            <Plus size={14} />
+            <span>Add Lead</span>
           </button>
+          
         </div>
       </div>
       

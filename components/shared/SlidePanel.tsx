@@ -1,4 +1,4 @@
-import { ReactNode, useEffect } from 'react'
+import { ReactNode, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X } from 'lucide-react'
@@ -24,6 +24,8 @@ export function SlidePanel({
   showClose = true,
   header,
 }: SlidePanelProps) {
+  const panelRef = useRef<HTMLDivElement>(null)
+  
   // Handle escape key
   useEffect(() => {
     function handleEscape(e: KeyboardEvent) {
@@ -37,6 +39,37 @@ export function SlidePanel({
     }
     return () => document.removeEventListener('keydown', handleEscape)
   }, [isOpen, onClose])
+  
+  // Handle click outside - close when clicking on empty areas
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      const target = e.target as HTMLElement
+      
+      // Don't close if clicking inside the panel
+      if (panelRef.current?.contains(target)) return
+      
+      // Don't close if clicking on a table row (data-contact-id attribute)
+      // This allows clicking rows to switch contacts
+      if (target.closest('[data-contact-id]')) return
+      
+      // Don't close if clicking on dropdowns or popovers (they use portals)
+      if (target.closest('[role="listbox"]') || target.closest('[role="menu"]')) return
+      
+      // Close the panel for clicks on empty areas
+      onClose()
+    }
+    
+    if (isOpen) {
+      // Use setTimeout to avoid closing immediately on the same click that opened it
+      const timeoutId = setTimeout(() => {
+        document.addEventListener('mousedown', handleClickOutside)
+      }, 0)
+      return () => {
+        clearTimeout(timeoutId)
+        document.removeEventListener('mousedown', handleClickOutside)
+      }
+    }
+  }, [isOpen, onClose])
 
   return createPortal(
     <AnimatePresence>
@@ -46,6 +79,7 @@ export function SlidePanel({
           
           {/* Slide Panel */}
           <motion.div
+            ref={panelRef}
             initial={{ x: '100%' }}
             animate={{ x: 0 }}
             exit={{ x: '100%' }}

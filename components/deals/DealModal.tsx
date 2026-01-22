@@ -1,8 +1,9 @@
-import { useState, useEffect, useCallback } from 'react'
-import { DollarSign, Users, Calendar, Percent, FileText, Trash2 } from 'lucide-react'
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { DollarSign, Users, Calendar, Percent, FileText, Trash2, ExternalLink } from 'lucide-react'
 import { theme } from '../../config/theme'
 import { useCRM } from '../../context/CRMContext'
-import { Modal, ModalFooter, Button, Input, Select, Textarea } from '../shared'
+import { SlidePanel, PanelFooter, Button, Input, Select, Textarea } from '../shared'
 import { DEAL_STAGES, DEAL_STAGE_INFO, type Deal, type DealStage } from '../../types'
 
 interface DealModalProps {
@@ -14,9 +15,11 @@ interface DealModalProps {
 
 export function DealModal({ isOpen, onClose, deal, defaultStage }: DealModalProps) {
   const { contacts, createDeal, updateDeal, deleteDeal, error } = useCRM()
+  const navigate = useNavigate()
   const [loading, setLoading] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
+  const originalAmountRef = useRef<number | null>(null)
   
   const [formData, setFormData] = useState({
     name: '',
@@ -45,16 +48,19 @@ export function DealModal({ isOpen, onClose, deal, defaultStage }: DealModalProp
   // Reset form when deal changes
   useEffect(() => {
     if (deal) {
+      // Store original amount to check if it was null/0
+      originalAmountRef.current = deal.amount ?? null
       setFormData({
         name: deal.name || '',
         description: deal.description || '',
         contact_id: deal.contact_id || '',
         stage: deal.stage || 'lead',
-        amount: deal.amount?.toString() || '',
+        amount: (deal.amount && deal.amount > 0) ? deal.amount.toString() : '',
         probability: deal.probability?.toString() || '',
         expected_close_date: deal.expected_close_date || '',
       })
     } else {
+      originalAmountRef.current = null
       setFormData({
         name: '',
         description: '',
@@ -162,14 +168,13 @@ export function DealModal({ isOpen, onClose, deal, defaultStage }: DealModalProp
   const weightedValue = amount * (probability / 100)
   
   return (
-    <Modal
+    <SlidePanel
       isOpen={isOpen}
       onClose={onClose}
       title={deal ? 'Edit Deal' : 'New Deal'}
-      size="lg"
-      onKeyDown={handleKeyDown}
+      width={520}
     >
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }} onKeyDown={handleKeyDown}>
         {/* Deal Summary */}
         {(amount > 0 || formData.name) && (
           <div
@@ -278,6 +283,16 @@ export function DealModal({ isOpen, onClose, deal, defaultStage }: DealModalProp
               label="Amount"
               value={formData.amount}
               onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+              onFocus={(e) => {
+                // Clear field if original amount was null or 0
+                const input = e.target as HTMLInputElement
+                const currentValue = parseFloat(input.value) || 0
+                if (currentValue === 0 && (originalAmountRef.current === null || originalAmountRef.current === 0)) {
+                  setFormData({ ...formData, amount: '' })
+                  // Use setTimeout to ensure the value is cleared before selecting
+                  setTimeout(() => input.select(), 0)
+                }
+              }}
               placeholder="50000"
               type="number"
               icon={<DollarSign size={14} />}
@@ -309,17 +324,55 @@ export function DealModal({ isOpen, onClose, deal, defaultStage }: DealModalProp
             value={formData.contact_id}
             onChange={(v) => setFormData({ ...formData, contact_id: v })}
           />
-          {selectedContact && selectedContact.company && (
-            <p
-              style={{
-                fontSize: theme.fontSize.sm,
-                color: theme.text.muted,
-                margin: '8px 0 0 0',
-              }}
-            >
-              Company: {selectedContact.company}
-              {selectedContact.industry && ` • ${selectedContact.industry}`}
-            </p>
+          {selectedContact && (
+            <div style={{ marginTop: 8 }}>
+              {selectedContact.company && (
+                <p
+                  style={{
+                    fontSize: theme.fontSize.sm,
+                    color: theme.text.muted,
+                    margin: '0 0 8px 0',
+                  }}
+                >
+                  Company: {selectedContact.company}
+                  {selectedContact.industry && ` • ${selectedContact.industry}`}
+                </p>
+              )}
+              <button
+                onClick={() => {
+                  if (selectedContact.id) {
+                    navigate(`/crm/contacts?contactId=${selectedContact.id}`)
+                    onClose()
+                  }
+                }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  padding: '6px 12px',
+                  backgroundColor: 'transparent',
+                  border: `1px solid ${theme.border.subtle}`,
+                  borderRadius: theme.radius.md,
+                  color: theme.text.secondary,
+                  fontSize: theme.fontSize.sm,
+                  cursor: 'pointer',
+                  transition: `all ${theme.transition.fast}`,
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = theme.bg.hover
+                  e.currentTarget.style.color = theme.text.primary
+                  e.currentTarget.style.borderColor = theme.accent.primary
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'transparent'
+                  e.currentTarget.style.color = theme.text.secondary
+                  e.currentTarget.style.borderColor = theme.border.subtle
+                }}
+              >
+                <ExternalLink size={14} />
+                View Contact
+              </button>
+            </div>
           )}
         </div>
         
@@ -389,7 +442,7 @@ export function DealModal({ isOpen, onClose, deal, defaultStage }: DealModalProp
         </div>
       )}
       
-      <ModalFooter>
+      <PanelFooter>
         {deal && !showDeleteConfirm && (
           <Button
             variant="ghost"
@@ -406,8 +459,8 @@ export function DealModal({ isOpen, onClose, deal, defaultStage }: DealModalProp
         <Button onClick={handleSubmit} loading={loading} disabled={!formData.name.trim()}>
           {deal ? 'Save Changes' : 'Create Deal'}
         </Button>
-      </ModalFooter>
-    </Modal>
+      </PanelFooter>
+    </SlidePanel>
   )
 }
 
