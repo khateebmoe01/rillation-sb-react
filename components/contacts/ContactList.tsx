@@ -5,7 +5,7 @@ import { Users, Plus, Mail, Phone, Building2, Linkedin, ChevronDown, Check, Filt
 import { theme } from '../../config/theme'
 import { useCRM } from '../../context/CRMContext'
 import { useDropdown } from '../../../../contexts/DropdownContext'
-import { Card, Avatar, SearchInput, EmptyState, LoadingSkeleton, StageDropdown, FilterSelect } from '../shared'
+import { Card, SearchInput, EmptyState, LoadingSkeleton, StageDropdown, FilterSelect } from '../shared'
 import { ContactModal } from './ContactModal'
 import { SortDropdown, type SortRule } from './SortDropdown'
 import type { Contact } from '../../types'
@@ -554,7 +554,7 @@ export function ContactList() {
   // Grid column widths - CRM scanning flow: identity → company → status → role → recency → action
   // Name, Company, Stage, Pipeline, Title, Last Activity, Actions
   // Compact layout for better data density
-  const gridColumns = 'minmax(160px, 1.2fr) minmax(140px, 1fr) 240px 240px minmax(100px, 1fr) 80px 60px'
+  const gridColumns = 'minmax(10px, 1.2fr) minmax(10px, 1fr) 400px 300px minmax(10px, 1fr) 150px 100px'
   const minTableWidth = 810
   
   return (
@@ -1187,10 +1187,23 @@ const PIPELINE_STEPS = [
   { key: 'closed', label: 'Closed Won', shortLabel: 'Won', color: '#22c55e' },
 ] as const
 
+// Stage colors for the left border line
+const STAGE_COLORS: Record<string, string> = {
+  interested: '#60a5fa',
+  engaged: '#8b5cf6',
+  qualified: '#f59e0b',
+  demo: '#f97316',
+  proposal: '#14b8a6',
+  closed: '#22c55e',
+  disqualified: '#6b7280',
+}
+
 function ContactRow({ contact, isSelected, gridColumns, minWidth, onClick, onUpdateStage, onUpdatePipelineStep }: ContactRowProps) {
   const displayName = contact.full_name || 
     [contact.first_name, contact.last_name].filter(Boolean).join(' ') || 
     'Unknown'
+  
+  const stageColor = STAGE_COLORS[contact.stage || ''] || theme.border.default
   
   return (
     <div
@@ -1218,38 +1231,32 @@ function ContactRow({ contact, isSelected, gridColumns, minWidth, onClick, onUpd
         e.currentTarget.style.backgroundColor = isSelected ? theme.bg.hover : 'transparent'
       }}
     >
-      {/* Name */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-        <Avatar name={displayName} size="xs" />
-        <div style={{ minWidth: 0, flex: 1 }}>
-          <p
-            style={{
-              fontSize: theme.fontSize.sm,
-              fontWeight: theme.fontWeight.medium,
-              color: theme.text.primary,
-              margin: 0,
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            {displayName}
-          </p>
-          {contact.email && (
-            <p
-              style={{
-                fontSize: theme.fontSize.xs,
-                color: theme.text.muted,
-                margin: 0,
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              {contact.email}
-            </p>
-          )}
-        </div>
+      {/* Name with stage-colored left border */}
+      <div style={{ display: 'flex', alignItems: 'center', minWidth: 0 }}>
+        {/* Stage color vertical line */}
+        <div
+          style={{
+            width: 3,
+            height: 20,
+            backgroundColor: stageColor,
+            borderRadius: 2,
+            marginRight: 10,
+            flexShrink: 0,
+          }}
+        />
+        <p
+          style={{
+            fontSize: '14px', // Same size as company text (13px + 10%)
+            fontWeight: theme.fontWeight.medium,
+            color: theme.text.primary,
+            margin: 0,
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {displayName}
+        </p>
       </div>
       
       {/* Company */}
@@ -1260,7 +1267,7 @@ function ContactRow({ contact, isSelected, gridColumns, minWidth, onClick, onUpd
             <div style={{ minWidth: 0, flex: 1 }}>
               <span
                 style={{
-                  fontSize: theme.fontSize.xs,
+                  fontSize: '14px', // 10% bigger than xs (12px)
                   color: theme.text.secondary,
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',
@@ -1273,7 +1280,7 @@ function ContactRow({ contact, isSelected, gridColumns, minWidth, onClick, onUpd
             </div>
           </>
         ) : (
-          <span style={{ fontSize: theme.fontSize.sm, color: theme.text.muted }}>—</span>
+          <span style={{ fontSize: '14px', color: theme.text.muted }}>—</span>
         )}
       </div>
       
