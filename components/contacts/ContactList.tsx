@@ -1,41 +1,95 @@
 import { useState, useMemo, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Users, Plus, Mail, Phone, Building2, Linkedin, ChevronDown, Check, ArrowUpDown, Filter, X, SortAsc } from 'lucide-react'
+import { Users, Plus, Mail, Phone, Building2, Linkedin, ChevronDown, Check, ArrowUpDown, Filter, X, SortAsc, Trash2, GripVertical, User, Briefcase, Tag, Clock, Factory, MapPin, DollarSign, Calendar, AtSign, Hash, TrendingUp } from 'lucide-react'
 import { theme } from '../../config/theme'
 import { useCRM } from '../../context/CRMContext'
-import { Card, Avatar, Button, SearchInput, EmptyState, LoadingSkeleton, StageDropdown } from '../shared'
+import { Card, Avatar, Button, SearchInput, EmptyState, LoadingSkeleton, StageDropdown, FilterSelect, Select } from '../shared'
 import { ContactModal } from './ContactModal'
 import type { Contact } from '../../types'
 
-// Filter field definitions
+// Filter field definitions with icons - matching Contact type from engaged_leads
 const FILTER_FIELDS = [
-  { key: 'stage', label: 'Stage', type: 'select', options: [
-    { value: 'interested', label: 'Interested' },
+  // Personal Info
+  { key: 'full_name', label: 'Lead Name', type: 'text', icon: User },
+  { key: 'email', label: 'Email', type: 'text', icon: AtSign },
+  { key: 'job_title', label: 'Job Title', type: 'text', icon: Briefcase },
+  { key: 'seniority_level', label: 'Seniority Level', type: 'text', icon: Hash },
+  { key: 'lead_phone', label: 'Phone', type: 'text', icon: Phone },
+  // Company Info
+  { key: 'company', label: 'Organization', type: 'text', icon: Building2 },
+  { key: 'company_domain', label: 'Company Domain', type: 'text', icon: Building2 },
+  { key: 'company_size', label: 'Company Size', type: 'text', icon: Building2 },
+  { key: 'industry', label: 'Industry', type: 'text', icon: Factory },
+  { key: 'annual_revenue', label: 'Annual Revenue', type: 'text', icon: DollarSign },
+  { key: 'company_hq_city', label: 'HQ City', type: 'text', icon: MapPin },
+  { key: 'company_hq_state', label: 'HQ State', type: 'text', icon: MapPin },
+  { key: 'company_hq_country', label: 'HQ Country', type: 'text', icon: MapPin },
+  { key: 'business_model', label: 'Business Model', type: 'text', icon: Building2 },
+  { key: 'funding_stage', label: 'Funding Stage', type: 'text', icon: DollarSign },
+  { key: 'is_hiring', label: 'Is Hiring', type: 'select', icon: TrendingUp, options: [
+    { value: 'true', label: 'Yes' },
+    { value: 'false', label: 'No' },
+  ]},
+  // Pipeline & Status
+  { key: 'stage', label: 'Stage', type: 'select', icon: Tag, options: [
+    { value: 'new', label: 'New' },
     { value: 'engaged', label: 'Engaged' },
+    { value: 'meeting_booked', label: 'Meeting Booked' },
     { value: 'qualified', label: 'Qualified' },
-    { value: 'disqualified', label: 'Disqualified' },
     { value: 'demo', label: 'Demo' },
     { value: 'proposal', label: 'Proposal' },
     { value: 'closed', label: 'Closed Won' },
   ]},
-  { key: 'pipeline', label: 'Pipeline Progress', type: 'select', options: [
-    { value: 'no_progress', label: 'No Progress' },
-    { value: 'meeting_booked', label: 'Meeting Booked' },
-    { value: 'showed_up_to_disco', label: 'Showed Up to Disco' },
-    { value: 'qualified', label: 'Qualified' },
-    { value: 'demo_booked', label: 'Demo Booked' },
-    { value: 'showed_up_to_demo', label: 'Showed Up to Demo' },
-    { value: 'proposal_sent', label: 'Proposal Sent' },
-    { value: 'closed', label: 'Closed Won' },
+  { key: 'meeting_booked', label: 'Meeting Booked', type: 'select', icon: Calendar, options: [
+    { value: 'true', label: 'Yes' },
+    { value: 'false', label: 'No' },
   ]},
-  { key: 'last_activity', label: 'Last Activity', type: 'select', options: [
+  { key: 'qualified', label: 'Qualified', type: 'select', icon: Check, options: [
+    { value: 'true', label: 'Yes' },
+    { value: 'false', label: 'No' },
+  ]},
+  { key: 'closed', label: 'Closed Won', type: 'select', icon: Check, options: [
+    { value: 'true', label: 'Yes' },
+    { value: 'false', label: 'No' },
+  ]},
+  // Sales & Pipeline
+  { key: 'epv', label: 'EPV', type: 'text', icon: DollarSign },
+  { key: 'assignee', label: 'Assignee', type: 'text', icon: User },
+  // Campaign Info
+  { key: 'campaign_name', label: 'Campaign Name', type: 'text', icon: Tag },
+  { key: 'lead_source', label: 'Lead Source', type: 'text', icon: Tag },
+  // Dates
+  { key: 'last_activity', label: 'Last Activity', type: 'select', icon: Clock, options: [
     { value: 'today', label: 'Today' },
     { value: '7d', label: 'Last 7 Days' },
     { value: '30d', label: 'Last 30 Days' },
     { value: '90d', label: 'Last 90 Days' },
   ]},
-  { key: 'industry', label: 'Industry', type: 'text' },
-  { key: 'company', label: 'Company', type: 'text' },
+  { key: 'created_at', label: 'Created Date', type: 'select', icon: Calendar, options: [
+    { value: 'today', label: 'Today' },
+    { value: '7d', label: 'Last 7 Days' },
+    { value: '30d', label: 'Last 30 Days' },
+    { value: '90d', label: 'Last 90 Days' },
+  ]},
+] as const
+
+// Operator definitions per field type
+const TEXT_OPERATORS = [
+  { value: 'contains', label: 'contains' },
+  { value: 'not_contains', label: 'does not contain' },
+  { value: 'equals', label: 'is' },
+  { value: 'not_equals', label: 'is not' },
+  { value: 'starts_with', label: 'starts with' },
+  { value: 'ends_with', label: 'ends with' },
+  { value: 'is_empty', label: 'is empty' },
+  { value: 'is_not_empty', label: 'is not empty' },
+] as const
+
+const SELECT_OPERATORS = [
+  { value: 'has_any_of', label: 'has any of' },
+  { value: 'has_none_of', label: 'has none of' },
+  { value: 'is', label: 'is' },
+  { value: 'is_not', label: 'is not' },
 ] as const
 
 // Sort field definitions
@@ -50,7 +104,14 @@ const SORT_FIELDS = [
 interface StackedFilter {
   id: string
   field: string
+  operator: string
   value: string
+  groupId?: string // Optional group ID for OR conditions
+}
+
+interface FilterGroup {
+  id: string
+  type: 'and' | 'or'
 }
 
 interface StackedSort {
@@ -94,20 +155,55 @@ export function ContactList() {
   
   // Stacked filter and sort states
   const [filters, setFilters] = useState<StackedFilter[]>([])
+  const [filterGroups, setFilterGroups] = useState<FilterGroup[]>([])
   const [sorts, setSorts] = useState<StackedSort[]>([
     { id: 'default', field: 'last_activity', direction: 'desc' }
   ])
   const [showFilterMenu, setShowFilterMenu] = useState(false)
   const [showSortMenu, setShowSortMenu] = useState(false)
+  const filterPopoverRef = useRef<HTMLDivElement>(null)
+  
+  // Close filter popover when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (filterPopoverRef.current && !filterPopoverRef.current.contains(event.target as Node)) {
+        setShowFilterMenu(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
   
   // Add a new filter
-  const addFilter = (field: string) => {
+  const addFilter = (field?: string, keepOpen = true, groupId?: string) => {
+    const fieldKey = field || 'company'
+    const fieldDef = FILTER_FIELDS.find(f => f.key === fieldKey)
+    const defaultOperator = fieldDef?.type === 'select' ? 'has_any_of' : 'contains'
+    const defaultValue = ''
+    setFilters([...filters, { id: Date.now().toString(), field: fieldKey, operator: defaultOperator, value: defaultValue, groupId }])
+    if (!keepOpen) {
+      setShowFilterMenu(false)
+    }
+  }
+  
+  // Add a new condition group (OR group)
+  const addFilterGroup = () => {
+    const groupId = Date.now().toString()
+    setFilterGroups([...filterGroups, { id: groupId, type: 'or' }])
+    // Add first filter to the group
+    addFilter('company', true, groupId)
+  }
+  
+  // Update a filter field
+  const updateFilterField = (id: string, field: string) => {
     const fieldDef = FILTER_FIELDS.find(f => f.key === field)
-    const defaultValue = fieldDef?.type === 'select' && fieldDef.options.length > 0 
-      ? fieldDef.options[0].value 
-      : ''
-    setFilters([...filters, { id: Date.now().toString(), field, value: defaultValue }])
-    setShowFilterMenu(false)
+    const defaultOperator = fieldDef?.type === 'select' ? 'has_any_of' : 'contains'
+    setFilters(filters.map(f => f.id === id ? { ...f, field, operator: defaultOperator, value: '' } : f))
+  }
+  
+  // Update a filter operator
+  const updateFilterOperator = (id: string, operator: string) => {
+    setFilters(filters.map(f => f.id === id ? { ...f, operator } : f))
   }
   
   // Update a filter value
@@ -117,7 +213,21 @@ export function ContactList() {
   
   // Remove a filter
   const removeFilter = (id: string) => {
+    const filter = filters.find(f => f.id === id)
     setFilters(filters.filter(f => f.id !== id))
+    // If this was the last filter in a group, remove the group
+    if (filter?.groupId) {
+      const remainingInGroup = filters.filter(f => f.groupId === filter.groupId && f.id !== id)
+      if (remainingInGroup.length === 0) {
+        setFilterGroups(filterGroups.filter(g => g.id !== filter.groupId))
+      }
+    }
+  }
+  
+  // Remove a filter group
+  const removeFilterGroup = (groupId: string) => {
+    setFilters(filters.filter(f => f.groupId !== groupId))
+    setFilterGroups(filterGroups.filter(g => g.id !== groupId))
   }
   
   // Add a new sort
@@ -173,55 +283,149 @@ export function ContactList() {
       )
     }
     
-    // Apply stacked filters
-    filters.forEach(filter => {
-      if (!filter.value) return
-      
-      switch (filter.field) {
-        case 'stage':
-          result = result.filter(c => c.stage === filter.value)
-          break
-        case 'pipeline':
-          if (filter.value === 'no_progress') {
-            result = result.filter(c => 
-              !c.meeting_booked && !c.showed_up_to_disco && !c.qualified && 
-              !c.demo_booked && !c.showed_up_to_demo && !c.proposal_sent && !c.closed
-            )
-          } else {
-            result = result.filter(c => c[filter.value as keyof Contact] === true)
+    // Helper function to apply a single filter to a contact
+    const applyFilter = (c: Contact, filter: StackedFilter): boolean => {
+      // Handle empty operators
+      if (filter.operator === 'is_empty' || filter.operator === 'is_not_empty') {
+        const fieldValue = (c: Contact) => {
+          const fieldMap: Record<string, (c: Contact) => any> = {
+            company: (c) => c.company,
+            full_name: (c) => c.full_name || [c.first_name, c.last_name].filter(Boolean).join(' '),
+            email: (c) => c.email,
+            job_title: (c) => c.job_title,
+            seniority_level: (c) => c.seniority_level,
+            lead_phone: (c) => c.lead_phone,
+            company_domain: (c) => c.company_domain,
+            company_size: (c) => c.company_size,
+            industry: (c) => c.industry,
+            annual_revenue: (c) => c.annual_revenue,
+            company_hq_city: (c) => c.company_hq_city,
+            company_hq_state: (c) => c.company_hq_state,
+            company_hq_country: (c) => c.company_hq_country,
+            business_model: (c) => c.business_model,
+            funding_stage: (c) => c.funding_stage,
+            epv: (c) => c.epv,
+            assignee: (c) => c.assignee,
+            campaign_name: (c) => c.campaign_name,
+            lead_source: (c) => c.lead_source,
           }
-          break
-        case 'last_activity':
-          const now = new Date()
-          let cutoff: Date
-          switch (filter.value) {
-            case 'today':
-              cutoff = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-              break
-            case '7d':
-              cutoff = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
-              break
-            case '30d':
-              cutoff = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
-              break
-            case '90d':
-              cutoff = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000)
-              break
-            default:
-              cutoff = new Date(0)
-          }
-          result = result.filter(c => {
-            if (!c.updated_at) return false
-            return new Date(c.updated_at) >= cutoff
-          })
-          break
-        case 'industry':
-          result = result.filter(c => c.industry?.toLowerCase().includes(filter.value.toLowerCase()))
-          break
-        case 'company':
-          result = result.filter(c => c.company?.toLowerCase().includes(filter.value.toLowerCase()))
-          break
+          return fieldMap[filter.field]?.(c) ?? null
+        }
+        const value = fieldValue(c)
+        if (filter.operator === 'is_empty') {
+          return !value
+        } else {
+          return !!value
+        }
       }
+      
+      if (!filter.value) return true // Skip empty filters
+      
+      // Helper function to apply text operators
+      const applyTextOperator = (fieldValue: string | null | undefined, operator: string, filterValue: string): boolean => {
+        const field = (fieldValue || '').toLowerCase()
+        const value = filterValue.toLowerCase()
+        switch (operator) {
+          case 'contains': return field.includes(value)
+          case 'not_contains': return !field.includes(value)
+          case 'equals': case 'is': return field === value
+          case 'not_equals': case 'is_not': return field !== value
+          case 'starts_with': return field.startsWith(value)
+          case 'ends_with': return field.endsWith(value)
+          default: return field.includes(value)
+        }
+      }
+      
+      // Get field value from contact
+      const getFieldValue = (c: Contact, field: string): any => {
+        const fieldMap: Record<string, (c: Contact) => any> = {
+          company: (c) => c.company,
+          full_name: (c) => c.full_name || [c.first_name, c.last_name].filter(Boolean).join(' '),
+          email: (c) => c.email,
+          job_title: (c) => c.job_title,
+          seniority_level: (c) => c.seniority_level,
+          lead_phone: (c) => c.lead_phone,
+          company_domain: (c) => c.company_domain,
+          company_size: (c) => c.company_size,
+          industry: (c) => c.industry,
+          annual_revenue: (c) => c.annual_revenue,
+          company_hq_city: (c) => c.company_hq_city,
+          company_hq_state: (c) => c.company_hq_state,
+          company_hq_country: (c) => c.company_hq_country,
+          business_model: (c) => c.business_model,
+          funding_stage: (c) => c.funding_stage,
+          epv: (c) => c.epv?.toString(),
+          assignee: (c) => c.assignee,
+          campaign_name: (c) => c.campaign_name,
+          lead_source: (c) => c.lead_source,
+          stage: (c) => c.stage,
+          meeting_booked: (c) => c.meeting_booked ? 'true' : 'false',
+          qualified: (c) => c.qualified ? 'true' : 'false',
+          closed: (c) => c.closed ? 'true' : 'false',
+          is_hiring: (c) => c.is_hiring ? 'true' : 'false',
+        }
+        return fieldMap[field]?.(c) ?? null
+      }
+      
+      const fieldValue = getFieldValue(c, filter.field)
+      const fieldDef = FILTER_FIELDS.find(f => f.key === filter.field)
+      
+      // Handle select fields
+      if (fieldDef?.type === 'select') {
+        if (filter.operator === 'has_any_of' || filter.operator === 'is') {
+          return fieldValue === filter.value
+        } else if (filter.operator === 'has_none_of' || filter.operator === 'is_not') {
+          return fieldValue !== filter.value
+        }
+      }
+      
+      // Handle date fields
+      if (filter.field === 'last_activity' || filter.field === 'created_at') {
+        const dateField = filter.field === 'last_activity' ? c.updated_at : c.created_at
+        if (!dateField) return false
+        const now = new Date()
+        let cutoff: Date
+        switch (filter.value) {
+          case 'today':
+            cutoff = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+            break
+          case '7d':
+            cutoff = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+            break
+          case '30d':
+            cutoff = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
+            break
+          case '90d':
+            cutoff = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000)
+            break
+          default:
+            return true
+        }
+        return new Date(dateField) >= cutoff
+      }
+      
+      // Handle text fields
+      return applyTextOperator(fieldValue?.toString(), filter.operator, filter.value)
+    }
+    
+    // Separate filters into groups and ungrouped
+    const ungroupedFilters = filters.filter(f => !f.groupId)
+    const groupedFilters = filters.filter(f => f.groupId)
+    
+    // Apply ungrouped filters (AND logic)
+    ungroupedFilters.forEach(filter => {
+      result = result.filter(c => applyFilter(c, filter))
+    })
+    
+    // Apply grouped filters (OR logic within groups, AND between groups)
+    filterGroups.forEach(group => {
+      const groupFilters = groupedFilters.filter(f => f.groupId === group.id)
+      if (groupFilters.length === 0) return
+      
+      result = result.filter(c => {
+        // OR logic: contact matches if ANY filter in the group matches
+        return groupFilters.some(filter => applyFilter(c, filter))
+      })
     })
     
     // Apply stacked sorts (in order)
@@ -382,11 +586,11 @@ export function ContactList() {
         </Button>
       </div>
       
-      {/* Stacked Filters & Sorts Bar */}
+      {/* Search & Filter/Sort Bar */}
       <div
         style={{
           marginBottom: 24,
-          padding: '16px',
+          padding: '12px 16px',
           backgroundColor: theme.bg.card,
           borderRadius: theme.radius.lg,
           border: `1px solid ${theme.border.subtle}`,
@@ -394,20 +598,165 @@ export function ContactList() {
           zIndex: 100,
         }}
       >
-        {/* Top row: Search + Add buttons */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: filters.length > 0 || sorts.length > 1 ? 16 : 0 }}>
+        {/* Top row: Search + Sort indicator + Filter/Sort buttons */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <SearchInput
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             onClear={() => setSearchQuery('')}
             placeholder="Search leads..."
-            style={{ width: 240, flexShrink: 0 }}
+            style={{ width: 200, flexShrink: 0 }}
           />
           
-          <div style={{ flex: 1 }} />
+          {/* Sort indicator pills */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1 }}>
+            <span style={{ fontSize: theme.fontSize.xs, color: theme.text.muted }}>Sort by</span>
+            {sorts.map((sort, index) => {
+              const [isSortOpen, setIsSortOpen] = useState(false)
+              const sortRef = useRef<HTMLDivElement>(null)
+              
+              useEffect(() => {
+                function handleClickOutside(event: MouseEvent) {
+                  if (sortRef.current && !sortRef.current.contains(event.target as Node)) {
+                    setIsSortOpen(false)
+                  }
+                }
+                if (isSortOpen) {
+                  document.addEventListener('mousedown', handleClickOutside)
+                  return () => document.removeEventListener('mousedown', handleClickOutside)
+                }
+              }, [isSortOpen])
+              
+              const selectedSortField = SORT_FIELDS.find(f => f.key === sort.field)
+              
+              return (
+                <div
+                  key={sort.id}
+                  ref={sortRef}
+                  style={{
+                    position: 'relative',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 4,
+                    padding: '4px 8px',
+                    backgroundColor: theme.bg.elevated,
+                    borderRadius: theme.radius.md,
+                    border: `1px solid ${theme.border.default}`,
+                  }}
+                >
+                  <button
+                    onClick={() => setIsSortOpen(!isSortOpen)}
+                    style={{
+                      padding: 0,
+                      fontSize: theme.fontSize.sm,
+                      fontWeight: theme.fontWeight.medium,
+                      backgroundColor: 'transparent',
+                      color: theme.text.primary,
+                      border: 'none',
+                      outline: 'none',
+                      cursor: 'pointer',
+                      paddingRight: 12,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 4,
+                    }}
+                  >
+                    <span>{selectedSortField?.label}</span>
+                    <motion.div
+                      animate={{ rotate: isSortOpen ? 180 : 0 }}
+                      transition={{ duration: 0.15 }}
+                    >
+                      <ChevronDown size={12} style={{ color: theme.text.muted }} />
+                    </motion.div>
+                  </button>
+                  
+                  <AnimatePresence>
+                    {isSortOpen && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -8, scale: 0.96 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: -8, scale: 0.96 }}
+                        transition={{ duration: 0.15 }}
+                        style={{
+                          position: 'absolute',
+                          top: '100%',
+                          left: 0,
+                          marginTop: 4,
+                          backgroundColor: theme.bg.elevated,
+                          border: `1px solid ${theme.border.default}`,
+                          borderRadius: theme.radius.lg,
+                          boxShadow: theme.shadow.dropdown,
+                          zIndex: 10000,
+                          overflow: 'hidden',
+                          minWidth: 150,
+                        }}
+                      >
+                        {SORT_FIELDS.map(field => {
+                          const isSelected = field.key === sort.field
+                          return (
+                            <button
+                              key={field.key}
+                              onClick={() => {
+                                updateSort(sort.id, field.key)
+                                setIsSortOpen(false)
+                              }}
+                              style={{
+                                width: '100%',
+                                padding: '8px 12px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                fontSize: theme.fontSize.sm,
+                                backgroundColor: isSelected ? theme.accent.primaryBg : 'transparent',
+                                color: isSelected ? theme.accent.primary : theme.text.primary,
+                                border: 'none',
+                                cursor: 'pointer',
+                                textAlign: 'left',
+                                transition: `background-color ${theme.transition.fast}`,
+                              }}
+                              onMouseEnter={(e) => {
+                                if (!isSelected) {
+                                  e.currentTarget.style.backgroundColor = theme.bg.hover
+                                }
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.backgroundColor = isSelected ? theme.accent.primaryBg : 'transparent'
+                              }}
+                            >
+                              <span>{field.label}</span>
+                              {isSelected && <Check size={14} style={{ color: theme.accent.primary }} />}
+                            </button>
+                          )
+                        })}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              )
+            })}
+            <button
+              onClick={() => toggleSortDirection(sorts[0]?.id)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 4,
+                padding: '4px 8px',
+                fontSize: theme.fontSize.sm,
+                backgroundColor: theme.bg.elevated,
+                color: theme.text.secondary,
+                border: `1px solid ${theme.border.default}`,
+                borderRadius: theme.radius.md,
+                cursor: 'pointer',
+                transition: `all ${theme.transition.fast}`,
+              }}
+            >
+              <ArrowUpDown size={12} />
+              {sorts[0]?.direction === 'asc' ? 'Ascending' : 'Descending'}
+            </button>
+          </div>
           
-          {/* Add Filter Button */}
-          <div style={{ position: 'relative' }}>
+          {/* Filter Popover Button */}
+          <div style={{ position: 'relative' }} ref={filterPopoverRef}>
             <button
               onClick={() => { setShowFilterMenu(!showFilterMenu); setShowSortMenu(false) }}
               style={{
@@ -441,6 +790,7 @@ export function ContactList() {
               )}
             </button>
             
+            {/* Filter Popover - Light themed like reference */}
             <AnimatePresence>
               {showFilterMenu && (
                 <motion.div
@@ -452,329 +802,373 @@ export function ContactList() {
                     position: 'absolute',
                     top: '100%',
                     right: 0,
-                    marginTop: 4,
-                    minWidth: 180,
-                    backgroundColor: theme.bg.elevated,
-                    border: `1px solid ${theme.border.default}`,
-                    borderRadius: theme.radius.lg,
-                    boxShadow: '0 10px 40px rgba(0,0,0,0.5)',
+                    marginTop: 8,
+                    minWidth: 580,
+                    backgroundColor: '#ffffff',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: 12,
+                    boxShadow: '0 10px 40px rgba(0,0,0,0.12), 0 0 0 1px rgba(0,0,0,0.05)',
                     zIndex: 9999,
                     overflow: 'hidden',
-                    padding: 6,
                   }}
                 >
-                  {FILTER_FIELDS.map(field => (
+                  {/* Header */}
+                  <div style={{ 
+                    padding: '12px 16px', 
+                    borderBottom: '1px solid #e5e7eb',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                  }}>
+                    <span style={{ 
+                      fontSize: 14, 
+                      fontWeight: 600, 
+                      color: '#111827',
+                    }}>
+                      Filter
+                    </span>
+                    {filters.length > 0 && (
+                      <button
+                        onClick={() => {
+                          setFilters([])
+                          setFilterGroups([])
+                        }}
+                        style={{
+                          fontSize: 12,
+                          color: '#6b7280',
+                          backgroundColor: 'transparent',
+                          border: 'none',
+                          cursor: 'pointer',
+                          padding: '4px 8px',
+                          borderRadius: 4,
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f3f4f6'}
+                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                      >
+                        Clear all
+                      </button>
+                    )}
+                  </div>
+                  
+                  {/* Filter Rows */}
+                  <div style={{ padding: '8px 16px' }}>
+                    {filters.length === 0 ? (
+                      <div style={{ 
+                        padding: '16px 0', 
+                        textAlign: 'center', 
+                        color: '#9ca3af',
+                        fontSize: 13,
+                      }}>
+                        No filters applied
+                      </div>
+                    ) : (
+                      (() => {
+                        // Separate filters into groups and ungrouped
+                        const ungroupedFilters = filters.filter(f => !f.groupId)
+                        const groupedFiltersByGroup = filterGroups.map(group => ({
+                          group,
+                          filters: filters.filter(f => f.groupId === group.id)
+                        })).filter(g => g.filters.length > 0)
+                        
+                        let globalIndex = 0
+                        
+                        // Helper function to render a filter row
+                        const renderFilterRow = (filter: StackedFilter, prefix: string | undefined, isInGroup: boolean) => {
+                          const fieldDef = FILTER_FIELDS.find(f => f.key === filter.field)
+                          const FieldIcon = fieldDef?.icon || Building2
+                          const operators = fieldDef?.type === 'select' ? SELECT_OPERATORS : TEXT_OPERATORS
+                          const showValueInput = !['is_empty', 'is_not_empty'].includes(filter.operator)
+                          
+                          return (
+                            <motion.div
+                              key={filter.id}
+                              initial={{ opacity: 0, y: -8 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              exit={{ opacity: 0, y: -8 }}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 8,
+                                padding: '8px 0',
+                                paddingLeft: isInGroup ? 48 : 0,
+                              }}
+                            >
+                              {/* Prefix: Where / and / or */}
+                              {prefix && (
+                                <span style={{ 
+                                  fontSize: 13, 
+                                  color: '#6b7280', 
+                                  width: 48,
+                                  flexShrink: 0,
+                                }}>
+                                  {prefix}
+                                </span>
+                              )}
+                              {!prefix && isInGroup && (
+                                <span style={{ width: 48, flexShrink: 0 }} />
+                              )}
+                              
+                              {/* Field Dropdown */}
+                              <FilterSelect
+                                options={FILTER_FIELDS.map(field => ({ value: field.key, label: field.label }))}
+                                value={filter.field}
+                                onChange={(value) => updateFilterField(filter.id, value)}
+                                icon={<FieldIcon size={14} style={{ color: '#f59e0b' }} />}
+                                minWidth={130}
+                              />
+                              
+                              {/* Operator Dropdown */}
+                              <FilterSelect
+                                options={operators.map(op => ({ value: op.value, label: op.label }))}
+                                value={filter.operator}
+                                onChange={(value) => updateFilterOperator(filter.id, value)}
+                                minWidth={110}
+                              />
+                              
+                              {/* Value Input */}
+                              {showValueInput && (
+                                fieldDef?.type === 'select' ? (
+                                  <div style={{ flex: 1, minWidth: 120 }}>
+                                    <FilterSelect
+                                      options={[
+                                        { value: '', label: 'Select...' },
+                                        ...fieldDef.options.map(opt => ({ value: opt.value, label: opt.label }))
+                                      ]}
+                                      value={filter.value}
+                                      onChange={(value) => updateFilter(filter.id, value)}
+                                      placeholder="Select..."
+                                      minWidth={120}
+                                    />
+                                  </div>
+                                ) : (
+                                  <input
+                                    type="text"
+                                    value={filter.value}
+                                    onChange={(e) => updateFilter(filter.id, e.target.value)}
+                                    placeholder="Enter a value"
+                                    style={{
+                                      flex: 1,
+                                      padding: '6px 10px',
+                                      fontSize: 13,
+                                      color: '#111827',
+                                      backgroundColor: '#f9fafb',
+                                      border: '1px solid #e5e7eb',
+                                      borderRadius: 6,
+                                      outline: 'none',
+                                      minWidth: 120,
+                                    }}
+                                  />
+                                )
+                              )}
+                              
+                              {/* Actions */}
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 2, marginLeft: 'auto' }}>
+                                <button
+                                  onClick={() => removeFilter(filter.id)}
+                                  style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    width: 28,
+                                    height: 28,
+                                    backgroundColor: 'transparent',
+                                    border: 'none',
+                                    borderRadius: 4,
+                                    color: '#9ca3af',
+                                    cursor: 'pointer',
+                                  }}
+                                  onMouseEnter={(e) => {
+                                    e.currentTarget.style.backgroundColor = '#fef2f2'
+                                    e.currentTarget.style.color = '#ef4444'
+                                  }}
+                                  onMouseLeave={(e) => {
+                                    e.currentTarget.style.backgroundColor = 'transparent'
+                                    e.currentTarget.style.color = '#9ca3af'
+                                  }}
+                                >
+                                  <Trash2 size={14} />
+                                </button>
+                                <div
+                                  style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    width: 28,
+                                    height: 28,
+                                    color: '#d1d5db',
+                                    cursor: 'grab',
+                                  }}
+                                >
+                                  <GripVertical size={14} />
+                                </div>
+                              </div>
+                            </motion.div>
+                          )
+                        }
+                        
+                        return (
+                          <>
+                            {/* Ungrouped filters */}
+                            {ungroupedFilters.map((filter, idx) => {
+                              const isFirst = globalIndex === 0
+                              globalIndex++
+                              return renderFilterRow(filter, isFirst ? 'Where' : 'and', false)
+                            })}
+                            
+                            {/* Grouped filters */}
+                            {groupedFiltersByGroup.map(({ group, filters: groupFilters }, groupIdx) => {
+                              const isFirstGroup = ungroupedFilters.length === 0 && groupIdx === 0
+                              return (
+                                <div key={group.id} style={{ marginTop: groupIdx > 0 || ungroupedFilters.length > 0 ? 12 : 0 }}>
+                                  {/* Group header */}
+                                  <div style={{ 
+                                    display: 'flex', 
+                                    alignItems: 'center', 
+                                    gap: 8, 
+                                    marginBottom: 8,
+                                    paddingLeft: 48,
+                                  }}>
+                                    <span style={{ 
+                                      fontSize: 13, 
+                                      color: '#6b7280',
+                                      fontWeight: 500,
+                                    }}>
+                                      {isFirstGroup ? 'Where' : 'and'} (
+                                    </span>
+                                    <button
+                                      onClick={() => removeFilterGroup(group.id)}
+                                      style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        width: 20,
+                                        height: 20,
+                                        backgroundColor: 'transparent',
+                                        border: 'none',
+                                        borderRadius: 4,
+                                        color: '#9ca3af',
+                                        cursor: 'pointer',
+                                        padding: 0,
+                                      }}
+                                      onMouseEnter={(e) => {
+                                        e.currentTarget.style.backgroundColor = '#fef2f2'
+                                        e.currentTarget.style.color = '#ef4444'
+                                      }}
+                                      onMouseLeave={(e) => {
+                                        e.currentTarget.style.backgroundColor = 'transparent'
+                                        e.currentTarget.style.color = '#9ca3af'
+                                      }}
+                                    >
+                                      <X size={12} />
+                                    </button>
+                                    <span style={{ 
+                                      fontSize: 13, 
+                                      color: '#6b7280',
+                                      fontWeight: 500,
+                                    }}>
+                                      )
+                                    </span>
+                                  </div>
+                                  
+                                  {/* Group filters */}
+                                  {groupFilters.map((filter, idx) => {
+                                    return renderFilterRow(filter, idx === 0 ? undefined : 'or', true)
+                                  })}
+                                </div>
+                              )
+                            })}
+                          </>
+                        )
+                      })()
+                    )}
+                  </div>
+                  
+                  {/* Footer: Add condition buttons */}
+                  <div style={{ 
+                    padding: '12px 16px', 
+                    borderTop: '1px solid #e5e7eb',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 12,
+                  }}>
                     <button
-                      key={field.key}
-                      onClick={() => addFilter(field.key)}
+                      onClick={() => addFilter()}
                       style={{
                         display: 'flex',
                         alignItems: 'center',
-                        width: '100%',
-                        padding: '8px 12px',
-                        fontSize: theme.fontSize.sm,
-                        color: theme.text.primary,
+                        gap: 6,
+                        padding: '6px 10px',
+                        fontSize: 13,
+                        fontWeight: 500,
+                        color: '#3b82f6',
                         backgroundColor: 'transparent',
-                        border: 'none',
-                        borderRadius: theme.radius.md,
+                        border: '1px solid #e5e7eb',
+                        borderRadius: 6,
                         cursor: 'pointer',
-                        textAlign: 'left',
-                        transition: `all ${theme.transition.fast}`,
                       }}
-                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = theme.bg.hover}
+                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#eff6ff'}
                       onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                     >
-                      {field.label}
+                      <Plus size={14} />
+                      Add condition
                     </button>
-                  ))}
+                    <button
+                      onClick={addFilterGroup}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 6,
+                        padding: '6px 10px',
+                        fontSize: 13,
+                        fontWeight: 500,
+                        color: '#6b7280',
+                        backgroundColor: 'transparent',
+                        border: 'none',
+                        cursor: 'pointer',
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f3f4f6'}
+                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                    >
+                      <Plus size={14} />
+                      Add condition group
+                      <span style={{ 
+                        fontSize: 11, 
+                        padding: '1px 4px', 
+                        backgroundColor: '#f3f4f6', 
+                        borderRadius: 4,
+                        marginLeft: 4,
+                      }}>
+                        ⓘ
+                      </span>
+                    </button>
+                  </div>
                 </motion.div>
               )}
             </AnimatePresence>
           </div>
           
-          {/* Add Sort Button */}
-          <div style={{ position: 'relative' }}>
-            <button
-              onClick={() => { setShowSortMenu(!showSortMenu); setShowFilterMenu(false) }}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-                padding: '8px 12px',
-                fontSize: theme.fontSize.sm,
-                fontWeight: theme.fontWeight.medium,
-                color: theme.text.secondary,
-                backgroundColor: 'transparent',
-                border: `1px solid ${theme.border.default}`,
-                borderRadius: theme.radius.md,
-                cursor: 'pointer',
-                transition: `all ${theme.transition.fast}`,
-              }}
-            >
-              <SortAsc size={14} />
-              <span>Sort</span>
-              {sorts.length > 1 && (
-                <span style={{ 
-                  backgroundColor: theme.text.muted, 
-                  color: theme.bg.card, 
-                  borderRadius: theme.radius.full,
-                  padding: '1px 6px',
-                  fontSize: theme.fontSize.xs,
-                  fontWeight: theme.fontWeight.semibold,
-                }}>
-                  {sorts.length}
-                </span>
-              )}
-            </button>
-            
-            <AnimatePresence>
-              {showSortMenu && (
-                <motion.div
-                  initial={{ opacity: 0, y: -8, scale: 0.96 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: -8, scale: 0.96 }}
-                  transition={{ duration: 0.15 }}
-                  style={{
-                    position: 'absolute',
-                    top: '100%',
-                    right: 0,
-                    marginTop: 4,
-                    minWidth: 180,
-                    backgroundColor: theme.bg.elevated,
-                    border: `1px solid ${theme.border.default}`,
-                    borderRadius: theme.radius.lg,
-                    boxShadow: '0 10px 40px rgba(0,0,0,0.5)',
-                    zIndex: 9999,
-                    overflow: 'hidden',
-                    padding: 6,
-                  }}
-                >
-                  {SORT_FIELDS.map(field => (
-                    <button
-                      key={field.key}
-                      onClick={() => addSort(field.key)}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        width: '100%',
-                        padding: '8px 12px',
-                        fontSize: theme.fontSize.sm,
-                        color: theme.text.primary,
-                        backgroundColor: 'transparent',
-                        border: 'none',
-                        borderRadius: theme.radius.md,
-                        cursor: 'pointer',
-                        textAlign: 'left',
-                        transition: `all ${theme.transition.fast}`,
-                      }}
-                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = theme.bg.hover}
-                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                    >
-                      {field.label}
-                    </button>
-                  ))}
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
+          {/* Sort Button */}
+          <button
+            onClick={() => { setShowSortMenu(!showSortMenu); setShowFilterMenu(false) }}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              padding: '8px 12px',
+              fontSize: theme.fontSize.sm,
+              fontWeight: theme.fontWeight.medium,
+              color: theme.text.secondary,
+              backgroundColor: 'transparent',
+              border: `1px solid ${theme.border.default}`,
+              borderRadius: theme.radius.md,
+              cursor: 'pointer',
+              transition: `all ${theme.transition.fast}`,
+            }}
+          >
+            <SortAsc size={14} />
+            <span>Sort</span>
+          </button>
         </div>
-        
-        {/* Active Filters Stack */}
-        {filters.length > 0 && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: sorts.length > 1 ? 12 : 0 }}>
-            {filters.map((filter) => {
-              const fieldDef = FILTER_FIELDS.find(f => f.key === filter.field)
-              return (
-                <motion.div
-                  key={filter.id}
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -10 }}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 8,
-                    padding: '6px 10px',
-                    backgroundColor: theme.bg.elevated,
-                    borderRadius: theme.radius.md,
-                    border: `1px solid ${theme.border.subtle}`,
-                  }}
-                >
-                  <span style={{ fontSize: theme.fontSize.sm, color: theme.text.muted, minWidth: 100 }}>
-                    {fieldDef?.label}
-                  </span>
-                  <span style={{ fontSize: theme.fontSize.sm, color: theme.text.muted }}>is</span>
-                  
-                  {fieldDef?.type === 'select' ? (
-                    <select
-                      value={filter.value}
-                      onChange={(e) => updateFilter(filter.id, e.target.value)}
-                      style={{
-                        padding: '4px 8px',
-                        fontSize: theme.fontSize.sm,
-                        backgroundColor: theme.bg.card,
-                        color: theme.text.primary,
-                        border: `1px solid ${theme.border.default}`,
-                        borderRadius: theme.radius.md,
-                        outline: 'none',
-                        cursor: 'pointer',
-                        minWidth: 140,
-                      }}
-                    >
-                      {fieldDef.options.map(opt => (
-                        <option key={opt.value} value={opt.value}>{opt.label}</option>
-                      ))}
-                    </select>
-                  ) : (
-                    <input
-                      type="text"
-                      value={filter.value}
-                      onChange={(e) => updateFilter(filter.id, e.target.value)}
-                      placeholder={`Enter ${fieldDef?.label.toLowerCase()}...`}
-                      style={{
-                        padding: '4px 8px',
-                        fontSize: theme.fontSize.sm,
-                        backgroundColor: theme.bg.card,
-                        color: theme.text.primary,
-                        border: `1px solid ${theme.border.default}`,
-                        borderRadius: theme.radius.md,
-                        outline: 'none',
-                        minWidth: 140,
-                      }}
-                    />
-                  )}
-                  
-                  <button
-                    onClick={() => removeFilter(filter.id)}
-                    style={{
-                      marginLeft: 'auto',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      width: 20,
-                      height: 20,
-                      backgroundColor: 'transparent',
-                      border: 'none',
-                      borderRadius: theme.radius.sm,
-                      color: theme.text.muted,
-                      cursor: 'pointer',
-                      transition: `all ${theme.transition.fast}`,
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = theme.status.errorBg
-                      e.currentTarget.style.color = theme.status.error
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = 'transparent'
-                      e.currentTarget.style.color = theme.text.muted
-                    }}
-                  >
-                    <X size={14} />
-                  </button>
-                </motion.div>
-              )
-            })}
-          </div>
-        )}
-        
-        {/* Active Sorts Stack */}
-        {sorts.length > 0 && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {sorts.map((sort, index) => {
-              return (
-                <motion.div
-                  key={sort.id}
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -10 }}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 8,
-                    padding: '6px 10px',
-                    backgroundColor: theme.bg.elevated,
-                    borderRadius: theme.radius.md,
-                    border: `1px solid ${theme.border.subtle}`,
-                  }}
-                >
-                  <span style={{ fontSize: theme.fontSize.xs, color: theme.text.muted, minWidth: 60 }}>
-                    {index === 0 ? 'Sort by' : 'then by'}
-                  </span>
-                  
-                  <select
-                    value={sort.field}
-                    onChange={(e) => updateSort(sort.id, e.target.value)}
-                    style={{
-                      padding: '4px 8px',
-                      fontSize: theme.fontSize.sm,
-                      backgroundColor: theme.bg.card,
-                      color: theme.text.primary,
-                      border: `1px solid ${theme.border.default}`,
-                      borderRadius: theme.radius.md,
-                      outline: 'none',
-                      cursor: 'pointer',
-                      minWidth: 120,
-                    }}
-                  >
-                    {SORT_FIELDS.map(field => (
-                      <option key={field.key} value={field.key}>{field.label}</option>
-                    ))}
-                  </select>
-                  
-                  <button
-                    onClick={() => toggleSortDirection(sort.id)}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 4,
-                      padding: '4px 8px',
-                      fontSize: theme.fontSize.sm,
-                      backgroundColor: theme.bg.card,
-                      color: theme.text.secondary,
-                      border: `1px solid ${theme.border.default}`,
-                      borderRadius: theme.radius.md,
-                      cursor: 'pointer',
-                      transition: `all ${theme.transition.fast}`,
-                    }}
-                  >
-                    <ArrowUpDown size={12} />
-                    {sort.direction === 'asc' ? 'Ascending' : 'Descending'}
-                  </button>
-                  
-                  {sorts.length > 1 && (
-                    <button
-                      onClick={() => removeSort(sort.id)}
-                      style={{
-                        marginLeft: 'auto',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        width: 20,
-                        height: 20,
-                        backgroundColor: 'transparent',
-                        border: 'none',
-                        borderRadius: theme.radius.sm,
-                        color: theme.text.muted,
-                        cursor: 'pointer',
-                        transition: `all ${theme.transition.fast}`,
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor = theme.status.errorBg
-                        e.currentTarget.style.color = theme.status.error
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = 'transparent'
-                        e.currentTarget.style.color = theme.text.muted
-                      }}
-                    >
-                      <X size={14} />
-                    </button>
-                  )}
-                </motion.div>
-              )
-            })}
-          </div>
-        )}
       </div>
       
       {/* Contacts Table */}
