@@ -156,27 +156,25 @@ export interface Deal {
   contact?: Contact
 }
 
-export type DealStage = 'lead' | 'qualification' | 'discovery' | 'demo' | 'proposal' | 'negotiation' | 'won' | 'lost'
+export type DealStage = 'interested' | 'discovery' | 'demo' | 'negotiation' | 'proposal' | 'closed' | 'lost'
 
 export const DEAL_STAGES: DealStage[] = [
-  'lead',
-  'qualification',
+  'interested',
   'discovery',
   'demo',
-  'proposal',
   'negotiation',
-  'won',
+  'proposal',
+  'closed',
   'lost',
 ]
 
 export const DEAL_STAGE_INFO: Record<DealStage, { label: string; color: string; bgColor: string; probability: number }> = {
-  lead: { label: 'Lead', color: '#d4d3cf', bgColor: '#1e293b', probability: 10 },
-  qualification: { label: 'Qualification', color: '#60a5fa', bgColor: '#1e3a5f', probability: 20 },
-  discovery: { label: 'Discovery', color: '#a78bfa', bgColor: '#3d2f5c', probability: 30 },
-  demo: { label: 'Demo', color: '#fbbf24', bgColor: '#422006', probability: 50 },
-  proposal: { label: 'Proposal', color: '#fb923c', bgColor: '#431407', probability: 70 },
-  negotiation: { label: 'Negotiation', color: '#2dd4bf', bgColor: '#134e4a', probability: 85 },
-  won: { label: 'Won', color: '#22c55e', bgColor: '#14532d', probability: 100 },
+  interested: { label: 'Interested', color: '#60a5fa', bgColor: '#1e3a5f', probability: 10 },
+  discovery: { label: 'Discovery', color: '#a78bfa', bgColor: '#3d2f5c', probability: 25 },
+  demo: { label: 'Demo', color: '#fbbf24', bgColor: '#422006', probability: 40 },
+  negotiation: { label: 'Negotiation', color: '#fb923c', bgColor: '#431407', probability: 60 },
+  proposal: { label: 'Proposal', color: '#2dd4bf', bgColor: '#134e4a', probability: 80 },
+  closed: { label: 'Closed', color: '#22c55e', bgColor: '#14532d', probability: 100 },
   lost: { label: 'Lost', color: '#f87171', bgColor: '#450a0a', probability: 0 },
 }
 

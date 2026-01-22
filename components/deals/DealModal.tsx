@@ -59,9 +59,9 @@ export function DealModal({ isOpen, onClose, deal, defaultStage }: DealModalProp
         name: '',
         description: '',
         contact_id: '',
-        stage: defaultStage || 'lead',
+        stage: defaultStage || 'interested',
         amount: '',
-        probability: DEAL_STAGE_INFO[defaultStage || 'lead'].probability.toString(),
+        probability: DEAL_STAGE_INFO[defaultStage || 'interested'].probability.toString(),
         expected_close_date: '',
       })
     }

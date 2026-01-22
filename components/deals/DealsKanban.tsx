@@ -30,13 +30,12 @@ export function DealsKanban() {
   // Group deals by stage
   const dealsByStage = useMemo(() => {
     const grouped: Record<DealStage, Deal[]> = {
-      lead: [],
-      qualification: [],
+      interested: [],
       discovery: [],
       demo: [],
-      proposal: [],
       negotiation: [],
-      won: [],
+      proposal: [],
+      closed: [],
       lost: [],
     }
     
@@ -84,9 +83,9 @@ export function DealsKanban() {
     return <LoadingSkeleton rows={6} />
   }
   
-  // Only show active stages (not won/lost by default for cleaner view)
-  const activeStages = DEAL_STAGES.filter(s => s !== 'won' && s !== 'lost')
-  const closedStages = ['won', 'lost'] as DealStage[]
+  // Only show active stages (not closed/lost by default for cleaner view)
+  const activeStages = DEAL_STAGES.filter(s => s !== 'closed' && s !== 'lost')
+  const closedStages = ['closed', 'lost'] as DealStage[]
   
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>

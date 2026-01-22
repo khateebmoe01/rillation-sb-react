@@ -1,56 +1,64 @@
 import { useState, useMemo, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Users, Plus, Mail, Phone, Building2, Linkedin, ChevronDown, Check, ArrowUpDown } from 'lucide-react'
+import { Users, Plus, Mail, Phone, Building2, Linkedin, ChevronDown, Check, ArrowUpDown, Filter, X, SortAsc } from 'lucide-react'
 import { theme } from '../../config/theme'
 import { useCRM } from '../../context/CRMContext'
 import { Card, Avatar, Button, SearchInput, EmptyState, LoadingSkeleton, StageDropdown } from '../shared'
 import { ContactModal } from './ContactModal'
 import type { Contact } from '../../types'
 
-// Stage options for filter
-const STAGE_OPTIONS = [
-  { value: '', label: 'All Stages' },
-  { value: 'interested', label: 'Interested' },
-  { value: 'engaged', label: 'Engaged' },
-  { value: 'qualified', label: 'Qualified' },
-  { value: 'disqualified', label: 'Disqualified' },
-  { value: 'demo', label: 'Demo' },
-  { value: 'proposal', label: 'Proposal' },
-  { value: 'closed', label: 'Closed Won' },
-]
+// Filter field definitions
+const FILTER_FIELDS = [
+  { key: 'stage', label: 'Stage', type: 'select', options: [
+    { value: 'interested', label: 'Interested' },
+    { value: 'engaged', label: 'Engaged' },
+    { value: 'qualified', label: 'Qualified' },
+    { value: 'disqualified', label: 'Disqualified' },
+    { value: 'demo', label: 'Demo' },
+    { value: 'proposal', label: 'Proposal' },
+    { value: 'closed', label: 'Closed Won' },
+  ]},
+  { key: 'pipeline', label: 'Pipeline Progress', type: 'select', options: [
+    { value: 'no_progress', label: 'No Progress' },
+    { value: 'meeting_booked', label: 'Meeting Booked' },
+    { value: 'showed_up_to_disco', label: 'Showed Up to Disco' },
+    { value: 'qualified', label: 'Qualified' },
+    { value: 'demo_booked', label: 'Demo Booked' },
+    { value: 'showed_up_to_demo', label: 'Showed Up to Demo' },
+    { value: 'proposal_sent', label: 'Proposal Sent' },
+    { value: 'closed', label: 'Closed Won' },
+  ]},
+  { key: 'last_activity', label: 'Last Activity', type: 'select', options: [
+    { value: 'today', label: 'Today' },
+    { value: '7d', label: 'Last 7 Days' },
+    { value: '30d', label: 'Last 30 Days' },
+    { value: '90d', label: 'Last 90 Days' },
+  ]},
+  { key: 'industry', label: 'Industry', type: 'text' },
+  { key: 'company', label: 'Company', type: 'text' },
+] as const
 
-// Pipeline progress options for filter
-const PIPELINE_OPTIONS = [
-  { value: '', label: 'All Pipeline' },
-  { value: 'no_progress', label: 'No Progress' },
-  { value: 'meeting_booked', label: 'Meeting Booked' },
-  { value: 'showed_up_to_disco', label: 'Showed Up to Disco' },
-  { value: 'qualified', label: 'Qualified' },
-  { value: 'demo_booked', label: 'Demo Booked' },
-  { value: 'showed_up_to_demo', label: 'Showed Up to Demo' },
-  { value: 'proposal_sent', label: 'Proposal Sent' },
-  { value: 'closed', label: 'Closed Won' },
-]
+// Sort field definitions
+const SORT_FIELDS = [
+  { key: 'last_activity', label: 'Last Activity' },
+  { key: 'epv', label: 'EPV' },
+  { key: 'name', label: 'Name' },
+  { key: 'company', label: 'Company' },
+  { key: 'created_at', label: 'Created Date' },
+] as const
 
-// Last Activity filter options
-const LAST_ACTIVITY_OPTIONS = [
-  { value: '', label: 'All Time' },
-  { value: 'today', label: 'Today' },
-  { value: '7d', label: 'Last 7 Days' },
-  { value: '30d', label: 'Last 30 Days' },
-  { value: '90d', label: 'Last 90 Days' },
-  { value: 'custom', label: 'Custom Range...' },
-]
+interface StackedFilter {
+  id: string
+  field: string
+  value: string
+}
 
-// Sort options
-const SORT_OPTIONS = [
-  { value: 'last_activity_desc', label: 'Last Activity (Newest)' },
-  { value: 'last_activity_asc', label: 'Last Activity (Oldest)' },
-  { value: 'epv_desc', label: 'EPV (Highest)' },
-  { value: 'epv_asc', label: 'EPV (Lowest)' },
-  { value: 'name_asc', label: 'Name (A-Z)' },
-  { value: 'name_desc', label: 'Name (Z-A)' },
-]
+interface StackedSort {
+  id: string
+  field: string
+  direction: 'asc' | 'desc'
+}
+
 
 // Format relative time like "2d ago" or "Jan 21"
 function formatRelativeTime(dateStr: string | null | undefined): string {
@@ -84,13 +92,61 @@ export function ContactList() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isCreating, setIsCreating] = useState(false)
   
-  // Filter states
-  const [stageFilter, setStageFilter] = useState('')
-  const [pipelineFilter, setPipelineFilter] = useState('')
-  const [lastActivityFilter, setLastActivityFilter] = useState('')
-  const [customDateFrom, setCustomDateFrom] = useState('')
-  const [customDateTo, setCustomDateTo] = useState('')
-  const [sortBy, setSortBy] = useState('last_activity_desc')
+  // Stacked filter and sort states
+  const [filters, setFilters] = useState<StackedFilter[]>([])
+  const [sorts, setSorts] = useState<StackedSort[]>([
+    { id: 'default', field: 'last_activity', direction: 'desc' }
+  ])
+  const [showFilterMenu, setShowFilterMenu] = useState(false)
+  const [showSortMenu, setShowSortMenu] = useState(false)
+  
+  // Add a new filter
+  const addFilter = (field: string) => {
+    const fieldDef = FILTER_FIELDS.find(f => f.key === field)
+    const defaultValue = fieldDef?.type === 'select' && fieldDef.options.length > 0 
+      ? fieldDef.options[0].value 
+      : ''
+    setFilters([...filters, { id: Date.now().toString(), field, value: defaultValue }])
+    setShowFilterMenu(false)
+  }
+  
+  // Update a filter value
+  const updateFilter = (id: string, value: string) => {
+    setFilters(filters.map(f => f.id === id ? { ...f, value } : f))
+  }
+  
+  // Remove a filter
+  const removeFilter = (id: string) => {
+    setFilters(filters.filter(f => f.id !== id))
+  }
+  
+  // Add a new sort
+  const addSort = (field: string) => {
+    setSorts([...sorts, { id: Date.now().toString(), field, direction: 'desc' }])
+    setShowSortMenu(false)
+  }
+  
+  // Update a sort
+  const updateSort = (id: string, field?: string, direction?: 'asc' | 'desc') => {
+    setSorts(sorts.map(s => s.id === id ? { 
+      ...s, 
+      field: field ?? s.field, 
+      direction: direction ?? s.direction 
+    } : s))
+  }
+  
+  // Remove a sort
+  const removeSort = (id: string) => {
+    // Keep at least one sort
+    if (sorts.length > 1) {
+      setSorts(sorts.filter(s => s.id !== id))
+    }
+  }
+  
+  // Toggle sort direction
+  const toggleSortDirection = (id: string) => {
+    setSorts(sorts.map(s => s.id === id ? { ...s, direction: s.direction === 'asc' ? 'desc' : 'asc' } : s))
+  }
   
   // Debounce search query for smooth filtering (50ms)
   useEffect(() => {
@@ -98,7 +154,7 @@ export function ContactList() {
     return () => clearTimeout(timer)
   }, [searchQuery])
   
-  // Filter and sort contacts
+  // Filter and sort contacts using stacked filters
   const filteredContacts = useMemo(() => {
     let result = [...contacts]
     
@@ -117,81 +173,89 @@ export function ContactList() {
       )
     }
     
-    // Stage filter
-    if (stageFilter) {
-      result = result.filter(c => c.stage === stageFilter)
-    }
-    
-    // Pipeline filter
-    if (pipelineFilter) {
-      if (pipelineFilter === 'no_progress') {
-        result = result.filter(c => 
-          !c.meeting_booked && !c.showed_up_to_disco && !c.qualified && 
-          !c.demo_booked && !c.showed_up_to_demo && !c.proposal_sent && !c.closed
-        )
-      } else {
-        result = result.filter(c => c[pipelineFilter as keyof Contact] === true)
-      }
-    }
-    
-    // Last Activity filter
-    if (lastActivityFilter) {
-      if (lastActivityFilter === 'custom' && (customDateFrom || customDateTo)) {
-        const fromDate = customDateFrom ? new Date(customDateFrom) : new Date(0)
-        const toDate = customDateTo ? new Date(customDateTo + 'T23:59:59') : new Date()
-        result = result.filter(c => {
-          if (!c.updated_at) return false
-          const activityDate = new Date(c.updated_at)
-          return activityDate >= fromDate && activityDate <= toDate
-        })
-      } else if (lastActivityFilter !== 'custom') {
-        const now = new Date()
-        let cutoff: Date
-        switch (lastActivityFilter) {
-          case 'today':
-            cutoff = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-            break
-          case '7d':
-            cutoff = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
-            break
-          case '30d':
-            cutoff = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
-            break
-          case '90d':
-            cutoff = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000)
-            break
-          default:
-            cutoff = new Date(0)
-        }
-        result = result.filter(c => {
-          if (!c.updated_at) return false
-          return new Date(c.updated_at) >= cutoff
-        })
-      }
-    }
-    
-    // Sorting
-    result.sort((a, b) => {
-      switch (sortBy) {
-        case 'last_activity_desc':
-          return (new Date(b.updated_at || 0).getTime()) - (new Date(a.updated_at || 0).getTime())
-        case 'last_activity_asc':
-          return (new Date(a.updated_at || 0).getTime()) - (new Date(b.updated_at || 0).getTime())
-        case 'epv_desc':
-          return (b.epv || 0) - (a.epv || 0)
-        case 'epv_asc':
-          return (a.epv || 0) - (b.epv || 0)
-        case 'name_asc':
-          return (a.full_name || a.first_name || '').localeCompare(b.full_name || b.first_name || '')
-        case 'name_desc':
-          return (b.full_name || b.first_name || '').localeCompare(a.full_name || a.first_name || '')
-        default:
-          return 0
+    // Apply stacked filters
+    filters.forEach(filter => {
+      if (!filter.value) return
+      
+      switch (filter.field) {
+        case 'stage':
+          result = result.filter(c => c.stage === filter.value)
+          break
+        case 'pipeline':
+          if (filter.value === 'no_progress') {
+            result = result.filter(c => 
+              !c.meeting_booked && !c.showed_up_to_disco && !c.qualified && 
+              !c.demo_booked && !c.showed_up_to_demo && !c.proposal_sent && !c.closed
+            )
+          } else {
+            result = result.filter(c => c[filter.value as keyof Contact] === true)
+          }
+          break
+        case 'last_activity':
+          const now = new Date()
+          let cutoff: Date
+          switch (filter.value) {
+            case 'today':
+              cutoff = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+              break
+            case '7d':
+              cutoff = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+              break
+            case '30d':
+              cutoff = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
+              break
+            case '90d':
+              cutoff = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000)
+              break
+            default:
+              cutoff = new Date(0)
+          }
+          result = result.filter(c => {
+            if (!c.updated_at) return false
+            return new Date(c.updated_at) >= cutoff
+          })
+          break
+        case 'industry':
+          result = result.filter(c => c.industry?.toLowerCase().includes(filter.value.toLowerCase()))
+          break
+        case 'company':
+          result = result.filter(c => c.company?.toLowerCase().includes(filter.value.toLowerCase()))
+          break
       }
     })
     
+    // Apply stacked sorts (in order)
+    result.sort((a, b) => {
+      for (const sort of sorts) {
+        let comparison = 0
+        
+        switch (sort.field) {
+          case 'last_activity':
+            comparison = (new Date(a.updated_at || 0).getTime()) - (new Date(b.updated_at || 0).getTime())
+            break
+          case 'epv':
+            comparison = (a.epv || 0) - (b.epv || 0)
+            break
+          case 'name':
+            comparison = (a.full_name || a.first_name || '').localeCompare(b.full_name || b.first_name || '')
+            break
+          case 'company':
+            comparison = (a.company || '').localeCompare(b.company || '')
+            break
+          case 'created_at':
+            comparison = (new Date(a.created_at || 0).getTime()) - (new Date(b.created_at || 0).getTime())
+            break
+        }
+        
+        if (comparison !== 0) {
+          return sort.direction === 'asc' ? comparison : -comparison
+        }
+      }
+      return 0
+    })
+    
     return result
-  }, [contacts, debouncedQuery, stageFilter, pipelineFilter, lastActivityFilter, customDateFrom, customDateTo, sortBy])
+  }, [contacts, debouncedQuery, filters, sorts])
   
   // Single-click to open or switch contact in side panel
   const handleOpenContact = (contact: Contact) => {
@@ -318,101 +382,399 @@ export function ContactList() {
         </Button>
       </div>
       
-      {/* Filters Bar */}
+      {/* Stacked Filters & Sorts Bar */}
       <div
         style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 12,
-          marginBottom: 32,
-          padding: '12px 16px',
+          marginBottom: 24,
+          padding: '16px',
           backgroundColor: theme.bg.card,
           borderRadius: theme.radius.lg,
           border: `1px solid ${theme.border.subtle}`,
           position: 'relative',
           zIndex: 100,
-          overflow: 'visible',
         }}
       >
-        {/* Search */}
-        <SearchInput
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          onClear={() => setSearchQuery('')}
-          placeholder="Search leads..."
-          style={{ width: 200, flexShrink: 0 }}
-        />
-        
-        <div style={{ flex: 1 }} />
-        
-        {/* Filters */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0, overflow: 'visible' }}>
-          <FilterDropdown
-            label="Stage"
-            value={stageFilter}
-            options={STAGE_OPTIONS}
-            onChange={setStageFilter}
+        {/* Top row: Search + Add buttons */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: filters.length > 0 || sorts.length > 1 ? 16 : 0 }}>
+          <SearchInput
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            onClear={() => setSearchQuery('')}
+            placeholder="Search leads..."
+            style={{ width: 240, flexShrink: 0 }}
           />
           
-          <FilterDropdown
-            label="Pipeline"
-            value={pipelineFilter}
-            options={PIPELINE_OPTIONS}
-            onChange={setPipelineFilter}
-          />
+          <div style={{ flex: 1 }} />
           
-          <FilterDropdown
-            label="Last Activity"
-            value={lastActivityFilter}
-            options={LAST_ACTIVITY_OPTIONS}
-            onChange={setLastActivityFilter}
-          />
+          {/* Add Filter Button */}
+          <div style={{ position: 'relative' }}>
+            <button
+              onClick={() => { setShowFilterMenu(!showFilterMenu); setShowSortMenu(false) }}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '8px 12px',
+                fontSize: theme.fontSize.sm,
+                fontWeight: theme.fontWeight.medium,
+                color: filters.length > 0 ? theme.accent.primary : theme.text.secondary,
+                backgroundColor: filters.length > 0 ? theme.accent.primaryBg : 'transparent',
+                border: `1px solid ${filters.length > 0 ? theme.accent.primary : theme.border.default}`,
+                borderRadius: theme.radius.md,
+                cursor: 'pointer',
+                transition: `all ${theme.transition.fast}`,
+              }}
+            >
+              <Filter size={14} />
+              <span>Filter</span>
+              {filters.length > 0 && (
+                <span style={{ 
+                  backgroundColor: theme.accent.primary, 
+                  color: '#fff', 
+                  borderRadius: theme.radius.full,
+                  padding: '1px 6px',
+                  fontSize: theme.fontSize.xs,
+                  fontWeight: theme.fontWeight.semibold,
+                }}>
+                  {filters.length}
+                </span>
+              )}
+            </button>
+            
+            <AnimatePresence>
+              {showFilterMenu && (
+                <motion.div
+                  initial={{ opacity: 0, y: -8, scale: 0.96 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -8, scale: 0.96 }}
+                  transition={{ duration: 0.15 }}
+                  style={{
+                    position: 'absolute',
+                    top: '100%',
+                    right: 0,
+                    marginTop: 4,
+                    minWidth: 180,
+                    backgroundColor: theme.bg.elevated,
+                    border: `1px solid ${theme.border.default}`,
+                    borderRadius: theme.radius.lg,
+                    boxShadow: '0 10px 40px rgba(0,0,0,0.5)',
+                    zIndex: 9999,
+                    overflow: 'hidden',
+                    padding: 6,
+                  }}
+                >
+                  {FILTER_FIELDS.map(field => (
+                    <button
+                      key={field.key}
+                      onClick={() => addFilter(field.key)}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        width: '100%',
+                        padding: '8px 12px',
+                        fontSize: theme.fontSize.sm,
+                        color: theme.text.primary,
+                        backgroundColor: 'transparent',
+                        border: 'none',
+                        borderRadius: theme.radius.md,
+                        cursor: 'pointer',
+                        textAlign: 'left',
+                        transition: `all ${theme.transition.fast}`,
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = theme.bg.hover}
+                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                    >
+                      {field.label}
+                    </button>
+                  ))}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
           
-          {/* Custom Date Range Inputs */}
-          {lastActivityFilter === 'custom' && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <input
-                type="date"
-                value={customDateFrom}
-                onChange={(e) => setCustomDateFrom(e.target.value)}
-                style={{
-                  padding: '6px 10px',
-                  fontSize: theme.fontSize.sm,
-                  backgroundColor: theme.bg.elevated,
-                  color: theme.text.primary,
-                  border: `1px solid ${theme.border.default}`,
-                  borderRadius: theme.radius.md,
-                  outline: 'none',
-                }}
-              />
-              <span style={{ color: theme.text.muted, fontSize: theme.fontSize.sm }}>to</span>
-              <input
-                type="date"
-                value={customDateTo}
-                onChange={(e) => setCustomDateTo(e.target.value)}
-                style={{
-                  padding: '6px 10px',
-                  fontSize: theme.fontSize.sm,
-                  backgroundColor: theme.bg.elevated,
-                  color: theme.text.primary,
-                  border: `1px solid ${theme.border.default}`,
-                  borderRadius: theme.radius.md,
-                  outline: 'none',
-                }}
-              />
-            </div>
-          )}
-          
-          <div style={{ height: 20, width: 1, backgroundColor: theme.border.default }} />
-          
-          <FilterDropdown
-            label="Sort"
-            value={sortBy}
-            options={SORT_OPTIONS}
-            onChange={setSortBy}
-            icon={<ArrowUpDown size={14} />}
-          />
+          {/* Add Sort Button */}
+          <div style={{ position: 'relative' }}>
+            <button
+              onClick={() => { setShowSortMenu(!showSortMenu); setShowFilterMenu(false) }}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '8px 12px',
+                fontSize: theme.fontSize.sm,
+                fontWeight: theme.fontWeight.medium,
+                color: theme.text.secondary,
+                backgroundColor: 'transparent',
+                border: `1px solid ${theme.border.default}`,
+                borderRadius: theme.radius.md,
+                cursor: 'pointer',
+                transition: `all ${theme.transition.fast}`,
+              }}
+            >
+              <SortAsc size={14} />
+              <span>Sort</span>
+              {sorts.length > 1 && (
+                <span style={{ 
+                  backgroundColor: theme.text.muted, 
+                  color: theme.bg.card, 
+                  borderRadius: theme.radius.full,
+                  padding: '1px 6px',
+                  fontSize: theme.fontSize.xs,
+                  fontWeight: theme.fontWeight.semibold,
+                }}>
+                  {sorts.length}
+                </span>
+              )}
+            </button>
+            
+            <AnimatePresence>
+              {showSortMenu && (
+                <motion.div
+                  initial={{ opacity: 0, y: -8, scale: 0.96 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -8, scale: 0.96 }}
+                  transition={{ duration: 0.15 }}
+                  style={{
+                    position: 'absolute',
+                    top: '100%',
+                    right: 0,
+                    marginTop: 4,
+                    minWidth: 180,
+                    backgroundColor: theme.bg.elevated,
+                    border: `1px solid ${theme.border.default}`,
+                    borderRadius: theme.radius.lg,
+                    boxShadow: '0 10px 40px rgba(0,0,0,0.5)',
+                    zIndex: 9999,
+                    overflow: 'hidden',
+                    padding: 6,
+                  }}
+                >
+                  {SORT_FIELDS.map(field => (
+                    <button
+                      key={field.key}
+                      onClick={() => addSort(field.key)}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        width: '100%',
+                        padding: '8px 12px',
+                        fontSize: theme.fontSize.sm,
+                        color: theme.text.primary,
+                        backgroundColor: 'transparent',
+                        border: 'none',
+                        borderRadius: theme.radius.md,
+                        cursor: 'pointer',
+                        textAlign: 'left',
+                        transition: `all ${theme.transition.fast}`,
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = theme.bg.hover}
+                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                    >
+                      {field.label}
+                    </button>
+                  ))}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
         </div>
+        
+        {/* Active Filters Stack */}
+        {filters.length > 0 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: sorts.length > 1 ? 12 : 0 }}>
+            {filters.map((filter) => {
+              const fieldDef = FILTER_FIELDS.find(f => f.key === filter.field)
+              return (
+                <motion.div
+                  key={filter.id}
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -10 }}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    padding: '6px 10px',
+                    backgroundColor: theme.bg.elevated,
+                    borderRadius: theme.radius.md,
+                    border: `1px solid ${theme.border.subtle}`,
+                  }}
+                >
+                  <span style={{ fontSize: theme.fontSize.sm, color: theme.text.muted, minWidth: 100 }}>
+                    {fieldDef?.label}
+                  </span>
+                  <span style={{ fontSize: theme.fontSize.sm, color: theme.text.muted }}>is</span>
+                  
+                  {fieldDef?.type === 'select' ? (
+                    <select
+                      value={filter.value}
+                      onChange={(e) => updateFilter(filter.id, e.target.value)}
+                      style={{
+                        padding: '4px 8px',
+                        fontSize: theme.fontSize.sm,
+                        backgroundColor: theme.bg.card,
+                        color: theme.text.primary,
+                        border: `1px solid ${theme.border.default}`,
+                        borderRadius: theme.radius.md,
+                        outline: 'none',
+                        cursor: 'pointer',
+                        minWidth: 140,
+                      }}
+                    >
+                      {fieldDef.options.map(opt => (
+                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      type="text"
+                      value={filter.value}
+                      onChange={(e) => updateFilter(filter.id, e.target.value)}
+                      placeholder={`Enter ${fieldDef?.label.toLowerCase()}...`}
+                      style={{
+                        padding: '4px 8px',
+                        fontSize: theme.fontSize.sm,
+                        backgroundColor: theme.bg.card,
+                        color: theme.text.primary,
+                        border: `1px solid ${theme.border.default}`,
+                        borderRadius: theme.radius.md,
+                        outline: 'none',
+                        minWidth: 140,
+                      }}
+                    />
+                  )}
+                  
+                  <button
+                    onClick={() => removeFilter(filter.id)}
+                    style={{
+                      marginLeft: 'auto',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      width: 20,
+                      height: 20,
+                      backgroundColor: 'transparent',
+                      border: 'none',
+                      borderRadius: theme.radius.sm,
+                      color: theme.text.muted,
+                      cursor: 'pointer',
+                      transition: `all ${theme.transition.fast}`,
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = theme.status.errorBg
+                      e.currentTarget.style.color = theme.status.error
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = 'transparent'
+                      e.currentTarget.style.color = theme.text.muted
+                    }}
+                  >
+                    <X size={14} />
+                  </button>
+                </motion.div>
+              )
+            })}
+          </div>
+        )}
+        
+        {/* Active Sorts Stack */}
+        {sorts.length > 0 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {sorts.map((sort, index) => {
+              return (
+                <motion.div
+                  key={sort.id}
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -10 }}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    padding: '6px 10px',
+                    backgroundColor: theme.bg.elevated,
+                    borderRadius: theme.radius.md,
+                    border: `1px solid ${theme.border.subtle}`,
+                  }}
+                >
+                  <span style={{ fontSize: theme.fontSize.xs, color: theme.text.muted, minWidth: 60 }}>
+                    {index === 0 ? 'Sort by' : 'then by'}
+                  </span>
+                  
+                  <select
+                    value={sort.field}
+                    onChange={(e) => updateSort(sort.id, e.target.value)}
+                    style={{
+                      padding: '4px 8px',
+                      fontSize: theme.fontSize.sm,
+                      backgroundColor: theme.bg.card,
+                      color: theme.text.primary,
+                      border: `1px solid ${theme.border.default}`,
+                      borderRadius: theme.radius.md,
+                      outline: 'none',
+                      cursor: 'pointer',
+                      minWidth: 120,
+                    }}
+                  >
+                    {SORT_FIELDS.map(field => (
+                      <option key={field.key} value={field.key}>{field.label}</option>
+                    ))}
+                  </select>
+                  
+                  <button
+                    onClick={() => toggleSortDirection(sort.id)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 4,
+                      padding: '4px 8px',
+                      fontSize: theme.fontSize.sm,
+                      backgroundColor: theme.bg.card,
+                      color: theme.text.secondary,
+                      border: `1px solid ${theme.border.default}`,
+                      borderRadius: theme.radius.md,
+                      cursor: 'pointer',
+                      transition: `all ${theme.transition.fast}`,
+                    }}
+                  >
+                    <ArrowUpDown size={12} />
+                    {sort.direction === 'asc' ? 'Ascending' : 'Descending'}
+                  </button>
+                  
+                  {sorts.length > 1 && (
+                    <button
+                      onClick={() => removeSort(sort.id)}
+                      style={{
+                        marginLeft: 'auto',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        width: 20,
+                        height: 20,
+                        backgroundColor: 'transparent',
+                        border: 'none',
+                        borderRadius: theme.radius.sm,
+                        color: theme.text.muted,
+                        cursor: 'pointer',
+                        transition: `all ${theme.transition.fast}`,
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = theme.status.errorBg
+                        e.currentTarget.style.color = theme.status.error
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = 'transparent'
+                        e.currentTarget.style.color = theme.text.muted
+                      }}
+                    >
+                      <X size={14} />
+                    </button>
+                  )}
+                </motion.div>
+              )
+            })}
+          </div>
+        )}
       </div>
       
       {/* Contacts Table */}
@@ -547,7 +909,7 @@ function ContactRow({ contact, isSelected, gridColumns, minWidth, onClick, onUpd
         gridTemplateColumns: gridColumns,
         gap: '0 20px',
         alignItems: 'center',
-        padding: '8px 16px',
+        padding: '10px 16px',
         borderBottom: `1px solid ${theme.border.subtle}`,
         backgroundColor: isSelected ? theme.bg.hover : 'transparent',
         cursor: 'pointer',
@@ -942,117 +1304,3 @@ function ActionButton({ href, icon, label, external }: ActionButtonProps) {
   )
 }
 
-// Filter Dropdown Component
-interface FilterDropdownProps {
-  label: string
-  value: string
-  options: { value: string; label: string }[]
-  onChange: (value: string) => void
-  icon?: React.ReactNode
-}
-
-function FilterDropdown({ label, value, options, onChange, icon }: FilterDropdownProps) {
-  const [isOpen, setIsOpen] = useState(false)
-  const dropdownRef = useRef<HTMLDivElement>(null)
-  
-  const selectedOption = options.find(o => o.value === value)
-  const displayLabel = selectedOption?.label || label
-  const hasValue = value !== ''
-  
-  // Close on outside click
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsOpen(false)
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
-  
-  return (
-    <div ref={dropdownRef} style={{ position: 'relative' }}>
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 6,
-          padding: '8px 12px',
-          fontSize: theme.fontSize.sm,
-          fontWeight: theme.fontWeight.medium,
-          color: hasValue ? theme.accent.primary : theme.text.secondary,
-          backgroundColor: hasValue ? theme.accent.primaryBg : 'transparent',
-          border: `1px solid ${hasValue ? theme.accent.primary : theme.border.default}`,
-          borderRadius: theme.radius.md,
-          cursor: 'pointer',
-          transition: `all ${theme.transition.fast}`,
-          whiteSpace: 'nowrap',
-        }}
-      >
-        {icon}
-        <span>{displayLabel}</span>
-        <ChevronDown size={14} style={{ opacity: 0.7 }} />
-      </button>
-      
-      <AnimatePresence>
-        {isOpen && (
-          <motion.div
-            initial={{ opacity: 0, y: -8, scale: 0.96 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -8, scale: 0.96 }}
-            transition={{ duration: 0.15 }}
-            style={{
-              position: 'absolute',
-              top: '100%',
-              left: 0,
-              marginTop: 4,
-              minWidth: 180,
-              backgroundColor: theme.bg.elevated,
-              border: `1px solid ${theme.border.default}`,
-              borderRadius: theme.radius.lg,
-              boxShadow: '0 10px 40px rgba(0,0,0,0.5)',
-              zIndex: 9999,
-              overflow: 'hidden',
-              padding: 6,
-            }}
-          >
-            {options.map((option) => (
-              <button
-                key={option.value}
-                onClick={() => {
-                  onChange(option.value)
-                  setIsOpen(false)
-                }}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  width: '100%',
-                  padding: '8px 12px',
-                  fontSize: theme.fontSize.sm,
-                  color: option.value === value ? theme.accent.primary : theme.text.primary,
-                  backgroundColor: option.value === value ? theme.accent.primaryBg : 'transparent',
-                  border: 'none',
-                  borderRadius: theme.radius.md,
-                  cursor: 'pointer',
-                  textAlign: 'left',
-                  transition: `all ${theme.transition.fast}`,
-                }}
-                onMouseEnter={(e) => {
-                  if (option.value !== value) {
-                    e.currentTarget.style.backgroundColor = theme.bg.hover
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = option.value === value ? theme.accent.primaryBg : 'transparent'
-                }}
-              >
-                {option.label}
-              </button>
-            ))}
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  )
-}

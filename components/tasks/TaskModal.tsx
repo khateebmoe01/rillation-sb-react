@@ -42,7 +42,7 @@ export function TaskModal({ isOpen, onClose, task }: TaskModalProps) {
   
   const dealOptions = [
     { value: '', label: 'No deal' },
-    ...deals.filter(d => d.stage !== 'won' && d.stage !== 'lost').map(d => ({ value: d.id, label: d.name }))
+    ...deals.filter(d => d.stage !== 'closed' && d.stage !== 'lost').map(d => ({ value: d.id, label: d.name }))
   ]
   
   // Reset form when task changes

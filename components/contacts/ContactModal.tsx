@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { User, Mail, Phone, Briefcase, Linkedin, Trash2, MessageSquare, Building2, DollarSign, Calendar, Globe, MapPin, ChevronDown } from 'lucide-react'
+import { User, Mail, Phone, Briefcase, Linkedin, Trash2, MessageSquare, Building2, DollarSign, Calendar, Globe, ChevronDown, ChevronRight } from 'lucide-react'
 import { theme } from '../../config/theme'
 import { useCRM } from '../../context/CRMContext'
 import { SlidePanel, PanelFooter, Button, Input, Select, Textarea, Avatar } from '../shared'
@@ -52,6 +52,18 @@ export function ContactModal({ isOpen, onClose, contact }: ContactModalProps) {
   const [loading, setLoading] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
+  
+  // Collapsible section states
+  const [openSections, setOpenSections] = useState({
+    contact: true,
+    company: true,
+    pipeline: true,
+    notes: false,
+  })
+  
+  const toggleSection = (section: keyof typeof openSections) => {
+    setOpenSections(prev => ({ ...prev, [section]: !prev[section] }))
+  }
   
   const [formData, setFormData] = useState({
     // Personal Info
@@ -313,10 +325,14 @@ export function ContactModal({ isOpen, onClose, contact }: ContactModalProps) {
       header={panelHeader}
       width={760}
     >
-      <form onSubmit={onFormSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
-        {/* Personal Info Section */}
-        <SectionHeader icon={<User size={16} />} title="Personal Info" />
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      <form onSubmit={onFormSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {/* Contact Info Section */}
+        <CollapsibleSection
+          icon={<User size={18} />}
+          title="Contact Info"
+          isOpen={openSections.contact}
+          onToggle={() => toggleSection('contact')}
+        >
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
             <Input
               label="First Name"
@@ -368,11 +384,15 @@ export function ContactModal({ isOpen, onClose, contact }: ContactModalProps) {
             placeholder="https://linkedin.com/in/..."
             icon={<Linkedin size={14} />}
           />
-        </div>
+        </CollapsibleSection>
         
         {/* Company Info Section */}
-        <SectionHeader icon={<Building2 size={16} />} title="Company Info" />
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+        <CollapsibleSection
+          icon={<Building2 size={18} />}
+          title="Company Info"
+          isOpen={openSections.company}
+          onToggle={() => toggleSection('company')}
+        >
           <Input
             label="Company Name"
             value={formData.company}
@@ -430,7 +450,7 @@ export function ContactModal({ isOpen, onClose, contact }: ContactModalProps) {
             placeholder="$1M-$10M"
           />
           
-          <SectionHeader icon={<MapPin size={16} />} title="Location" />
+          {/* Location */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16 }}>
             <Input
               label="City"
@@ -452,6 +472,7 @@ export function ContactModal({ isOpen, onClose, contact }: ContactModalProps) {
             />
           </div>
           
+          {/* Business Details */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
             <Input
               label="Year Founded"
@@ -473,11 +494,15 @@ export function ContactModal({ isOpen, onClose, contact }: ContactModalProps) {
             onChange={(e) => setFormData({ ...formData, funding_stage: e.target.value })}
             placeholder="Series A"
           />
-        </div>
+        </CollapsibleSection>
         
-        {/* Pipeline Section */}
-        <SectionHeader icon={<DollarSign size={16} />} title="Pipeline & Sales" />
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+        {/* Pipeline & Sales Section */}
+        <CollapsibleSection
+          icon={<DollarSign size={18} />}
+          title="Pipeline & Sales"
+          isOpen={openSections.pipeline}
+          onToggle={() => toggleSection('pipeline')}
+        >
           {/* Pipeline Progress Dropdown */}
           <PipelineProgressMultiSelect
             steps={PIPELINE_STEPS}
@@ -538,8 +563,15 @@ export function ContactModal({ isOpen, onClose, contact }: ContactModalProps) {
             onChange={(e) => setFormData({ ...formData, meeting_link: e.target.value })}
             placeholder="https://zoom.us/..."
           />
-          
-          <SectionHeader icon={<MessageSquare size={16} />} title="Context & Notes" />
+        </CollapsibleSection>
+        
+        {/* Context & Notes Section */}
+        <CollapsibleSection
+          icon={<MessageSquare size={18} />}
+          title="Context & Notes"
+          isOpen={openSections.notes}
+          onToggle={() => toggleSection('notes')}
+        >
           <Textarea
             label="Context"
             value={formData.context}
@@ -554,7 +586,7 @@ export function ContactModal({ isOpen, onClose, contact }: ContactModalProps) {
             placeholder="Additional notes..."
             style={{ minHeight: 60 }}
           />
-        </div>
+        </CollapsibleSection>
         
         {/* Error Message */}
         {formError && (
@@ -826,33 +858,74 @@ function PipelineProgressMultiSelect({ steps, formData, onToggle }: PipelineProg
   )
 }
 
-// Section header component
-function SectionHeader({ icon, title }: { icon: React.ReactNode; title: string }) {
+// Collapsible Section Header component
+interface CollapsibleSectionProps {
+  icon: React.ReactNode
+  title: string
+  isOpen: boolean
+  onToggle: () => void
+  children: React.ReactNode
+  isSubSection?: boolean
+}
+
+function CollapsibleSection({ icon, title, isOpen, onToggle, children, isSubSection = false }: CollapsibleSectionProps) {
   return (
-    <div
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 8,
-        marginTop: 8,
-        marginBottom: 4,
-        paddingBottom: 8,
-        borderBottom: `1px solid ${theme.border.subtle}`,
-      }}
-    >
-      <span style={{ color: theme.accent.primary }}>{icon}</span>
-      <h3
+    <div style={{ marginBottom: isOpen ? 0 : 8 }}>
+      <button
+        type="button"
+        onClick={onToggle}
         style={{
-          fontSize: theme.fontSize.xs,
-          fontWeight: theme.fontWeight.semibold,
-          color: theme.text.muted,
-          margin: 0,
-          textTransform: 'uppercase',
-          letterSpacing: '0.05em',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 10,
+          width: '100%',
+          padding: isSubSection ? '8px 0' : '12px 0',
+          marginTop: isSubSection ? 12 : 16,
+          marginBottom: isOpen ? 16 : 0,
+          paddingBottom: isOpen ? 12 : 0,
+          borderBottom: isOpen ? `1px solid ${theme.border.subtle}` : 'none',
+          background: 'none',
+          border: 'none',
+          cursor: 'pointer',
+          textAlign: 'left',
         }}
       >
-        {title}
-      </h3>
+        <motion.span
+          animate={{ rotate: isOpen ? 90 : 0 }}
+          transition={{ duration: 0.15 }}
+          style={{ color: theme.text.muted, display: 'flex', alignItems: 'center' }}
+        >
+          <ChevronRight size={isSubSection ? 14 : 16} />
+        </motion.span>
+        <span style={{ color: theme.accent.primary, display: 'flex', alignItems: 'center' }}>{icon}</span>
+        <h3
+          style={{
+            fontSize: isSubSection ? theme.fontSize.sm : theme.fontSize.base,
+            fontWeight: theme.fontWeight.semibold,
+            color: isSubSection ? theme.text.secondary : theme.text.primary,
+            margin: 0,
+            flex: 1,
+          }}
+        >
+          {title}
+        </h3>
+      </button>
+      <AnimatePresence initial={false}>
+        {isOpen && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            style={{ overflow: 'hidden' }}
+          >
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 20, paddingLeft: isSubSection ? 24 : 0 }}>
+              {children}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }
+

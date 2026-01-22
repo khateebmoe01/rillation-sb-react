@@ -22,13 +22,13 @@ export function CRMDashboard() {
     const uniqueCompanies = new Set(contacts.map(c => c.company).filter(Boolean)).size
     
     // Deal stats
-    const activeDeals = deals.filter(d => d.stage !== 'won' && d.stage !== 'lost')
+    const activeDeals = deals.filter(d => d.stage !== 'closed' && d.stage !== 'lost')
     const totalPipeline = activeDeals.reduce((sum, d) => sum + (d.amount || 0), 0)
     const weightedPipeline = activeDeals.reduce(
       (sum, d) => sum + ((d.amount || 0) * (d.probability || 0) / 100), 
       0
     )
-    const wonDeals = deals.filter(d => d.stage === 'won')
+    const wonDeals = deals.filter(d => d.stage === 'closed')
     const wonValue = wonDeals.reduce((sum, d) => sum + (d.amount || 0), 0)
     
     // Task stats
@@ -77,7 +77,7 @@ export function CRMDashboard() {
   
   // Deal stage breakdown
   const stageBreakdown = useMemo(() => {
-    const stages: DealStage[] = ['lead', 'qualification', 'discovery', 'demo', 'proposal', 'negotiation']
+    const stages: DealStage[] = ['interested', 'discovery', 'demo', 'negotiation', 'proposal']
     return stages.map(stage => ({
       stage,
       count: deals.filter(d => d.stage === stage).length,
@@ -397,11 +397,12 @@ interface StatCardProps {
 function StatCard({ icon, iconColor, label, value, subValue, alert, isLarge }: StatCardProps) {
   return (
     <Card padding="md">
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+      {/* Label with white line framer */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
         <div
           style={{
-            width: 44,
-            height: 44,
+            width: 32,
+            height: 32,
             borderRadius: theme.radius.lg,
             backgroundColor: `${iconColor}20`,
             display: 'flex',
@@ -413,40 +414,47 @@ function StatCard({ icon, iconColor, label, value, subValue, alert, isLarge }: S
         >
           {icon}
         </div>
-        <div>
-          <p
-            style={{
-              fontSize: theme.fontSize.sm,
-              color: theme.text.muted,
-              margin: 0,
-              marginBottom: 4,
-            }}
-          >
-            {label}
-          </p>
-          <p
-            style={{
-              fontSize: isLarge ? theme.fontSize['2xl'] : theme.fontSize.xl,
-              fontWeight: theme.fontWeight.bold,
-              color: theme.text.primary,
-              margin: 0,
-            }}
-          >
-            {value}
-          </p>
-          {subValue && (
-            <p
-              style={{
-                fontSize: theme.fontSize.xs,
-                color: alert ? theme.status.error : theme.text.muted,
-                margin: '4px 0 0 0',
-              }}
-            >
-              {subValue}
-            </p>
-          )}
-        </div>
+        <p
+          style={{
+            fontSize: theme.fontSize.sm,
+            color: theme.text.muted,
+            margin: 0,
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {label}
+        </p>
+        {/* White line framer */}
+        <div
+          style={{
+            flex: 1,
+            height: 1,
+            background: 'rgba(255, 255, 255, 0.2)',
+          }}
+        />
       </div>
+      {/* Value */}
+      <p
+        style={{
+          fontSize: isLarge ? theme.fontSize['2xl'] : theme.fontSize.xl,
+          fontWeight: theme.fontWeight.bold,
+          color: theme.text.primary,
+          margin: 0,
+        }}
+      >
+        {value}
+      </p>
+      {subValue && (
+        <p
+          style={{
+            fontSize: theme.fontSize.xs,
+            color: alert ? theme.status.error : theme.text.muted,
+            margin: '4px 0 0 0',
+          }}
+        >
+          {subValue}
+        </p>
+      )}
     </Card>
   )
 }

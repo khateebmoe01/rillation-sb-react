@@ -29,9 +29,9 @@ export function Card({
   className = '',
   ...motionProps
 }: CardProps) {
-  const baseBoxShadow = `0 0 0 1px rgba(255, 255, 255, 0.05), 0 1px 3px rgba(0, 0, 0, 0.5)`
-  const hoverBoxShadow = `0 0 0 1px rgba(255, 255, 255, 0.15), 0 0 20px rgba(17, 119, 84, 0.15), 0 1px 3px rgba(0, 0, 0, 0.5)`
-  const selectedBoxShadow = `0 0 0 1px ${theme.accent.primary}, 0 0 25px rgba(17, 119, 84, 0.25), 0 1px 3px rgba(0, 0, 0, 0.5)`
+  const baseBoxShadow = `0 1px 3px rgba(0, 0, 0, 0.5)`
+  const hoverBoxShadow = `0 0 20px rgba(17, 119, 84, 0.15), 0 1px 3px rgba(0, 0, 0, 0.5)`
+  const selectedBoxShadow = `0 0 25px rgba(17, 119, 84, 0.25), 0 1px 3px rgba(0, 0, 0, 0.5)`
   
   return (
     <motion.div
@@ -42,14 +42,14 @@ export function Card({
         scale: 1.01, 
         y: -2,
         boxShadow: hoverBoxShadow,
-        borderColor: 'rgba(255, 255, 255, 0.15)',
+        borderColor: 'rgba(255, 255, 255, 0.3)',
       } : undefined}
       whileTap={onClick ? { scale: 0.99 } : undefined}
       transition={{ duration: 0.15 }}
       style={{
         backgroundColor: theme.bg.card,
         borderRadius: theme.radius.xl,
-        border: `1px solid ${selected ? theme.accent.primary : theme.border.default}`,
+        border: `1px solid ${selected ? theme.accent.primary : 'rgba(255, 255, 255, 0.15)'}`,
         padding: paddingMap[padding],
         cursor: onClick ? 'pointer' : 'default',
         boxShadow: selected ? selectedBoxShadow : baseBoxShadow,
@@ -73,37 +73,49 @@ export function CardHeader({ title, subtitle, action }: CardHeaderProps) {
   return (
     <div
       style={{
-        display: 'flex',
-        alignItems: 'flex-start',
-        justifyContent: 'space-between',
-        gap: 16,
         marginBottom: 16,
       }}
     >
-      <div>
+      {/* Title row with white line */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 12,
+        }}
+      >
         <h3
           style={{
             fontSize: theme.fontSize.lg,
             fontWeight: theme.fontWeight.semibold,
             color: theme.text.primary,
             margin: 0,
+            whiteSpace: 'nowrap',
           }}
         >
           {title}
         </h3>
-        {subtitle && (
-          <p
-            style={{
-              fontSize: theme.fontSize.sm,
-              color: theme.text.muted,
-              margin: '4px 0 0 0',
-            }}
-          >
-            {subtitle}
-          </p>
-        )}
+        {/* White line framer */}
+        <div
+          style={{
+            flex: 1,
+            height: 1,
+            background: 'rgba(255, 255, 255, 0.2)',
+          }}
+        />
+        {action}
       </div>
-      {action}
+      {subtitle && (
+        <p
+          style={{
+            fontSize: theme.fontSize.sm,
+            color: theme.text.muted,
+            margin: '4px 0 0 0',
+          }}
+        >
+          {subtitle}
+        </p>
+      )}
     </div>
   )
 }
