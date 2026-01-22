@@ -462,7 +462,7 @@ export function ContactList() {
               comparison = (a.stage || '').localeCompare(b.stage || '')
               break
             case 'next_touchpoint':
-              comparison = (new Date(a.next_touch || 0).getTime()) - (new Date(b.next_touch || 0).getTime())
+              comparison = (new Date(a.next_touchpoint || 0).getTime()) - (new Date(b.next_touchpoint || 0).getTime())
               break
             case 'meeting_date':
               comparison = (new Date(a.meeting_date || 0).getTime()) - (new Date(b.meeting_date || 0).getTime())
@@ -847,7 +847,7 @@ export function ContactList() {
                                       padding: '6px 10px',
                                       fontSize: 13,
                                       color: theme.text.primary,
-                                      backgroundColor: theme.bg.surface,
+                                      backgroundColor: theme.bg.elevated,
                                       border: `1px solid ${theme.border.default}`,
                                       borderRadius: 6,
                                       outline: 'none',

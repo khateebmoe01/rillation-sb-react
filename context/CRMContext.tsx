@@ -446,7 +446,7 @@ export function CRMProvider({ children }: { children: ReactNode }) {
           
           return deal
         })
-        .filter((deal): deal is Deal => deal !== null)
+        .filter((deal: Deal | null): deal is Deal => deal !== null)
       
       // Combine existing deals with leads-as-deals
       const allDeals: Deal[] = [...(dealsData || []), ...leadsAsDeals]

@@ -175,7 +175,7 @@ function SortableRow({ sort, onUpdateField, onToggleDirection, onRemove, availab
                 border: `1px solid ${theme.border.default}`,
                 borderRadius: theme.radius.md,
                 boxShadow: theme.shadow.dropdown,
-                zIndex: 100,
+                zIndex: 10001,
                 maxHeight: 200,
                 overflowY: 'auto',
               }}
@@ -491,7 +491,6 @@ export function SortDropdown({
               borderRadius: theme.radius.lg,
               boxShadow: theme.shadow.dropdown,
               zIndex: 10000,
-              overflow: 'hidden',
             }}
           >
             {/* Header */}
@@ -537,7 +536,7 @@ export function SortDropdown({
             </div>
             
             {/* Content */}
-            <div style={{ maxHeight: 300, overflowY: 'auto' }}>
+            <div style={{ maxHeight: 400, overflowY: 'visible', overflowX: 'visible' }}>
               {!hasSorts ? (
                 <FieldPicker 
                   availableFields={availableFields} 
