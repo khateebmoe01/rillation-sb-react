@@ -11,7 +11,11 @@ import { Card, CardHeader, Badge, LoadingSkeleton } from '../shared'
 import { DEAL_STAGE_INFO, type DealStage } from '../../types'
 
 export function CRMDashboard() {
-  const { contacts, deals, tasks, loading } = useCRM()
+  const { contacts, deals, tasks, loading, initialLoadComplete } = useCRM()
+  
+  // Skip animations after initial load for instant tab switching
+  const animationDuration = initialLoadComplete ? 0 : 0.3
+  const getDelay = (baseDelay: number) => initialLoadComplete ? 0 : baseDelay
   
   // Calculate stats
   const stats = useMemo(() => {
@@ -128,9 +132,9 @@ export function CRMDashboard() {
         }}
       >
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={initialLoadComplete ? false : { opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3, delay: 0.1 }}
+          transition={{ duration: animationDuration, delay: getDelay(0.1) }}
         >
           <StatCard
             icon={<Users size={20} />}
@@ -138,12 +142,13 @@ export function CRMDashboard() {
             label="Contacts"
             value={stats.contacts}
             subValue={`${stats.uniqueCompanies} companies`}
+            skipAnimation={initialLoadComplete}
           />
         </motion.div>
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={initialLoadComplete ? false : { opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3, delay: 0.15 }}
+          transition={{ duration: animationDuration, delay: getDelay(0.15) }}
         >
           <StatCard
             icon={<Building2 size={20} />}
@@ -151,12 +156,13 @@ export function CRMDashboard() {
             label="Companies"
             value={stats.uniqueCompanies}
             subValue="Unique organizations"
+            skipAnimation={initialLoadComplete}
           />
         </motion.div>
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={initialLoadComplete ? false : { opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3, delay: 0.2 }}
+          transition={{ duration: animationDuration, delay: getDelay(0.2) }}
         >
           <StatCard
             icon={<DollarSign size={20} />}
@@ -164,12 +170,13 @@ export function CRMDashboard() {
             label="Active Deals"
             value={stats.activeDeals}
             subValue={`$${formatCurrency(stats.totalPipeline)} pipeline`}
+            skipAnimation={initialLoadComplete}
           />
         </motion.div>
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={initialLoadComplete ? false : { opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3, delay: 0.25 }}
+          transition={{ duration: animationDuration, delay: getDelay(0.25) }}
         >
           <StatCard
             icon={<TrendingUp size={20} />}
@@ -177,12 +184,13 @@ export function CRMDashboard() {
             label="Weighted Pipeline"
             value={`$${formatCurrency(stats.weightedPipeline)}`}
             isLarge
+            skipAnimation={initialLoadComplete}
           />
         </motion.div>
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={initialLoadComplete ? false : { opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3, delay: 0.3 }}
+          transition={{ duration: animationDuration, delay: getDelay(0.3) }}
         >
           <StatCard
             icon={<CheckSquare size={20} />}
@@ -191,6 +199,7 @@ export function CRMDashboard() {
             value={stats.pendingTasks}
             subValue={stats.overdueTasks > 0 ? `${stats.overdueTasks} overdue` : undefined}
             alert={stats.overdueTasks > 0}
+            skipAnimation={initialLoadComplete}
           />
         </motion.div>
       </div>
@@ -205,9 +214,9 @@ export function CRMDashboard() {
       >
         {/* Pipeline Breakdown */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={initialLoadComplete ? false : { opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.35 }}
+          transition={{ duration: animationDuration, delay: getDelay(0.35) }}
         >
           <Card padding="lg" hover>
             <CardHeader title="Pipeline by Stage" subtitle="Active opportunities" />
@@ -220,15 +229,15 @@ export function CRMDashboard() {
                 return (
                   <motion.div
                     key={stage}
-                    initial={{ opacity: 0, x: -20 }}
+                    initial={initialLoadComplete ? false : { opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
-                    transition={{ duration: 0.3, delay: 0.4 + index * 0.05 }}
+                    transition={{ duration: animationDuration, delay: getDelay(0.4 + index * 0.05) }}
                     style={{ display: 'flex', alignItems: 'center', gap: 12 }}
                   >
                     <motion.div
-                      initial={{ scale: 0 }}
+                      initial={initialLoadComplete ? false : { scale: 0 }}
                       animate={{ scale: 1 }}
-                      transition={{ duration: 0.3, delay: 0.5 + index * 0.05, type: 'spring' }}
+                      transition={{ duration: animationDuration, delay: getDelay(0.5 + index * 0.05), type: 'spring' }}
                       style={{
                         width: 10,
                         height: 10,
@@ -257,9 +266,9 @@ export function CRMDashboard() {
                       }}
                     >
                       <motion.div
-                        initial={{ width: 0 }}
+                        initial={initialLoadComplete ? { width: `${percentage}%` } : { width: 0 }}
                         animate={{ width: `${percentage}%` }}
-                        transition={{ duration: 0.8, delay: 0.6 + index * 0.05, ease: 'easeOut' }}
+                        transition={{ duration: initialLoadComplete ? 0 : 0.8, delay: getDelay(0.6 + index * 0.05), ease: 'easeOut' }}
                         style={{
                           height: '100%',
                           backgroundColor: info.color,
@@ -297,17 +306,17 @@ export function CRMDashboard() {
         
         {/* Recent Deals */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={initialLoadComplete ? false : { opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.4 }}
+          transition={{ duration: animationDuration, delay: getDelay(0.4) }}
         >
           <Card padding="lg" hover>
             <CardHeader title="Recent Deals" subtitle="Latest opportunities" />
             {recentDeals.length === 0 ? (
               <motion.p
-                initial={{ opacity: 0 }}
+                initial={initialLoadComplete ? false : { opacity: 0 }}
                 animate={{ opacity: 1 }}
-                transition={{ delay: 0.5 }}
+                transition={{ delay: getDelay(0.5) }}
                 style={{ color: theme.text.muted, fontSize: theme.fontSize.sm }}
               >
                 No deals yet
@@ -320,10 +329,10 @@ export function CRMDashboard() {
                     return (
                       <motion.div
                         key={deal.id}
-                        initial={{ opacity: 0, x: -20 }}
+                        initial={initialLoadComplete ? false : { opacity: 0, x: -20 }}
                         animate={{ opacity: 1, x: 0 }}
                         exit={{ opacity: 0, x: 20 }}
-                        transition={{ duration: 0.3, delay: 0.5 + index * 0.05 }}
+                        transition={{ duration: animationDuration, delay: getDelay(0.5 + index * 0.05) }}
                         whileHover={{ scale: 1.02, x: 4 }}
                         style={{
                           display: 'flex',
@@ -383,9 +392,9 @@ export function CRMDashboard() {
         
         {/* Upcoming Tasks */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={initialLoadComplete ? false : { opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.45 }}
+          transition={{ duration: animationDuration, delay: getDelay(0.45) }}
         >
           <Card padding="lg" hover>
             <CardHeader 
@@ -394,9 +403,9 @@ export function CRMDashboard() {
             />
             {upcomingTasks.length === 0 ? (
               <motion.p
-                initial={{ opacity: 0 }}
+                initial={initialLoadComplete ? false : { opacity: 0 }}
                 animate={{ opacity: 1 }}
-                transition={{ delay: 0.5 }}
+                transition={{ delay: getDelay(0.5) }}
                 style={{ color: theme.text.muted, fontSize: theme.fontSize.sm }}
               >
                 No upcoming tasks
@@ -411,10 +420,10 @@ export function CRMDashboard() {
                     return (
                       <motion.div
                         key={task.id}
-                        initial={{ opacity: 0, x: -20 }}
+                        initial={initialLoadComplete ? false : { opacity: 0, x: -20 }}
                         animate={{ opacity: 1, x: 0 }}
                         exit={{ opacity: 0, x: 20 }}
-                        transition={{ duration: 0.3, delay: 0.5 + index * 0.05 }}
+                        transition={{ duration: animationDuration, delay: getDelay(0.5 + index * 0.05) }}
                         whileHover={{ scale: 1.02, x: 4 }}
                         style={{
                           display: 'flex',
@@ -478,9 +487,10 @@ interface StatCardProps {
   subValue?: string
   alert?: boolean
   isLarge?: boolean
+  skipAnimation?: boolean
 }
 
-function StatCard({ icon, iconColor, label, value, subValue, alert, isLarge }: StatCardProps) {
+function StatCard({ icon, iconColor, label, value, subValue, alert, isLarge, skipAnimation }: StatCardProps) {
   return (
     <motion.div
       whileHover={{ scale: 1.03, y: -4 }}
@@ -508,9 +518,9 @@ function StatCard({ icon, iconColor, label, value, subValue, alert, isLarge }: S
         {/* Label with white line framer */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12, position: 'relative', zIndex: 1 }}>
           <motion.div
-            initial={{ scale: 0, rotate: -180 }}
+            initial={skipAnimation ? false : { scale: 0, rotate: -180 }}
             animate={{ scale: 1, rotate: 0 }}
-            transition={{ duration: 0.5, type: 'spring', stiffness: 200 }}
+            transition={{ duration: skipAnimation ? 0 : 0.5, type: 'spring', stiffness: 200 }}
             whileHover={{ scale: 1.1, rotate: 5 }}
             style={{
               width: 32,
@@ -538,9 +548,9 @@ function StatCard({ icon, iconColor, label, value, subValue, alert, isLarge }: S
           </p>
           {/* White line framer */}
           <motion.div
-            initial={{ scaleX: 0 }}
+            initial={skipAnimation ? false : { scaleX: 0 }}
             animate={{ scaleX: 1 }}
-            transition={{ duration: 0.5, delay: 0.2 }}
+            transition={{ duration: skipAnimation ? 0 : 0.5, delay: skipAnimation ? 0 : 0.2 }}
             style={{
               flex: 1,
               height: 1,
@@ -551,9 +561,9 @@ function StatCard({ icon, iconColor, label, value, subValue, alert, isLarge }: S
         </div>
         {/* Value */}
         <motion.p
-          initial={{ opacity: 0, y: 10 }}
+          initial={skipAnimation ? false : { opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.3 }}
+          transition={{ duration: skipAnimation ? 0 : 0.4, delay: skipAnimation ? 0 : 0.3 }}
           style={{
             fontSize: isLarge ? theme.fontSize['2xl'] : theme.fontSize.xl,
             fontWeight: theme.fontWeight.bold,
@@ -567,9 +577,9 @@ function StatCard({ icon, iconColor, label, value, subValue, alert, isLarge }: S
         </motion.p>
         {subValue && (
           <motion.p
-            initial={{ opacity: 0 }}
+            initial={skipAnimation ? false : { opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ duration: 0.4, delay: 0.4 }}
+            transition={{ duration: skipAnimation ? 0 : 0.4, delay: skipAnimation ? 0 : 0.4 }}
             style={{
               fontSize: theme.fontSize.xs,
               color: alert ? theme.status.error : theme.text.muted,

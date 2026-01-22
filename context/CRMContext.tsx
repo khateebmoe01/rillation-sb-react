@@ -25,6 +25,9 @@ interface CRMContextType {
     stats: boolean
   }
   
+  // Initial load flag - true after first data fetch completes
+  initialLoadComplete: boolean
+  
   // Errors
   error: string | null
   
@@ -87,6 +90,9 @@ export function CRMProvider({ children }: { children: ReactNode }) {
   
   // Error state
   const [error, setError] = useState<string | null>(null)
+  
+  // Initial load complete flag
+  const [initialLoadComplete, setInitialLoadComplete] = useState(false)
   
   // Filters
   const [filters, setFilters] = useState<CRMFilters>({})
@@ -608,7 +614,9 @@ export function CRMProvider({ children }: { children: ReactNode }) {
   // Initial fetch
   useEffect(() => {
     if (selectedClient) {
-      refreshAll()
+      refreshAll().then(() => {
+        setInitialLoadComplete(true)
+      })
     }
   }, [selectedClient, refreshAll])
 
@@ -620,6 +628,7 @@ export function CRMProvider({ children }: { children: ReactNode }) {
         tasks,
         stats,
         loading,
+        initialLoadComplete,
         error,
         filters,
         setFilters,
