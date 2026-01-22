@@ -1,7 +1,8 @@
-import { useState, useRef, useEffect, ReactNode } from 'react'
+import { useState, useRef, useEffect, ReactNode, useId } from 'react'
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ChevronDown, Check } from 'lucide-react'
+import { useDropdown } from '../../../../contexts/DropdownContext'
 
 interface FilterSelectOption {
   value: string
@@ -27,7 +28,8 @@ export function FilterSelect({
   minWidth = 130,
   disabled = false,
 }: FilterSelectProps) {
-  const [isOpen, setIsOpen] = useState(false)
+  const dropdownId = useId()
+  const { isOpen, toggle, close } = useDropdown(dropdownId)
   const containerRef = useRef<HTMLDivElement>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
   
@@ -68,7 +70,7 @@ export function FilterSelect({
         dropdownRef.current &&
         !dropdownRef.current.contains(event.target as Node)
       ) {
-        setIsOpen(false)
+        close()
       }
     }
     
@@ -76,7 +78,7 @@ export function FilterSelect({
       document.addEventListener('mousedown', handleClickOutside)
       return () => document.removeEventListener('mousedown', handleClickOutside)
     }
-  }, [isOpen])
+  }, [isOpen, close])
   
   const dropdownContent = (
     <AnimatePresence>
@@ -111,7 +113,7 @@ export function FilterSelect({
                 type="button"
                 onClick={() => {
                   onChange(option.value)
-                  setIsOpen(false)
+                  close()
                 }}
                 style={{
                   width: '100%',
@@ -153,7 +155,7 @@ export function FilterSelect({
         {/* Trigger */}
         <button
           type="button"
-          onClick={() => !disabled && setIsOpen(!isOpen)}
+          onClick={() => !disabled && toggle()}
           disabled={disabled}
           style={{
             display: 'flex',

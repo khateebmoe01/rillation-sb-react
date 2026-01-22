@@ -1,6 +1,7 @@
-import { useState, useRef, useEffect } from 'react'
+import { useRef, useEffect, useId } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ChevronDown, Check } from 'lucide-react'
+import { useDropdown } from '../../../../contexts/DropdownContext'
 import { theme } from '../../config/theme'
 
 interface Stage {
@@ -26,7 +27,8 @@ interface StageDropdownProps {
 }
 
 export function StageDropdown({ value, onChange, disabled = false }: StageDropdownProps) {
-  const [isOpen, setIsOpen] = useState(false)
+  const dropdownId = useId()
+  const { isOpen, toggle, close } = useDropdown(dropdownId)
   const dropdownRef = useRef<HTMLDivElement>(null)
 
   const selectedStage = STAGES.find(s => s.value === value)
@@ -34,7 +36,7 @@ export function StageDropdown({ value, onChange, disabled = false }: StageDropdo
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsOpen(false)
+        close()
       }
     }
 
@@ -45,11 +47,11 @@ export function StageDropdown({ value, onChange, disabled = false }: StageDropdo
     return () => {
       document.removeEventListener('mousedown', handleClickOutside)
     }
-  }, [isOpen])
+  }, [isOpen, close])
 
   const handleSelect = (stageValue: string) => {
     onChange(stageValue)
-    setIsOpen(false)
+    close()
   }
 
   return (
@@ -62,7 +64,7 @@ export function StageDropdown({ value, onChange, disabled = false }: StageDropdo
       <button
         onClick={(e) => {
           e.stopPropagation()
-          if (!disabled) setIsOpen(!isOpen)
+          if (!disabled) toggle()
         }}
         disabled={disabled}
         style={{

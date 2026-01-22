@@ -1,8 +1,9 @@
-import { useState, useMemo, useRef, useEffect } from 'react'
+import { useState, useMemo, useRef, useEffect, useId } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Users, Plus, Mail, Phone, Building2, Linkedin, ChevronDown, Check, ArrowUpDown, Filter, X, SortAsc, Trash2, GripVertical, User, Briefcase, Tag, Clock, Factory, MapPin, DollarSign, Calendar, AtSign, Hash, TrendingUp } from 'lucide-react'
 import { theme } from '../../config/theme'
 import { useCRM } from '../../context/CRMContext'
+import { useDropdown } from '../../../../contexts/DropdownContext'
 import { Card, Avatar, Button, SearchInput, EmptyState, LoadingSkeleton, StageDropdown, FilterSelect } from '../shared'
 import { ContactModal } from './ContactModal'
 import type { Contact } from '../../types'
@@ -1467,19 +1468,20 @@ interface PipelineProgressDropdownProps {
 }
 
 function PipelineProgressDropdown({ contact, onUpdateStep }: PipelineProgressDropdownProps) {
-  const [isOpen, setIsOpen] = useState(false)
+  const dropdownId = useId()
+  const { isOpen, toggle, close } = useDropdown(dropdownId)
   const dropdownRef = useRef<HTMLDivElement>(null)
 
   // Close dropdown when clicking outside
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsOpen(false)
+        close()
       }
     }
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
+  }, [close])
 
   // Find the deepest completed stage
   const getDeepestStage = () => {
@@ -1516,7 +1518,7 @@ function PipelineProgressDropdown({ contact, onUpdateStep }: PipelineProgressDro
       <button
         onClick={(e) => {
           e.stopPropagation()
-          setIsOpen(!isOpen)
+          toggle()
         }}
         onMouseDown={(e) => {
           e.stopPropagation()

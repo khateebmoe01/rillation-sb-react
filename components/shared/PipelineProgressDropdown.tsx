@@ -1,6 +1,7 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useId } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ChevronDown, Calendar } from 'lucide-react'
+import { useDropdown } from '../../../../contexts/DropdownContext'
 import { theme } from '../../config/theme'
 
 export interface PipelineProgress {
@@ -39,7 +40,8 @@ export function PipelineProgressDropdown({
   onChange, 
   disabled = false 
 }: PipelineProgressDropdownProps) {
-  const [isOpen, setIsOpen] = useState(false)
+  const dropdownId = useId()
+  const { isOpen, toggle, close } = useDropdown(dropdownId)
   const [openUpward, setOpenUpward] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
   const buttonRef = useRef<HTMLButtonElement>(null)
@@ -76,11 +78,8 @@ export function PipelineProgressDropdown({
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as Node
       const isContained = dropdownRef.current && dropdownRef.current.contains(target)
-      // #region agent log
-      fetch('http://127.0.0.1:7243/ingest/dd30fd30-28f2-438b-a53d-4389ace883b5',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'PipelineProgressDropdown.tsx:handleClickOutside',message:'Click outside check',data:{isContained,targetTag:(target as HTMLElement).tagName,targetClass:(target as HTMLElement).className},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H6'})}).catch(()=>{});
-      // #endregion
       if (!isContained) {
-        setIsOpen(false)
+        close()
       }
     }
 
@@ -91,7 +90,7 @@ export function PipelineProgressDropdown({
     return () => {
       document.removeEventListener('mousedown', handleClickOutside)
     }
-  }, [isOpen])
+  }, [isOpen, close])
 
   const handleToggleStage = (stageKey: keyof PipelineProgress) => {
     const newProgress = { ...progress }
@@ -110,34 +109,23 @@ export function PipelineProgressDropdown({
   const formatDate = (dateStr: string | null | undefined) => {
     if (!dateStr) return ''
     const date = new Date(dateStr)
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+    const dateFormatted = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+    const timeFormatted = date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
+    return `${dateFormatted} at ${timeFormatted}`
   }
 
   return (
     <div 
       ref={dropdownRef} 
       style={{ position: 'relative' }}
-      onClick={(e) => {
-        // #region agent log
-        fetch('http://127.0.0.1:7243/ingest/dd30fd30-28f2-438b-a53d-4389ace883b5',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'PipelineProgressDropdown.tsx:wrapper',message:'Wrapper div onClick',data:{eventType:e.type,target:(e.target as HTMLElement).tagName},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H1'})}).catch(()=>{});
-        // #endregion
-        e.stopPropagation()
-      }}
-      onMouseDown={(e) => {
-        // #region agent log
-        fetch('http://127.0.0.1:7243/ingest/dd30fd30-28f2-438b-a53d-4389ace883b5',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'PipelineProgressDropdown.tsx:wrapper',message:'Wrapper div onMouseDown',data:{eventType:e.type,target:(e.target as HTMLElement).tagName},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H1'})}).catch(()=>{});
-        // #endregion
-        e.stopPropagation()
-      }}
+      onClick={(e) => e.stopPropagation()}
+      onMouseDown={(e) => e.stopPropagation()}
     >
       <button
         ref={buttonRef}
         onClick={(e) => {
-          // #region agent log
-          fetch('http://127.0.0.1:7243/ingest/dd30fd30-28f2-438b-a53d-4389ace883b5',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'PipelineProgressDropdown.tsx:button',message:'Button onClick triggered',data:{disabled,currentIsOpen:isOpen,willSetTo:!isOpen},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H2-H3'})}).catch(()=>{});
-          // #endregion
           e.stopPropagation()
-          if (!disabled) setIsOpen(!isOpen)
+          if (!disabled) toggle()
         }}
         disabled={disabled}
         style={{
@@ -196,9 +184,6 @@ export function PipelineProgressDropdown({
         <ChevronDown size={14} style={{ color: theme.text.muted, flexShrink: 0 }} />
       </button>
 
-      {/* #region agent log */}
-      {(() => { fetch('http://127.0.0.1:7243/ingest/dd30fd30-28f2-438b-a53d-4389ace883b5',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'PipelineProgressDropdown.tsx:render',message:'Component render state',data:{isOpen,disabled,zIndex:theme.z.dropdown},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H3-H4'})}).catch(()=>{}); return null; })()}
-      {/* #endregion */}
       <AnimatePresence>
         {isOpen && (
           <motion.div
@@ -250,9 +235,6 @@ export function PipelineProgressDropdown({
                 <button
                   key={stage.key}
                   onClick={(e) => {
-                    // #region agent log
-                    fetch('http://127.0.0.1:7243/ingest/dd30fd30-28f2-438b-a53d-4389ace883b5',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'PipelineProgressDropdown.tsx:checkboxClick',message:'Checkbox button clicked',data:{stageKey:stage.key},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H6'})}).catch(()=>{});
-                    // #endregion
                     e.stopPropagation()
                     handleToggleStage(stage.key)
                   }}

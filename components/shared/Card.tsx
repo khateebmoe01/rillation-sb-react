@@ -42,14 +42,14 @@ export function Card({
         scale: 1.01, 
         y: -2,
         boxShadow: hoverBoxShadow,
-        borderColor: 'rgba(255, 255, 255, 0.3)',
+        borderColor: 'rgba(255, 255, 255, 0.8)',
       } : undefined}
       whileTap={onClick ? { scale: 0.99 } : undefined}
       transition={{ duration: 0.15 }}
       style={{
         backgroundColor: theme.bg.card,
         borderRadius: theme.radius.xl,
-        border: `1px solid ${selected ? theme.accent.primary : 'rgba(255, 255, 255, 0.15)'}`,
+        border: `1px solid ${selected ? theme.accent.primary : 'rgba(255, 255, 255, 0.6)'}`,
         padding: paddingMap[padding],
         cursor: onClick ? 'pointer' : 'default',
         boxShadow: selected ? selectedBoxShadow : baseBoxShadow,

@@ -1,5 +1,6 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { CRMProvider } from './context/CRMContext'
+import { DropdownProvider } from '../../contexts/DropdownContext'
 import { CRMLayout } from './components/layout/CRMLayout'
 import { CRMDashboard } from './components/dashboard/CRMDashboard'
 import { ContactList } from './components/contacts/ContactList'
@@ -9,6 +10,7 @@ import { TaskList } from './components/tasks/TaskList'
 export default function AtomicCRM() {
   return (
     <CRMProvider>
+      <DropdownProvider>
       <CRMLayout>
         <Routes>
           <Route index element={<CRMDashboard />} />
@@ -18,6 +20,7 @@ export default function AtomicCRM() {
           <Route path="*" element={<Navigate to="/crm" replace />} />
         </Routes>
       </CRMLayout>
+      </DropdownProvider>
     </CRMProvider>
   )
 }
