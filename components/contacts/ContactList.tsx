@@ -121,6 +121,135 @@ interface StackedSort {
 }
 
 
+// Sort Dropdown Component
+interface SortDropdownProps {
+  sort: StackedSort
+  onUpdateSort: (field: string) => void
+}
+
+function SortDropdown({ sort, onUpdateSort }: SortDropdownProps) {
+  const [isSortOpen, setIsSortOpen] = useState(false)
+  const sortRef = useRef<HTMLDivElement>(null)
+  
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (sortRef.current && !sortRef.current.contains(event.target as Node)) {
+        setIsSortOpen(false)
+      }
+    }
+    if (isSortOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+      return () => document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [isSortOpen])
+  
+  const selectedSortField = SORT_FIELDS.find(f => f.key === sort.field)
+  
+  return (
+    <div
+      ref={sortRef}
+      style={{
+        position: 'relative',
+        display: 'flex',
+        alignItems: 'center',
+        gap: 4,
+        padding: '4px 8px',
+        backgroundColor: theme.bg.elevated,
+        borderRadius: theme.radius.md,
+        border: `1px solid ${theme.border.default}`,
+      }}
+    >
+      <button
+        onClick={() => setIsSortOpen(!isSortOpen)}
+        style={{
+          padding: 0,
+          fontSize: theme.fontSize.sm,
+          fontWeight: theme.fontWeight.medium,
+          backgroundColor: 'transparent',
+          color: theme.text.primary,
+          border: 'none',
+          outline: 'none',
+          cursor: 'pointer',
+          paddingRight: 12,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 4,
+        }}
+      >
+        <span>{selectedSortField?.label}</span>
+        <motion.div
+          animate={{ rotate: isSortOpen ? 180 : 0 }}
+          transition={{ duration: 0.15 }}
+        >
+          <ChevronDown size={12} style={{ color: theme.text.muted }} />
+        </motion.div>
+      </button>
+      
+      <AnimatePresence>
+        {isSortOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: -8, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -8, scale: 0.96 }}
+            transition={{ duration: 0.15 }}
+            style={{
+              position: 'absolute',
+              top: '100%',
+              left: 0,
+              marginTop: 4,
+              backgroundColor: theme.bg.elevated,
+              border: `1px solid ${theme.border.default}`,
+              borderRadius: theme.radius.lg,
+              boxShadow: theme.shadow.dropdown,
+              zIndex: 10000,
+              overflow: 'hidden',
+              minWidth: 150,
+            }}
+          >
+            {SORT_FIELDS.map(field => {
+              const isSelected = field.key === sort.field
+              return (
+                <button
+                  key={field.key}
+                  onClick={() => {
+                    onUpdateSort(field.key)
+                    setIsSortOpen(false)
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: '8px 12px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    fontSize: theme.fontSize.sm,
+                    backgroundColor: isSelected ? theme.accent.primaryBg : 'transparent',
+                    color: isSelected ? theme.accent.primary : theme.text.primary,
+                    border: 'none',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    transition: `background-color ${theme.transition.fast}`,
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!isSelected) {
+                      e.currentTarget.style.backgroundColor = theme.bg.hover
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = isSelected ? theme.accent.primaryBg : 'transparent'
+                  }}
+                >
+                  <span>{field.label}</span>
+                  {isSelected && <Check size={14} style={{ color: theme.accent.primary }} />}
+                </button>
+              )
+            })}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
+
 // Format relative time like "2d ago" or "Jan 21"
 function formatRelativeTime(dateStr: string | null | undefined): string {
   if (!dateStr) return '—'
@@ -597,129 +726,13 @@ export function ContactList() {
           {/* Sort indicator pills */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1 }}>
             <span style={{ fontSize: theme.fontSize.xs, color: theme.text.muted }}>Sort by</span>
-            {sorts.map((sort) => {
-              const [isSortOpen, setIsSortOpen] = useState(false)
-              const sortRef = useRef<HTMLDivElement>(null)
-              
-              useEffect(() => {
-                function handleClickOutside(event: MouseEvent) {
-                  if (sortRef.current && !sortRef.current.contains(event.target as Node)) {
-                    setIsSortOpen(false)
-                  }
-                }
-                if (isSortOpen) {
-                  document.addEventListener('mousedown', handleClickOutside)
-                  return () => document.removeEventListener('mousedown', handleClickOutside)
-                }
-              }, [isSortOpen])
-              
-              const selectedSortField = SORT_FIELDS.find(f => f.key === sort.field)
-              
-              return (
-                <div
-                  key={sort.id}
-                  ref={sortRef}
-                  style={{
-                    position: 'relative',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 4,
-                    padding: '4px 8px',
-                    backgroundColor: theme.bg.elevated,
-                    borderRadius: theme.radius.md,
-                    border: `1px solid ${theme.border.default}`,
-                  }}
-                >
-                  <button
-                    onClick={() => setIsSortOpen(!isSortOpen)}
-                    style={{
-                      padding: 0,
-                      fontSize: theme.fontSize.sm,
-                      fontWeight: theme.fontWeight.medium,
-                      backgroundColor: 'transparent',
-                      color: theme.text.primary,
-                      border: 'none',
-                      outline: 'none',
-                      cursor: 'pointer',
-                      paddingRight: 12,
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 4,
-                    }}
-                  >
-                    <span>{selectedSortField?.label}</span>
-                    <motion.div
-                      animate={{ rotate: isSortOpen ? 180 : 0 }}
-                      transition={{ duration: 0.15 }}
-                    >
-                      <ChevronDown size={12} style={{ color: theme.text.muted }} />
-                    </motion.div>
-                  </button>
-                  
-                  <AnimatePresence>
-                    {isSortOpen && (
-                      <motion.div
-                        initial={{ opacity: 0, y: -8, scale: 0.96 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, y: -8, scale: 0.96 }}
-                        transition={{ duration: 0.15 }}
-                        style={{
-                          position: 'absolute',
-                          top: '100%',
-                          left: 0,
-                          marginTop: 4,
-                          backgroundColor: theme.bg.elevated,
-                          border: `1px solid ${theme.border.default}`,
-                          borderRadius: theme.radius.lg,
-                          boxShadow: theme.shadow.dropdown,
-                          zIndex: 10000,
-                          overflow: 'hidden',
-                          minWidth: 150,
-                        }}
-                      >
-                        {SORT_FIELDS.map(field => {
-                          const isSelected = field.key === sort.field
-                          return (
-                            <button
-                              key={field.key}
-                              onClick={() => {
-                                updateSort(sort.id, field.key)
-                                setIsSortOpen(false)
-                              }}
-                              style={{
-                                width: '100%',
-                                padding: '8px 12px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'space-between',
-                                fontSize: theme.fontSize.sm,
-                                backgroundColor: isSelected ? theme.accent.primaryBg : 'transparent',
-                                color: isSelected ? theme.accent.primary : theme.text.primary,
-                                border: 'none',
-                                cursor: 'pointer',
-                                textAlign: 'left',
-                                transition: `background-color ${theme.transition.fast}`,
-                              }}
-                              onMouseEnter={(e) => {
-                                if (!isSelected) {
-                                  e.currentTarget.style.backgroundColor = theme.bg.hover
-                                }
-                              }}
-                              onMouseLeave={(e) => {
-                                e.currentTarget.style.backgroundColor = isSelected ? theme.accent.primaryBg : 'transparent'
-                              }}
-                            >
-                              <span>{field.label}</span>
-                              {isSelected && <Check size={14} style={{ color: theme.accent.primary }} />}
-                            </button>
-                          )
-                        })}
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
-              )
-            })}
+            {sorts.map((sort) => (
+              <SortDropdown
+                key={sort.id}
+                sort={sort}
+                onUpdateSort={(field) => updateSort(sort.id, field)}
+              />
+            ))}
             <button
               onClick={() => toggleSortDirection(sorts[0]?.id)}
               style={{
