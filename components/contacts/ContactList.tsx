@@ -261,7 +261,7 @@ export function ContactList() {
   // Grid column widths - CRM scanning flow: identity → company → status → role → recency → action
   // Name, Company, Stage, Pipeline, Title, Last Activity, Actions
   // Compact layout for better data density
-  const gridColumns = 'minmax(160px, 1.2fr) minmax(140px, 1fr) 130px 140px minmax(100px, 1fr) 80px 60px'
+  const gridColumns = 'minmax(160px, 1.2fr) minmax(140px, 1fr) 240px 240px minmax(100px, 1fr) 80px 60px'
   const minTableWidth = 810
   
   return (
