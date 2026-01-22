@@ -106,7 +106,7 @@ export function SlidePanel({
                 display: 'flex',
                 alignItems: 'flex-start',
                 justifyContent: 'space-between',
-                padding: '20px 24px',
+                padding: '28px 24px 20px 24px',
                 borderBottom: `1px solid ${theme.border.subtle}`,
                 backgroundColor: theme.bg.card,
               }}
@@ -142,7 +142,7 @@ export function SlidePanel({
               style={{
                 flex: 1,
                 overflow: 'auto',
-                padding: 32,
+                padding: '48px 32px 32px 32px',
               }}
             >
               {children}

@@ -505,13 +505,19 @@ export function CRMProvider({ children }: { children: ReactNode }) {
   }, [selectedClient, deals])
 
   const updateDeal = useCallback(async (id: string, dealData: Partial<Deal>): Promise<boolean> => {
+    // OPTIMISTIC UPDATE: Update local state IMMEDIATELY for instant UI feedback
+    const previousDeals = [...deals]
+    setDeals(prev => prev.map(d => d.id === id ? { ...d, ...dealData } : d))
+    
     try {
       // If this is a deal from engaged leads, update the opportunity and engaged lead
       if (id.startsWith('lead_')) {
         const leadId = id.replace('lead_', '')
-        const existingDeal = deals.find(d => d.id === id)
+        const existingDeal = previousDeals.find(d => d.id === id)
         
         if (!existingDeal || !existingDeal.contact?.email) {
+          // Rollback on error
+          setDeals(previousDeals)
           setError('Deal or contact not found')
           return false
         }
@@ -584,10 +590,6 @@ export function CRMProvider({ children }: { children: ReactNode }) {
             .eq('id', leadId)
         }
         
-        // Update local state immediately
-        setDeals(prev => prev.map(d => d.id === id ? { ...d, ...dealData } : d))
-        // Refresh deals to get updated data from database
-        await fetchDeals()
         return true
       }
       
@@ -598,16 +600,14 @@ export function CRMProvider({ children }: { children: ReactNode }) {
         .eq('id', id)
       
       if (updateError) throw updateError
-      // Update local state immediately
-      setDeals(prev => prev.map(d => d.id === id ? { ...d, ...dealData } : d))
-      // Refresh deals to get updated data from database
-      await fetchDeals()
       return true
     } catch (err) {
+      // Rollback optimistic update on error
+      setDeals(previousDeals)
       setError(err instanceof Error ? err.message : 'Failed to update deal')
       return false
     }
-  }, [deals, selectedClient, fetchDeals])
+  }, [deals, selectedClient])
 
   const moveDealToStage = useCallback(async (dealId: string, stage: string, index: number): Promise<boolean> => {
     try {

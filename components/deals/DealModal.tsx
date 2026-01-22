@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { DollarSign, Users, Calendar, Percent, FileText, Trash2, ExternalLink } from 'lucide-react'
+import { DollarSign, Users, Calendar, Percent, FileText, Trash2, ArrowUpRight, Building2, Phone, Trophy, XCircle } from 'lucide-react'
 import { theme } from '../../config/theme'
 import { useCRM } from '../../context/CRMContext'
-import { SlidePanel, PanelFooter, Button, Input, Select, Textarea } from '../shared'
+import { SlidePanel, PanelFooter, Button, Input, Select, Textarea, Avatar } from '../shared'
 import { DEAL_STAGES, DEAL_STAGE_INFO, type Deal, type DealStage } from '../../types'
 
 interface DealModalProps {
@@ -17,6 +17,7 @@ export function DealModal({ isOpen, onClose, deal, defaultStage }: DealModalProp
   const { contacts, createDeal, updateDeal, deleteDeal, error } = useCRM()
   const navigate = useNavigate()
   const [loading, setLoading] = useState(false)
+  const [saving, setSaving] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
   const originalAmountRef = useRef<number | null>(null)
@@ -96,38 +97,45 @@ export function DealModal({ isOpen, onClose, deal, defaultStage }: DealModalProp
       return
     }
     
-    setLoading(true)
     setFormError(null)
-    try {
-      const data = {
-        name: formData.name,
-        description: formData.description || null,
-        contact_id: formData.contact_id || null,
-        stage: formData.stage,
-        amount: parseFloat(formData.amount) || 0,
-        probability: parseInt(formData.probability) || 0,
-        expected_close_date: formData.expected_close_date || null,
-      }
+    const data = {
+      name: formData.name,
+      description: formData.description || null,
+      contact_id: formData.contact_id || null,
+      stage: formData.stage,
+      amount: parseFloat(formData.amount) || 0,
+      probability: parseInt(formData.probability) || 0,
+      expected_close_date: formData.expected_close_date || null,
+    }
+    
+    if (deal) {
+      // Optimistic update: close immediately, save in background
+      setSaving(true)
+      onClose()
       
-      if (deal) {
-        const success = await updateDeal(deal.id, data)
-        if (success) {
-          onClose()
-        } else {
-          setFormError(error || 'Failed to update deal')
+      // Fire and forget - update happens in background
+      updateDeal(deal.id, data).then(success => {
+        if (!success) {
+          console.error('Failed to update deal:', error)
         }
-      } else {
+      }).finally(() => {
+        setSaving(false)
+      })
+    } else {
+      // For new deals, we need to wait for creation
+      setLoading(true)
+      try {
         const created = await createDeal(data)
         if (created) {
           onClose()
         } else {
           setFormError(error || 'Failed to create deal')
         }
+      } catch (err) {
+        setFormError(err instanceof Error ? err.message : 'An error occurred')
+      } finally {
+        setLoading(false)
       }
-    } catch (err) {
-      setFormError(err instanceof Error ? err.message : 'An error occurred')
-    } finally {
-      setLoading(false)
     }
   }, [formData, deal, updateDeal, createDeal, onClose, error])
   
@@ -167,105 +175,136 @@ export function DealModal({ isOpen, onClose, deal, defaultStage }: DealModalProp
   const probability = parseInt(formData.probability) || 0
   const weightedValue = amount * (probability / 100)
   
+  // Build subtitle: contact's job title at company
+  const subtitle = selectedContact 
+    ? (selectedContact.job_title && selectedContact.company 
+        ? `${selectedContact.job_title} at ${selectedContact.company}`
+        : selectedContact.job_title || selectedContact.company || selectedContact.email)
+    : null
+  
+  // Header component matching ContactModal style
+  const panelHeader = (
+    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', width: '100%' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 16, flex: 1, minWidth: 0 }}>
+        <Avatar 
+          name={formData.name || selectedContact?.full_name || 'New Deal'} 
+          size="lg" 
+        />
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <h2
+            style={{
+              fontSize: '22px',
+              fontWeight: theme.fontWeight.semibold,
+              color: theme.text.primary,
+              margin: 0,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {formData.name || 'New Deal'}
+          </h2>
+          {subtitle && (
+            <p
+              style={{
+                fontSize: '16px',
+                color: theme.text.secondary,
+                margin: '4px 0 0 0',
+                lineHeight: 1.4,
+              }}
+            >
+              {subtitle}
+            </p>
+          )}
+        </div>
+      </div>
+      
+      {/* View Contact button - top right, green */}
+      {selectedContact && (
+        <button
+          onClick={() => {
+            if (selectedContact.id) {
+              navigate(`/crm/contacts?contactId=${selectedContact.id}`)
+              onClose()
+            }
+          }}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            padding: '8px 12px',
+            backgroundColor: theme.accent.primary,
+            border: 'none',
+            borderRadius: theme.radius.md,
+            color: theme.text.primary,
+            fontSize: theme.fontSize.sm,
+            fontWeight: theme.fontWeight.medium,
+            cursor: 'pointer',
+            transition: `all ${theme.transition.fast}`,
+            flexShrink: 0,
+            marginLeft: 12,
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = theme.accent.primaryHover
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = theme.accent.primary
+          }}
+        >
+          <ArrowUpRight size={14} />
+          <span>View Contact</span>
+        </button>
+      )}
+    </div>
+  )
+  
   return (
     <SlidePanel
       isOpen={isOpen}
       onClose={onClose}
-      title={deal ? 'Edit Deal' : 'New Deal'}
+      header={panelHeader}
       width={520}
     >
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }} onKeyDown={handleKeyDown}>
-        {/* Deal Summary */}
-        {(amount > 0 || formData.name) && (
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              padding: 16,
-              backgroundColor: theme.bg.muted,
-              borderRadius: theme.radius.lg,
-            }}
-          >
-            <div>
-              <p
-                style={{
-                  fontSize: theme.fontSize.lg,
-                  fontWeight: theme.fontWeight.semibold,
-                  color: theme.text.primary,
-                  margin: 0,
-                }}
-              >
-                {formData.name || 'New Deal'}
-              </p>
-              {selectedContact && (
-                <p
-                  style={{
-                    fontSize: theme.fontSize.sm,
-                    color: theme.text.secondary,
-                    margin: '4px 0',
-                  }}
-                >
-                  {selectedContact.full_name || selectedContact.email}
-                  {selectedContact.company && ` @ ${selectedContact.company}`}
-                </p>
-              )}
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 8,
-                  marginTop: 4,
-                }}
-              >
-                <span
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 4,
-                    padding: '2px 8px',
-                    borderRadius: theme.radius.full,
-                    backgroundColor: DEAL_STAGE_INFO[formData.stage].bgColor,
-                    color: DEAL_STAGE_INFO[formData.stage].color,
-                    fontSize: theme.fontSize.xs,
-                    fontWeight: theme.fontWeight.medium,
-                  }}
-                >
-                  {DEAL_STAGE_INFO[formData.stage].label}
-                </span>
-              </div>
-            </div>
-            
-            {amount > 0 && (
-              <div style={{ textAlign: 'right' }}>
-                <p
-                  style={{
-                    fontSize: theme.fontSize['2xl'],
-                    fontWeight: theme.fontWeight.bold,
-                    color: theme.status.success,
-                    margin: 0,
-                  }}
-                >
-                  ${amount.toLocaleString()}
-                </p>
-                <p
-                  style={{
-                    fontSize: theme.fontSize.sm,
-                    color: theme.text.muted,
-                    margin: '2px 0 0 0',
-                  }}
-                >
-                  ${weightedValue.toLocaleString()} weighted
-                </p>
-              </div>
-            )}
-          </div>
-        )}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 32 }} onKeyDown={handleKeyDown}>
         
         {/* Deal Details Section */}
         <div>
-          <SectionHeader icon={<DollarSign size={16} />} title="Deal Details" />
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <SectionHeader icon={<DollarSign size={18} />} title="Deal Details" />
+          
+          {/* Value Summary - only show if there's an amount */}
+          {amount > 0 && (
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '16px 20px',
+                marginBottom: 20,
+                backgroundColor: theme.bg.muted,
+                borderRadius: theme.radius.lg,
+                border: `1px solid ${theme.border.subtle}`,
+              }}
+            >
+              <div>
+                <p style={{ fontSize: theme.fontSize.xs, color: theme.text.muted, margin: 0, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  Deal Value
+                </p>
+                <p style={{ fontSize: theme.fontSize['2xl'], fontWeight: theme.fontWeight.bold, color: theme.status.success, margin: '4px 0 0 0' }}>
+                  ${amount.toLocaleString()}
+                </p>
+              </div>
+              <div style={{ textAlign: 'right' }}>
+                <p style={{ fontSize: theme.fontSize.xs, color: theme.text.muted, margin: 0, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  Weighted ({probability}%)
+                </p>
+                <p style={{ fontSize: theme.fontSize.lg, fontWeight: theme.fontWeight.semibold, color: theme.text.secondary, margin: '4px 0 0 0' }}>
+                  ${weightedValue.toLocaleString()}
+                </p>
+              </div>
+            </div>
+          )}
+          
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
             <Input
               label="Deal Name *"
               value={formData.name}
@@ -317,68 +356,89 @@ export function DealModal({ isOpen, onClose, deal, defaultStage }: DealModalProp
         
         {/* Contact Section */}
         <div>
-          <SectionHeader icon={<Users size={16} />} title="Related Contact" />
-          <Select
-            label="Contact"
-            options={contactOptions}
-            value={formData.contact_id}
-            onChange={(v) => setFormData({ ...formData, contact_id: v })}
-          />
+          <SectionHeader icon={<Users size={18} />} title="Related Contact" />
+          
+          {/* Show dropdown only for new deals or deals without a contact */}
+          {!deal || !selectedContact ? (
+            <Select
+              label="Contact"
+              options={contactOptions}
+              value={formData.contact_id}
+              onChange={(v) => setFormData({ ...formData, contact_id: v })}
+            />
+          ) : null}
+          
+          {/* Contact info display - read only */}
           {selectedContact && (
-            <div style={{ marginTop: 8 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {/* Company */}
               {selectedContact.company && (
-                <p
+                <div
                   style={{
-                    fontSize: theme.fontSize.sm,
-                    color: theme.text.muted,
-                    margin: '0 0 8px 0',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 10,
+                    padding: '12px 14px',
+                    backgroundColor: theme.bg.muted,
+                    borderRadius: theme.radius.lg,
                   }}
                 >
-                  Company: {selectedContact.company}
-                  {selectedContact.industry && ` • ${selectedContact.industry}`}
-                </p>
+                  <span style={{ color: theme.accent.primary, display: 'flex', alignItems: 'center' }}>
+                    <Building2 size={16} />
+                  </span>
+                  <p
+                    style={{
+                      fontSize: theme.fontSize.base,
+                      fontWeight: theme.fontWeight.medium,
+                      color: theme.text.primary,
+                      margin: 0,
+                    }}
+                  >
+                    {selectedContact.company}
+                    {selectedContact.industry && (
+                      <span style={{ color: theme.text.muted, fontWeight: theme.fontWeight.normal }}>
+                        {' · '}{selectedContact.industry}
+                      </span>
+                    )}
+                  </p>
+                </div>
               )}
-              <button
-                onClick={() => {
-                  if (selectedContact.id) {
-                    navigate(`/crm/contacts?contactId=${selectedContact.id}`)
-                    onClose()
-                  }
-                }}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 6,
-                  padding: '6px 12px',
-                  backgroundColor: 'transparent',
-                  border: `1px solid ${theme.border.subtle}`,
-                  borderRadius: theme.radius.md,
-                  color: theme.text.secondary,
-                  fontSize: theme.fontSize.sm,
-                  cursor: 'pointer',
-                  transition: `all ${theme.transition.fast}`,
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = theme.bg.hover
-                  e.currentTarget.style.color = theme.text.primary
-                  e.currentTarget.style.borderColor = theme.accent.primary
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = 'transparent'
-                  e.currentTarget.style.color = theme.text.secondary
-                  e.currentTarget.style.borderColor = theme.border.subtle
-                }}
-              >
-                <ExternalLink size={14} />
-                View Contact
-              </button>
+              
+              {/* Phone */}
+              {selectedContact.lead_phone && (
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 10,
+                    padding: '12px 14px',
+                    backgroundColor: theme.bg.muted,
+                    borderRadius: theme.radius.lg,
+                  }}
+                >
+                  <span style={{ color: theme.accent.primary, display: 'flex', alignItems: 'center' }}>
+                    <Phone size={16} />
+                  </span>
+                  <a
+                    href={`tel:${selectedContact.lead_phone}`}
+                    style={{
+                      fontSize: theme.fontSize.base,
+                      fontWeight: theme.fontWeight.medium,
+                      color: theme.text.primary,
+                      textDecoration: 'none',
+                    }}
+                  >
+                    {selectedContact.lead_phone}
+                  </a>
+                </div>
+              )}
             </div>
           )}
         </div>
         
         {/* Description Section */}
         <div>
-          <SectionHeader icon={<FileText size={16} />} title="Description" />
+          <SectionHeader icon={<FileText size={18} />} title="Description" />
           <Textarea
             value={formData.description}
             onChange={(e) => setFormData({ ...formData, description: e.target.value })}
@@ -418,74 +478,208 @@ export function DealModal({ isOpen, onClose, deal, defaultStage }: DealModalProp
             padding: 16,
             backgroundColor: theme.status.errorBg,
             borderRadius: theme.radius.lg,
-            border: `1px solid ${theme.status.error}`,
+            border: `1px solid ${theme.status.error}30`,
           }}
         >
           <p
             style={{
               fontSize: theme.fontSize.sm,
-              color: theme.status.error,
+              color: theme.text.primary,
               margin: 0,
               marginBottom: 12,
+              lineHeight: 1.5,
             }}
           >
-            Are you sure you want to delete this deal? This action cannot be undone.
+            Are you sure you want to delete <strong>{deal.name}</strong>? This action cannot be undone.
           </p>
           <div style={{ display: 'flex', gap: 8 }}>
             <Button variant="danger" size="sm" onClick={handleDelete} loading={loading}>
-              Yes, Delete
+              Yes, Delete Deal
             </Button>
             <Button variant="ghost" size="sm" onClick={() => setShowDeleteConfirm(false)}>
-              Cancel
+              Keep It
             </Button>
           </div>
         </div>
       )}
       
+      {/* Won/Lost Quick Actions - only for existing deals */}
+      {deal && !showDeleteConfirm && formData.stage !== 'closed' && formData.stage !== 'lost' && (
+        <div
+          style={{
+            display: 'flex',
+            gap: 12,
+            marginTop: 24,
+            paddingTop: 20,
+            borderTop: `1px solid ${theme.border.subtle}`,
+          }}
+        >
+          <button
+            onClick={() => {
+              handleStageChange('closed')
+              // Auto-save and close
+              const data = {
+                ...formData,
+                stage: 'closed' as DealStage,
+                probability: '100',
+              }
+              setSaving(true)
+              onClose()
+              updateDeal(deal.id, {
+                name: data.name,
+                description: data.description || null,
+                contact_id: data.contact_id || null,
+                stage: 'closed',
+                amount: parseFloat(data.amount) || 0,
+                probability: 100,
+                expected_close_date: data.expected_close_date || null,
+              }).finally(() => setSaving(false))
+            }}
+            style={{
+              flex: 1,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
+              padding: '12px 16px',
+              backgroundColor: theme.status.successBg,
+              border: `1px solid ${theme.status.success}40`,
+              borderRadius: theme.radius.lg,
+              color: theme.status.success,
+              fontSize: theme.fontSize.sm,
+              fontWeight: theme.fontWeight.semibold,
+              cursor: 'pointer',
+              transition: `all ${theme.transition.fast}`,
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = theme.status.success
+              e.currentTarget.style.color = '#fff'
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = theme.status.successBg
+              e.currentTarget.style.color = theme.status.success
+            }}
+          >
+            <Trophy size={16} />
+            <span>Mark as Won</span>
+          </button>
+          
+          <button
+            onClick={() => {
+              handleStageChange('lost')
+              // Auto-save and close
+              const data = {
+                ...formData,
+                stage: 'lost' as DealStage,
+                probability: '0',
+              }
+              setSaving(true)
+              onClose()
+              updateDeal(deal.id, {
+                name: data.name,
+                description: data.description || null,
+                contact_id: data.contact_id || null,
+                stage: 'lost',
+                amount: parseFloat(data.amount) || 0,
+                probability: 0,
+                expected_close_date: data.expected_close_date || null,
+              }).finally(() => setSaving(false))
+            }}
+            style={{
+              flex: 1,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
+              padding: '12px 16px',
+              backgroundColor: theme.status.errorBg,
+              border: `1px solid ${theme.status.error}40`,
+              borderRadius: theme.radius.lg,
+              color: theme.status.error,
+              fontSize: theme.fontSize.sm,
+              fontWeight: theme.fontWeight.semibold,
+              cursor: 'pointer',
+              transition: `all ${theme.transition.fast}`,
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = theme.status.error
+              e.currentTarget.style.color = '#fff'
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = theme.status.errorBg
+              e.currentTarget.style.color = theme.status.error
+            }}
+          >
+            <XCircle size={16} />
+            <span>Mark as Lost</span>
+          </button>
+        </div>
+      )}
+      
       <PanelFooter>
         {deal && !showDeleteConfirm && (
-          <Button
-            variant="ghost"
-            icon={<Trash2 size={16} />}
+          <button
             onClick={() => setShowDeleteConfirm(true)}
-            style={{ marginRight: 'auto' }}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              padding: '8px 12px',
+              backgroundColor: 'transparent',
+              border: 'none',
+              borderRadius: theme.radius.md,
+              color: theme.text.muted,
+              fontSize: theme.fontSize.sm,
+              cursor: 'pointer',
+              marginRight: 'auto',
+              transition: `all ${theme.transition.fast}`,
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = theme.status.errorBg
+              e.currentTarget.style.color = theme.status.error
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = 'transparent'
+              e.currentTarget.style.color = theme.text.muted
+            }}
           >
-            Delete
-          </Button>
+            <Trash2 size={14} />
+            <span>Delete</span>
+          </button>
         )}
         <Button variant="secondary" onClick={onClose}>
           Cancel
         </Button>
-        <Button onClick={handleSubmit} loading={loading} disabled={!formData.name.trim()}>
-          {deal ? 'Save Changes' : 'Create Deal'}
+        <Button onClick={handleSubmit} loading={loading || saving} disabled={!formData.name.trim()}>
+          {saving ? 'Saving...' : deal ? 'Save Changes' : 'Create Deal'}
         </Button>
       </PanelFooter>
     </SlidePanel>
   )
 }
 
-// Section header component
+// Section header component - matches ContactModal style
 function SectionHeader({ icon, title }: { icon: React.ReactNode; title: string }) {
   return (
     <div
       style={{
         display: 'flex',
         alignItems: 'center',
-        gap: 8,
-        marginBottom: 12,
-        paddingBottom: 8,
+        gap: 10,
+        marginBottom: 16,
+        paddingBottom: 12,
         borderBottom: `1px solid ${theme.border.subtle}`,
       }}
     >
-      <span style={{ color: theme.accent.primary }}>{icon}</span>
+      <span style={{ color: theme.accent.primary, display: 'flex', alignItems: 'center' }}>
+        {icon}
+      </span>
       <h3
         style={{
-          fontSize: theme.fontSize.sm,
+          fontSize: '19px',
           fontWeight: theme.fontWeight.semibold,
-          color: theme.text.secondary,
+          color: theme.text.primary,
           margin: 0,
-          textTransform: 'uppercase',
-          letterSpacing: '0.05em',
         }}
       >
         {title}
