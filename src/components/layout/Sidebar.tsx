@@ -1,15 +1,9 @@
 import { NavLink, useLocation } from 'react-router-dom'
-import { BarChart3, Wrench, Compass, Users, LogOut, LayoutDashboard, Mail, Globe, ShoppingCart, Activity } from 'lucide-react'
+import { BarChart3, Wrench, Compass, LogOut, LayoutDashboard, Mail, Globe, ShoppingCart, Activity } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAuth } from '../../contexts/AuthContext'
 
 const sections = [
-  {
-    id: 'crm',
-    icon: Users,
-    label: 'CRM',
-    path: '/crm',
-  },
   {
     id: 'reporting',
     icon: BarChart3,
@@ -57,9 +51,7 @@ export default function Sidebar() {
             ? location.pathname.startsWith('/infrastructure')
             : section.id === 'strategy'
               ? location.pathname.startsWith('/strategy')
-              : section.id === 'crm'
-                ? location.pathname.startsWith('/crm')
-                : section.id === 'reporting'
+              : section.id === 'reporting'
                   ? location.pathname.startsWith('/performance') || location.pathname.startsWith('/pipeline')
                   : false
           
