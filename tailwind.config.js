@@ -27,17 +27,6 @@ export default {
           'text': '#faf9f6', // Pearly white - warm, soft white for main text
           'text-muted': '#faf9f6', // Same as main text - NO MORE GRAY DESCRIPTIONS
         },
-        // CRM-specific dark blue theme
-        'crm': {
-          'bg': '#0d1117',
-          'card': '#161b22',
-          'card-hover': '#1c2128',
-          'border': '#30363d',
-          'text': '#f5f5f7', // Brighter pearly white
-          'text-muted': '#f5f5f7', // Same as main text - NO MORE GRAY DESCRIPTIONS
-          'checkbox': '#238636',
-          'checkbox-hover': '#2ea043',
-        }
       },
       fontFamily: {
         'sans': ['Sora', 'system-ui', 'sans-serif'],

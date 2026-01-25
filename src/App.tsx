@@ -9,7 +9,6 @@ import ClientStrategyView from './pages/ClientStrategyView'
 import DebugView from './pages/DebugView'
 import ClientDetailView from './pages/ClientDetailView'
 import CustomVariablesDiscovery from './pages/CustomVariablesDiscovery'
-import CRMView from './pages/CRMView'
 import Login from './pages/Login'
 import ProtectedRoute from './components/auth/ProtectedRoute'
 import { getSupabaseConfigError } from './lib/supabase'
@@ -58,11 +57,10 @@ function App() {
               <Layout>
                 <AnimatePresence mode="wait">
                   <Routes location={location} key={location.pathname}>
-                    <Route path="/" element={<Navigate to="/crm" replace />} />
+                    <Route path="/" element={<Navigate to="/performance" replace />} />
                     <Route path="/performance" element={<PageTransition><PerformanceOverview /></PageTransition>} />
                     <Route path="/performance/:clientName" element={<PageTransition><ClientDetailView /></PageTransition>} />
                     <Route path="/pipeline" element={<PageTransition><PipelineView /></PageTransition>} />
-                    <Route path="/crm" element={<PageTransition><CRMView /></PageTransition>} />
                     <Route path="/strategy" element={<PageTransition><ClientStrategyView /></PageTransition>} />
                     <Route path="/infrastructure" element={<PageTransition><Infrastructure /></PageTransition>} />
                     <Route path="/infrastructure/overview" element={<PageTransition><Infrastructure defaultTab="overview" /></PageTransition>} />
@@ -76,7 +74,7 @@ function App() {
                     <Route path="/crm/*" element={<PageTransition><AtomicCRM /></PageTransition>} />
                     {/* Legacy routes - redirect to new structure */}
                     <Route path="/gtm-scoreboard" element={<Navigate to="/performance" replace />} />
-                    <Route path="/quick-view" element={<Navigate to="/crm" replace />} />
+                    <Route path="/quick-view" element={<Navigate to="/performance" replace />} />
                     <Route path="/client-detail/:clientName" element={<ClientDetailRedirect />} />
                   </Routes>
                 </AnimatePresence>
