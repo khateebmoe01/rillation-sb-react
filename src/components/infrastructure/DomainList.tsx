@@ -18,17 +18,7 @@ export default function DomainList() {
     provider: selectedProvider || undefined,
   })
 
-  const handleSync = async () => {
-    setSyncing(true)
-    try {
-      await syncDomainsPorkbun()
-      await refetch()
-    } catch (err) {
-      console.error('Error syncing domains:', err)
-    } finally {
-      setSyncing(false)
-    }
-  }
+  // Removed handleSync - sync-domains-porkbun edge function doesn't exist
 
   const providers = Array.from(new Set(domains.map((d) => d.provider).filter(Boolean)))
 
@@ -57,10 +47,6 @@ export default function DomainList() {
               />
             </div>
           </div>
-          <Button variant="primary" size="sm" onClick={handleSync} disabled={syncing}>
-            <RefreshCw size={14} className={syncing ? 'animate-spin' : ''} />
-            Sync with Porkbun
-          </Button>
         </div>
       </div>
 

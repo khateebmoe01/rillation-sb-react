@@ -748,24 +748,7 @@ export default function InfrastructureOverview({ drillDownClient, onClientClick 
     })
   }, [summaries, selectedClient, searchQuery])
 
-  const handleSync = async () => {
-    setSyncing(true)
-    try {
-      await Promise.all([
-        supabase.functions.invoke('sync-inboxes-bison'),
-        supabase.functions.invoke('sync-inbox-tags'),
-      ])
-      // Invalidate cache and refetch
-      dataCache.invalidatePrefix('infra:')
-      setTimeout(() => {
-        fetchSummaries()
-        setSyncing(false)
-      }, 3000)
-    } catch (err) {
-      console.error('Sync failed:', err)
-      setSyncing(false)
-    }
-  }
+// Removed handleSync - syncing now automated via cron jobs
 
   // Totals
   const totals = useMemo(() => {
@@ -851,10 +834,10 @@ export default function InfrastructureOverview({ drillDownClient, onClientClick 
               onChange={setSelectedClient}
             />
 
-          <Button variant="secondary" onClick={handleSync} disabled={syncing}>
-            <RefreshCw size={16} className={syncing ? 'animate-spin' : ''} />
-            {syncing ? 'Syncing...' : 'Sync All'}
-          </Button>
+          <div className="flex items-center gap-2 text-white/70 px-3 py-2 bg-rillation-bg/50 rounded-lg border border-rillation-border/50">
+            <RefreshCw size={14} />
+            <span className="text-xs">Auto-syncs every 15 min</span>
+          </div>
         </div>
       </div>
       </motion.div>

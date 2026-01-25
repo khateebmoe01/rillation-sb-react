@@ -66,23 +66,7 @@ export default function InboxSetsView() {
     setExpandedTags(newSet)
   }
 
-  const handleSync = async () => {
-    setSyncing(true)
-    try {
-      await syncTags()
-      // Wait longer and refetch multiple times to ensure counts are updated
-      setTimeout(() => {
-        refetch()
-        setTimeout(() => {
-          refetch()
-          setSyncing(false)
-        }, 2000)
-      }, 3000)
-    } catch (err) {
-      console.error('Sync failed:', err)
-      setSyncing(false)
-    }
-  }
+  // Removed handleSync - tag syncing now automated via cron jobs
 
   const handleCreateTag = async () => {
     if (!newTagName.trim() || !selectedClient) return
@@ -166,10 +150,10 @@ export default function InboxSetsView() {
             >
               {selectedTags.size === filteredTags.length ? 'Deselect All' : 'Select All'}
             </button>
-            <Button variant="secondary" size="sm" onClick={handleSync} disabled={syncing}>
-              <RefreshCw size={14} className={syncing ? 'animate-spin' : ''} />
-              {syncing ? 'Syncing...' : 'Sync Tags'}
-            </Button>
+            <div className="flex items-center gap-2 text-white/70 text-xs px-3 py-1.5 bg-rillation-bg/50 rounded-lg border border-rillation-border/50">
+              <RefreshCw size={12} />
+              <span>Auto-syncs every 30 min</span>
+            </div>
             <Button variant="primary" size="sm" onClick={() => setShowCreateModal(true)} disabled={!selectedClient}>
               <Plus size={14} />
               Create Tag
