@@ -4,7 +4,6 @@ import {
   Send, 
   Terminal,
   ChevronLeft,
-  ChevronRight,
   BarChart3,
   Target,
   TrendingUp,
@@ -359,27 +358,7 @@ export default function AICopilotPanel() {
         panelWidth={currentWidth}
       />
 
-      {/* Toggle Button - Sleek minimal design */}
-      <AnimatePresence>
-        {!isPanelOpen && (
-          <motion.button
-            initial={{ x: -60, opacity: 0 }}
-            animate={{ x: 0, opacity: 1 }}
-            exit={{ x: -60, opacity: 0 }}
-            transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-            onClick={togglePanel}
-            className="fixed left-0 top-1/2 -translate-y-1/2 z-50 flex items-center gap-2 px-3 py-4 bg-black border border-white/20 text-white rounded-r-lg hover:bg-white/5 hover:border-white/40 transition-all group"
-          >
-            <motion.div
-              animate={{ rotate: [0, 360] }}
-              transition={{ duration: 8, repeat: Infinity, ease: 'linear' }}
-            >
-              <Cpu size={18} className="text-white/90 group-hover:text-white transition-colors" />
-            </motion.div>
-            <ChevronRight size={14} className="text-white/80 group-hover:text-white transition-colors" />
-          </motion.button>
-        )}
-      </AnimatePresence>
+      {/* Toggle Button - Now in Sidebar, hidden here */}
 
       {/* Panel */}
       <AnimatePresence>

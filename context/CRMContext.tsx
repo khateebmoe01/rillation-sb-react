@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useCallback, useEffect, ReactNode } from 'react'
-import { supabase, isSupabaseConfigured } from '../../../lib/supabase'
-import { useFilters } from '../../../contexts/FilterContext'
+import { supabase, isSupabaseConfigured } from '../src/lib/supabase'
+import { useAuth } from '../src/contexts/AuthContext'
 import type { Contact, Deal, Task, Note, CRMStats, CRMFilters } from '../types'
 
 // Create an untyped supabase client for tables that aren't in the generated types
@@ -72,7 +72,7 @@ const CRMContext = createContext<CRMContextType | null>(null)
 // PROVIDER
 // ============================================
 export function CRMProvider({ children }: { children: ReactNode }) {
-  const { selectedClient } = useFilters()
+  const { client: selectedClient } = useAuth()
   
   // Data state
   const [contacts, setContacts] = useState<Contact[]>([])
@@ -256,14 +256,17 @@ export function CRMProvider({ children }: { children: ReactNode }) {
     
     try {
       // Fetch existing deals from crm_deals
-      const { data: dealsData, error: dealsError } = await db
+      const { data: fetchedDeals, error: dealsError } = await db
         .from('crm_deals')
         .select('*')
         .eq('client', selectedClient)
         .is('deleted_at', null)
         .order('index', { ascending: true })
-      
+
       if (dealsError) throw dealsError
+
+      // Use a mutable variable for deals array
+      let dealsData = fetchedDeals || []
       
       // Fetch engaged leads
       const { data: leadsData, error: leadsError } = await db
@@ -364,22 +367,14 @@ export function CRMProvider({ children }: { children: ReactNode }) {
         }
       })
       
-      // Create a set of emails that already have deals in crm_deals
-      // (to avoid duplicates)
-      const existingDealEmails = new Set<string>()
-      ;(dealsData || []).forEach((deal: any) => {
-        // Join contact if contact_id exists
+      // Create a map of contact_id -> deal for existing deals
+      const existingDealsByContactId = new Map<string, any>()
+      dealsData.forEach((deal: any) => {
         if (deal.contact_id) {
-          const contact = contactMap.get(deal.contact_id)
-          if (contact) {
-            deal.contact = contact
-            if (contact.email) {
-              existingDealEmails.add(contact.email.toLowerCase())
-            }
-          }
+          existingDealsByContactId.set(deal.contact_id, deal)
         }
       })
-      
+
       // Helper function to map engaged lead pipeline stage to deal stage
       const mapLeadToDealStage = (lead: any): Deal['stage'] => {
         if (lead.closed) return 'closed'
@@ -389,67 +384,70 @@ export function CRMProvider({ children }: { children: ReactNode }) {
         if (lead.meeting_booked) return 'interested'
         return 'interested'
       }
-      
-      // Transform engaged leads into deals
-      const leadsAsDeals: Deal[] = (leadsData || [])
-        .filter((lead: any) => {
-          // Only include leads that don't already have a deal
-          if (!lead.email) return false
-          const email = lead.email.toLowerCase()
-          return !existingDealEmails.has(email)
-        })
-        .map((lead: any, index: number) => {
+
+      // Find engaged_leads that don't have deals yet and create them
+      const leadsWithoutDeals = (leadsData || []).filter((lead: any) =>
+        !existingDealsByContactId.has(String(lead.id))
+      )
+
+      if (leadsWithoutDeals.length > 0) {
+        // Bulk create deals for leads that don't have them
+        const newDealsToInsert = leadsWithoutDeals.map((lead: any) => {
           const email = (lead.email || '').toLowerCase()
           const opportunity = email ? opportunityMap.get(email) : null
           const dealStage = mapLeadToDealStage(lead)
-          
-          // Get contact from map
           const contact = contactMap.get(String(lead.id))
-          if (!contact) {
-            // Should not happen, but handle gracefully
-            return null
-          }
-          
-          // Create deal name from lead info
-          const dealName = contact.full_name || 
-            contact.company || 
-            contact.email || 
+
+          const dealName = contact?.full_name ||
+            contact?.company ||
+            contact?.email ||
             'Untitled Deal'
-          
-          // Create deal from lead
-          const deal: Deal = {
-            id: `lead_${lead.id}`, // Use a prefix to distinguish from crm_deals
-            client: lead.client,
+
+          return {
+            client: selectedClient,
             contact_id: String(lead.id),
             name: dealName,
             description: lead.context || lead.notes || null,
             stage: dealStage,
             amount: opportunity?.value || 0,
             currency: 'USD',
-            probability: dealStage === 'closed' ? 100 : dealStage === 'lost' ? 0 : 
+            probability: dealStage === 'closed' ? 100 : dealStage === 'lost' ? 0 :
                         dealStage === 'proposal' ? 80 :
                         dealStage === 'demo' ? 40 :
                         dealStage === 'discovery' ? 25 :
                         dealStage === 'interested' ? 10 : 10,
             expected_close_date: lead.closed_at || null,
             actual_close_date: lead.closed_at || null,
-            close_reason: null,
             owner_id: lead.assignee || null,
-            index: index, // Will be sorted by stage later
+            index: 0,
             tags: [],
-            created_at: lead.created_at || new Date().toISOString(),
-            updated_at: lead.updated_at || new Date().toISOString(),
-            created_by: null,
-            deleted_at: null,
-            contact,
           }
-          
-          return deal
         })
-        .filter((deal: Deal | null): deal is Deal => deal !== null)
-      
-      // Combine existing deals with leads-as-deals
-      const allDeals: Deal[] = [...(dealsData || []), ...leadsAsDeals]
+
+        // Insert new deals
+        const { data: insertedDeals, error: insertError } = await db
+          .from('crm_deals')
+          .insert(newDealsToInsert)
+          .select()
+
+        if (insertError) {
+          console.error('Error creating deals for engaged_leads:', insertError)
+        } else if (insertedDeals) {
+          // Add the newly created deals to the deals array
+          dealsData = [...dealsData, ...insertedDeals]
+        }
+      }
+
+      // Now join contacts with all deals
+      const allDeals: Deal[] = dealsData.map((deal: any) => {
+        if (deal.contact_id) {
+          const contact = contactMap.get(deal.contact_id)
+          if (contact) {
+            deal.contact = contact
+          }
+        }
+        return deal as Deal
+      })
       
       // Sort by stage and index
       const stageOrder: Deal['stage'][] = ['interested', 'discovery', 'demo', 'negotiation', 'proposal', 'closed', 'lost']

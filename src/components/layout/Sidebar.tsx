@@ -1,28 +1,41 @@
 import { NavLink, useLocation } from 'react-router-dom'
-import { BarChart3, Wrench, Compass, LogOut, LayoutDashboard, Mail, Globe, ShoppingCart, Activity } from 'lucide-react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { BarChart3, LogOut, LayoutDashboard, Users, DollarSign, CheckSquare, TrendingUp, Compass, Mail, Globe, ShoppingCart, Activity, Sparkles } from 'lucide-react'
+import { motion } from 'framer-motion'
 import { useAuth } from '../../contexts/AuthContext'
+import { useAI } from '../../contexts/AIContext'
 
-const sections = [
+// Section-based navigation matching the design
+const navSections = [
   {
-    id: 'reporting',
-    icon: BarChart3,
+    id: 'crm',
+    label: 'CRM',
+    items: [
+      { id: 'dashboard', icon: LayoutDashboard, label: 'Dashboard', path: '/crm' },
+      { id: 'contacts', icon: Users, label: 'Contacts', path: '/crm/contacts' },
+      { id: 'deals', icon: DollarSign, label: 'Deals', path: '/crm/deals' },
+      { id: 'tasks', icon: CheckSquare, label: 'Tasks', path: '/crm/tasks' },
+    ],
+  },
+  {
+    id: 'analytics',
     label: 'Analytics',
-    path: '/performance',
+    items: [
+      { id: 'performance', icon: BarChart3, label: 'Performance', path: '/performance' },
+      { id: 'pipeline', icon: TrendingUp, label: 'Pipeline', path: '/pipeline' },
+    ],
   },
   {
     id: 'strategy',
-    icon: Compass,
-    label: 'Client Strategy',
-    path: '/strategy',
+    label: 'Strategy',
+    items: [
+      { id: 'client-strategy', icon: Compass, label: 'Client Strategy', path: '/strategy' },
+    ],
   },
   {
     id: 'infrastructure',
-    icon: Wrench,
     label: 'Infrastructure',
-    path: '/infrastructure',
-    subItems: [
-      { id: 'overview', icon: LayoutDashboard, label: 'Overview', path: '/infrastructure/overview' },
+    items: [
+      { id: 'overview', icon: LayoutDashboard, label: 'Overview', path: '/infrastructure' },
       { id: 'inboxes', icon: Mail, label: 'Inboxes', path: '/infrastructure/inboxes' },
       { id: 'domains', icon: Globe, label: 'Domains', path: '/infrastructure/domains' },
       { id: 'orders', icon: ShoppingCart, label: 'Orders', path: '/infrastructure/orders' },
@@ -34,98 +47,110 @@ const sections = [
 export default function Sidebar() {
   const location = useLocation()
   const { signOut, user } = useAuth()
+  const { togglePanel, isPanelOpen } = useAI()
   
   const handleSignOut = async () => {
     await signOut()
   }
   
+  const isItemActive = (path: string, id: string) => {
+    // Exact match first
+    if (location.pathname === path) return true
+
+    // CRM routes - only exact matches
+    if (path.startsWith('/crm')) {
+      return location.pathname === path
+    }
+
+    // Analytics routes - allow sub-paths
+    if (id === 'performance' && location.pathname.startsWith('/performance')) return true
+
+    // Strategy routes - allow sub-paths
+    if (id === 'client-strategy' && location.pathname.startsWith('/strategy')) return true
+
+    // Infrastructure routes - allow sub-paths
+    if (path.startsWith('/infrastructure') && path !== '/infrastructure') {
+      return location.pathname.startsWith(path)
+    }
+
+    return false
+  }
+  
   return (
-    <aside
-      className="bg-rillation-card border-r border-rillation-border flex flex-col py-4 gap-2 overflow-hidden flex-shrink-0 w-[180px]"
-    >
-      <div className="flex-1 flex flex-col gap-1">
-        {sections.map((section) => {
-          const Icon = section.icon
-          // Determine active state based on section
-          const isActive = section.id === 'infrastructure'
-            ? location.pathname.startsWith('/infrastructure')
-            : section.id === 'strategy'
-              ? location.pathname.startsWith('/strategy')
-              : section.id === 'reporting'
-                  ? location.pathname.startsWith('/performance') || location.pathname.startsWith('/pipeline')
-                  : false
-          
-          const hasSubItems = section.subItems && section.subItems.length > 0
-          
-          return (
-            <div key={section.id}>
-              <NavLink
-                to={section.path}
-                className={`
-                  mx-2 h-12 flex items-center gap-3 rounded-xl transition-all duration-200 px-3
-                  ${isActive
-                    ? 'bg-rillation-card-hover border border-rillation-border text-white'
-                    : 'text-white/80 hover:text-white hover:bg-white/5'
-                  }
-                `}
-              >
-                <Icon size={22} className="flex-shrink-0" />
-                <span className="text-sm font-medium whitespace-nowrap">
-                  {section.label}
-                </span>
-              </NavLink>
-              
-              {/* Sub Items */}
-              <AnimatePresence>
-                {hasSubItems && isActive && (
-                  <motion.div
-                    className="ml-4 mt-1 space-y-0.5"
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    exit={{ opacity: 0, height: 0 }}
-                    transition={{ duration: 0.15 }}
-                  >
-                    {section.subItems!.map((subItem) => {
-                      const SubIcon = subItem.icon
-                      const isSubActive = location.pathname === subItem.path || 
-                        (subItem.id === 'overview' && location.pathname === '/infrastructure')
-                      
-                      return (
-                        <NavLink
-                          key={subItem.id}
-                          to={subItem.path}
-                          className={`
-                            mx-2 h-9 flex items-center gap-2 rounded-lg transition-all duration-200 px-3 text-xs
-                            ${isSubActive
-                              ? 'bg-white/10 text-white'
-                              : 'text-white/90 hover:text-white hover:bg-white/5'
-                            }
-                          `}
-                        >
-                          <SubIcon size={16} className="flex-shrink-0" />
-                          <span className="font-medium whitespace-nowrap">{subItem.label}</span>
-                        </NavLink>
-                      )
-                    })}
-                  </motion.div>
-                )}
-              </AnimatePresence>
+    <aside className="bg-[#0a0a0c] border-r border-zinc-800/50 flex flex-col py-5 overflow-hidden flex-shrink-0 w-[180px]">
+      {/* AI Button at Top */}
+      <div className="px-4 mb-4">
+        <motion.button
+          onClick={togglePanel}
+          className={`
+            w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-lg transition-all duration-150
+            border
+            ${isPanelOpen 
+              ? 'bg-emerald-600/20 border-emerald-500/30 text-emerald-400' 
+              : 'bg-zinc-800/50 border-zinc-700/50 text-zinc-300 hover:bg-zinc-700/50 hover:text-white hover:border-zinc-600/50'
+            }
+          `}
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+        >
+          <motion.div
+            animate={isPanelOpen ? { rotate: 360 } : { rotate: 0 }}
+            transition={{ duration: 0.5 }}
+          >
+            <Sparkles size={16} />
+          </motion.div>
+          <span className="text-[13px] font-medium">AI Assistant</span>
+        </motion.button>
+      </div>
+      
+      <div className="flex-1 flex flex-col gap-6 px-4 overflow-y-auto">
+        {navSections.map((section) => (
+          <div key={section.id}>
+            {/* Section Header with Line */}
+            <div className="flex items-center gap-3 mb-3">
+              <span className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider whitespace-nowrap">
+                {section.label}
+              </span>
+              <div className="flex-1 h-px bg-zinc-700/50" />
             </div>
-          )
-        })}
+            
+            {/* Section Items */}
+            <div className="space-y-0.5">
+              {section.items.map((item) => {
+                const Icon = item.icon
+                const isActive = isItemActive(item.path, item.id)
+                
+                return (
+                  <NavLink
+                    key={item.id}
+                    to={item.path}
+                    className={`
+                      flex items-center gap-2.5 py-2 px-2.5 rounded-lg transition-all duration-150
+                      ${isActive
+                        ? 'bg-emerald-600/20 text-emerald-400'
+                        : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50'
+                      }
+                    `}
+                  >
+                    <Icon size={16} className="flex-shrink-0" />
+                    <span className="text-[13px] font-medium">{item.label}</span>
+                  </NavLink>
+                )
+              })}
+            </div>
+          </div>
+        ))}
       </div>
       
       {/* Sign Out Button */}
       {user && (
-        <div className="mt-auto pt-2 border-t border-rillation-border/50">
+        <div className="mt-auto px-4 pt-4 border-t border-zinc-800/50">
           <button
             onClick={handleSignOut}
-            className="mx-2 h-12 w-full flex items-center gap-3 rounded-xl transition-all duration-200 px-3 text-white/80 hover:text-white hover:bg-white/5"
+            className="w-full flex items-center gap-2.5 py-2 px-2.5 rounded-lg transition-all duration-150 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50"
           >
-            <LogOut size={22} className="flex-shrink-0" />
-            <span className="text-sm font-medium whitespace-nowrap">
-              Sign Out
-            </span>
+            <LogOut size={16} className="flex-shrink-0" />
+            <span className="text-[13px] font-medium">Sign Out</span>
           </button>
         </div>
       )}

@@ -16,9 +16,10 @@ export default function Layout({ children }: LayoutProps) {
   const { isPanelOpen, panelWidth } = useAI()
   const isInfrastructurePage = location.pathname.startsWith('/infrastructure')
   const isStrategyPage = location.pathname.startsWith('/strategy')
-  
+  const isCRMPage = location.pathname.startsWith('/crm')
+
   // Pages that don't need the reporting header/tabs
-  const isStandalonePage = isInfrastructurePage || isStrategyPage
+  const isStandalonePage = isInfrastructurePage || isStrategyPage || isCRMPage
   
   return (
     <div className="min-h-screen flex overflow-hidden">

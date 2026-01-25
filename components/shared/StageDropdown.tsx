@@ -1,7 +1,7 @@
 import { useRef, useEffect, useId } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ChevronDown, Check } from 'lucide-react'
-import { useDropdown } from '../../../../contexts/DropdownContext'
+import { useDropdown } from '../../src/contexts/DropdownContext'
 import { theme } from '../../config/theme'
 
 interface Stage {

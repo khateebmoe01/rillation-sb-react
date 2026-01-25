@@ -12,6 +12,7 @@ import CustomVariablesDiscovery from './pages/CustomVariablesDiscovery'
 import Login from './pages/Login'
 import ProtectedRoute from './components/auth/ProtectedRoute'
 import { getSupabaseConfigError } from './lib/supabase'
+import AtomicCRM from '../index'
 
 // Redirect component that properly handles URL params
 function ClientDetailRedirect() {
@@ -69,6 +70,8 @@ function App() {
                     <Route path="/infrastructure/health" element={<PageTransition><Infrastructure defaultTab="health" /></PageTransition>} />
                     <Route path="/admin/variables" element={<PageTransition><CustomVariablesDiscovery /></PageTransition>} />
                     <Route path="/debug" element={<PageTransition><DebugView /></PageTransition>} />
+                    {/* New Atomic CRM */}
+                    <Route path="/crm/*" element={<PageTransition><AtomicCRM /></PageTransition>} />
                     {/* Legacy routes - redirect to new structure */}
                     <Route path="/gtm-scoreboard" element={<Navigate to="/performance" replace />} />
                     <Route path="/quick-view" element={<Navigate to="/performance" replace />} />

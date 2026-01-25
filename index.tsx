@@ -1,6 +1,6 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { CRMProvider } from './context/CRMContext'
-import { DropdownProvider } from '../../contexts/DropdownContext'
+import { DropdownProvider } from './src/contexts/DropdownContext'
 import { CRMLayout } from './components/layout/CRMLayout'
 import { CRMDashboard } from './components/dashboard/CRMDashboard'
 import { ContactList } from './components/contacts/ContactList'
