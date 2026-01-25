@@ -26,7 +26,7 @@ export default function Login() {
 
   // Redirect if already authenticated
   if (!authLoading && user) {
-    return <Navigate to="/performance" replace />
+    return <Navigate to="/crm" replace />
   }
 
   return (

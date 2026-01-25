@@ -123,7 +123,7 @@ If you prefer to set up policies manually:
 3. **Sign In**
    - Enter the email and password you created in Step 2
    - Click **"Sign In"**
-   - You should be redirected to `/performance` (the dashboard)
+   - You should be redirected to `/crm` (the dashboard)
 
 4. **Verify Authentication**
    - You should see the dashboard with all your data

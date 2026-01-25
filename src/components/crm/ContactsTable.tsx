@@ -1,0 +1,1451 @@
+import { useState, memo, useRef, useCallback, useEffect } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { ChevronDown, ChevronUp, Check, Loader2, ExternalLink, Calendar, GripVertical, Mail, Phone, Copy, ChevronRight, Columns, Eye, EyeOff, Minus, Maximize2 } from 'lucide-react'
+import { CRM_STAGES, type CRMContact, type CRMSort } from '../../types/crm'
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core'
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  horizontalListSortingStrategy,
+  useSortable,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
+
+interface ContactsTableProps {
+  contacts: CRMContact[]
+  onContactSelect: (contact: CRMContact) => void
+  onContactUpdate: (id: string, updates: Partial<CRMContact>) => Promise<boolean>
+  onEstimatedValueUpdate?: (contact: CRMContact, value: number) => Promise<boolean>
+  onCloseWon?: (contact: CRMContact) => void
+  sort?: CRMSort
+  onSortChange?: (sort: CRMSort | undefined) => void
+  selectedRowIndex?: number
+  onSelectedRowChange?: (index: number) => void
+}
+
+// Column definition interface
+interface ColumnDef {
+  key: string
+  label: string
+  width: string
+  sortable: boolean
+  dropdown?: boolean
+  link?: boolean
+}
+
+// Pipeline progress stages with labels and colors
+const PIPELINE_STAGES = [
+  { key: 'meeting_booked' as const, label: 'Meeting Booked', timestampKey: 'meeting_booked_at' as const, color: '#3b82f6', bgColor: 'bg-blue-500/20', textColor: 'text-blue-400' },
+  { key: 'showed_up_to_disco' as const, label: 'Disco Show', timestampKey: 'showed_up_to_disco_at' as const, color: '#8b5cf6', bgColor: 'bg-violet-500/20', textColor: 'text-violet-400' },
+  { key: 'qualified' as const, label: 'Qualified', timestampKey: 'qualified_at' as const, color: '#06b6d4', bgColor: 'bg-cyan-500/20', textColor: 'text-cyan-400' },
+  { key: 'demo_booked' as const, label: 'Demo Booked', timestampKey: 'demo_booked_at' as const, color: '#f59e0b', bgColor: 'bg-amber-500/20', textColor: 'text-amber-400' },
+  { key: 'showed_up_to_demo' as const, label: 'Demo Show', timestampKey: 'showed_up_to_demo_at' as const, color: '#ec4899', bgColor: 'bg-pink-500/20', textColor: 'text-pink-400' },
+  { key: 'proposal_sent' as const, label: 'Proposal Sent', timestampKey: 'proposal_sent_at' as const, color: '#f97316', bgColor: 'bg-orange-500/20', textColor: 'text-orange-400' },
+  { key: 'closed' as const, label: 'Closed', timestampKey: 'closed_at' as const, color: '#22c55e', bgColor: 'bg-green-500/20', textColor: 'text-green-400' },
+]
+
+// Default column widths in pixels - generous spacing to prevent overlap
+const DEFAULT_COLUMN_WIDTHS: Record<string, number> = {
+  'full_name': 220,        // Lead name needs space
+  'company': 200,          // Organization
+  'stage': 160,            // Stage dropdown
+  'pipeline_progress': 180, // Pipeline progress
+  'estimated_value': 150,  // Pipeline value
+  'lead_phone': 160,       // Phone numbers
+  'company_phone': 170,    // Phone numbers
+  'linkedin_url': 130,     // LinkedIn link
+  'context': 220,          // Context notes
+  'next_touchpoint': 160,  // Date
+  'lead_source': 150,      // Source tag
+  'industry': 180,         // Industry
+  'created_at': 150,       // Date
+  'company_website': 150,  // Website link
+}
+
+// Column definitions with emojis
+const COLUMNS: ColumnDef[] = [
+  { key: 'full_name', label: '👤 Lead Name', width: 'w-44', sortable: true },
+  { key: 'company', label: '🏢 Organization', width: 'w-40', sortable: true },
+  { key: 'stage', label: '📊 Stage', width: 'w-32', sortable: true },
+  { key: 'pipeline_progress', label: '🚀 Pipeline', width: 'w-44', sortable: false, dropdown: true },
+  { key: 'estimated_value', label: '💰 EPV', width: 'w-32', sortable: true },
+  { key: 'lead_phone', label: '📱 Lead Phone', width: 'w-32', sortable: true },
+  { key: 'company_phone', label: '☎️ Company Phone', width: 'w-32', sortable: true },
+  { key: 'linkedin_url', label: '💼 LinkedIn', width: 'w-28', sortable: false, link: true },
+  { key: 'context', label: '📝 Context', width: 'w-48', sortable: false },
+  { key: 'next_touchpoint', label: '📅 Next Touch', width: 'w-32', sortable: true },
+  { key: 'lead_source', label: '🎯 Source', width: 'w-28', sortable: true },
+  { key: 'industry', label: '🏭 Industry', width: 'w-32', sortable: true },
+  { key: 'created_at', label: '🕐 Created', width: 'w-32', sortable: true },
+  { key: 'company_website', label: '🌐 Website', width: 'w-36', sortable: false, link: true },
+]
+
+// Pipeline Progress dropdown component
+interface PipelineProgressCellProps {
+  contact: CRMContact
+  onSave: (id: string, updates: Partial<CRMContact>) => Promise<boolean>
+}
+
+const PipelineProgressCell = memo(({ contact, onSave }: PipelineProgressCellProps) => {
+  const [isOpen, setIsOpen] = useState(false)
+  const [isSaving, setIsSaving] = useState<string | null>(null)
+
+  // Find the deepest (latest) stage that is checked
+  let deepestStage: typeof PIPELINE_STAGES[number] | null = null
+  for (let i = PIPELINE_STAGES.length - 1; i >= 0; i--) {
+    if (Boolean(contact[PIPELINE_STAGES[i].key])) {
+      deepestStage = PIPELINE_STAGES[i]
+      break
+    }
+  }
+
+  const handleToggle = async (stage: typeof PIPELINE_STAGES[number]) => {
+    setIsSaving(stage.key)
+    const currentValue = Boolean(contact[stage.key])
+    const newValue = !currentValue
+    
+    await onSave(contact.id, {
+      [stage.key]: newValue,
+      [stage.timestampKey]: newValue ? new Date().toISOString() : null,
+    })
+    
+    setIsSaving(null)
+  }
+
+  return (
+    <div className="relative flex justify-center" onClick={(e) => e.stopPropagation()}>
+      <motion.button
+        onClick={() => setIsOpen(!isOpen)}
+        className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs ${
+          deepestStage 
+            ? `${deepestStage.bgColor} ${deepestStage.textColor}` 
+            : 'bg-slate-700/50 text-white/80'
+        }`}
+        whileHover={{ scale: 1.05 }}
+        whileTap={{ scale: 0.95 }}
+      >
+        {deepestStage ? (
+          <span className="truncate max-w-[90px] font-medium">
+            {deepestStage.label}
+          </span>
+        ) : (
+          <span>—</span>
+        )}
+        <motion.div animate={{ rotate: isOpen ? 180 : 0 }} transition={{ duration: 0.2 }}>
+          <ChevronDown size={11} className="flex-shrink-0 opacity-70" />
+        </motion.div>
+      </motion.button>
+
+      <AnimatePresence>
+        {isOpen && (
+          <>
+            <div
+              className="fixed inset-0 z-40"
+              onClick={() => setIsOpen(false)}
+            />
+            <motion.div
+              initial={{ opacity: 0, y: -10, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -10, scale: 0.95 }}
+              transition={{ duration: 0.15, ease: 'easeOut' }}
+              className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-72 z-50"
+            >
+              <div className="bg-slate-900/95 backdrop-blur-xl border border-slate-600/50 rounded-xl shadow-2xl overflow-hidden">
+                <div className="px-3 py-2 border-b border-slate-700/50">
+                  <span className="text-xs font-medium text-white/90 uppercase tracking-wider">Pipeline Progress</span>
+                </div>
+                <div className="max-h-80 overflow-y-auto py-1">
+                  {PIPELINE_STAGES.map((stage, index) => {
+                    const isChecked = Boolean(contact[stage.key])
+                    const timestamp = contact[stage.timestampKey] as string | undefined
+                    const isLoading = isSaving === stage.key
+
+                    return (
+                      <motion.button
+                        key={stage.key}
+                        onClick={() => handleToggle(stage)}
+                        disabled={isLoading}
+                        className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-white/5 transition-colors text-left"
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: index * 0.02 }}
+                        whileHover={{ x: 2 }}
+                      >
+                        <div
+                          className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 ${
+                            isChecked
+                              ? 'bg-emerald-400 border-emerald-400'
+                              : 'border-slate-500 hover:border-slate-400'
+                          }`}
+                        >
+                          {isLoading ? (
+                            <Loader2 size={12} className="animate-spin text-white" />
+                          ) : isChecked ? (
+                            <Check size={12} className="text-white" />
+                          ) : null}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm text-white/90">{stage.label}</div>
+                          {isChecked && timestamp && (
+                            <div className="text-xs text-white/80 flex items-center gap-1 mt-0.5">
+                              <Calendar size={10} />
+                              {new Date(timestamp).toLocaleDateString('en-US', {
+                                month: 'short',
+                                day: 'numeric',
+                                year: 'numeric',
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      </motion.button>
+                    )
+                  })}
+                </div>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+})
+
+PipelineProgressCell.displayName = 'PipelineProgressCell'
+
+// Editable cell for inline editing
+interface EditableCellProps {
+  value: string
+  contactId: string
+  field: keyof CRMContact
+  onSave: (id: string, updates: Partial<CRMContact>) => Promise<boolean>
+  rowIndex: number
+  totalRows: number
+}
+
+const EditableCell = memo(({ value, contactId, field, onSave, rowIndex, totalRows }: EditableCellProps) => {
+  const [isEditing, setIsEditing] = useState(false)
+  const [editValue, setEditValue] = useState(value)
+  const [isSaving, setIsSaving] = useState(false)
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  const handleSave = async (moveToNext = false) => {
+    if (editValue === value) {
+      setIsEditing(false)
+      if (moveToNext) focusNextRow()
+      return
+    }
+
+    setIsSaving(true)
+    const success = await onSave(contactId, { [field]: editValue })
+    setIsSaving(false)
+    
+    if (success) {
+      setIsEditing(false)
+      if (moveToNext) focusNextRow()
+    } else {
+      setEditValue(value)
+    }
+  }
+
+  const focusNextRow = () => {
+    if (rowIndex < totalRows - 1) {
+      // Find the next row's cell with the same field and click it
+      setTimeout(() => {
+        const nextCell = document.querySelector(
+          `[data-editable-cell][data-row="${rowIndex + 1}"][data-field="${field}"]`
+        ) as HTMLElement
+        if (nextCell) {
+          nextCell.click()
+        }
+      }, 50)
+    }
+  }
+
+  const handleCancel = () => {
+    setEditValue(value)
+    setIsEditing(false)
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      handleSave(true) // Save and move to next row
+    } else if (e.key === 'Escape') {
+      handleCancel()
+    }
+  }
+
+  if (isEditing) {
+    return (
+      <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+        <input
+          ref={inputRef}
+          type="text"
+          value={editValue}
+          onChange={(e) => setEditValue(e.target.value)}
+          onKeyDown={handleKeyDown}
+          onBlur={() => handleSave(false)}
+          autoFocus
+          className="w-full px-2 py-1 bg-slate-900 border border-slate-600 rounded text-sm text-white focus:outline-none"
+        />
+        {isSaving && <Loader2 size={14} className="animate-spin text-slate-300" />}
+      </div>
+    )
+  }
+
+  return (
+    <span
+      data-editable-cell
+      data-row={rowIndex}
+      data-field={field}
+      onClick={(e) => {
+        e.stopPropagation()
+        setIsEditing(true)
+      }}
+      className="cursor-text hover:bg-slate-700/50 px-2 py-1 -mx-2 -my-1 rounded transition-colors truncate block"
+    >
+      {value || '-'}
+    </span>
+  )
+})
+
+EditableCell.displayName = 'EditableCell'
+
+// Stage cell with dropdown
+interface StageCellProps {
+  contact: CRMContact
+  onSave: (id: string, updates: Partial<CRMContact>) => Promise<boolean>
+  onCloseWon?: (contact: CRMContact) => void
+}
+
+const StageCell = memo(({ contact, onSave, onCloseWon }: StageCellProps) => {
+  const [isOpen, setIsOpen] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
+
+  const currentStage = CRM_STAGES.find((s) => s.id === contact.stage) || CRM_STAGES[0]
+
+  const handleStageChange = async (stageId: string) => {
+    // Intercept closed_won - show confirmation modal
+    if (stageId === 'closed_won' && onCloseWon) {
+      onCloseWon(contact)
+      setIsOpen(false)
+      return
+    }
+    
+    setIsSaving(true)
+    await onSave(contact.id, { stage: stageId })
+    setIsSaving(false)
+    setIsOpen(false)
+  }
+
+  // Convert hex color to rgba for background with opacity
+  const hexToRgba = (hex: string, alpha: number) => {
+    const r = parseInt(hex.slice(1, 3), 16)
+    const g = parseInt(hex.slice(3, 5), 16)
+    const b = parseInt(hex.slice(5, 7), 16)
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`
+  }
+
+  return (
+    <div className="relative flex justify-center" onClick={(e) => e.stopPropagation()}>
+      <motion.button
+        onClick={() => setIsOpen(!isOpen)}
+        disabled={isSaving}
+        className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs"
+        style={{
+          backgroundColor: hexToRgba(currentStage.color, 0.2),
+          color: currentStage.color,
+        }}
+        whileHover={{ scale: 1.05 }}
+        whileTap={{ scale: 0.95 }}
+      >
+        <span className="truncate max-w-[90px] font-medium">
+          {currentStage.label}
+        </span>
+        {isSaving ? (
+          <Loader2 size={11} className="animate-spin flex-shrink-0 opacity-70" />
+        ) : (
+          <motion.div animate={{ rotate: isOpen ? 180 : 0 }} transition={{ duration: 0.2 }}>
+            <ChevronDown size={11} className="flex-shrink-0 opacity-70" />
+          </motion.div>
+        )}
+      </motion.button>
+
+      <AnimatePresence>
+        {isOpen && (
+          <>
+            <div
+              className="fixed inset-0 z-40"
+              onClick={() => setIsOpen(false)}
+            />
+            <motion.div
+              initial={{ opacity: 0, y: -10, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -10, scale: 0.95 }}
+              transition={{ duration: 0.15, ease: 'easeOut' }}
+              className="absolute top-full left-0 mt-2 w-48 z-50"
+            >
+              <div className="bg-slate-900/95 backdrop-blur-xl border border-slate-600/50 rounded-xl shadow-2xl overflow-hidden">
+                <div className="px-3 py-2 border-b border-slate-700/50">
+                  <span className="text-xs font-medium text-white/90 uppercase tracking-wider">Select Stage</span>
+                </div>
+                <div className="max-h-64 overflow-y-auto py-1">
+                  {CRM_STAGES.map((stage, index) => (
+                    <motion.button
+                      key={stage.id}
+                      onClick={() => handleStageChange(stage.id)}
+                      className={`w-full flex items-center gap-3 px-3 py-2.5 text-sm text-left transition-colors ${
+                        stage.id === contact.stage ? 'bg-white/10 text-white' : 'text-white/90 hover:bg-white/5'
+                      }`}
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: index * 0.02 }}
+                      whileHover={{ x: 2 }}
+                    >
+                      <div
+                        className="w-3 h-3 rounded-full flex-shrink-0"
+                        style={{ backgroundColor: stage.color }}
+                      />
+                      <span className="flex-1">{stage.label}</span>
+                      {stage.id === contact.stage && (
+                        <Check size={14} className="text-emerald-400" />
+                      )}
+                    </motion.button>
+                  ))}
+                </div>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+})
+
+StageCell.displayName = 'StageCell'
+
+// Sortable header component
+interface SortableHeaderProps {
+  label: string
+  field: string
+  sortable: boolean
+  currentSort?: CRMSort
+  onSort?: (sort: CRMSort | undefined) => void
+}
+
+function SortableHeader({ label, field, sortable, currentSort, onSort }: SortableHeaderProps) {
+  if (!sortable || !onSort) {
+    return <span>{label}</span>
+  }
+
+  const isActive = currentSort?.field === field
+  const direction = isActive ? currentSort.direction : null
+
+  const handleClick = () => {
+    if (!isActive) {
+      onSort({ field: field as keyof CRMContact, direction: 'asc' })
+    } else if (direction === 'asc') {
+      onSort({ field: field as keyof CRMContact, direction: 'desc' })
+    } else {
+      onSort(undefined)
+    }
+  }
+
+  return (
+    <button
+      onClick={handleClick}
+      className="flex items-center gap-1 text-white hover:opacity-80 transition-opacity group"
+    >
+      <span>{label}</span>
+      <div className="flex flex-col">
+        <ChevronUp 
+          size={10} 
+          className={`-mb-1 ${isActive && direction === 'asc' ? 'text-white' : 'text-white/80 group-hover:text-white/90'}`} 
+        />
+        <ChevronDown 
+          size={10} 
+          className={`${isActive && direction === 'desc' ? 'text-white' : 'text-white/80 group-hover:text-white/90'}`} 
+        />
+      </div>
+    </button>
+  )
+}
+
+// Column resize handle component
+interface ColumnResizeHandleProps {
+  onResize: (deltaX: number) => void
+}
+
+function ColumnResizeHandle({ onResize }: ColumnResizeHandleProps) {
+  const [isResizing, setIsResizing] = useState(false)
+  const startXRef = useRef<number>(0)
+
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsResizing(true)
+    startXRef.current = e.clientX
+    document.body.style.cursor = 'col-resize'
+    document.body.style.userSelect = 'none'
+  }, [])
+
+  useEffect(() => {
+    if (!isResizing) return
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const deltaX = e.clientX - startXRef.current
+      if (Math.abs(deltaX) > 0) {
+        onResize(deltaX)
+        startXRef.current = e.clientX
+      }
+    }
+
+    const handleMouseUp = () => {
+      setIsResizing(false)
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
+    }
+
+    document.addEventListener('mousemove', handleMouseMove)
+    document.addEventListener('mouseup', handleMouseUp)
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove)
+      document.removeEventListener('mouseup', handleMouseUp)
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
+    }
+  }, [isResizing, onResize])
+
+  return (
+    <div
+      onMouseDown={handleMouseDown}
+      className={`absolute right-0 top-0 bottom-0 w-1 cursor-col-resize transition-colors pointer-events-auto ${
+        isResizing 
+          ? 'bg-slate-400' 
+          : 'hover:bg-slate-500/50 group-hover:bg-slate-500/30'
+      }`}
+      style={{ zIndex: 10 }}
+    >
+      {/* Invisible wider hit area for easier dragging */}
+      <div className="absolute inset-0 -right-2 -left-2 pointer-events-auto" />
+    </div>
+  )
+}
+
+// Draggable column header component
+interface DraggableColumnHeaderProps {
+  column: ColumnDef
+  sort?: CRMSort
+  onSortChange?: (sort: CRMSort | undefined) => void
+  width: number
+  onResize: (columnKey: string, newWidth: number) => void
+  isMinimized: boolean
+  onToggleMinimize: (columnKey: string) => void
+}
+
+function DraggableColumnHeader({ column, sort, onSortChange, width, onResize, isMinimized, onToggleMinimize }: DraggableColumnHeaderProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: column.key })
+
+  const handleResize = useCallback((deltaX: number) => {
+    const newWidth = Math.max(80, Math.min(width + deltaX, 800)) // Min 80px, Max 800px
+    onResize(column.key, newWidth)
+  }, [width, onResize, column.key])
+
+  const handleDoubleClick = useCallback(() => {
+    // Don't allow minimizing the name column
+    if (column.key !== 'full_name') {
+      onToggleMinimize(column.key)
+    }
+  }, [column.key, onToggleMinimize])
+
+  const displayWidth = isMinimized ? MINIMIZED_WIDTH : width
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition: isDragging ? transition : undefined,
+    zIndex: isDragging ? 50 : undefined,
+    opacity: isDragging ? 0.8 : 1,
+    width: `${displayWidth}px`,
+    backfaceVisibility: 'hidden' as const,
+    WebkitBackfaceVisibility: 'hidden' as const,
+  }
+
+  // Minimized view - just show expand icon
+  if (isMinimized) {
+    return (
+      <div
+        ref={setNodeRef}
+        style={style}
+        className={`group flex-shrink-0 flex items-center justify-center py-3 cursor-pointer bg-slate-900 hover:bg-slate-700/50 transition-colors overflow-hidden ${isDragging ? 'bg-slate-700/50 rounded' : ''}`}
+        onClick={handleDoubleClick}
+        title={`Expand ${column.label}`}
+      >
+        <Maximize2 size={12} className="text-slate-300" />
+      </div>
+    )
+  }
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`group flex-shrink-0 text-left px-3 py-3 text-xs font-medium text-white tracking-wide whitespace-nowrap flex items-center gap-1 relative bg-slate-900 overflow-hidden ${isDragging ? 'bg-slate-700/50 rounded' : ''}`}
+      onDoubleClick={handleDoubleClick}
+      title={column.key !== 'full_name' ? 'Double-click to minimize' : undefined}
+    >
+      <div
+        {...attributes}
+        {...listeners}
+        className="cursor-grab active:cursor-grabbing p-0.5 -ml-1 hover:bg-slate-700/50 rounded opacity-40 hover:opacity-100 transition-opacity"
+      >
+        <GripVertical size={12} />
+      </div>
+      <SortableHeader
+        label={column.label}
+        field={column.key}
+        sortable={column.sortable}
+        currentSort={sort}
+        onSort={onSortChange}
+      />
+      {/* Minimize button - show on hover */}
+      {column.key !== 'full_name' && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation()
+            onToggleMinimize(column.key)
+          }}
+          className="opacity-0 group-hover:opacity-100 p-0.5 hover:bg-slate-700/50 rounded transition-opacity ml-auto"
+          title="Minimize column"
+        >
+          <Minus size={10} className="text-slate-300" />
+        </button>
+      )}
+      <ColumnResizeHandle onResize={handleResize} />
+    </div>
+  )
+}
+
+// Link cell component
+function LinkCell({ url, label }: { url?: string | null; label?: string }) {
+  if (!url) return <span className="text-slate-300">-</span>
+
+  const href = url.startsWith('http') ? url : `https://${url}`
+  const displayText = label || (url.includes('linkedin') ? 'Profile' : new URL(href).hostname.replace('www.', ''))
+
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      onClick={(e) => e.stopPropagation()}
+      className="text-blue-400 hover:text-blue-300 hover:underline flex items-center gap-1 truncate"
+    >
+      <span className="truncate">{displayText}</span>
+      <ExternalLink size={12} className="flex-shrink-0" />
+    </a>
+  )
+}
+
+// Format date for display - full year
+function formatDate(dateStr?: string | null): string {
+  if (!dateStr) return '-'
+  return new Date(dateStr).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  })
+}
+
+// Row Quick Actions component
+interface RowQuickActionsProps {
+  contact: CRMContact
+  onSave: (id: string, updates: Partial<CRMContact>) => Promise<boolean>
+  onSelect: () => void
+  onCloseWon?: (contact: CRMContact) => void
+}
+
+const RowQuickActions = memo(({ contact, onSave, onSelect, onCloseWon }: RowQuickActionsProps) => {
+  const [isCopied, setIsCopied] = useState(false)
+  const [isUpdating, setIsUpdating] = useState(false)
+
+  // Get current and next stage
+  const currentStageIndex = CRM_STAGES.findIndex(s => s.id === contact.stage)
+  const nextStage = CRM_STAGES[currentStageIndex + 1]
+
+  const handleCopyEmail = async (e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (contact.email) {
+      await navigator.clipboard.writeText(contact.email)
+      setIsCopied(true)
+      setTimeout(() => setIsCopied(false), 2000)
+    }
+  }
+
+  const handleAdvanceStage = async (e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (nextStage && !isUpdating) {
+      // Intercept closed_won - show confirmation modal
+      if (nextStage.id === 'closed_won' && onCloseWon) {
+        onCloseWon(contact)
+        return
+      }
+      setIsUpdating(true)
+      await onSave(contact.id, { stage: nextStage.id })
+      setIsUpdating(false)
+    }
+  }
+
+  return (
+    <div 
+      className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-900/90 backdrop-blur-sm rounded-lg px-1 py-0.5 border border-slate-700 shadow-lg"
+      onClick={(e) => e.stopPropagation()}
+    >
+      {/* Copy Email */}
+      {contact.email && (
+          <motion.button
+            whileTap={{ scale: 0.95 }}
+            onClick={handleCopyEmail}
+            className="p-1.5 rounded-md hover:bg-slate-700/50 transition-none"
+            title={isCopied ? 'Copied!' : 'Copy email'}
+          >
+          {isCopied ? (
+            <Check size={14} className="text-green-400" />
+          ) : (
+            <Copy size={14} className="text-slate-300" />
+          )}
+        </motion.button>
+      )}
+
+      {/* Email */}
+      {contact.email && (
+        <motion.a
+          href={`mailto:${contact.email}`}
+          whileTap={{ scale: 0.95 }}
+          onClick={(e) => e.stopPropagation()}
+          className="p-1.5 rounded-md hover:bg-slate-700/50 transition-none"
+          title="Send email"
+        >
+          <Mail size={14} className="text-slate-300" />
+        </motion.a>
+      )}
+
+      {/* Phone */}
+      {contact.lead_phone && (
+        <motion.a
+          href={`tel:${contact.lead_phone}`}
+          whileTap={{ scale: 0.95 }}
+          onClick={(e) => e.stopPropagation()}
+          className="p-1.5 rounded-md hover:bg-slate-700/50 transition-none"
+          title="Call"
+        >
+          <Phone size={14} className="text-slate-300" />
+        </motion.a>
+      )}
+
+      {/* Advance Stage */}
+      {nextStage && (
+        <motion.button
+          whileTap={{ scale: 0.95 }}
+          onClick={handleAdvanceStage}
+          disabled={isUpdating}
+          className="flex items-center gap-1 px-2 py-1 rounded-md hover:bg-slate-700/50 transition-none text-xs"
+          title={`Move to ${nextStage.label}`}
+        >
+          {isUpdating ? (
+            <Loader2 size={12} className="animate-spin text-slate-300" />
+          ) : (
+            <>
+              <div 
+                className="w-2 h-2 rounded-full"
+                style={{ backgroundColor: nextStage.color }}
+              />
+              <ChevronRight size={12} className="text-slate-300" />
+            </>
+          )}
+        </motion.button>
+      )}
+
+      {/* View Details */}
+      <motion.button
+        whileTap={{ scale: 0.95 }}
+        onClick={(e) => {
+          e.stopPropagation()
+          onSelect()
+        }}
+        className="px-2 py-1 rounded-md bg-emerald-500/20 hover:bg-emerald-500/30 transition-none text-xs text-white"
+      >
+        View
+      </motion.button>
+    </div>
+  )
+})
+
+RowQuickActions.displayName = 'RowQuickActions'
+
+// Estimated Value Cell component
+interface EstimatedValueCellProps {
+  contact: CRMContact
+  onSave?: (contact: CRMContact, value: number) => Promise<boolean>
+}
+
+const EstimatedValueCell = memo(({ contact, onSave }: EstimatedValueCellProps) => {
+  const [isEditing, setIsEditing] = useState(false)
+  const [editValue, setEditValue] = useState(String(contact.estimated_value || ''))
+  const [isSaving, setIsSaving] = useState(false)
+
+  const formatCurrency = (value: number) => {
+    if (!value) return '-'
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(value)
+  }
+
+  const handleSave = async () => {
+    const numValue = parseFloat(editValue.replace(/[^0-9.]/g, '')) || 0
+    if (numValue === (contact.estimated_value || 0)) {
+      setIsEditing(false)
+      return
+    }
+
+    if (onSave) {
+      setIsSaving(true)
+      await onSave(contact, numValue)
+      setIsSaving(false)
+    }
+    setIsEditing(false)
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      handleSave()
+    } else if (e.key === 'Escape') {
+      setEditValue(String(contact.estimated_value || ''))
+      setIsEditing(false)
+    }
+  }
+
+  if (isEditing) {
+    return (
+      <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+        <span className="text-green-400">$</span>
+        <input
+          type="text"
+          value={editValue}
+          onChange={(e) => setEditValue(e.target.value)}
+          onKeyDown={handleKeyDown}
+          onBlur={handleSave}
+          autoFocus
+          placeholder="0"
+          className="w-20 px-1 py-0.5 bg-slate-900 border border-green-500/50 rounded text-sm text-green-400 focus:outline-none"
+        />
+        {isSaving && <Loader2 size={12} className="animate-spin text-green-400" />}
+      </div>
+    )
+  }
+
+  const value = contact.estimated_value || 0
+  return (
+    <span
+      onClick={(e) => {
+        e.stopPropagation()
+        setEditValue(String(value || ''))
+        setIsEditing(true)
+      }}
+      className={`cursor-text px-2 py-1 -mx-2 -my-1 rounded transition-none hover:bg-slate-700/50 ${
+        value > 0 ? 'text-green-400 font-medium' : 'text-slate-300'
+      }`}
+    >
+      {formatCurrency(value)}
+    </span>
+  )
+})
+
+EstimatedValueCell.displayName = 'EstimatedValueCell'
+
+// Get cell value for rendering
+function getCellValue(
+  contact: CRMContact, 
+  column: ColumnDef, 
+  onSave: (id: string, updates: Partial<CRMContact>) => Promise<boolean>, 
+  onSelect: () => void,
+  rowIndex: number,
+  totalRows: number,
+  onEstimatedValueUpdate?: (contact: CRMContact, value: number) => Promise<boolean>,
+  onCloseWon?: (contact: CRMContact) => void
+) {
+  const key = column.key
+
+  // Pipeline Progress dropdown
+  if (column.dropdown && key === 'pipeline_progress') {
+    return <PipelineProgressCell contact={contact} onSave={onSave} />
+  }
+
+  // Link columns
+  if (column.link) {
+    const linkValue = key === 'linkedin_url' ? contact.linkedin_url : 
+                      key === 'company_website' ? contact.company_website : undefined
+    return <LinkCell url={linkValue} />
+  }
+
+  switch (key) {
+    case 'full_name':
+      return (
+        <button
+          onClick={(e) => {
+            e.stopPropagation()
+            onSelect()
+          }}
+          className="text-left hover:text-blue-400 transition-none truncate text-white"
+        >
+          {contact.full_name || contact.email}
+        </button>
+      )
+    
+    case 'company':
+      return (
+        <EditableCell
+          value={contact.company || ''}
+          contactId={contact.id}
+          field="company"
+          onSave={onSave}
+          rowIndex={rowIndex}
+          totalRows={totalRows}
+        />
+      )
+    
+    case 'stage':
+      return <StageCell contact={contact} onSave={onSave} onCloseWon={onCloseWon} />
+    
+    case 'lead_phone':
+    case 'company_phone':
+      return (
+        <EditableCell
+          value={contact[key] || ''}
+          contactId={contact.id}
+          field={key}
+          onSave={onSave}
+          rowIndex={rowIndex}
+          totalRows={totalRows}
+        />
+      )
+    
+    case 'context':
+      const contextValue = contact.context || ''
+      return (
+        <span className="text-slate-300 truncate block max-w-[180px]" title={contextValue}>
+          {contextValue || '-'}
+        </span>
+      )
+    
+    case 'next_touchpoint':
+      return <span className="text-slate-300">{formatDate(contact.next_touchpoint)}</span>
+    
+    case 'created_at':
+      return <span className="text-slate-300">{formatDate(contact.created_at)}</span>
+    
+    case 'estimated_value':
+      return <EstimatedValueCell contact={contact} onSave={onEstimatedValueUpdate} />
+    
+    case 'lead_source':
+      return contact.lead_source ? (
+        <span className="text-xs px-2 py-1 bg-slate-700/50 rounded-full text-slate-300">
+          {contact.lead_source}
+        </span>
+      ) : (
+        <span className="text-slate-300">-</span>
+      )
+    
+    case 'industry':
+      return (
+        <EditableCell
+          value={contact.industry || ''}
+          contactId={contact.id}
+          field="industry"
+          onSave={onSave}
+          rowIndex={rowIndex}
+          totalRows={totalRows}
+        />
+      )
+    
+    default:
+      return <span className="text-slate-400 truncate">-</span>
+  }
+}
+
+// LocalStorage keys
+const COLUMN_ORDER_KEY = 'crm-column-order'
+const COLUMN_WIDTHS_KEY = 'crm-column-widths'
+const COLUMN_VISIBILITY_KEY = 'crm-column-visibility'
+const COLUMN_MINIMIZED_KEY = 'crm-column-minimized'
+
+// Minimized column width
+const MINIMIZED_WIDTH = 40
+
+// Default visible columns - show all columns
+const DEFAULT_VISIBLE_COLUMNS = new Set([
+  'full_name',
+  'company',
+  'stage',
+  'pipeline_progress',
+  'estimated_value',
+  'lead_phone',
+  'company_phone',
+  'linkedin_url',
+  'context',
+  'next_touchpoint',
+  'lead_source',
+  'industry',
+  'created_at',
+  'company_website',
+])
+
+// Get initial column visibility from localStorage or use defaults
+function getInitialColumnVisibility(): Set<string> {
+  try {
+    const saved = localStorage.getItem(COLUMN_VISIBILITY_KEY)
+    if (saved) {
+      return new Set(JSON.parse(saved))
+    }
+  } catch (e) {
+    // Ignore
+  }
+  return new Set(DEFAULT_VISIBLE_COLUMNS)
+}
+
+// Get initial minimized columns from localStorage
+function getInitialMinimizedColumns(): Set<string> {
+  try {
+    const saved = localStorage.getItem(COLUMN_MINIMIZED_KEY)
+    if (saved) {
+      return new Set(JSON.parse(saved))
+    }
+  } catch (e) {
+    // Ignore
+  }
+  return new Set()
+}
+
+// Get initial column order from localStorage or use default
+function getInitialColumnOrder(): string[] {
+  try {
+    const saved = localStorage.getItem(COLUMN_ORDER_KEY)
+    if (saved) {
+      const parsed = JSON.parse(saved) as string[]
+      // Validate that all saved columns still exist and add any new ones
+      const validKeys = new Set(COLUMNS.map(c => c.key))
+      const savedKeys = parsed.filter(key => validKeys.has(key))
+      const newKeys = COLUMNS.map(c => c.key).filter(key => !savedKeys.includes(key))
+      return [...savedKeys, ...newKeys]
+    }
+  } catch (e) {
+    // Ignore errors
+  }
+  return COLUMNS.map(c => c.key)
+}
+
+// Get initial column widths from localStorage or use defaults
+function getInitialColumnWidths(): Record<string, number> {
+  try {
+    const saved = localStorage.getItem(COLUMN_WIDTHS_KEY)
+    if (saved) {
+      const parsed = JSON.parse(saved) as Record<string, number>
+      // Merge saved widths with defaults to handle new columns
+      return { ...DEFAULT_COLUMN_WIDTHS, ...parsed }
+    }
+  } catch (e) {
+    // Ignore errors
+  }
+  return { ...DEFAULT_COLUMN_WIDTHS }
+}
+
+export default function ContactsTable({
+  contacts,
+  onContactSelect,
+  onContactUpdate,
+  onEstimatedValueUpdate,
+  onCloseWon,
+  sort,
+  onSortChange,
+  selectedRowIndex = -1,
+  onSelectedRowChange,
+}: ContactsTableProps) {
+  const headerRef = useRef<HTMLDivElement>(null)
+  const bodyRef = useRef<HTMLDivElement>(null)
+  
+  // Column order state with localStorage persistence
+  const [columnOrder, setColumnOrder] = useState<string[]>(getInitialColumnOrder)
+  
+  // Column widths state with localStorage persistence
+  const [columnWidths, setColumnWidths] = useState<Record<string, number>>(getInitialColumnWidths)
+
+  // Column visibility state with localStorage persistence
+  const [visibleColumns, setVisibleColumns] = useState<Set<string>>(getInitialColumnVisibility)
+  const [showColumnPicker, setShowColumnPicker] = useState(false)
+  
+  // Minimized columns state with localStorage persistence
+  const [minimizedColumns, setMinimizedColumns] = useState<Set<string>>(getInitialMinimizedColumns)
+
+  // Hover card disabled - was causing glitchy behavior
+  
+  // Get ordered and visible columns
+  const orderedColumns = columnOrder
+    .map(key => COLUMNS.find(c => c.key === key))
+    .filter((c): c is ColumnDef => c !== undefined && visibleColumns.has(c.key))
+
+  // Save column order to localStorage
+  useEffect(() => {
+    localStorage.setItem(COLUMN_ORDER_KEY, JSON.stringify(columnOrder))
+  }, [columnOrder])
+
+  // Save column widths to localStorage
+  useEffect(() => {
+    localStorage.setItem(COLUMN_WIDTHS_KEY, JSON.stringify(columnWidths))
+  }, [columnWidths])
+
+  // Save column visibility to localStorage
+  useEffect(() => {
+    localStorage.setItem(COLUMN_VISIBILITY_KEY, JSON.stringify([...visibleColumns]))
+  }, [visibleColumns])
+
+  // Toggle column visibility
+  const toggleColumnVisibility = useCallback((columnKey: string) => {
+    setVisibleColumns(prev => {
+      const next = new Set(prev)
+      if (next.has(columnKey)) {
+        // Don't allow hiding the first column (full_name)
+        if (columnKey === 'full_name') return prev
+        next.delete(columnKey)
+      } else {
+        next.add(columnKey)
+      }
+      return next
+    })
+  }, [])
+
+  // Save minimized columns to localStorage
+  useEffect(() => {
+    localStorage.setItem(COLUMN_MINIMIZED_KEY, JSON.stringify([...minimizedColumns]))
+  }, [minimizedColumns])
+
+  // Toggle column minimized state
+  const toggleColumnMinimized = useCallback((columnKey: string) => {
+    // Don't allow minimizing the first column (full_name)
+    if (columnKey === 'full_name') return
+    
+    setMinimizedColumns(prev => {
+      const next = new Set(prev)
+      if (next.has(columnKey)) {
+        next.delete(columnKey)
+      } else {
+        next.add(columnKey)
+      }
+      return next
+    })
+  }, [])
+
+  // Handle column resize
+  const handleColumnResize = useCallback((columnKey: string, newWidth: number) => {
+    setColumnWidths(prev => ({
+      ...prev,
+      [columnKey]: Math.max(80, Math.min(newWidth, 800)), // Min 80px, Max 800px
+    }))
+  }, [])
+
+  // DnD sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 5,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  )
+
+  // Handle column drag end
+  const handleDragEnd = useCallback((event: DragEndEvent) => {
+    const { active, over } = event
+    
+    if (over && active.id !== over.id) {
+      setColumnOrder((items) => {
+        const oldIndex = items.indexOf(active.id as string)
+        const newIndex = items.indexOf(over.id as string)
+        return arrayMove(items, oldIndex, newIndex)
+      })
+    }
+  }, [])
+
+  // Track horizontal scroll for shadow indicator (no longer needed with unified scroll)
+  const isScrolled = false
+
+  // Separate first column from rest for sticky behavior
+  const firstColumn = orderedColumns[0]
+  const scrollableColumns = orderedColumns.slice(1)
+  const firstColumnWidth = firstColumn ? (columnWidths[firstColumn.key] || DEFAULT_COLUMN_WIDTHS[firstColumn.key] || 176) : 176
+
+  return (
+    <div className="h-full min-h-0 bg-slate-800 rounded-xl border border-slate-700/50 overflow-auto">
+      {/* Sticky Header - stays at top when scrolling vertically */}
+      <div 
+        className="sticky top-0 z-30 border-b border-slate-700/50 flex bg-slate-900"
+      >
+        {/* Column Picker Button */}
+        <div className="flex-shrink-0 px-2 py-2 flex items-center border-r border-slate-700/50 relative">
+          <motion.button
+            whileTap={{ scale: 0.95 }}
+            onClick={() => setShowColumnPicker(!showColumnPicker)}
+            className={`p-2 rounded-lg transition-none ${
+              showColumnPicker 
+                ? 'bg-emerald-500/20 text-emerald-400' 
+                : 'hover:bg-slate-700/50 text-slate-300 hover:text-white'
+            }`}
+            title="Toggle columns"
+          >
+            <Columns size={16} />
+          </motion.button>
+
+          {/* Column Picker Dropdown */}
+          <AnimatePresence>
+            {showColumnPicker && (
+              <>
+                <div 
+                  className="fixed inset-0 z-40" 
+                  onClick={() => setShowColumnPicker(false)} 
+                />
+                <motion.div
+                  initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                  transition={{ duration: 0.15, ease: 'easeOut' }}
+                  className="absolute top-full left-0 mt-2 w-60 z-50"
+                >
+                  <div className="bg-slate-900/95 backdrop-blur-xl border border-slate-600/50 rounded-xl shadow-2xl overflow-hidden">
+                    <div className="px-3 py-2 border-b border-slate-700/50">
+                      <span className="text-xs font-medium text-white/90 uppercase tracking-wider">Show Columns</span>
+                      <p className="text-xs text-white/80 mt-0.5">
+                        {visibleColumns.size} of {COLUMNS.length} visible
+                      </p>
+                    </div>
+                    <div className="max-h-72 overflow-y-auto py-1">
+                      {COLUMNS.map((col, index) => {
+                        const isVisible = visibleColumns.has(col.key)
+                        const isLocked = col.key === 'full_name'
+                        return (
+                          <motion.button
+                            key={col.key}
+                            onClick={() => !isLocked && toggleColumnVisibility(col.key)}
+                            disabled={isLocked}
+                            className={`w-full flex items-center gap-3 px-3 py-2.5 text-sm text-left transition-colors ${
+                              isLocked ? 'opacity-50 cursor-not-allowed' : 'hover:bg-white/5'
+                            }`}
+                            initial={{ opacity: 0, x: -10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: index * 0.015 }}
+                            whileHover={isLocked ? {} : { x: 2 }}
+                          >
+                            <div className={`w-4 h-4 rounded border-2 flex items-center justify-center ${
+                              isVisible ? 'bg-emerald-400 border-emerald-400' : 'border-slate-500'
+                            }`}>
+                              {isVisible && <Check size={10} className="text-white" />}
+                            </div>
+                            {isVisible ? (
+                              <Eye size={14} className="text-white/90" />
+                            ) : (
+                              <EyeOff size={14} className="text-white/30" />
+                            )}
+                            <span className={isVisible ? 'text-white/90 flex-1' : 'text-white/80 flex-1'}>
+                              {col.label}
+                            </span>
+                            {isLocked && (
+                              <span className="text-xs text-white/30">Required</span>
+                            )}
+                          </motion.button>
+                        )
+                      })}
+                    </div>
+                    <div className="px-3 py-2 border-t border-slate-700/50">
+                      <motion.button
+                        onClick={() => setVisibleColumns(new Set(DEFAULT_VISIBLE_COLUMNS))}
+                        className="text-xs text-white/80 hover:text-white transition-colors"
+                        whileHover={{ x: 2 }}
+                      >
+                        Reset to defaults
+                      </motion.button>
+                    </div>
+                  </div>
+                </motion.div>
+              </>
+            )}
+          </AnimatePresence>
+        </div>
+        {/* Sticky first column header */}
+        {firstColumn && (
+          <div
+            className={`flex-shrink-0 sticky left-0 z-20 bg-slate-900 transition-shadow ${
+              isScrolled ? 'shadow-[4px_0_8px_-2px_rgba(0,0,0,0.4)]' : ''
+            }`}
+            style={{ width: `${firstColumnWidth}px` }}
+          >
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
+            >
+              <SortableContext
+                items={[firstColumn.key]}
+                strategy={horizontalListSortingStrategy}
+              >
+                <DraggableColumnHeader
+                  column={firstColumn}
+                  sort={sort}
+                  onSortChange={onSortChange}
+                  width={firstColumnWidth}
+                  onResize={handleColumnResize}
+                  isMinimized={false}
+                  onToggleMinimize={toggleColumnMinimized}
+                />
+              </SortableContext>
+            </DndContext>
+          </div>
+        )}
+        
+        {/* Scrollable columns header */}
+        <div 
+          ref={headerRef}
+          className="flex-1"
+        >
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext
+              items={scrollableColumns.map(c => c.key)}
+              strategy={horizontalListSortingStrategy}
+            >
+              <div className="flex" style={{ minWidth: '2400px' }}>
+                {scrollableColumns.map((column) => (
+                  <DraggableColumnHeader
+                    key={column.key}
+                    column={column}
+                    sort={sort}
+                    onSortChange={onSortChange}
+                    width={columnWidths[column.key] || DEFAULT_COLUMN_WIDTHS[column.key] || 128}
+                    onResize={handleColumnResize}
+                    isMinimized={minimizedColumns.has(column.key)}
+                    onToggleMinimize={toggleColumnMinimized}
+                  />
+                ))}
+              </div>
+            </SortableContext>
+          </DndContext>
+        </div>
+      </div>
+      
+      {/* Body - scrolls with the container */}
+      <div 
+        ref={bodyRef}
+      >
+        {contacts.length === 0 ? (
+          <div className="px-4 py-12 text-center text-slate-400">
+            No contacts found
+          </div>
+        ) : (
+          contacts.map((contact, index) => {
+            const isSelected = index === selectedRowIndex
+            return (
+              <motion.div
+                key={contact.id}
+                initial={false}
+                animate={{ 
+                  backgroundColor: 'transparent'
+                }}
+                whileHover={{ 
+                  backgroundColor: 'rgba(255, 255, 255, 0.03)'
+                }}
+                transition={{ duration: 0 }}
+                className="flex group cursor-pointer border-b border-slate-700/50 relative"
+                onClick={() => {
+                  onSelectedRowChange?.(index)
+                  onContactSelect(contact)
+                }}
+                ref={(el) => {
+                  // Scroll selected row into view
+                  if (isSelected && el) {
+                    el.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+                  }
+                }}
+              >
+                {/* Quick Actions */}
+                <RowQuickActions
+                  contact={contact}
+                  onSave={onContactUpdate}
+                  onSelect={() => onContactSelect(contact)}
+                  onCloseWon={onCloseWon}
+                />
+                {/* Spacer to align with column picker button in header */}
+                <div className="flex-shrink-0 px-2 py-2 flex items-center border-r border-slate-700/50">
+                  <div className="p-2 w-4" />
+                </div>
+                {/* Sticky first column cell */}
+                {firstColumn && (
+                  <div
+                    className={`flex-shrink-0 sticky left-0 z-10 px-3 py-4 text-sm text-white transition-all bg-slate-800 group-hover:bg-slate-700/50 ${isScrolled ? 'shadow-[4px_0_8px_-2px_rgba(0,0,0,0.4)]' : ''}`}
+                    style={{ width: `${firstColumnWidth}px` }}
+                  >
+                    {getCellValue(contact, firstColumn, onContactUpdate, () => onContactSelect(contact), index, contacts.length, onEstimatedValueUpdate, onCloseWon)}
+                  </div>
+                )}
+                
+                {/* Scrollable columns cells */}
+                <div className="flex" style={{ minWidth: '2400px' }}>
+                  {scrollableColumns.map((column) => {
+                    const isMinimized = minimizedColumns.has(column.key)
+                    const width = isMinimized ? MINIMIZED_WIDTH : (columnWidths[column.key] || DEFAULT_COLUMN_WIDTHS[column.key] || 128)
+                    return (
+                      <div
+                        key={column.key}
+                        className={`flex-shrink-0 text-sm text-white ${isMinimized ? 'px-1 py-4' : 'px-3 py-4'}`}
+                        style={{ width: `${width}px` }}
+                        title={isMinimized ? column.label : undefined}
+                      >
+                        {isMinimized ? (
+                          <span className="text-slate-500 text-xs">•</span>
+                        ) : (
+                          getCellValue(contact, column, onContactUpdate, () => onContactSelect(contact), index, contacts.length, onEstimatedValueUpdate, onCloseWon)
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              </motion.div>
+            )
+          })
+        )}
+      </div>
+
+    </div>
+  )
+}
