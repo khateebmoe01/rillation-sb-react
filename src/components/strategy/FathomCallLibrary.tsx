@@ -15,7 +15,6 @@ import {
   Sparkles,
 } from 'lucide-react'
 import type { FathomCall } from '../../hooks/useClientStrategy'
-import { supabase } from '../../lib/supabase'
 
 interface FathomCallLibraryProps {
   client: string

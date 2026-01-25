@@ -1,24 +1,19 @@
 import { useState } from 'react'
-import { RefreshCw, CheckCircle, XCircle } from 'lucide-react'
+import { CheckCircle, XCircle } from 'lucide-react'
 import { useDomains } from '../../hooks/useDomains'
 import { useClients } from '../../hooks/useClients'
-import { syncDomainsPorkbun } from '../../lib/infrastructure-api'
-import Button from '../ui/Button'
 import ClientFilter from '../ui/ClientFilter'
 import AnimatedSelect from '../ui/AnimatedSelect'
 
 export default function DomainList() {
   const [selectedClient, setSelectedClient] = useState('')
   const [selectedProvider, setSelectedProvider] = useState('')
-  const [syncing, setSyncing] = useState(false)
 
   const { clients } = useClients()
-  const { domains, loading, error, refetch } = useDomains({
+  const { domains, loading, error } = useDomains({
     client: selectedClient || undefined,
     provider: selectedProvider || undefined,
   })
-
-  // Removed handleSync - sync-domains-porkbun edge function doesn't exist
 
   const providers = Array.from(new Set(domains.map((d) => d.provider).filter(Boolean)))
 

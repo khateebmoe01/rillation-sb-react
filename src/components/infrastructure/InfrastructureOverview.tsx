@@ -23,7 +23,6 @@ import { supabase } from '../../lib/supabase'
 import { dataCache } from '../../lib/cache'
 import { useClients } from '../../hooks/useClients'
 import { useInfraFilter } from '../../pages/Infrastructure'
-import Button from '../ui/Button'
 import ClientFilter from '../ui/ClientFilter'
 
 interface OrderSummary {
@@ -708,7 +707,6 @@ export default function InfrastructureOverview({ drillDownClient, onClientClick 
   const { selectedClient, setSelectedClient, searchQuery, setSearchQuery } = useInfraFilter()
   const [summaries, setSummaries] = useState<ClientSummary[]>([])
   const [loading, setLoading] = useState(true)
-  const [syncing, setSyncing] = useState(false)
 
   const fetchSummaries = useCallback(async () => {
     if (clients.length === 0) return

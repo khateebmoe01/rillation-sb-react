@@ -1,12 +1,11 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { 
-  Tag, 
-  ChevronRight, 
+import {
+  Tag,
+  ChevronRight,
   Plus,
   Trash2,
   MoreHorizontal,
-  RefreshCw,
   Wifi,
   WifiOff
 } from 'lucide-react'
@@ -20,10 +19,9 @@ export default function InboxSetsView() {
   const [expandedTags, setExpandedTags] = useState<Set<string>>(new Set())
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [newTagName, setNewTagName] = useState('')
-  const [syncing, setSyncing] = useState(false)
   const [showOnlySets, setShowOnlySets] = useState(true)
 
-  const { tags, loading, syncTags, createTag, deleteTag, refetch } = useInboxTags({
+  const { tags, loading, createTag, deleteTag } = useInboxTags({
     client: selectedClient || undefined,
   })
 
@@ -151,7 +149,6 @@ export default function InboxSetsView() {
               {selectedTags.size === filteredTags.length ? 'Deselect All' : 'Select All'}
             </button>
             <div className="flex items-center gap-2 text-white/70 text-xs px-3 py-1.5 bg-rillation-bg/50 rounded-lg border border-rillation-border/50">
-              <RefreshCw size={12} />
               <span>Auto-syncs every 30 min</span>
             </div>
             <Button variant="primary" size="sm" onClick={() => setShowCreateModal(true)} disabled={!selectedClient}>
