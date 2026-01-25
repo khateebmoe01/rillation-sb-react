@@ -19,6 +19,7 @@ import {
 import { useClients } from '../hooks/useClients'
 import { useClientStrategy, useClientStrategyStats } from '../hooks/useClientStrategy'
 import { useCopywriting } from '../hooks/useCopywriting'
+import { useFathomAutoSync } from '../hooks/useFathomAutoSync'
 import ClientStrategyList from '../components/strategy/ClientStrategyList'
 import FathomCallLibrary from '../components/strategy/FathomCallLibrary'
 import OpportunityMapViewer from '../components/strategy/OpportunityMapViewer'
@@ -165,6 +166,13 @@ export default function ClientStrategyView() {
     saveCopywriting,
   } = useCopywriting(selectedClient)
 
+  // Auto-refresh Fathom calls every 30 seconds when viewing a client or unassigned calls
+  useFathomAutoSync({
+    enabled: selectedClient !== null || showUnassigned,
+    onRefetch: refetch,
+    intervalMs: 30000, // 30 seconds
+  })
+
   // Save section states to localStorage
   useEffect(() => {
     localStorage.setItem(SECTION_STATE_KEY, JSON.stringify(sectionStates))
@@ -252,7 +260,10 @@ export default function ClientStrategyView() {
                   <p className="text-sm text-rillation-text-muted mt-0.5">Client Strategy</p>
                 </div>
                 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-3">
+                  <span className="text-xs text-rillation-text-muted">
+                    Auto-syncing every 2 minutes
+                  </span>
                   {dataLoading && (
                     <Loader2 size={18} className="animate-spin text-rillation-text-muted" />
                   )}

@@ -8,11 +8,11 @@ import {
   ChevronRight,
   Check,
   Loader2,
-  RefreshCw,
   AlertCircle,
   FileText,
 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
+import { useFathomAutoSync } from '../../hooks/useFathomAutoSync'
 
 // Helper to get table reference without type checking
 const getTable = (name: string) => (supabase as any).from(name)
@@ -193,7 +193,6 @@ function CallCard({ call, clients, onAssign, isAssigning }: CallCardProps) {
 export default function UnassignedCallsInbox({ clients, onCallAssigned }: UnassignedCallsInboxProps) {
   const [calls, setCalls] = useState<UnassignedCall[]>([])
   const [loading, setLoading] = useState(true)
-  const [syncing, setSyncing] = useState(false)
   const [assigningId, setAssigningId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -222,28 +221,12 @@ export default function UnassignedCallsInbox({ clients, onCallAssigned }: Unassi
     fetchUnassignedCalls()
   }, [fetchUnassignedCalls])
 
-  // Sync from Fathom
-  const syncFromFathom = async () => {
-    setSyncing(true)
-    setError(null)
-
-    try {
-      const { data, error } = await supabase.functions.invoke('sync-fathom-calls', {
-        body: { limit: 50, force: false },
-      })
-
-      if (error) throw error
-      console.log('Sync result:', data)
-      
-      // Refresh the list
-      await fetchUnassignedCalls()
-    } catch (err) {
-      console.error('Sync error:', err)
-      setError('Failed to sync from Fathom')
-    } finally {
-      setSyncing(false)
-    }
-  }
+  // Auto-refresh calls every 30 seconds
+  useFathomAutoSync({
+    enabled: true,
+    onRefetch: fetchUnassignedCalls,
+    intervalMs: 30000, // 30 seconds
+  })
 
   // Assign call to client
   const assignCall = async (callId: string, client: string) => {
@@ -288,19 +271,6 @@ export default function UnassignedCallsInbox({ clients, onCallAssigned }: Unassi
             </p>
           </div>
         </div>
-
-        <button
-          onClick={syncFromFathom}
-          disabled={syncing}
-          className="flex items-center gap-2 px-4 py-2 bg-rillation-card border border-rillation-border text-rillation-text text-sm font-medium rounded-lg hover:bg-rillation-card-hover disabled:opacity-50 transition-colors"
-        >
-          {syncing ? (
-            <Loader2 size={16} className="animate-spin" />
-          ) : (
-            <RefreshCw size={16} />
-          )}
-          Sync from Fathom
-        </button>
       </div>
 
       {/* Error */}
@@ -322,17 +292,9 @@ export default function UnassignedCallsInbox({ clients, onCallAssigned }: Unassi
             <Check size={32} className="text-rillation-green" />
           </div>
           <h3 className="text-base font-medium text-rillation-text mb-2">All caught up!</h3>
-          <p className="text-sm text-rillation-text-muted mb-4">
+          <p className="text-sm text-rillation-text-muted">
             All calls have been assigned to clients.
           </p>
-          <button
-            onClick={syncFromFathom}
-            disabled={syncing}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-rillation-card border border-rillation-border text-rillation-text text-sm font-medium rounded-lg hover:bg-rillation-card-hover"
-          >
-            <RefreshCw size={16} />
-            Check for new calls
-          </button>
         </div>
       ) : (
         <div className="space-y-3">

@@ -13,7 +13,6 @@ import {
   Loader2,
   X,
   Sparkles,
-  RefreshCw,
 } from 'lucide-react'
 import type { FathomCall } from '../../hooks/useClientStrategy'
 import { supabase } from '../../lib/supabase'
@@ -370,24 +369,6 @@ export default function FathomCallLibrary({
   const [isAdding, setIsAdding] = useState(false)
   const [expandedCallId, setExpandedCallId] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
-  const [isSyncing, setIsSyncing] = useState(false)
-
-  const handleSyncFromFathom = async () => {
-    setIsSyncing(true)
-    try {
-      const { data, error } = await supabase.functions.invoke('sync-fathom-calls', {
-        body: { limit: 50, force: false },
-      })
-      if (error) throw error
-      console.log('Sync result:', data)
-      // Trigger a refetch via the parent component - this will be handled by the parent
-      window.location.reload() // Simple solution for now
-    } catch (err) {
-      console.error('Sync error:', err)
-    } finally {
-      setIsSyncing(false)
-    }
-  }
 
   const handleAddCall = async (call: Partial<FathomCall>) => {
     setIsAdding(true)
@@ -417,14 +398,6 @@ export default function FathomCallLibrary({
           </div>
           <div className="flex items-center gap-2">
             <button
-              onClick={handleSyncFromFathom}
-              disabled={isSyncing}
-              className="flex items-center gap-2 px-4 py-2 bg-rillation-card border border-rillation-border text-rillation-text text-sm font-medium rounded-lg hover:bg-rillation-card-hover transition-colors disabled:opacity-50"
-            >
-              {isSyncing ? <Loader2 size={16} className="animate-spin" /> : <RefreshCw size={16} />}
-              Sync from Fathom
-            </button>
-            <button
               onClick={() => setIsAddModalOpen(true)}
               className="flex items-center gap-2 px-4 py-2 bg-white text-black text-sm font-medium rounded-lg hover:bg-white/90 transition-colors"
             >
@@ -438,14 +411,6 @@ export default function FathomCallLibrary({
       {/* Compact mode actions */}
       {compact && (
         <div className="flex items-center justify-end gap-2">
-          <button
-            onClick={handleSyncFromFathom}
-            disabled={isSyncing}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-rillation-card border border-rillation-border text-rillation-text text-xs font-medium rounded-lg hover:bg-rillation-card-hover transition-colors disabled:opacity-50"
-          >
-            {isSyncing ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
-            Sync
-          </button>
           <button
             onClick={() => setIsAddModalOpen(true)}
             className="flex items-center gap-1.5 px-3 py-1.5 bg-white text-black text-xs font-medium rounded-lg hover:bg-white/90 transition-colors"
