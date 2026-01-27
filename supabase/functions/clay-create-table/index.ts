@@ -380,22 +380,34 @@ async function createTable(request: CreateTableRequest): Promise<CreateTableResu
     };
   }
 
-  // Get workspace ID from client config if not provided
+  // Get workspace ID - check client-specific first, then global
   let effectiveWorkspaceId = workspaceId;
   if (!effectiveWorkspaceId) {
-    const { data: config } = await supabase
+    // Try client-specific config first
+    const { data: clientConfig } = await supabase
       .from('clay_client_configs')
       .select('workspace_id')
       .eq('client', client)
       .single();
 
-    effectiveWorkspaceId = config?.workspace_id;
+    effectiveWorkspaceId = clientConfig?.workspace_id;
+
+    // Fall back to global config
+    if (!effectiveWorkspaceId) {
+      const { data: globalConfig } = await supabase
+        .from('clay_client_configs')
+        .select('workspace_id')
+        .eq('client', '_global')
+        .single();
+
+      effectiveWorkspaceId = globalConfig?.workspace_id;
+    }
   }
 
   if (!effectiveWorkspaceId) {
     return {
       success: false,
-      error: 'No workspace ID configured for this client. Please set workspace_id in clay_client_configs.',
+      error: 'No workspace ID configured. Please set it in the Implementation page.',
     };
   }
 

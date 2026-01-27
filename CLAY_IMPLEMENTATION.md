@@ -44,14 +44,17 @@ Client
 - [x] **Created `useClayOrchestration` hook** for React integration
 - [x] **Added OrchestrationModal** to show plan generation and execution progress
 - [x] **Wired up BeginWorkbookWizard** to call orchestration on completion
-- [x] **Deployed edge function** to Supabase
+- [x] **Deployed edge functions** to Supabase (clay-orchestrate, clay-auth-refresh)
 - [x] **Verified ANTHROPIC_API_KEY** secret is configured
+- [x] **Set CLAY_EMAIL and CLAY_PASSWORD** secrets
+- [x] **Created clay_auth table** and singleton index
+- [x] **Scheduled daily cron job** (5 AM UTC) to refresh Clay session
+- [x] **Initial auth refresh completed** - session stored, expires in 24h
 
 ### In Progress
-- [ ] Test end-to-end flow (Begin Workbook → AI generates plan)
+- [ ] Test end-to-end flow (Begin Workbook → AI generates plan → Execute against Clay)
 
 ### Pending
-- [ ] Add CLAY_SESSION_COOKIE secret for actual Clay API execution
 - [ ] Add plan review/approval step before execution
 - [ ] Implement real-time progress updates
 - [ ] Support for CSV upload flow
@@ -203,14 +206,14 @@ Creating a Clay table isn't a simple 1-2 step process:
 ## File Structure
 
 ```
-supabase/functions/
-├── clay-orchestrate/          # Main AI orchestration function
-│   ├── index.ts               # Entry point
-│   ├── orchestrator.ts        # Claude integration
-│   ├── executor.ts            # Runs the generated plan
-│   ├── clay-api.ts            # Clay API wrapper
-│   └── prompts/
-│       └── system-prompt.ts   # System prompt with API docs
+supabase/
+├── functions/
+│   ├── clay-orchestrate/          # Main AI orchestration function
+│   │   └── index.ts               # Claude integration + executor
+│   └── clay-auth-refresh/         # Daily Clay authentication
+│       └── index.ts               # Login + store session cookie
+├── migrations/
+│   └── 20260127154530_clay_auth_storage.sql  # clay_auth table + cron job
 
 src/
 ├── hooks/
@@ -342,13 +345,24 @@ GET /v3/tables/{id}/views/{id}/records # Get results
 
 ## Configuration
 
-### Environment Variables
+### Environment Variables (Supabase Edge Function Secrets)
 
 ```bash
-# Supabase Edge Function secrets
-ANTHROPIC_API_KEY=sk-ant-xxx          # For Claude Opus 4.5
-CLAY_SESSION_COOKIE=claysession=xxx   # Clay authentication
+# Required for AI orchestration
+ANTHROPIC_API_KEY=sk-ant-xxx          # For Claude Opus 4.5 ✅ Already set
+
+# Required for Clay authentication (auto-refresh)
+CLAY_EMAIL=your@email.com             # Clay account email
+CLAY_PASSWORD=your-password           # Clay account password
 ```
+
+### How Clay Auth Works
+
+1. **Daily refresh**: pg_cron calls `clay-auth-refresh` at 5 AM UTC
+2. **Auth flow**: Edge function POSTs to `https://api.clay.com/v3/auth/login`
+3. **Cookie storage**: Session cookie stored in `clay_auth` table
+4. **Usage**: `clay-orchestrate` reads cookie from database for API calls
+5. **Expiration**: Cookies valid for 24 hours, refreshed daily before expiry
 
 ### Client Configuration (clay_client_configs table)
 
@@ -367,6 +381,18 @@ CLAY_SESSION_COOKIE=claysession=xxx   # Clay authentication
 ---
 
 ## Change Log
+
+### 2026-01-27 (Session 3)
+- **Deployed `clay-orchestrate` edge function** to Supabase
+- Verified ANTHROPIC_API_KEY secret is already configured
+- **Created `clay-auth-refresh` edge function** - authenticates with Clay and stores session
+- **Created `clay_auth` database table** - stores session cookies with 24h expiry
+- **Updated `clay-orchestrate`** to read session from database instead of secrets
+- **Set CLAY_EMAIL and CLAY_PASSWORD secrets** from .env
+- **Ran database migration** via Management API (table + singleton index)
+- **Created daily pg_cron job** (schedule #47) - refreshes auth at 5 AM UTC
+- **Triggered initial auth refresh** - session stored successfully
+- System is now fully automated - no manual cookie management needed
 
 ### 2026-01-27 (Session 2)
 - Corrected terminology: "Create Table" → "Begin Workbook"
@@ -398,12 +424,12 @@ CLAY_SESSION_COOKIE=claysession=xxx   # Clay authentication
 
 ## Next Steps
 
-1. **Deploy edge function** to Supabase (`supabase functions deploy clay-orchestrate`)
-2. **Set environment secrets** in Supabase Dashboard:
-   - `ANTHROPIC_API_KEY` - Your Anthropic API key
-   - `CLAY_SESSION_COOKIE` - Your Clay session cookie (optional for dry run)
-3. **Test end-to-end flow** - Begin workbook → AI generates plan → Execute
-4. **Add plan approval step** - Show plan before executing
-5. **Implement real-time progress** - WebSocket updates during execution
-6. **Add template creation** - Save successful plans as reusable templates
-7. **CSV upload integration** - Support for csv-import lead source
+1. ~~**Deploy edge functions**~~ ✅ Done (clay-orchestrate, clay-auth-refresh)
+2. ~~**Set ANTHROPIC_API_KEY secret**~~ ✅ Already configured
+3. ~~**Set Clay credentials secrets**~~ ✅ Done (CLAY_EMAIL, CLAY_PASSWORD)
+4. ~~**Create database table**~~ ✅ Done (clay_auth + cron job)
+5. ~~**Initial auth refresh**~~ ✅ Done - session stored
+6. **Test end-to-end flow** - Begin workbook → AI generates plan → Execute against Clay
+7. **Add plan approval step** - Show plan before executing
+8. **Implement real-time progress** - WebSocket updates during execution
+9. **Add template creation** - Save successful plans as reusable templates

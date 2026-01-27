@@ -8,11 +8,28 @@ import { createClient } from "npm:@supabase/supabase-js@2.26.0";
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
 const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
 const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY') || '';
-const CLAY_SESSION = Deno.env.get('CLAY_SESSION_COOKIE') || '';
 
 const supabase = createClient(SUPABASE_URL, SERVICE_KEY, {
   auth: { persistSession: false }
 });
+
+// Fetch Clay session from database (refreshed daily by clay-auth-refresh function)
+async function getClaySession(): Promise<string | null> {
+  const { data, error } = await supabase
+    .from('clay_auth')
+    .select('session_cookie')
+    .gt('expires_at', new Date().toISOString())
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .single();
+
+  if (error || !data) {
+    console.warn('No valid Clay session found in database');
+    return null;
+  }
+
+  return data.session_cookie;
+}
 
 const anthropic = new Anthropic({
   apiKey: ANTHROPIC_API_KEY,
@@ -66,7 +83,7 @@ interface OrchestrationRequest {
 
 interface ExecutionStep {
   order: number;
-  type: 'create_workbook' | 'add_source' | 'add_column' | 'run_enrichment';
+  type: 'create_workbook' | 'create_table' | 'add_source' | 'add_column' | 'run_enrichment';
   description: string;
   apiEndpoint: string;
   apiMethod: string;
@@ -96,31 +113,38 @@ interface OrchestrationResult {
 // SYSTEM PROMPT - Clay API Knowledge Base
 // ============================================================================
 
-const SYSTEM_PROMPT = `You are an expert Clay.com automation orchestrator. Your job is to analyze user configurations for creating Clay workbooks and generate optimal execution plans.
+const SYSTEM_PROMPT = `You are a Clay.com automation orchestrator. Generate execution plans for Clay workbook creation.
 
-## Clay Hierarchy
-- **Workbook**: Container for related tables (created via POST /v3/workbooks)
-- **Table**: Data container within a workbook (created automatically with workbook)
-- **CE Table**: Company Enrichment table - always the first/primary table in a workbook
-- **Columns**: Data fields including enrichments, AI columns, and formulas
+## RULES
+- apiEndpoint: ONLY paths starting with "/" (no full URLs)
+- apiMethod: "POST", "PATCH", "GET", or "DELETE"
+- Placeholders: {{WORKSPACE_ID}}, {{TABLE_ID}}, {{VIEW_ID}}
 
-## Available API Endpoints
-
-### Create Workbook (includes default table)
-POST https://api.clay.com/v3/workbooks
-{
-  "name": "Workbook Name",
-  "workspaceId": "WORKSPACE_ID",
-  "settings": { "isAutoRun": true }
+## STEP 1: Create Table with Find Companies Source (auto-creates workbook)
+type: "create_table"
+apiMethod: "POST"
+apiEndpoint: "/tables"
+payload: {
+  "name": "CE Table",
+  "workspaceId": "{{WORKSPACE_ID}}",
+  "type": "company",
+  "source": {
+    "type": "find-lists-of-companies-with-mixrank-source-preview",
+    "inputs": {
+      "industries": ["Software Development"],
+      "sizes": ["51-200 employees"],
+      "country_names": ["United States"],
+      "limit": 100
+    }
+  }
 }
-Response includes: workbook.id, workbook.defaultTableId, workbook.defaultViewId
+NOTE: Include ALL user-specified filters in source.inputs (industries, sizes, annual_revenues, country_names, locations, description_keywords, etc.)
 
-### Add Column/Field to Table
-POST https://api.clay.com/v3/tables/{TABLE_ID}/fields
-Content-Type: application/json
-
-### Add AI Column (Claygent)
-{
+## STEP 2+: Add AI Columns
+type: "add_column"
+apiMethod: "POST"
+apiEndpoint: "/tables/{{TABLE_ID}}/fields"
+payload: {
   "type": "action",
   "name": "Column Name",
   "typeSettings": {
@@ -129,84 +153,29 @@ Content-Type: application/json
     "actionVersion": 1,
     "inputsBinding": [
       {"name": "useCase", "formulaText": "\\"claygent\\"", "optional": true},
-      {"name": "prompt", "formulaText": "\\"Your prompt with {{Column Name}} references\\"", "optional": true},
-      {"name": "model", "formulaText": "\\"clay-argon\\"", "optional": true},
-      {"name": "answerSchemaType", "formulaMap": {
-        "type": "\\"json\\"",
-        "fields": "{\\"fieldName\\":{\\"type\\":\\"string\\"}}"
-      }, "optional": true}
+      {"name": "prompt", "formulaText": "\\"Your prompt here with {{Company Name}} references\\"", "optional": true},
+      {"name": "model", "formulaText": "\\"clay-argon\\"", "optional": true}
     ],
-    "conditionalRunFormulaText": "!!{{Some Column}}",
     "dataTypeSettings": {"type": "json"}
   },
-  "activeViewId": "VIEW_ID"
+  "activeViewId": "{{VIEW_ID}}"
 }
 
-### Conditional Run Syntax
-- \`!!{{Column Name}}\` = Run if column is NOT empty
-- \`!{{Column Name}}\` = Run if column IS empty
-- \`{{Column Name}} == "value"\` = Run if equals value
+## Credits: clay-argon=1, gpt-4o-mini=1, gpt-4o=3, gpt-4.1-mini=1, gpt-4.1=12
 
-### Run Enrichment
-PATCH https://api.clay.com/v3/tables/{TABLE_ID}/run
-Content-Type: application/x-www-form-urlencoded
-Body: {"fieldIds":["FIELD_ID"],"runRecords":{"viewIdTopRecords":{"viewId":"VIEW_ID","numRecords":100}},"callerName":"API"}
-
-### Add Find Companies Source
-PATCH https://api.clay.com/v3/tables/{TABLE_ID}
+## Output (ONLY valid JSON, no markdown):
 {
-  "sourceSettings": {
-    "addSource": {
-      "name": "Find Companies",
-      "source": {
-        "type": "enrichment",
-        "typeSettings": {
-          "enrichmentType": "find-lists-of-companies-with-mixrank-source-preview",
-          "enrichmentInputs": { ...filters }
-        }
-      }
-    }
-  }
-}
-
-## AI Model Costs (per row)
-| Model | Credits | Best For |
-|-------|---------|----------|
-| clay-argon | 1 | Simple classification, extraction (RECOMMENDED for most) |
-| gpt-4o-mini | 1 | Fast, lightweight tasks |
-| gpt-4o | 3 | Complex multi-step analysis |
-| gpt-4.1-mini | 1 | Better reasoning, larger context |
-| gpt-4.1 | 12 | Highest quality (use sparingly) |
-| gpt-5-reasoning | 4-8 | Advanced reasoning tasks |
-
-## Output Schema Types
-For structured AI output, use answerSchemaType:
-- "string" for text
-- "number" for numeric values
-- "boolean" for true/false
-- Example: {"qualified":{"type":"boolean"},"score":{"type":"number"},"reasoning":{"type":"string"}}
-
-## Column Dependencies Best Practices
-1. Data source columns run first (Find Companies populates base data)
-2. Enrichment columns that depend on base data run second
-3. AI qualification columns run last, with conditions on prior columns
-4. Use conditionalRunFormulaText to prevent wasted credits on empty rows
-
-## Your Task
-Given a workbook configuration, generate an ExecutionPlan JSON with:
-1. Steps in optimal dependency order
-2. Proper API payloads with correct escaping
-3. Cost estimates per step and total
-4. Any warnings about the configuration
-5. Recommendations for optimization
-
-IMPORTANT:
-- All string values in formulaText must be double-escaped: \\"value\\"
-- Column references use {{Column Name}} syntax
-- Always include conditionalRun for AI columns to save credits
-- Estimate credits as: rows × creditsPerColumn
-
-Return ONLY valid JSON matching the ExecutionPlan schema. No markdown, no explanation outside the JSON.`;
+  "workbookName": "string",
+  "summary": "string",
+  "estimatedTotalCredits": number,
+  "estimatedRows": number,
+  "steps": [
+    {"order": 1, "type": "create_table", "description": "Create table with Find Companies source", "apiMethod": "POST", "apiEndpoint": "/tables", "payload": {...}, "estimatedCredits": 0},
+    {"order": 2, "type": "add_column", "description": "Add AI column", "apiMethod": "POST", "apiEndpoint": "/tables/{{TABLE_ID}}/fields", "payload": {...}, "estimatedCredits": 100}
+  ],
+  "warnings": [],
+  "recommendations": []
+}`;
 
 // ============================================================================
 // ORCHESTRATOR - Calls Claude to Generate Plan
@@ -299,21 +268,37 @@ async function executeStep(
   const payload = JSON.parse(payloadStr);
 
   // Replace placeholders in endpoint
-  let endpoint = step.apiEndpoint;
+  let endpoint = step.apiEndpoint || '';
   for (const [key, value] of Object.entries(context)) {
     endpoint = endpoint.replace(new RegExp(`\\{\\{${key}\\}\\}`, 'g'), value);
   }
 
-  const url = endpoint.startsWith('http') ? endpoint : `${CLAY_API_BASE}${endpoint}`;
+  // Claude sometimes includes method in endpoint like "POST https://..." - extract it
+  let method = step.apiMethod || 'POST';
+  const methodMatch = endpoint.match(/^(GET|POST|PUT|PATCH|DELETE)\s+/i);
+  if (methodMatch) {
+    method = methodMatch[1].toUpperCase();
+    endpoint = endpoint.slice(methodMatch[0].length);
+  }
+
+  // Clean up endpoint - remove base URL if included, ensure proper format
+  endpoint = endpoint.replace(/^https?:\/\/api\.clay\.com\/v3\/?/i, '');
+  endpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+
+  const url = `${CLAY_API_BASE}${endpoint}`;
+  const isBodyAllowed = !['GET', 'HEAD'].includes(method.toUpperCase());
+
+  console.log(`Executing ${method} ${url}`);
+  console.log(`Payload: ${isBodyAllowed ? JSON.stringify(payload) : 'none'}`);
 
   try {
     const response = await fetch(url, {
-      method: step.apiMethod,
+      method,
       headers: {
-        'Cookie': `claysession=${claySession}`,
+        'Cookie': claySession, // Already in format "claysession=xxx"
         'Content-Type': 'application/json',
       },
-      body: step.apiMethod !== 'GET' ? JSON.stringify(payload) : undefined,
+      body: isBodyAllowed ? JSON.stringify(payload) : undefined,
     });
 
     if (!response.ok) {
@@ -339,15 +324,16 @@ async function executePlan(
   const results: any[] = [];
   const errors: string[] = [];
 
-  for (const step of plan.steps) {
-    console.log(`Executing step ${step.order}: ${step.description}`);
+  for (const step of plan.steps || []) {
+    const stepOrder = step.order ?? 'unknown';
+    console.log(`Executing step ${stepOrder}: ${step.description || 'No description'}`);
 
     const { success, result, error } = await executeStep(step, context, claySession);
 
     if (!success) {
-      errors.push(`Step ${step.order} failed: ${error}`);
-      // For critical steps like workbook creation, abort
-      if (step.type === 'create_workbook') {
+      errors.push(`Step ${stepOrder} (${step.type || 'unknown'}): ${error}`);
+      // For critical steps, abort
+      if (step.type === 'create_workbook' || step.type === 'create_table') {
         return { success: false, results, errors };
       }
       continue;
@@ -356,10 +342,17 @@ async function executePlan(
     results.push({ step: step.order, result });
 
     // Extract IDs for subsequent steps
-    if (step.type === 'create_workbook' && result) {
-      context.WORKBOOK_ID = result.id || result.workbookId;
-      context.TABLE_ID = result.defaultTableId || result.tableId;
-      context.VIEW_ID = result.defaultViewId || result.viewId || context.TABLE_ID;
+    if (step.type === 'create_table' && result) {
+      console.log('Table response:', JSON.stringify(result, null, 2));
+      // Table creation returns { table: { id, firstViewId, ... }, extraData: { newlyCreatedWorkbook: {...} } }
+      const table = result.table || result;
+      context.TABLE_ID = table.id || '';
+      context.VIEW_ID = table.firstViewId || table.views?.[0]?.id || '';
+      // Workbook is auto-created
+      if (result.extraData?.newlyCreatedWorkbook) {
+        context.WORKBOOK_ID = result.extraData.newlyCreatedWorkbook.id || '';
+      }
+      console.log(`Extracted TABLE_ID: ${context.TABLE_ID}, VIEW_ID: ${context.VIEW_ID}, WORKBOOK_ID: ${context.WORKBOOK_ID || 'auto'}`);
     }
 
     if (step.type === 'add_column' && result) {
@@ -440,22 +433,34 @@ async function orchestrate(request: OrchestrationRequest): Promise<Orchestration
     };
   }
 
-  // Get workspace ID from client config if not provided
+  // Get workspace ID - check client-specific first, then global
   let workspaceId = request.workspaceId;
   if (!workspaceId) {
-    const { data: config } = await supabase
+    // Try client-specific config first
+    const { data: clientConfig } = await supabase
       .from('clay_client_configs')
       .select('workspace_id')
       .eq('client', request.client)
       .single();
 
-    workspaceId = config?.workspace_id;
+    workspaceId = clientConfig?.workspace_id;
+
+    // Fall back to global config
+    if (!workspaceId) {
+      const { data: globalConfig } = await supabase
+        .from('clay_client_configs')
+        .select('workspace_id')
+        .eq('client', '_global')
+        .single();
+
+      workspaceId = globalConfig?.workspace_id;
+    }
   }
 
   if (!workspaceId) {
     return {
       success: false,
-      error: 'No workspace ID configured. Please set workspace_id in clay_client_configs.',
+      error: 'No workspace ID configured. Please set it in the Implementation page.',
     };
   }
 
@@ -483,9 +488,11 @@ async function orchestrate(request: OrchestrationRequest): Promise<Orchestration
     console.log('Plan generated:', JSON.stringify(plan, null, 2));
 
     // Step 2: Execute the plan (if Clay session is available)
-    if (CLAY_SESSION) {
+    const claySession = await getClaySession();
+
+    if (claySession) {
       console.log('Executing plan against Clay API...');
-      const { success, results, errors } = await executePlan(plan, CLAY_SESSION, workspaceId);
+      const { success, results, errors } = await executePlan(plan, claySession, workspaceId);
 
       if (!success) {
         await updateExecutionLog(logId, 'failed', { plan, results }, errors.join('; '));
@@ -510,7 +517,7 @@ async function orchestrate(request: OrchestrationRequest): Promise<Orchestration
       return {
         success: true,
         plan,
-        executionLog: 'Plan generated (dry run - no CLAY_SESSION_COOKIE configured)',
+        executionLog: 'Plan generated (dry run - no valid Clay session in database. Run clay-auth-refresh to authenticate.)',
       };
     }
   } catch (error) {
