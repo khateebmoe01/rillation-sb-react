@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from 'react-router-dom'
-import { BarChart3, LogOut, LayoutDashboard, Users, DollarSign, CheckSquare, TrendingUp, Compass, Mail, Globe, ShoppingCart, Activity, Sparkles } from 'lucide-react'
+import { BarChart3, LogOut, LayoutDashboard, Users, DollarSign, CheckSquare, TrendingUp, Compass, Mail, Globe, ShoppingCart, Activity, Sparkles, Rocket } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useAuth } from '../../contexts/AuthContext'
 import { useAI } from '../../contexts/AIContext'
@@ -28,6 +28,7 @@ const navSections = [
     id: 'strategy',
     label: 'Strategy',
     items: [
+      { id: 'gtm-implementation', icon: Rocket, label: 'Implementation', path: '/strategy/implementation' },
       { id: 'client-strategy', icon: Compass, label: 'Client Strategy', path: '/strategy' },
     ],
   },
@@ -65,8 +66,9 @@ export default function Sidebar() {
     // Analytics routes - allow sub-paths
     if (id === 'performance' && location.pathname.startsWith('/performance')) return true
 
-    // Strategy routes - allow sub-paths
-    if (id === 'client-strategy' && location.pathname.startsWith('/strategy')) return true
+    // Strategy routes - specific sub-paths first, then allow remaining /strategy paths
+    if (id === 'gtm-implementation' && location.pathname === '/strategy/implementation') return true
+    if (id === 'client-strategy' && location.pathname === '/strategy') return true
 
     // Infrastructure routes - allow sub-paths
     if (path.startsWith('/infrastructure') && path !== '/infrastructure') {

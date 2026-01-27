@@ -10,13 +10,21 @@
     "split-fc-inboxes": "npx tsx scripts/split-fc-inboxes.ts",
     "backfill-sequence-stats": "npx tsx scripts/backfill-sequence-stats.ts",
     "check-backfill": "tail -100 /Users/mokhateeb/.cursor/projects/Users-mokhateeb-rillation-sb-react/terminals/527540.txt | grep -E '(PROGRESS UPDATE|Processing batch|BACKFILL SUMMARY|Found.*rows)' | tail -20 || echo 'Backfill not running or file not found'",
-    "sync-all-leads": "npx tsx scripts/sync-all-leads.ts"
+    "sync-all-leads": "npx tsx scripts/sync-all-leads.ts",
+    "clay": "npx tsx clay-automation/cli.ts",
+    "clay:login": "npx tsx clay-automation/cli.ts login",
+    "clay:server": "npx tsx clay-automation/server.ts",
+    "clay:dry-run": "npx tsx clay-automation/cli.ts --dry-run",
+    "clay:test": "npx tsx clay-automation/tests/dry-run.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
     "@supabase/supabase-js": "^2.39.0",
+    "@tanstack/query-sync-storage-persister": "^5.90.22",
+    "@tanstack/react-query": "^5.90.20",
+    "@tanstack/react-query-persist-client": "^5.90.22",
     "@types/html2canvas": "^0.5.35",
     "framer-motion": "^11.0.0",
     "html2canvas": "^1.4.1",
@@ -28,6 +36,7 @@
     "recharts": "^2.10.3"
   },
   "devDependencies": {
+    "@tanstack/react-query-devtools": "^5.91.2",
     "@types/node": "^25.0.3",
     "@types/react": "^18.2.43",
     "@types/react-dom": "^18.2.17",
@@ -35,6 +44,7 @@
     "autoprefixer": "^10.4.16",
     "pg": "^8.16.3",
     "postcss": "^8.4.32",
+    "rollup-plugin-visualizer": "^6.0.5",
     "tailwindcss": "^3.4.0",
     "typescript": "^5.3.3",
     "vite": "^5.0.10"

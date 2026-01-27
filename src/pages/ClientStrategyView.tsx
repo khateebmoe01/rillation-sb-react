@@ -1,11 +1,11 @@
 import { useState, useCallback, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { 
-  Phone, 
-  Map, 
-  BookOpen, 
-  ListTodo, 
-  BarChart3, 
+import {
+  Phone,
+  Map,
+  BookOpen,
+  ListTodo,
+  BarChart3,
   RefreshCw,
   Loader2,
   AlertCircle,
@@ -16,11 +16,12 @@ import {
   Inbox,
   PenTool,
 } from 'lucide-react'
+import { useFilters } from '../contexts/FilterContext'
 import { useClients } from '../hooks/useClients'
-import { useClientStrategy, useClientStrategyStats } from '../hooks/useClientStrategy'
+import { useClientStrategy } from '../hooks/useClientStrategy'
 import { useCopywriting } from '../hooks/useCopywriting'
 import { useFathomAutoSync } from '../hooks/useFathomAutoSync'
-import ClientStrategyList from '../components/strategy/ClientStrategyList'
+import StrategyHeader from '../components/strategy/StrategyHeader'
 import FathomCallLibrary from '../components/strategy/FathomCallLibrary'
 import OpportunityMapViewer from '../components/strategy/OpportunityMapViewer'
 import KnowledgeBaseEditor from '../components/strategy/KnowledgeBaseEditor'
@@ -83,7 +84,7 @@ interface SectionHeaderProps {
 
 function SectionHeader({ section, isOpen, onToggle, count, status, actions }: SectionHeaderProps) {
   const Icon = section.icon
-  
+
   return (
     <div className="flex items-center justify-between py-3 px-4 bg-rillation-card border border-rillation-border rounded-xl hover:bg-rillation-card-hover transition-colors">
       <button
@@ -97,11 +98,11 @@ function SectionHeader({ section, isOpen, onToggle, count, status, actions }: Se
         >
           <ChevronRight size={18} />
         </motion.div>
-        
+
         <div className="w-9 h-9 rounded-lg bg-rillation-bg flex items-center justify-center">
           <Icon size={18} className="text-rillation-text-muted" />
         </div>
-        
+
         <div className="flex-1">
           <div className="flex items-center gap-2">
             <span className="text-sm font-medium text-rillation-text">{section.label}</span>
@@ -123,7 +124,7 @@ function SectionHeader({ section, isOpen, onToggle, count, status, actions }: Se
           <span className="text-xs text-rillation-text-muted">{section.description}</span>
         </div>
       </button>
-      
+
       {actions && (
         <div className="flex items-center gap-2 ml-4" onClick={(e) => e.stopPropagation()}>
           {actions}
@@ -134,13 +135,12 @@ function SectionHeader({ section, isOpen, onToggle, count, status, actions }: Se
 }
 
 export default function ClientStrategyView() {
-  const [selectedClient, setSelectedClient] = useState<string | null>(null)
+  const { strategyClient } = useFilters()
   const [sectionStates, setSectionStates] = useState<Record<SectionId, boolean>>(getInitialSectionState)
   const [showUnassigned, setShowUnassigned] = useState(false)
 
-  // Fetch clients
-  const { clients, loading: clientsLoading } = useClients()
-  const { stats: clientStats, loading: statsLoading } = useClientStrategyStats(clients)
+  // Fetch clients (for unassigned calls)
+  const { clients } = useClients()
 
   // Fetch strategy data for selected client
   const {
@@ -157,21 +157,28 @@ export default function ClientStrategyView() {
     savePlanOfAction,
     createOpportunityMap,
     deleteOpportunityMap,
-  } = useClientStrategy(selectedClient)
+  } = useClientStrategy(strategyClient || null)
 
   // Fetch copywriting data
   const {
     copywriting,
     loading: copywritingLoading,
     saveCopywriting,
-  } = useCopywriting(selectedClient)
+  } = useCopywriting(strategyClient || null)
 
   // Auto-refresh Fathom calls every 30 seconds when viewing a client or unassigned calls
   useFathomAutoSync({
-    enabled: selectedClient !== null || showUnassigned,
+    enabled: !!strategyClient || showUnassigned,
     onRefetch: refetch,
     intervalMs: 30000, // 30 seconds
   })
+
+  // Reset unassigned view when client is selected
+  useEffect(() => {
+    if (strategyClient) {
+      setShowUnassigned(false)
+    }
+  }, [strategyClient])
 
   // Save section states to localStorage
   useEffect(() => {
@@ -183,11 +190,6 @@ export default function ClientStrategyView() {
       ...prev,
       [sectionId]: !prev[sectionId],
     }))
-  }, [])
-
-  const handleClientSelect = useCallback((client: string) => {
-    setSelectedClient(client)
-    setShowUnassigned(false)
   }, [])
 
   // Calculate section statuses
@@ -210,74 +212,51 @@ export default function ClientStrategyView() {
   }
 
   return (
-    <div className="h-full flex bg-rillation-bg">
-      {/* Left Panel - Client List */}
-      <div className="w-72 flex-shrink-0 flex flex-col">
-        {/* Unassigned Calls Button - At Top */}
-        <div className="p-2 border-b border-rillation-border flex-shrink-0">
-          <button
-            onClick={() => {
-              setSelectedClient(null)
-              setShowUnassigned(true)
-            }}
-            className={`w-full flex items-center gap-3 p-3 rounded-xl transition-colors ${
-              showUnassigned
-                ? 'bg-white text-black'
-                : 'hover:bg-rillation-card-hover text-rillation-text-muted'
-            }`}
-          >
-            <Inbox size={18} />
-            <span className="text-sm font-medium">Unassigned Calls</span>
-          </button>
-        </div>
-        
-        <ClientStrategyList
-          clients={clients}
-          selectedClient={selectedClient}
-          onClientSelect={handleClientSelect}
-          clientStats={clientStats}
-          loading={clientsLoading || statsLoading}
-        />
-      </div>
+    <div className="h-full flex flex-col bg-rillation-bg">
+      {/* Header with Client Dropdown */}
+      <StrategyHeader
+        title="Client Strategy"
+        actions={
+          <div className="flex items-center gap-3">
+            {/* Unassigned Calls Button */}
+            <button
+              onClick={() => setShowUnassigned(!showUnassigned)}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-colors ${
+                showUnassigned
+                  ? 'bg-white text-black font-medium'
+                  : 'text-rillation-text-muted hover:bg-rillation-card-hover hover:text-rillation-text'
+              }`}
+            >
+              <Inbox size={14} />
+              Unassigned Calls
+            </button>
 
-      {/* Right Panel - Strategy Content */}
+            {dataLoading && (
+              <Loader2 size={18} className="animate-spin text-rillation-text-muted" />
+            )}
+            <button
+              onClick={() => refetch()}
+              className="flex items-center gap-2 px-3 py-1.5 text-sm text-rillation-text-muted hover:text-rillation-text transition-colors"
+            >
+              <RefreshCw size={14} />
+              Refresh
+            </button>
+          </div>
+        }
+      />
+
+      {/* Content */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {showUnassigned ? (
           /* Unassigned Calls View */
           <div className="flex-1 overflow-y-auto">
-            <UnassignedCallsInbox 
+            <UnassignedCallsInbox
               clients={clients}
               onCallAssigned={() => refetch()}
             />
           </div>
-        ) : selectedClient ? (
+        ) : strategyClient ? (
           <>
-            {/* Header */}
-            <div className="flex-shrink-0 bg-rillation-card border-b border-rillation-border px-6 py-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h1 className="text-xl font-semibold text-rillation-text">{selectedClient}</h1>
-                  <p className="text-sm text-rillation-text-muted mt-0.5">Client Strategy</p>
-                </div>
-                
-                <div className="flex items-center gap-3">
-                  <span className="text-xs text-rillation-text-muted">
-                    Auto-syncing every 2 minutes
-                  </span>
-                  {dataLoading && (
-                    <Loader2 size={18} className="animate-spin text-rillation-text-muted" />
-                  )}
-                  <button
-                    onClick={() => refetch()}
-                    className="flex items-center gap-2 px-3 py-1.5 text-sm text-rillation-text-muted hover:text-rillation-text transition-colors"
-                  >
-                    <RefreshCw size={14} />
-                    Refresh
-                  </button>
-                </div>
-              </div>
-            </div>
-
             {/* Error State */}
             {error && (
               <div className="mx-6 mt-4 p-4 bg-red-500/10 border border-red-500/30 rounded-xl flex items-center gap-3">
@@ -314,7 +293,7 @@ export default function ClientStrategyView() {
                     >
                       <div className="pt-3">
                         <FathomCallLibrary
-                          client={selectedClient}
+                          client={strategyClient}
                           calls={fathomCalls}
                           loading={dataLoading}
                           onAddCall={addFathomCall}
@@ -355,7 +334,7 @@ export default function ClientStrategyView() {
                     >
                       <div className="pt-3">
                         <OpportunityMapViewer
-                          client={selectedClient}
+                          client={strategyClient}
                           opportunityMaps={opportunityMaps}
                           fathomCalls={fathomCalls}
                           loading={dataLoading}
@@ -379,7 +358,7 @@ export default function ClientStrategyView() {
                 />
                 <motion.div
                   initial={false}
-                  animate={{ 
+                  animate={{
                     height: sectionStates['knowledge'] ? 'auto' : 0,
                     opacity: sectionStates['knowledge'] ? 1 : 0,
                   }}
@@ -388,7 +367,7 @@ export default function ClientStrategyView() {
                 >
                   <div className="pt-3">
                     <KnowledgeBaseEditor
-                      client={selectedClient}
+                      client={strategyClient}
                       knowledgeBase={knowledgeBase}
                       fathomCalls={fathomCalls}
                       loading={dataLoading}
@@ -410,7 +389,7 @@ export default function ClientStrategyView() {
                 />
                 <motion.div
                   initial={false}
-                  animate={{ 
+                  animate={{
                     height: sectionStates['copywriting'] ? 'auto' : 0,
                     opacity: sectionStates['copywriting'] ? 1 : 0,
                   }}
@@ -419,7 +398,7 @@ export default function ClientStrategyView() {
                 >
                   <div className="pt-3">
                     <CopywritingEditor
-                      client={selectedClient}
+                      client={strategyClient}
                       copywriting={copywriting}
                       knowledgeBase={knowledgeBase}
                       fathomCalls={fathomCalls}
@@ -449,7 +428,7 @@ export default function ClientStrategyView() {
                     >
                       <div className="pt-3">
                         <PlanOfActionEditor
-                          client={selectedClient}
+                          client={strategyClient}
                           planOfAction={planOfAction}
                           loading={dataLoading}
                           onSave={savePlanOfAction}
@@ -479,7 +458,7 @@ export default function ClientStrategyView() {
                     >
                       <div className="pt-3">
                         <AnalysisPanel
-                          client={selectedClient}
+                          client={strategyClient}
                           planOfAction={planOfAction}
                           onSave={savePlanOfAction}
                           compact
@@ -507,7 +486,7 @@ export default function ClientStrategyView() {
                       className="overflow-hidden"
                     >
                       <div className="pt-3">
-                        <IterationLogPanel client={selectedClient} compact />
+                        <IterationLogPanel client={strategyClient} compact />
                       </div>
                     </motion.div>
                   )}
@@ -530,7 +509,7 @@ export default function ClientStrategyView() {
                 Select a Client
               </h2>
               <p className="text-rillation-text-muted text-sm leading-relaxed">
-                Choose a client from the list to view and manage their strategy, including Fathom calls, 
+                Choose a client from the dropdown above to view and manage their strategy, including Fathom calls,
                 opportunity maps, knowledge base, and plan of action.
               </p>
             </motion.div>

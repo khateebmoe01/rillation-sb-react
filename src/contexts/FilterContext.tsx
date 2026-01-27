@@ -2,16 +2,20 @@ import { createContext, useContext, useState, ReactNode } from 'react'
 import { getDateRange } from '../lib/supabase'
 
 interface FilterContextType {
-  // Client filter
+  // Client filter (Analytics)
   selectedClient: string
   setSelectedClient: (client: string) => void
-  
+
+  // Strategy client filter (persists across Strategy pages)
+  strategyClient: string
+  setStrategyClient: (client: string) => void
+
   // Date filter
   datePreset: string
   setDatePreset: (preset: string) => void
   dateRange: { start: Date; end: Date }
   setDateRange: (range: { start: Date; end: Date }) => void
-  
+
   // Clear all filters
   clearFilters: () => void
 }
@@ -20,9 +24,10 @@ const FilterContext = createContext<FilterContextType | undefined>(undefined)
 
 export function FilterProvider({ children }: { children: ReactNode }) {
   const [selectedClient, setSelectedClient] = useState('')
+  const [strategyClient, setStrategyClient] = useState('')
   const [datePreset, setDatePreset] = useState('thisMonth')
   const [dateRange, setDateRange] = useState(() => getDateRange('thisMonth'))
-  
+
   const clearFilters = () => {
     setSelectedClient('')
     setDatePreset('allTime')
@@ -32,12 +37,14 @@ export function FilterProvider({ children }: { children: ReactNode }) {
     }
     setDateRange(allTimeRange)
   }
-  
+
   return (
     <FilterContext.Provider
       value={{
         selectedClient,
         setSelectedClient,
+        strategyClient,
+        setStrategyClient,
         datePreset,
         setDatePreset,
         dateRange,

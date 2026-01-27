@@ -1,0 +1,102 @@
+{
+  "webResearchModels": [
+    {
+      "id": "gpt-4o",
+      "name": "GPT 4o",
+      "description": "High-intelligence flagship model for complex, multi-step tasks",
+      "credits": 3
+    },
+    {
+      "id": "gpt-4.1",
+      "name": "GPT 4.1",
+      "description": "Latest model from OpenAI, trained on a broader knowledge base up to June 2024, with better instruction following & reasoning capabilities",
+      "credits": 12
+    },
+    {
+      "id": "gpt-4o-mini",
+      "name": "GPT 4o Mini",
+      "description": "Affordable and intelligent small model for fast, lightweight tasks",
+      "credits": 1
+    },
+    {
+      "id": "gpt-4.1-mini",
+      "name": "GPT 4.1 Mini",
+      "description": "Newest model in the mini family. Affordable and intelligent small model for fast processing, with a larger context window than its predecessor",
+      "credits": 1
+    },
+    {
+      "id": "gpt-4.1-nano",
+      "name": "GPT 4.1 Nano",
+      "description": "Smallest, fastest and cheapest model in the OpenAI family. Good for simple tasks and quick responses like classification or autocompletion",
+      "credits": 0.5
+    },
+    {
+      "id": "gpt-5.1-reasoning",
+      "name": "GPT 5.1 (reasoning)",
+      "description": "Latest GPT-5.1 model with superior reasoning and knowledge capabilities",
+      "credits": 8
+    },
+    {
+      "id": "gpt-5-reasoning",
+      "name": "GPT 5 (reasoning)",
+      "description": "Most advanced GPT-5 model with superior reasoning and knowledge capabilities",
+      "credits": 4
+    },
+    {
+      "id": "clay-argon",
+      "name": "Clay Argon",
+      "description": "Clay's native AI model",
+      "credits": 1
+    }
+  ],
+  "imageGenerationModels": [
+    {
+      "id": "gpt-4o-medium",
+      "name": "GPT-4o Medium (recommended)",
+      "description": "OpenAI's most recent image generation model. Really good at image generation",
+      "credits": 10
+    },
+    {
+      "id": "gpt-4o-high",
+      "name": "GPT-4o High",
+      "description": "OpenAI's most recent image generation model. Higher quality output",
+      "credits": 30
+    },
+    {
+      "id": "imagen-3.0",
+      "name": "Imagen 3.0",
+      "description": "Google's most capable image generation model. May not produce images with people",
+      "credits": 6
+    },
+    {
+      "id": "imagen-3.0-fast",
+      "name": "Imagen 3.0 Fast",
+      "description": "Faster version of Google's Imagen 3.0. May not produce images with people",
+      "credits": 3
+    },
+    {
+      "id": "flux-1-schnell",
+      "name": "Flux 1 Schnell",
+      "description": "Open source model - good balance between quality and cost",
+      "credits": 1
+    },
+    {
+      "id": "playground-v2",
+      "name": "Playground V2",
+      "description": "Open source model - good balance between quality and cost",
+      "credits": 2
+    },
+    {
+      "id": "playground-v2.5",
+      "name": "Playground V2.5",
+      "description": "Open source model - good balance between quality and cost",
+      "credits": 2
+    },
+    {
+      "id": "ssd-1b",
+      "name": "SSD 1B",
+      "description": "Open source model - good balance between quality and cost",
+      "credits": 2
+    }
+  ]
+}

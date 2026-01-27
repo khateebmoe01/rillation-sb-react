@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Clay Automation Monitor</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Clay Automation</h1>
+      <div class="status-badge" id="status-badge">Idle</div>
+    </header>
+
+    <section class="controls">
+      <div class="control-group">
+        <label for="workflow-select">Workflow:</label>
+        <select id="workflow-select">
+          <option value="login">Login</option>
+          <option value="createTable">Create Table</option>
+          <option value="uploadCSV">Upload CSV</option>
+          <option value="addEnrichment">Add Enrichment</option>
+          <option value="writePrompt">Write AI Prompt</option>
+          <option value="runEnrichment">Run Enrichment</option>
+          <option value="exportResults">Export Results</option>
+        </select>
+      </div>
+
+      <div class="control-group" id="input-fields">
+        <!-- Dynamic input fields will be added here -->
+      </div>
+
+      <div class="button-group">
+        <button id="start-btn" class="btn btn-primary">Start</button>
+        <button id="pause-btn" class="btn btn-warning" disabled>Pause</button>
+        <button id="resume-btn" class="btn btn-success" disabled>Resume</button>
+      </div>
+    </section>
+
+    <section class="progress-section">
+      <h3>Progress</h3>
+      <div class="progress-bar">
+        <div class="progress-fill" id="progress-fill"></div>
+      </div>
+      <div class="progress-info">
+        <span id="progress-text">0%</span>
+        <span id="current-step">-</span>
+      </div>
+    </section>
+
+    <section class="pipeline-section">
+      <h3>Full Pipeline</h3>
+      <div class="pipeline-form">
+        <div class="form-row">
+          <label for="pipeline-table-name">Table Name:</label>
+          <input type="text" id="pipeline-table-name" placeholder="My Enrichment Table">
+        </div>
+        <div class="form-row">
+          <label for="pipeline-csv-path">CSV Path:</label>
+          <input type="text" id="pipeline-csv-path" placeholder="/path/to/leads.csv">
+        </div>
+        <div class="form-row">
+          <label for="pipeline-enrichment-type">Enrichment:</label>
+          <select id="pipeline-enrichment-type">
+            <option value="apollo_person">Apollo - Find Person</option>
+            <option value="apollo_company">Apollo - Find Company</option>
+            <option value="clearbit_person">Clearbit - Person</option>
+            <option value="email_finder">Email Finder</option>
+            <option value="linkedin_profile">LinkedIn Profile</option>
+          </select>
+        </div>
+        <button id="pipeline-btn" class="btn btn-primary btn-full">Run Full Pipeline</button>
+      </div>
+    </section>
+
+    <section class="logs-section">
+      <h3>Activity Log</h3>
+      <div class="log-controls">
+        <button id="clear-logs-btn" class="btn btn-small">Clear</button>
+        <label>
+          <input type="checkbox" id="auto-scroll" checked> Auto-scroll
+        </label>
+      </div>
+      <div class="log-container" id="log-container"></div>
+    </section>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

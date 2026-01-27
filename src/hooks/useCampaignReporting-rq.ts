@@ -111,11 +111,11 @@ export function useCampaignStats(params: UseCampaignReportingParams) {
 
   const stats = data
     ? {
-        totalSent: data.reduce((sum, row) => sum + (row.emails_sent || 0), 0),
-        totalContacted: data.reduce((sum, row) => sum + (row.total_leads_contacted || 0), 0),
-        totalBounced: data.reduce((sum, row) => sum + (row.bounced || 0), 0),
-        totalInterested: data.reduce((sum, row) => sum + (row.interested || 0), 0),
-        campaignCount: new Set(data.map((row) => row.campaign_id)).size,
+        totalSent: data.reduce((sum: number, row: CampaignReportingRow) => sum + (row.emails_sent || 0), 0),
+        totalContacted: data.reduce((sum: number, row: CampaignReportingRow) => sum + (row.total_leads_contacted || 0), 0),
+        totalBounced: data.reduce((sum: number, row: CampaignReportingRow) => sum + (row.bounced || 0), 0),
+        totalInterested: data.reduce((sum: number, row: CampaignReportingRow) => sum + (row.interested || 0), 0),
+        campaignCount: new Set(data.map((row: CampaignReportingRow) => row.campaign_id)).size,
       }
     : null
 

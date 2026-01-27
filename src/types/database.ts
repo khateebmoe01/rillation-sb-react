@@ -317,3 +317,75 @@ export interface FunnelStage {
   percentage?: number
 }
 
+// ============================================
+// Clay.com Integration Types
+// ============================================
+
+export interface ClayTableConfig {
+  id: string
+  name: string
+  clay_table_id?: string
+  columns: ClayColumnConfig[]
+  run_settings?: {
+    batch_size?: number
+    rate_limit?: number
+    retry_on_error?: boolean
+  }
+}
+
+export interface ClayColumnConfig {
+  id: string
+  name: string
+  type: 'text' | 'number' | 'email' | 'url' | 'enrichment' | 'ai_prompt' | 'formula'
+  enrichment_type?: string
+  ai_prompt?: string
+  source_columns?: string[]
+  formula?: string
+}
+
+export interface ClayWorkbookTemplate {
+  id: string
+  name: string
+  description?: string
+  table_configs: ClayTableConfig[]
+  created_at?: string
+  updated_at?: string
+}
+
+export interface SavedCompanySearch {
+  id: string
+  name: string
+  filters: Record<string, unknown>
+  createdAt: string
+  updatedAt: string
+}
+
+export interface ClayClientConfig {
+  id: string
+  client: string
+  workspace_id?: string
+  workbook_mappings: Record<string, string>  // workbook_id -> template_id
+  table_configs: ClayTableConfig[]
+  column_prompts: Record<string, string>     // column_id -> prompt
+  sync_settings: {
+    auto_sync?: boolean
+    sync_interval_minutes?: number
+    sync_to_supabase_table?: string
+  }
+  saved_searches?: SavedCompanySearch[]
+  created_at?: string
+  updated_at?: string
+}
+
+export interface ClayExecutionLog {
+  id: string
+  client?: string
+  action: 'sync' | 'run_table' | 'clone_template' | 'create_table' | 'update_config'
+  config_snapshot?: Record<string, unknown>
+  status: 'pending' | 'running' | 'completed' | 'failed'
+  result?: Record<string, unknown>
+  error_message?: string
+  started_at: string
+  completed_at?: string
+}
+
