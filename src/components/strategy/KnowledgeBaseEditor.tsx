@@ -26,7 +26,7 @@ import {
   Clock,
   Database,
 } from 'lucide-react'
-import { jsPDF } from 'jspdf'
+// jsPDF is dynamically imported when needed (reduces initial bundle)
 import type { KnowledgeBase, FathomCall } from '../../hooks/useClientStrategy'
 import { supabase } from '../../lib/supabase'
 
@@ -166,7 +166,9 @@ function GenerateModal({ isOpen, onClose, fathomCalls, onGenerate, isGenerating 
 }
 
 // PDF Generation Function
-function generateKnowledgeBasePDF(data: Partial<KnowledgeBase>, client: string) {
+async function generateKnowledgeBasePDF(data: Partial<KnowledgeBase>, client: string) {
+  // Dynamic import - only loads jspdf when user exports PDF
+  const { jsPDF } = await import('jspdf')
   const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
   const pageWidth = pdf.internal.pageSize.getWidth()
   const pageHeight = pdf.internal.pageSize.getHeight()
@@ -632,7 +634,7 @@ export default function KnowledgeBaseEditor({
 
   const handleExportPDF = async () => {
     setIsExporting(true)
-    try { generateKnowledgeBasePDF(localData, client) }
+    try { await generateKnowledgeBasePDF(localData, client) }
     catch (err) { console.error('Error exporting PDF:', err) }
     finally { setIsExporting(false) }
   }

@@ -149,107 +149,136 @@ async function fetchTags(apiKey: string, clientName: string) {
   }
 }
 
-// Upsert tags and return a map of bison_id -> uuid
+// Upsert tags in batch and return a map of bison_id -> uuid
 async function upsertTags(tags: any[], clientName: string): Promise<Map<number, string>> {
   const tagMap = new Map<number, string>();
 
-  for (const tag of tags) {
-    try {
-      const { data, error } = await supabase
-        .from('inbox_tags')
-        .upsert({
-          bison_tag_id: tag.id,
-          name: tag.name,
-          client: clientName,
-          is_default: tag.default || false,
-          synced_at: new Date().toISOString(),
-        }, { onConflict: 'bison_tag_id,client' })
-        .select('id')
-        .single();
+  if (tags.length === 0) return tagMap;
 
-      if (!error && data) {
-        tagMap.set(tag.id, data.id);
-      }
-    } catch (err) {
-      console.error(`Error upserting tag ${tag.name}:`, err);
+  // Prepare all tag data for batch upsert
+  const tagData = tags.map(tag => ({
+    bison_tag_id: tag.id,
+    name: tag.name,
+    client: clientName,
+    is_default: tag.default || false,
+    synced_at: new Date().toISOString(),
+  }));
+
+  try {
+    // Batch upsert all tags at once
+    const { data, error } = await supabase
+      .from('inbox_tags')
+      .upsert(tagData, { onConflict: 'bison_tag_id,client' })
+      .select('id, bison_tag_id');
+
+    if (error) {
+      console.error(`[${clientName}] Batch tag upsert error:`, error.message);
+      return tagMap;
     }
+
+    // Build the map from results
+    for (const row of (data || [])) {
+      tagMap.set(row.bison_tag_id, row.id);
+    }
+  } catch (err) {
+    console.error(`[${clientName}] Exception in batch tag upsert:`, err);
   }
 
   return tagMap;
 }
 
-// Upsert inboxes to database
+// Upsert inboxes to database in batches
 async function upsertInboxes(inboxes: any[], clientName: string, tagMap: Map<number, string>) {
   let successCount = 0;
   let errorCount = 0;
-  
+
+  if (inboxes.length === 0) return { successCount, errorCount };
+
   // Track unique types from Bison API for debugging
   const typesFromApi = new Set<string>();
 
+  // Prepare all inbox data and track tag assignments
+  const inboxDataList: any[] = [];
+  const inboxTagAssignments: Map<string, string[]> = new Map(); // email -> tagIds
+
   for (const inbox of inboxes) {
-    try {
-      // Log the raw type from API
-      const rawType = inbox.type || inbox.account_type || 'undefined';
-      typesFromApi.add(rawType);
-      
-      // Extract tag UUIDs from inbox tags (if present)
-      const inboxTagIds: string[] = [];
-      if (inbox.tags && Array.isArray(inbox.tags)) {
-        for (const tag of inbox.tags) {
-          const tagId = tag.id || tag;
-          const uuid = tagMap.get(tagId);
-          if (uuid) inboxTagIds.push(uuid);
-        }
+    const rawType = inbox.type || inbox.account_type || 'undefined';
+    typesFromApi.add(rawType);
+
+    // Extract tag UUIDs from inbox tags (if present)
+    const inboxTagIds: string[] = [];
+    if (inbox.tags && Array.isArray(inbox.tags)) {
+      for (const tag of inbox.tags) {
+        const tagId = tag.id || tag;
+        const uuid = tagMap.get(tagId);
+        if (uuid) inboxTagIds.push(uuid);
       }
+    }
 
-      const inboxData = {
-        bison_inbox_id: inbox.id,
-        email: inbox.email || inbox.email_address,
-        name: inbox.display_name || inbox.name || inbox.email || inbox.email_address,
-        client: clientName,
-        type: normalizeType(rawType),
-        status: mapConnectionStatus(inbox.status),
-        lifecycle_status: deriveLifecycleStatus(inbox),
-        warmup_enabled: inbox.warmup_enabled || false,
-        warmup_reputation: inbox.warmup_reputation || inbox.reputation || null,
-        domain: inbox.email ? inbox.email.split('@')[1] : null,
-        provider_inbox_id: String(inbox.id),
-        daily_limit: inbox.daily_limit || inbox.sending_limit || 0,
-        emails_sent_count: inbox.emails_sent || inbox.sent_count || 0,
-        tags: inboxTagIds,
-        synced_at: new Date().toISOString(),
-      };
+    const email = inbox.email || inbox.email_address;
+    if (inboxTagIds.length > 0) {
+      inboxTagAssignments.set(String(inbox.id), inboxTagIds);
+    }
 
-      const { data: upsertedInbox, error } = await supabase
+    inboxDataList.push({
+      bison_inbox_id: inbox.id,
+      email: email,
+      name: inbox.display_name || inbox.name || email,
+      client: clientName,
+      type: normalizeType(rawType),
+      status: mapConnectionStatus(inbox.status),
+      lifecycle_status: deriveLifecycleStatus(inbox),
+      warmup_enabled: inbox.warmup_enabled || false,
+      warmup_reputation: inbox.warmup_reputation || inbox.reputation || null,
+      domain: email ? email.split('@')[1] : null,
+      provider_inbox_id: String(inbox.id),
+      daily_limit: inbox.daily_limit || inbox.sending_limit || 0,
+      emails_sent_count: inbox.emails_sent || inbox.sent_count || 0,
+      tags: inboxTagIds,
+      synced_at: new Date().toISOString(),
+    });
+  }
+
+  // Batch upsert inboxes (500 at a time to stay within limits)
+  const BATCH_SIZE = 500;
+  for (let i = 0; i < inboxDataList.length; i += BATCH_SIZE) {
+    const batch = inboxDataList.slice(i, i + BATCH_SIZE);
+    try {
+      const { data: upsertedInboxes, error } = await supabase
         .from('inboxes')
-        .upsert(inboxData, { onConflict: 'bison_inbox_id' })
-        .select('id')
-        .single();
+        .upsert(batch, { onConflict: 'bison_inbox_id' })
+        .select('id, bison_inbox_id');
 
       if (error) {
-        console.error(`Error upserting inbox ${inbox.email}:`, error.message);
-        errorCount++;
+        console.error(`[${clientName}] Batch inbox upsert error:`, error.message);
+        errorCount += batch.length;
       } else {
-        successCount++;
+        successCount += (upsertedInboxes || []).length;
 
-        // Update tag assignments if we have tags and an inbox ID
-        if (upsertedInbox && inboxTagIds.length > 0) {
-          const assignments = inboxTagIds.map(tagId => ({
-            inbox_id: upsertedInbox.id,
-            tag_id: tagId
-          }));
+        // Collect tag assignments for this batch
+        const allAssignments: { inbox_id: string; tag_id: string }[] = [];
+        for (const row of (upsertedInboxes || [])) {
+          const tagIds = inboxTagAssignments.get(String(row.bison_inbox_id));
+          if (tagIds && tagIds.length > 0) {
+            for (const tagId of tagIds) {
+              allAssignments.push({ inbox_id: row.id, tag_id: tagId });
+            }
+          }
+        }
 
+        // Batch upsert tag assignments
+        if (allAssignments.length > 0) {
           await supabase
             .from('inbox_tag_assignments')
-            .upsert(assignments, { onConflict: 'inbox_id,tag_id' });
+            .upsert(allAssignments, { onConflict: 'inbox_id,tag_id' });
         }
       }
     } catch (err) {
-      console.error(`Exception processing inbox:`, err);
-      errorCount++;
+      console.error(`[${clientName}] Exception in batch upsert:`, err);
+      errorCount += batch.length;
     }
   }
-  
+
   // Log unique types found from API
   console.log(`[${clientName}] Unique provider types from Bison API:`, Array.from(typesFromApi));
 
@@ -293,18 +322,26 @@ async function runSync() {
 
       console.log(`\nProcessing: ${businessName}`);
 
-      // First sync tags
-      const tags = await fetchTags(apiKey, businessName);
-      const tagMap = await upsertTags(tags, businessName);
-      console.log(`[${businessName}] Synced ${tagMap.size} tags`);
+      try {
+        // Fetch tags and inboxes in parallel for better performance
+        const [tags, inboxes] = await Promise.all([
+          fetchTags(apiKey, businessName),
+          fetchSenderEmails(apiKey, businessName),
+        ]);
 
-      // Then sync inboxes
-      const inboxes = await fetchSenderEmails(apiKey, businessName);
+        // Upsert tags first (needed for tag assignments)
+        const tagMap = await upsertTags(tags, businessName);
+        console.log(`[${businessName}] Synced ${tagMap.size} tags`);
 
-      if (inboxes.length > 0) {
-        const { successCount, errorCount } = await upsertInboxes(inboxes, businessName, tagMap);
-        totalInboxes += successCount;
-        totalErrors += errorCount;
+        // Then batch upsert inboxes
+        if (inboxes.length > 0) {
+          const { successCount, errorCount } = await upsertInboxes(inboxes, businessName, tagMap);
+          totalInboxes += successCount;
+          totalErrors += errorCount;
+        }
+      } catch (err) {
+        console.error(`[${businessName}] Error processing client:`, err);
+        totalErrors++;
       }
 
       // Small delay between clients to avoid rate limiting

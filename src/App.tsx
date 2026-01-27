@@ -1,18 +1,31 @@
 import { Routes, Route, Navigate, useLocation, useParams } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
+import { lazy, Suspense } from 'react'
 import Layout from './components/layout/Layout'
 import ConfigError from './components/ui/ConfigError'
-import PerformanceOverview from './pages/PerformanceOverview'
-import PipelineView from './pages/PipelineView'
-import Infrastructure from './pages/Infrastructure'
-import ClientStrategyView from './pages/ClientStrategyView'
-import DebugView from './pages/DebugView'
-import ClientDetailView from './pages/ClientDetailView'
-import CustomVariablesDiscovery from './pages/CustomVariablesDiscovery'
-import Login from './pages/Login'
-import ProtectedRoute from './components/auth/ProtectedRoute'
 import { getSupabaseConfigError } from './lib/supabase'
-import AtomicCRM from '../index'
+
+// Eager load the most common pages (Performance is the default landing page)
+import PerformanceOverview from './pages/PerformanceOverview'
+import ClientDetailView from './pages/ClientDetailView'
+
+// Lazy load other pages for better initial bundle size
+const PipelineView = lazy(() => import('./pages/PipelineView'))
+const Infrastructure = lazy(() => import('./pages/Infrastructure'))
+const ClientStrategyView = lazy(() => import('./pages/ClientStrategyView'))
+const GTMImplementation = lazy(() => import('./pages/GTMImplementation'))
+const DebugView = lazy(() => import('./pages/DebugView'))
+const CustomVariablesDiscovery = lazy(() => import('./pages/CustomVariablesDiscovery'))
+const AtomicCRM = lazy(() => import('../index'))
+
+// Loading fallback for lazy components
+function PageLoader() {
+  return (
+    <div className="flex items-center justify-center h-full min-h-[400px]">
+      <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-white/30"></div>
+    </div>
+  )
+}
 
 // Redirect component that properly handles URL params
 function ClientDetailRedirect() {
@@ -46,22 +59,21 @@ function App() {
   return (
     <AnimatePresence mode="wait">
       <Routes location={location} key={location.pathname}>
-        {/* Public route */}
-        <Route path="/login" element={<Login />} />
-        
-        {/* Protected routes */}
         <Route
           path="/*"
           element={
-            <ProtectedRoute>
-              <Layout>
-                <AnimatePresence mode="wait">
+            <Layout>
+              <AnimatePresence mode="wait">
+                <Suspense fallback={<PageLoader />}>
                   <Routes location={location} key={location.pathname}>
                     <Route path="/" element={<Navigate to="/performance" replace />} />
+                    {/* Eager loaded pages (most common) */}
                     <Route path="/performance" element={<PageTransition><PerformanceOverview /></PageTransition>} />
                     <Route path="/performance/:clientName" element={<PageTransition><ClientDetailView /></PageTransition>} />
+                    {/* Lazy loaded pages */}
                     <Route path="/pipeline" element={<PageTransition><PipelineView /></PageTransition>} />
                     <Route path="/strategy" element={<PageTransition><ClientStrategyView /></PageTransition>} />
+                    <Route path="/strategy/implementation" element={<PageTransition><GTMImplementation /></PageTransition>} />
                     <Route path="/infrastructure" element={<PageTransition><Infrastructure /></PageTransition>} />
                     <Route path="/infrastructure/overview" element={<PageTransition><Infrastructure defaultTab="overview" /></PageTransition>} />
                     <Route path="/infrastructure/inboxes" element={<PageTransition><Infrastructure defaultTab="inboxes" /></PageTransition>} />
@@ -77,9 +89,9 @@ function App() {
                     <Route path="/quick-view" element={<Navigate to="/performance" replace />} />
                     <Route path="/client-detail/:clientName" element={<ClientDetailRedirect />} />
                   </Routes>
-                </AnimatePresence>
-              </Layout>
-            </ProtectedRoute>
+                </Suspense>
+              </AnimatePresence>
+            </Layout>
           }
         />
       </Routes>

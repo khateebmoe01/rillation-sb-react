@@ -57,35 +57,35 @@ export function usePipelineData({ startDate, endDate, month, year }: UsePipeline
       const endStr = formatDateForQuery(endDate)
       const endStrNextDay = formatDateForQueryEndOfDay(endDate)
 
-      // Parallelize all data fetches
+      // Parallelize all data fetches - select only needed columns to reduce payload
       const [campaignResult, repliesResult, meetingsResult, engagedLeadsResult, forecastResult] = await Promise.all([
         supabase
           .from('campaign_reporting')
-          .select('*')
+          .select('emails_sent, total_leads_contacted, interested')
           .gte('date', startStr)
           .lte('date', endStr)
           .eq('client', 'Rillation Revenue'),
         supabase
           .from('replies')
-          .select('*')
+          .select('category, lead_id, from_email, campaign_id, client')
           .gte('date_received', startStr)
           .lt('date_received', endStrNextDay)
           .eq('client', 'Rillation Revenue'),
         supabase
           .from('meetings_booked')
-          .select('*')
+          .select('id')
           .gte('created_time', startStr)
           .lt('created_time', endStrNextDay)
           .eq('client', 'Rillation Revenue'),
         supabase
           .from('engaged_leads')
-          .select('*')
+          .select('showed_up_to_disco, qualified, demo_booked, showed_up_to_demo, proposal_sent, closed')
           .gte('date_created', startStr)
           .lte('date_created', endStr)
           .eq('client', 'Rillation Revenue'),
         supabase
           .from('funnel_forecasts')
-          .select('*')
+          .select('metric_key, actual')
           .eq('month', month)
           .eq('year', year)
           .eq('client', 'Rillation Revenue'),

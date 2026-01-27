@@ -18,7 +18,7 @@ import {
   Calendar,
   Settings,
 } from 'lucide-react'
-import { jsPDF } from 'jspdf'
+// jsPDF is dynamically imported when needed (reduces initial bundle by ~30MB)
 import type { OpportunityMap, FathomCall } from '../../hooks/useClientStrategy'
 import { supabase } from '../../lib/supabase'
 
@@ -239,7 +239,9 @@ const PDF_COLORS = {
 }
 
 // PDF Generation Function - Creates a professional document-style PDF
-function generatePDF(map: OpportunityMap, client: string) {
+async function generatePDF(map: OpportunityMap, client: string) {
+  // Dynamic import - only loads jspdf when user exports PDF
+  const { jsPDF } = await import('jspdf')
   const pdf = new jsPDF({
     orientation: 'portrait',
     unit: 'mm',
@@ -1522,9 +1524,9 @@ export default function OpportunityMapViewer({
 
   const handleExportPDF = async (map: OpportunityMap) => {
     setExportingId(map.id)
-    
+
     try {
-      generatePDF(map, client)
+      await generatePDF(map, client)
     } catch (err) {
       console.error('Error exporting PDF:', err)
     } finally {

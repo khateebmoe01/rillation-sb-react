@@ -18,7 +18,7 @@ import {
   Zap,
   Variable,
 } from 'lucide-react'
-import { jsPDF } from 'jspdf'
+// jsPDF is dynamically imported when needed (reduces initial bundle)
 import { supabase } from '../../lib/supabase'
 import type { ClientCopywriting, CopySequence, CopyEmail, ClayPrompt } from '../../hooks/useCopywriting'
 import type { KnowledgeBase, FathomCall } from '../../hooks/useClientStrategy'
@@ -713,7 +713,9 @@ function ClayPromptCard({
 }
 
 // PDF Generation
-function generateCopyPDF(copywriting: ClientCopywriting, client: string) {
+async function generateCopyPDF(copywriting: ClientCopywriting, client: string) {
+  // Dynamic import - only loads jspdf when user exports PDF
+  const { jsPDF } = await import('jspdf')
   const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
   const pageWidth = pdf.internal.pageSize.getWidth()
   const pageHeight = pdf.internal.pageSize.getHeight()
@@ -930,10 +932,10 @@ export default function CopywritingEditor({
     }
   }
 
-  const handleExportPDF = () => {
+  const handleExportPDF = async () => {
     setIsExporting(true)
     try {
-      generateCopyPDF(localData as ClientCopywriting, client)
+      await generateCopyPDF(localData as ClientCopywriting, client)
     } catch (err) {
       console.error('Error exporting PDF:', err)
     } finally {

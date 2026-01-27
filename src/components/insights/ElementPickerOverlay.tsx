@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Crosshair, Camera, X } from 'lucide-react'
-import html2canvas from 'html2canvas'
+// html2canvas is dynamically imported when needed (reduces initial bundle)
 
 interface ElementPickerOverlayProps {
   isActive: boolean
@@ -118,7 +118,8 @@ export default function ElementPickerOverlay({
         overlayRef.current.style.display = 'none'
       }
       
-      // Capture the element
+      // Capture the element - dynamic import for code splitting
+      const html2canvas = (await import('html2canvas')).default
       const canvas = await html2canvas(hoverInfo.element)
       
       const screenshot = canvas.toDataURL('image/png')
