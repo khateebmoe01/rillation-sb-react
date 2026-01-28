@@ -107,6 +107,9 @@ interface OrchestrationResult {
   plan?: ExecutionPlan;
   executionLog?: string;
   error?: string;
+  createdTableId?: string;
+  createdWorkspaceId?: string;
+  createdWorkbookUrl?: string;
 }
 
 // ============================================================================
@@ -457,7 +460,7 @@ async function executePlan(
   plan: ExecutionPlan,
   claySession: string,
   workspaceId: string
-): Promise<{ success: boolean; results: any[]; errors: string[] }> {
+): Promise<{ success: boolean; results: any[]; errors: string[]; createdTableId?: string; createdWorkspaceId?: string }> {
   const context: Record<string, string> = {
     WORKSPACE_ID: workspaceId,
     SESSION_ID: generateUUID(), // Generate fresh session ID for wizard
@@ -526,7 +529,13 @@ async function executePlan(
     }
   }
 
-  return { success: errors.length === 0, results, errors };
+  return {
+    success: errors.length === 0,
+    results,
+    errors,
+    createdTableId: context.TABLE_ID,
+    createdWorkspaceId: context.WORKSPACE_ID,
+  };
 }
 
 // ============================================================================
@@ -655,7 +664,7 @@ async function orchestrate(request: OrchestrationRequest): Promise<Orchestration
 
     if (claySession) {
       console.log('Executing plan against Clay API...');
-      const { success, results, errors } = await executePlan(plan, claySession, workspaceId);
+      const { success, results, errors, createdTableId, createdWorkspaceId } = await executePlan(plan, claySession, workspaceId);
 
       if (!success) {
         await updateExecutionLog(logId, 'failed', { plan, results }, errors.join('; '));
@@ -666,12 +675,20 @@ async function orchestrate(request: OrchestrationRequest): Promise<Orchestration
         };
       }
 
-      await updateExecutionLog(logId, 'completed', { plan, results });
+      await updateExecutionLog(logId, 'completed', { plan, results, createdTableId, createdWorkspaceId });
+
+      // Build Clay workbook URL if we have the table ID
+      const createdWorkbookUrl = createdTableId
+        ? `https://app.clay.com/workspaces/${createdWorkspaceId}/tables/${createdTableId}`
+        : undefined;
 
       return {
         success: true,
         plan,
         executionLog: `Successfully executed ${results.length} steps`,
+        createdTableId,
+        createdWorkspaceId,
+        createdWorkbookUrl,
       };
     } else {
       // No Clay session - return plan only (dry run)

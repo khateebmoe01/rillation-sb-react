@@ -57,6 +57,8 @@ function Skeleton({ className = '' }: { className?: string }) {
   )
 }
 
+const PAGE_SIZE = 20
+
 export default function FathomFilterInput({
   client,
   onFiltersGenerated,
@@ -67,6 +69,9 @@ export default function FathomFilterInput({
   const [directTranscript, setDirectTranscript] = useState('')
   const [inputMode, setInputMode] = useState<'select' | 'paste'>('select')
   const [isLoadingCalls, setIsLoadingCalls] = useState(false)
+  const [hasMore, setHasMore] = useState(false)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [cursor, setCursor] = useState<string | null>(null)
 
   const {
     isGenerating,
@@ -81,21 +86,56 @@ export default function FathomFilterInput({
     async function loadCalls() {
       if (!client) return
       setIsLoadingCalls(true)
+      setCursor(null)
+      setHasMore(false)
 
       const { data, error } = await supabase
         .from('client_fathom_calls')
         .select('id, client, title, call_date, summary, call_type')
         .eq('client', client)
         .order('call_date', { ascending: false })
-        .limit(20)
+        .limit(PAGE_SIZE + 1) // +1 to check if more exist
 
       if (!error && data) {
-        setFathomCalls(data as FathomCall[])
+        const hasMoreResults = data.length > PAGE_SIZE
+        const callsToShow = (hasMoreResults ? data.slice(0, PAGE_SIZE) : data) as FathomCall[]
+        setFathomCalls(callsToShow)
+        setHasMore(hasMoreResults)
+        if (callsToShow.length > 0) {
+          const lastCall = callsToShow[callsToShow.length - 1]
+          setCursor(lastCall.call_date || null)
+        }
       }
       setIsLoadingCalls(false)
     }
     loadCalls()
   }, [client])
+
+  // Load more calls
+  const loadMoreCalls = async () => {
+    if (!client || !cursor || loadingMore) return
+    setLoadingMore(true)
+
+    const { data, error: fetchError } = await supabase
+      .from('client_fathom_calls')
+      .select('id, client, title, call_date, summary, call_type')
+      .eq('client', client)
+      .lt('call_date', cursor)
+      .order('call_date', { ascending: false })
+      .limit(PAGE_SIZE + 1)
+
+    if (!fetchError && data) {
+      const hasMoreResults = data.length > PAGE_SIZE
+      const newCalls = (hasMoreResults ? data.slice(0, PAGE_SIZE) : data) as FathomCall[]
+      setFathomCalls(prev => [...prev, ...newCalls])
+      setHasMore(hasMoreResults)
+      if (newCalls.length > 0) {
+        const lastCall = newCalls[newCalls.length - 1]
+        setCursor(lastCall.call_date || null)
+      }
+    }
+    setLoadingMore(false)
+  }
 
   // When filters are generated, pass them up to parent
   useEffect(() => {
@@ -317,6 +357,30 @@ export default function FathomFilterInput({
                       </AnimatePresence>
                     </motion.button>
                   ))}
+                  {/* Load More Button */}
+                  {hasMore && (
+                    <motion.button
+                      type="button"
+                      onClick={loadMoreCalls}
+                      disabled={loadingMore}
+                      className="w-full mt-2 py-2 text-xs font-medium text-rillation-text/60 hover:text-rillation-text bg-white/5 hover:bg-white/10 rounded-lg transition-all disabled:opacity-50"
+                      whileHover={{ scale: loadingMore ? 1 : 1.01 }}
+                      whileTap={{ scale: loadingMore ? 1 : 0.99 }}
+                    >
+                      {loadingMore ? (
+                        <span className="flex items-center justify-center gap-2">
+                          <motion.span
+                            className="w-3 h-3 border border-rillation-text/30 border-t-rillation-text/60 rounded-full"
+                            animate={{ rotate: 360 }}
+                            transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                          />
+                          Loading...
+                        </span>
+                      ) : (
+                        'Load more calls'
+                      )}
+                    </motion.button>
+                  )}
                 </motion.div>
               )}
             </div>

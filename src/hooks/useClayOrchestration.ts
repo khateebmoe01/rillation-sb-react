@@ -65,6 +65,9 @@ interface OrchestrationResult {
   plan?: ExecutionPlan
   executionLog?: string
   error?: string
+  createdTableId?: string
+  createdWorkspaceId?: string
+  createdWorkbookUrl?: string
 }
 
 type OrchestrationStatus = 'idle' | 'generating' | 'executing' | 'complete' | 'error'

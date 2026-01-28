@@ -53,17 +53,17 @@ export const defaultConfig: WorkbookConfig = {
 }
 
 const AI_MODELS = [
-  { id: 'clay-argon', name: 'Clay Argon', credits: 1 },
-  { id: 'gpt-4o-mini', name: 'GPT 4o Mini', credits: 1 },
-  { id: 'gpt-4o', name: 'GPT 4o', credits: 3 },
-  { id: 'gpt-4.1-mini', name: 'GPT 4.1 Mini', credits: 1 },
-  { id: 'gpt-4.1', name: 'GPT 4.1', credits: 12 },
+  { id: 'clay-argon', name: 'Clay Argon', credits: 1, description: 'Fast & cost-effective', recommended: true },
+  { id: 'gpt-4o-mini', name: 'GPT 4o Mini', credits: 1, description: 'OpenAI lightweight' },
+  { id: 'gpt-4o', name: 'GPT 4o', credits: 3, description: 'OpenAI standard' },
+  { id: 'gpt-4.1-mini', name: 'GPT 4.1 Mini', credits: 1, description: 'Latest mini model' },
+  { id: 'gpt-4.1', name: 'GPT 4.1', credits: 12, description: 'Most capable' },
 ]
 
 const TABS = [
   { id: 'source', label: 'Lead Source' },
   { id: 'filters', label: 'Source Filters' },
-  { id: 'columns', label: 'CE Columns' },
+  { id: 'columns', label: 'AI Enrichment', optional: true },
 ] as const
 
 type TabId = typeof TABS[number]['id']
@@ -80,7 +80,7 @@ interface WorkbookBuilderProps {
 export function WorkbookBuilder({ config, onChange, client }: WorkbookBuilderProps) {
   const [activeTab, setActiveTab] = useState<TabId>('source')
   const [expandedColumn, setExpandedColumn] = useState<string | null>(null)
-  const [filterInputMode, setFilterInputMode] = useState<FilterInputMode>('manual')
+  const [filterInputMode, setFilterInputMode] = useState<FilterInputMode>('ai-fathom')
   const [aiReasoning, setAiReasoning] = useState<string | null>(null)
   const [aiConfidence, setAiConfidence] = useState<number | null>(null)
 
@@ -154,6 +154,7 @@ export function WorkbookBuilder({ config, onChange, client }: WorkbookBuilderPro
         {TABS.map((tab) => {
           const isActive = activeTab === tab.id
           const isComplete = isTabComplete(tab.id)
+          const isOptional = 'optional' in tab && tab.optional
           return (
             <button
               key={tab.id}
@@ -168,6 +169,11 @@ export function WorkbookBuilder({ config, onChange, client }: WorkbookBuilderPro
                 <Check size={14} className="text-green-400" />
               )}
               {tab.label}
+              {isOptional && !isActive && (
+                <span className="px-1.5 py-0.5 text-[10px] bg-gray-700 text-gray-400 rounded">
+                  Optional
+                </span>
+              )}
             </button>
           )
         })}
@@ -237,34 +243,39 @@ export function WorkbookBuilder({ config, onChange, client }: WorkbookBuilderPro
                   {/* Filter Input Mode Toggle */}
                   <div className="flex items-center justify-between">
                     <h2 className="text-lg font-semibold text-white">Configure Filters</h2>
-                    <div className="flex items-center gap-1 p-1 bg-rillation-bg border border-rillation-border rounded-xl">
-                      <motion.button
-                        type="button"
-                        onClick={() => setFilterInputMode('manual')}
-                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 ${
-                          filterInputMode === 'manual'
-                            ? 'bg-white text-black shadow-md'
-                            : 'text-rillation-text/60 hover:text-white'
-                        }`}
-                        whileHover={{ scale: filterInputMode === 'manual' ? 1 : 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                      >
-                        <SlidersHorizontal size={12} />
-                        Manual
-                      </motion.button>
+                    <div className="flex items-center gap-2">
                       <motion.button
                         type="button"
                         onClick={() => setFilterInputMode('ai-fathom')}
                         className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 ${
                           filterInputMode === 'ai-fathom'
-                            ? 'bg-white text-black shadow-md'
-                            : 'text-rillation-text/60 hover:text-white'
+                            ? 'bg-gradient-to-r from-blue-500 to-violet-500 text-white shadow-lg shadow-blue-500/25'
+                            : 'bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 border border-blue-500/30'
                         }`}
                         whileHover={{ scale: filterInputMode === 'ai-fathom' ? 1 : 1.02 }}
                         whileTap={{ scale: 0.98 }}
                       >
                         <Brain size={12} />
                         AI from Fathom
+                        {filterInputMode !== 'ai-fathom' && (
+                          <span className="px-1 py-0.5 bg-blue-500/30 text-[9px] rounded ml-1">
+                            Recommended
+                          </span>
+                        )}
+                      </motion.button>
+                      <motion.button
+                        type="button"
+                        onClick={() => setFilterInputMode('manual')}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 ${
+                          filterInputMode === 'manual'
+                            ? 'bg-white text-black shadow-md'
+                            : 'text-rillation-text/50 hover:text-rillation-text/80'
+                        }`}
+                        whileHover={{ scale: filterInputMode === 'manual' ? 1 : 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                      >
+                        <SlidersHorizontal size={12} />
+                        Manual
                       </motion.button>
                     </div>
                   </div>
@@ -404,8 +415,13 @@ export function WorkbookBuilder({ config, onChange, client }: WorkbookBuilderPro
             >
               <div className="flex items-center justify-between mb-4">
                 <div>
-                  <h3 className="text-lg font-medium text-white">CE Columns</h3>
-                  <p className="text-sm text-gray-500">AI-powered enrichment columns</p>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-lg font-medium text-white">AI Enrichment</h3>
+                    <span className="px-2 py-0.5 text-[10px] bg-gray-700 text-gray-400 rounded-full">
+                      Optional
+                    </span>
+                  </div>
+                  <p className="text-sm text-gray-500">Add AI columns to qualify and enrich your leads</p>
                 </div>
                 <button
                   onClick={addColumn}
@@ -419,16 +435,30 @@ export function WorkbookBuilder({ config, onChange, client }: WorkbookBuilderPro
               {config.qualificationColumns.length === 0 ? (
                 <div className="border-2 border-dashed border-gray-700 rounded-lg p-8 text-center">
                   <Sparkles size={32} className="mx-auto text-gray-600 mb-3" />
-                  <p className="text-gray-500 mb-3 text-sm">
-                    No columns yet. Add AI columns to enrich your leads.
+                  <p className="text-gray-500 mb-2 text-sm">
+                    No enrichment columns yet.
                   </p>
-                  <button
-                    onClick={addColumn}
-                    className="inline-flex items-center gap-2 px-3 py-1.5 bg-blue-500/20 text-blue-400 rounded-lg hover:bg-blue-500/30 text-sm"
-                  >
-                    <Plus size={14} />
-                    Add first column
-                  </button>
+                  <p className="text-gray-600 mb-4 text-xs">
+                    You can add AI columns to qualify leads, or continue without them.
+                  </p>
+                  <div className="flex items-center justify-center gap-3">
+                    <button
+                      onClick={addColumn}
+                      className="inline-flex items-center gap-2 px-3 py-1.5 bg-blue-500 text-white rounded-lg hover:bg-blue-600 text-sm transition-colors"
+                    >
+                      <Plus size={14} />
+                      Add AI Column
+                    </button>
+                    <span className="text-gray-600 text-xs">or</span>
+                    <button
+                      onClick={() => {
+                        // Just a visual indicator - the preview panel handles actual validation
+                      }}
+                      className="text-gray-500 hover:text-gray-400 text-xs underline underline-offset-2"
+                    >
+                      Continue without enrichment
+                    </button>
+                  </div>
                 </div>
               ) : (
                 <div className="space-y-2">
@@ -499,6 +529,101 @@ function CSVUploadPanel() {
       <button className="text-blue-400 hover:text-blue-300 text-sm">
         or click to browse
       </button>
+    </div>
+  )
+}
+
+// Model Select Dropdown
+function ModelSelectDropdown({
+  value,
+  onChange,
+}: {
+  value: string
+  onChange: (modelId: string) => void
+}) {
+  const [isOpen, setIsOpen] = useState(false)
+  const selectedModel = AI_MODELS.find((m) => m.id === value)
+
+  return (
+    <div className="relative">
+      <label className="block text-xs font-medium text-gray-400 mb-1">
+        AI Model
+      </label>
+      <motion.button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full flex items-center justify-between px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-left hover:border-gray-600 transition-colors"
+      >
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-white">{selectedModel?.name || 'Select model'}</span>
+          {selectedModel && (
+            <span className="text-xs text-gray-500">
+              {selectedModel.credits} credit{selectedModel.credits !== 1 ? 's' : ''}/row
+            </span>
+          )}
+          {selectedModel?.recommended && (
+            <span className="px-1.5 py-0.5 text-[9px] bg-blue-500/20 text-blue-400 rounded">
+              Recommended
+            </span>
+          )}
+        </div>
+        <motion.div
+          animate={{ rotate: isOpen ? 180 : 0 }}
+          transition={{ duration: 0.2 }}
+        >
+          <ChevronDown size={14} className="text-gray-500" />
+        </motion.div>
+      </motion.button>
+
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: -4, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -4, scale: 0.95 }}
+            transition={{ duration: 0.15 }}
+            className="absolute z-50 w-full mt-1 bg-gray-900 border border-gray-700 rounded-lg shadow-xl overflow-hidden"
+          >
+            {AI_MODELS.map((model) => (
+              <button
+                key={model.id}
+                type="button"
+                onClick={() => {
+                  onChange(model.id)
+                  setIsOpen(false)
+                }}
+                className={`w-full flex items-center justify-between px-3 py-2.5 text-left transition-colors ${
+                  value === model.id
+                    ? 'bg-white/10'
+                    : 'hover:bg-white/5'
+                }`}
+              >
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className={`text-sm ${value === model.id ? 'text-white' : 'text-gray-300'}`}>
+                      {model.name}
+                    </span>
+                    {model.recommended && (
+                      <span className="px-1.5 py-0.5 text-[9px] bg-blue-500/20 text-blue-400 rounded">
+                        Recommended
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-gray-500 mt-0.5">{model.description}</p>
+                </div>
+                <div className="flex items-center gap-2 shrink-0 ml-3">
+                  <span className="text-xs text-gray-500">
+                    {model.credits} credit{model.credits !== 1 ? 's' : ''}
+                  </span>
+                  {value === model.id && (
+                    <Check size={14} className="text-green-400" />
+                  )}
+                </div>
+              </button>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }
@@ -590,27 +715,11 @@ function ColumnCard({
                 />
               </div>
 
-              {/* Model Selection - Chips */}
-              <div>
-                <label className="block text-xs font-medium text-gray-400 mb-1">
-                  Model
-                </label>
-                <div className="flex flex-wrap gap-1.5">
-                  {AI_MODELS.map((m) => (
-                    <button
-                      key={m.id}
-                      onClick={() => onUpdate({ model: m.id })}
-                      className={`px-2.5 py-1 rounded text-xs font-medium transition-all ${
-                        column.model === m.id
-                          ? 'bg-white text-black'
-                          : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                      }`}
-                    >
-                      {m.name} ({m.credits})
-                    </button>
-                  ))}
-                </div>
-              </div>
+              {/* Model Selection - Dropdown */}
+              <ModelSelectDropdown
+                value={column.model}
+                onChange={(modelId) => onUpdate({ model: modelId })}
+              />
 
               {/* Condition - Segmented Control */}
               <div>

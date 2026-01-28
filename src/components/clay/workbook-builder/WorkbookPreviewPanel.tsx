@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion'
-import { Sparkles, Building2, Columns, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react'
+import { Sparkles, Building2, Columns, CheckCircle2, AlertCircle, Loader2, ExternalLink } from 'lucide-react'
 import type { WorkbookConfig } from './WorkbookBuilder'
-import type { OrchestrationStatus, ExecutionPlan } from '../../../hooks/useClayOrchestration'
+import type { OrchestrationStatus, ExecutionPlan, OrchestrationResult } from '../../../hooks/useClayOrchestration'
 
 const AI_MODELS: Record<string, { name: string; credits: number }> = {
   'clay-argon': { name: 'Clay Argon', credits: 1 },
@@ -18,6 +18,7 @@ interface WorkbookPreviewPanelProps {
   status: OrchestrationStatus
   plan?: ExecutionPlan | null
   error?: string | null
+  result?: OrchestrationResult | null
 }
 
 export function WorkbookPreviewPanel({
@@ -27,6 +28,7 @@ export function WorkbookPreviewPanel({
   status,
   plan,
   error,
+  result,
 }: WorkbookPreviewPanelProps) {
   const estimatedCredits = config.qualificationColumns.reduce((total, col) => {
     const model = AI_MODELS[col.model]
@@ -39,9 +41,9 @@ export function WorkbookPreviewPanel({
       ).length
     : 0
 
+  // CE columns are now optional
   const isValid =
     config.leadSource !== null &&
-    config.qualificationColumns.length > 0 &&
     config.workbookName.trim() !== ''
 
   return (
@@ -100,9 +102,13 @@ export function WorkbookPreviewPanel({
           {/* Columns */}
           <SummaryRow
             icon={<Columns size={14} />}
-            label="CE Columns"
-            value={`${config.qualificationColumns.length} defined`}
-            valid={config.qualificationColumns.length > 0}
+            label="AI Enrichment"
+            value={
+              config.qualificationColumns.length > 0
+                ? `${config.qualificationColumns.length} column${config.qualificationColumns.length !== 1 ? 's' : ''}`
+                : 'None (optional)'
+            }
+            valid={true} // Always valid since optional
           />
 
           {/* Column List */}
@@ -152,7 +158,7 @@ export function WorkbookPreviewPanel({
 
         {/* Status Display */}
         {status !== 'idle' && (
-          <StatusDisplay status={status} plan={plan} error={error} />
+          <StatusDisplay status={status} plan={plan} error={error} result={result} />
         )}
       </div>
 
@@ -195,8 +201,6 @@ export function WorkbookPreviewPanel({
           <p className="text-xs text-red-400/60 text-center mt-2">
             {!config.leadSource
               ? 'Select a lead source'
-              : config.qualificationColumns.length === 0
-              ? 'Add at least one CE column'
               : 'Enter a workbook name'}
           </p>
         )}
@@ -235,10 +239,12 @@ function StatusDisplay({
   status,
   plan,
   error,
+  result,
 }: {
   status: OrchestrationStatus
   plan?: ExecutionPlan | null
   error?: string | null
+  result?: OrchestrationResult | null
 }) {
   if (error) {
     return (
@@ -257,6 +263,10 @@ function StatusDisplay({
   }
 
   if (status === 'complete' && plan) {
+    const clayTableUrl = result?.createdTableId
+      ? `https://app.clay.com/workspaces/${result.createdWorkspaceId || ''}/tables/${result.createdTableId}`
+      : null
+
     return (
       <motion.div
         initial={{ opacity: 0, y: 10 }}
@@ -265,7 +275,7 @@ function StatusDisplay({
       >
         <div className="flex items-center gap-2 text-green-400 text-sm font-medium mb-2">
           <CheckCircle2 size={14} />
-          Plan Generated
+          {result?.success ? 'Workbook Created!' : 'Plan Generated'}
         </div>
         <div className="space-y-1 text-xs text-gray-400">
           <div className="flex justify-between">
@@ -279,6 +289,24 @@ function StatusDisplay({
         </div>
         {plan.summary && (
           <p className="text-xs text-gray-500 mt-2">{plan.summary}</p>
+        )}
+        {/* Open in Clay button */}
+        {clayTableUrl && (
+          <motion.a
+            href={clayTableUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            initial={{ opacity: 0, y: 5 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="mt-3 flex items-center justify-center gap-2 w-full px-3 py-2 bg-white text-black text-xs font-medium rounded-lg hover:bg-gray-200 transition-colors"
+          >
+            <ExternalLink size={12} />
+            Open in Clay
+          </motion.a>
+        )}
+        {result?.executionLog && (
+          <p className="text-[10px] text-gray-600 mt-2 italic">{result.executionLog}</p>
         )}
       </motion.div>
     )

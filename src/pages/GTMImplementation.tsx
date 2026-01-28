@@ -48,6 +48,7 @@ export default function GTMImplementation() {
     status: orchestrationStatus,
     plan: orchestrationPlan,
     error: orchestrationError,
+    result: orchestrationResult,
     beginWorkbook,
   } = useClayOrchestration()
 
@@ -102,19 +103,19 @@ export default function GTMImplementation() {
                 <button
                   onClick={() => setShowSidebar(!showSidebar)}
                   className={`p-1.5 rounded transition-colors ${
-                    showSidebar ? 'bg-gray-800 text-white' : 'text-gray-500 hover:text-white'
+                    showSidebar ? 'bg-white/10 text-white' : 'text-rillation-text/50 hover:text-white'
                   }`}
                   title="Toggle saved configs"
                 >
                   <PanelLeft size={16} />
                 </button>
-                <div className="h-4 w-px bg-gray-700" />
+                <div className="h-4 w-px bg-rillation-border" />
                 <button
                   onClick={() => setViewMode('builder')}
                   className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium transition-colors ${
                     viewMode === 'builder'
                       ? 'bg-white text-black'
-                      : 'text-gray-400 hover:text-white'
+                      : 'text-rillation-text/50 hover:text-white'
                   }`}
                 >
                   <Plus size={12} />
@@ -125,7 +126,7 @@ export default function GTMImplementation() {
                   className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium transition-colors ${
                     viewMode === 'workbooks'
                       ? 'bg-white text-black'
-                      : 'text-gray-400 hover:text-white'
+                      : 'text-rillation-text/50 hover:text-white'
                   }`}
                 >
                   <List size={12} />
@@ -174,6 +175,7 @@ export default function GTMImplementation() {
                 <WorkbookBuilder
                   config={workbookConfig}
                   onChange={setWorkbookConfig}
+                  client={strategyClient || undefined}
                 />
 
                 {/* Preview Panel */}
@@ -184,6 +186,7 @@ export default function GTMImplementation() {
                   status={orchestrationStatus}
                   plan={orchestrationPlan}
                   error={orchestrationError}
+                  result={orchestrationResult}
                 />
               </motion.div>
             ) : (
