@@ -58,6 +58,14 @@ Client
 ### In Progress
 - [ ] Test full end-to-end flow with AI columns (Begin Workbook → AI generates plan → Execute)
 
+### Completed (Session 7)
+- [x] Deployed `clay-generate-filters` edge function (with `--no-verify-jwt`)
+- [x] Deployed `clay-submit-filters` edge function
+- [x] Added `initialFilters` prop to `CompanySearchFilters` for AI filter pre-population
+- [x] Created `FathomFilterGenerator` and `FathomFilterInput` components
+- [x] Created `useClayFilterGeneration` hook
+- [x] Tested end-to-end: Fathom transcript → AI generates filters → stored in `generated_filters` table
+
 ### Pending
 - [ ] Add plan review/approval step before execution
 - [ ] Implement real-time progress updates
@@ -456,7 +464,223 @@ CLAY_PASSWORD=your-password           # Clay account password
 
 ---
 
+## Edge Function Architecture (IMPORTANT)
+
+**Principle:** Create **separate edge functions** for each major flow rather than one monolithic orchestrator.
+
+### Why Separate Functions?
+
+| Benefit | Description |
+|---------|-------------|
+| **Testability** | Each step can be tested independently |
+| **Retryability** | If step 2 fails, can retry without re-running step 1 |
+| **User Control** | User can preview results before committing |
+| **Reusability** | Functions can be combined in different workflows |
+| **Debugging** | Easier to identify which step failed |
+
+### Current Edge Functions
+
+| Function | Purpose | Status |
+|----------|---------|--------|
+| `clay-auth-refresh` | Daily Clay session authentication | Active |
+| `clay-orchestrate` | AI-powered workbook creation (complex multi-step) | Active |
+| `clay-generate-filters` | Generate Clay filters from Fathom call transcripts | Active (no-verify-jwt) |
+| `clay-submit-filters` | Submit approved filters to Clay Find Companies | Active |
+| `clay-create-table` | Legacy direct table creation | Deprecated |
+
+### When to Use Each Function
+
+- **clay-orchestrate**: Complex AI-driven workflows where the user describes intent and AI plans execution
+- **clay-generate-filters**: Convert Fathom call ICP discussions into Clay filter config
+- **clay-submit-filters**: Execute a reviewed/approved filter against Clay API
+- **Future functions**: `clay-add-columns`, `clay-run-enrichment`, `clay-export-results`, etc.
+
+---
+
+## Fathom → Clay Filter Generation Flow
+
+### Overview
+
+Users submit a Fathom call transcript → AI generates Clay "Find Companies" filters → User reviews/edits → Submit to Clay.
+
+### Flow Diagram
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    Web App UI                               │
+│  1. Select Fathom call or paste transcript                  │
+│  2. Click "Generate Filters"                                │
+└──────────────────────────┬──────────────────────────────────┘
+                           │
+                           ▼
+┌─────────────────────────────────────────────────────────────┐
+│              clay-generate-filters Edge Function            │
+│                                                              │
+│  • Fetches transcript from client_fathom_calls               │
+│  • Calls Claude Sonnet with filter schema                    │
+│  • AI extracts ICP and maps to Clay filters                  │
+│  • Stores result in generated_filters table                  │
+│  • Returns: filters, reasoning, confidence                   │
+└──────────────────────────┬──────────────────────────────────┘
+                           │
+                           ▼
+┌─────────────────────────────────────────────────────────────┐
+│                    Web App UI                               │
+│  3. Display generated filters (editable)                    │
+│  4. Show AI reasoning and confidence score                  │
+│  5. User edits if needed                                    │
+│  6. Click "Submit to Clay"                                  │
+└──────────────────────────┬──────────────────────────────────┘
+                           │
+                           ▼
+┌─────────────────────────────────────────────────────────────┐
+│              clay-submit-filters Edge Function              │
+│                                                              │
+│  Step 1: POST /v3/actions/run-enrichment                     │
+│    → Returns taskId + company count                          │
+│                                                              │
+│  Step 2: POST /v3/workspaces/{id}/wizard/evaluate-step       │
+│    → Creates workbook + table + imports companies            │
+│                                                              │
+│  • Updates generated_filters with status=submitted           │
+│  • Returns: table_id, records_imported                       │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Database Tables
+
+**client_fathom_calls** (existing):
+- `id`, `client`, `transcript`, `summary`, `call_type`, `status`
+
+**generated_filters** (new):
+```sql
+CREATE TABLE generated_filters (
+  id uuid PRIMARY KEY,
+  fathom_call_id uuid REFERENCES client_fathom_calls(id),
+  client text NOT NULL,
+  filters jsonb NOT NULL,          -- CompanySearchFilters
+  reasoning text,                   -- AI explanation
+  suggested_limit integer,
+  confidence numeric(3,2),          -- 0.00 to 1.00
+  status text DEFAULT 'pending_review',  -- pending_review | approved | submitted | failed
+  user_edits jsonb,                 -- Track manual changes
+  clay_task_id text,                -- From run-enrichment
+  clay_table_id text,               -- From wizard import
+  clay_response jsonb,              -- Full Clay response
+  submitted_to_clay_at timestamptz,
+  error_message text,
+  created_at timestamptz,
+  updated_at timestamptz
+);
+```
+
+### API Endpoints
+
+**POST /clay-generate-filters**
+```json
+// Request
+{ "fathom_call_id": "uuid" }
+// or for testing:
+{ "transcript": "call transcript text...", "client": "Acme Corp" }
+
+// Response
+{
+  "success": true,
+  "generated_filter_id": "uuid",
+  "filters": { /* CompanySearchFilters */ },
+  "reasoning": "The call discussed targeting SaaS companies...",
+  "suggested_limit": 100,
+  "confidence": 0.85
+}
+```
+
+**POST /clay-submit-filters**
+```json
+// Request
+{
+  "generated_filter_id": "uuid",
+  "table_name": "Q1 2026 SaaS Prospects"  // optional
+}
+
+// Response
+{
+  "success": true,
+  "table_id": "t_xxx",
+  "task_id": "at_xxx",
+  "records_imported": 100,
+  "companies_found": 42000
+}
+```
+
+---
+
 ## Change Log
+
+### 2026-01-28 (Session 7) - Filter Generation Complete
+
+**Completed:**
+- Deployed `clay-generate-filters` edge function with `--no-verify-jwt` flag (required for frontend calls)
+- Fixed JWT verification issue blocking frontend requests
+- Added `initialFilters` prop to `CompanySearchFilters` component for AI-generated filter pre-population
+- Created new components:
+  - `src/components/clay/FathomFilterGenerator.tsx` - Main component for transcript input and filter generation
+  - `src/components/clay/FathomFilterInput.tsx` - Textarea for transcript input with Fathom call selection
+- Created `src/hooks/useClayFilterGeneration.ts` hook for React Query integration
+
+**End-to-End Flow Verified:**
+1. User inputs Fathom transcript
+2. `clay-generate-filters` calls Claude Sonnet to extract ICP criteria
+3. AI maps ICP to Clay filter schema (industries, sizes, locations, etc.)
+4. Filters stored in `generated_filters` table with reasoning and confidence score
+5. Filters pre-populate `CompanySearchFilters` for user review/editing
+
+**Files Created/Modified:**
+- `supabase/functions/clay-generate-filters/index.ts` - Edge function (deployed)
+- `supabase/functions/clay-submit-filters/index.ts` - Edge function (deployed)
+- `src/components/clay/FathomFilterGenerator.tsx` - New
+- `src/components/clay/FathomFilterInput.tsx` - New
+- `src/hooks/useClayFilterGeneration.ts` - New
+- `src/components/clay/workbook-builder/CompanySearchFilters.tsx` - Added `initialFilters` prop
+
+---
+
+### 2026-01-28 (Session 6) - Wizard API Fix
+
+**Problem:** `wizard/evaluate-step` was returning InternalServerError for all requests.
+
+**Root Cause:** The wizard payload was missing `typeSettings.inputs` - the filter criteria must be passed in both:
+1. The enrichment preview call (to generate matching companies)
+2. The wizard payload's `typeSettings.inputs` (for table creation)
+
+**Fix Applied:**
+1. Added `typeSettings.inputs` with all filter criteria to wizard payload
+2. Updated `BASIC_FIELDS` with correct Size field select options (UUIDs from working payload)
+3. Added missing fields: `requiredDataPoint: null`, `outputs: []`, `firstUseCase: null`, `parentFolderId: null`
+4. Fixed response extraction - tableId is at `output.table.tableId`, not top level
+5. Added check for 0 companies before attempting wizard import
+
+**Also Fixed:**
+- Enrichment preview count was reading from wrong location (`result.companyCount` not top-level `count`)
+
+**Verified Working:** Successfully created table `t_0t9l8yuRCfz5o2Q4mGt` with 5 records.
+
+---
+
+### 2026-01-28 (Session 5) - Fathom Filter Generation
+
+**New Feature:** Generate Clay filters from Fathom call transcripts using AI.
+
+**Architecture Decision:** Create separate edge functions per flow instead of one monolithic orchestrator.
+
+**Created:**
+- `supabase/functions/clay-generate-filters/index.ts` - AI filter generation from transcripts
+- `supabase/functions/clay-submit-filters/index.ts` - Submit filters to Clay (two-step wizard flow)
+- `supabase/migrations/20260128120000_generated_filters_table.sql` - New table for filter workflow
+
+**Files Modified:**
+- `clay_implementation.md` - Added Edge Function Architecture section, Fathom flow documentation
+
+**Next:** Build web app components for filter review/editing UI.
 
 ### 2026-01-28 (Session 4) - API Flow Discovery
 
@@ -525,14 +749,24 @@ CLAY_PASSWORD=your-password           # Clay account password
 
 ## Next Steps
 
-1. ~~**Deploy edge functions**~~ ✅ Done (clay-orchestrate, clay-auth-refresh)
-2. ~~**Set ANTHROPIC_API_KEY secret**~~ ✅ Already configured
-3. ~~**Set Clay credentials secrets**~~ ✅ Done (CLAY_EMAIL, CLAY_PASSWORD)
-4. ~~**Create database table**~~ ✅ Done (clay_auth + cron job)
-5. ~~**Initial auth refresh**~~ ✅ Done - session stored
-6. ~~**Discover working API flow**~~ ✅ Done - run-enrichment → wizard/evaluate-step
-7. ~~**Update orchestrator with new flow**~~ ✅ Done - deployed to Supabase
-8. **Test full end-to-end flow with AI columns** - Begin workbook → AI generates plan → Execute
-9. **Add plan approval step** - Show plan before executing
-10. **Implement real-time progress** - WebSocket updates during execution
-11. **Add template creation** - Save successful plans as reusable templates
+### Fathom → Clay Filter Flow
+1. ~~**Create generated_filters table**~~ Done - Migration created
+2. ~~**Create clay-generate-filters function**~~ Done
+3. ~~**Create clay-submit-filters function**~~ Done
+4. ~~**Deploy new edge functions**~~ Done (with `--no-verify-jwt`)
+5. ~~**Fix wizard API payload**~~ Done - see Session 6 changelog
+6. ~~**Run database migration**~~ Done - `generated_filters` table exists
+7. ~~**Build filter review UI**~~ Done - `FathomFilterGenerator` component
+8. ~~**Add Fathom call selector**~~ Done - `FathomFilterInput` component
+9. ~~**Test end-to-end flow**~~ Done - Verified transcript → filters → stored
+10. **Integrate filter UI into main workflow** - Connect to BeginWorkbookWizard or separate page
+11. **Submit filters to Clay** - Wire up "Submit to Clay" button to `clay-submit-filters`
+12. **Display Clay results** - Show created table ID and record count
+
+### Workbook Orchestration Flow
+13. ~~**Deploy edge functions**~~ Done (clay-orchestrate, clay-auth-refresh)
+14. ~~**Discover working API flow**~~ Done - run-enrichment → wizard/evaluate-step
+15. **Test with AI columns** - Begin workbook → AI generates plan → Execute
+16. **Add plan approval step** - Show plan before executing
+17. **Implement real-time progress** - WebSocket updates during execution
+18. **Add template creation** - Save successful plans as reusable templates
