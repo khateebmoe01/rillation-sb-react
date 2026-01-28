@@ -23,9 +23,9 @@ Client
 
 ---
 
-## Current Status: Phase 1 - Architecture & UI Redesign
+## Current Status: Phase 2 - API Discovery & Integration
 
-**Last Updated:** 2026-01-27
+**Last Updated:** 2026-01-28
 
 ### Completed
 - [x] Explored clay-automation folder structure
@@ -50,9 +50,13 @@ Client
 - [x] **Created clay_auth table** and singleton index
 - [x] **Scheduled daily cron job** (5 AM UTC) to refresh Clay session
 - [x] **Initial auth refresh completed** - session stored, expires in 24h
+- [x] **DISCOVERED WORKING CLAY API FLOW** (Session 4 - see below)
+- [x] **Updated clay-orchestrate with two-step wizard pattern**
+- [x] **Added wizard_import step type for table creation**
+- [x] **Tested API flow - successfully created table with 2 records**
 
 ### In Progress
-- [ ] Test end-to-end flow (Begin Workbook → AI generates plan → Execute against Clay)
+- [ ] Test full end-to-end flow with AI columns (Begin Workbook → AI generates plan → Execute)
 
 ### Pending
 - [ ] Add plan review/approval step before execution
@@ -266,6 +270,78 @@ PATCH /v3/tables/{id}/run             # Run enrichment
 GET /v3/tables/{id}/views/{id}/records # Get results
 ```
 
+### DISCOVERED: Working Find Companies Flow (2026-01-28)
+
+**Important:** Clay does not have official API documentation. This flow was discovered via network inspection.
+
+The Find Companies flow requires TWO API calls in sequence:
+
+**Step 1: Run Enrichment Preview** (generates matching companies)
+```bash
+POST https://api.clay.com/v3/actions/run-enrichment
+
+{
+  "workspaceId": "161745",
+  "enrichmentType": "find-lists-of-companies-with-mixrank-source-preview",
+  "options": {
+    "sync": true,
+    "returnTaskId": true,
+    "returnActionMetadata": true
+  },
+  "inputs": {
+    "industries": ["Software Development"],
+    "sizes": ["51-200 employees"],
+    "country_names": ["United States"],
+    "limit": 100,
+    // ... many optional filter fields
+  }
+}
+
+# Response: { "taskId": "at_xxx", "companies": [...], "count": 42000000 }
+```
+
+**Step 2: Wizard Import** (creates workbook + table + imports data)
+```bash
+POST https://api.clay.com/v3/workspaces/{workspaceId}/wizard/evaluate-step
+
+{
+  "workbookId": null,  # null creates new workbook
+  "wizardId": "find-companies",
+  "wizardStepId": "companies-search",
+  "formInputs": {
+    "clientSettings": {"tableType": "company"},
+    "basicFields": [
+      {"name": "Name", "dataType": "text", "formulaText": "{{source}}.name"},
+      {"name": "Description", "dataType": "text", "formulaText": "{{source}}.description"},
+      {"name": "Primary Industry", "dataType": "text", "formulaText": "{{source}}.industry"},
+      {"name": "Size", "dataType": "select", "formulaText": "{{source}}.size", "options": [...]},
+      {"name": "Type", "dataType": "text", "formulaText": "{{source}}.type"},
+      {"name": "Location", "dataType": "text", "formulaText": "{{source}}.location"},
+      {"name": "Country", "dataType": "text", "formulaText": "{{source}}.country"},
+      {"name": "Domain", "dataType": "url", "formulaText": "{{source}}.domain"},
+      {"name": "LinkedIn URL", "dataType": "url", "formulaText": "{{source}}.linkedin_url", "isDedupeField": true}
+    ],
+    "previewActionTaskId": "at_xxx",  # FROM STEP 1!
+    "type": "companies",
+    "typeSettings": {
+      "name": "Find companies",
+      "actionKey": "find-lists-of-companies-with-mixrank-source",
+      "actionPackageId": "e251a70e-46d7-4f3a-b3ef-a211ad3d8bd2",
+      "previewActionKey": "find-lists-of-companies-with-mixrank-source-preview"
+    }
+  },
+  "sessionId": "uuid-v4",  # Fresh UUID for each request
+  "currentStepIndex": 0,
+  "outputs": [],
+  "firstUseCase": null,
+  "parentFolderId": null
+}
+
+# Response: { "tableId": "t_xxx", "sourceId": "s_xxx", "numSourceRecords": 2, "tableTotalRecordsCount": 2 }
+```
+
+**Verified Working:** Table `t_0t9l4729MccmafSCY2P` created with 2 records via this API flow.
+
 ---
 
 ## Example AI-Generated Plan
@@ -382,6 +458,31 @@ CLAY_PASSWORD=your-password           # Clay account password
 
 ## Change Log
 
+### 2026-01-28 (Session 4) - API Flow Discovery
+
+**Major Breakthrough:** Discovered the working Clay API flow for Find Companies import via network inspection.
+
+**Problem:** Direct table/source creation APIs were failing with "Invalid subscriptions" errors.
+
+**Solution:** Clay requires a two-step wizard-based approach:
+1. **Run enrichment preview** (`POST /v3/actions/run-enrichment`) → Returns `taskId`
+2. **Execute wizard step** (`POST /v3/workspaces/{id}/wizard/evaluate-step`) → Creates table + imports data
+
+**Changes Made:**
+- Updated `clay-orchestrate/index.ts` with new two-step API flow
+- Added `wizard_import` step type to execution plan
+- Added `run_enrichment` step type with proper taskId extraction
+- Updated SYSTEM_PROMPT with detailed wizard payload documentation
+- Added `SESSION_ID` placeholder with UUID generation
+- Added proper context extraction for `TASK_ID`, `TABLE_ID`, `SOURCE_ID`
+- Updated `useClayOrchestration.ts` hook with new step types
+
+**Verified:** Successfully created table `t_0t9l4729MccmafSCY2P` with 2 company records via the new API flow.
+
+**Files Modified:**
+- `supabase/functions/clay-orchestrate/index.ts`
+- `src/hooks/useClayOrchestration.ts`
+
 ### 2026-01-27 (Session 3)
 - **Deployed `clay-orchestrate` edge function** to Supabase
 - Verified ANTHROPIC_API_KEY secret is already configured
@@ -429,7 +530,9 @@ CLAY_PASSWORD=your-password           # Clay account password
 3. ~~**Set Clay credentials secrets**~~ ✅ Done (CLAY_EMAIL, CLAY_PASSWORD)
 4. ~~**Create database table**~~ ✅ Done (clay_auth + cron job)
 5. ~~**Initial auth refresh**~~ ✅ Done - session stored
-6. **Test end-to-end flow** - Begin workbook → AI generates plan → Execute against Clay
-7. **Add plan approval step** - Show plan before executing
-8. **Implement real-time progress** - WebSocket updates during execution
-9. **Add template creation** - Save successful plans as reusable templates
+6. ~~**Discover working API flow**~~ ✅ Done - run-enrichment → wizard/evaluate-step
+7. ~~**Update orchestrator with new flow**~~ ✅ Done - deployed to Supabase
+8. **Test full end-to-end flow with AI columns** - Begin workbook → AI generates plan → Execute
+9. **Add plan approval step** - Show plan before executing
+10. **Implement real-time progress** - WebSocket updates during execution
+11. **Add template creation** - Save successful plans as reusable templates
