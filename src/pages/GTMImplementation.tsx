@@ -17,7 +17,7 @@ import {
 } from 'lucide-react'
 import { useFilters } from '../contexts/FilterContext'
 import { useClayConfig, useClayTemplates, useClayExecutionLogs } from '../hooks/useClayConfig'
-import { useClayOrchestration } from '../hooks/useClayOrchestration'
+import { useClayWorkbook } from '../hooks/useClayWorkbook'
 import { useSavedConfigs } from '../hooks/useSavedConfigs'
 import StrategyHeader from '../components/strategy/StrategyHeader'
 import {
@@ -43,14 +43,13 @@ export default function GTMImplementation() {
   const { templates } = useClayTemplates()
   const { logs, refetch: refetchLogs } = useClayExecutionLogs(strategyClient || undefined)
 
-  // AI Orchestration
+  // Clay Workbook
   const {
-    status: orchestrationStatus,
-    plan: orchestrationPlan,
-    error: orchestrationError,
-    result: orchestrationResult,
-    beginWorkbook,
-  } = useClayOrchestration()
+    status: workbookStatus,
+    result: workbookResult,
+    error: workbookError,
+    createWorkbook,
+  } = useClayWorkbook()
 
   // Saved configs
   const handleLoadConfig = useCallback((configData: Partial<WorkbookConfig>) => {
@@ -72,15 +71,14 @@ export default function GTMImplementation() {
   const handleBeginWorkbook = async () => {
     if (!strategyClient || !workbookConfig.leadSource) return
 
-    await beginWorkbook(
-      {
-        workbookName: workbookConfig.workbookName,
-        leadSource: workbookConfig.leadSource,
-        sourceConfig: workbookConfig.sourceConfig,
-        qualificationColumns: workbookConfig.qualificationColumns,
-      },
-      strategyClient
-    )
+    const filters = workbookConfig.sourceConfig.filters || {}
+    console.log('[GTMImplementation] Starting workbook with filters:', JSON.stringify(filters, null, 2))
+
+    await createWorkbook({
+      client: strategyClient,
+      workbookName: workbookConfig.workbookName,
+      filters,
+    })
     refetchLogs()
   }
 
@@ -183,10 +181,9 @@ export default function GTMImplementation() {
                   config={workbookConfig}
                   onNameChange={(name) => setWorkbookConfig({ ...workbookConfig, workbookName: name })}
                   onBegin={handleBeginWorkbook}
-                  status={orchestrationStatus}
-                  plan={orchestrationPlan}
-                  error={orchestrationError}
-                  result={orchestrationResult}
+                  status={workbookStatus}
+                  error={workbookError}
+                  result={workbookResult}
                 />
               </motion.div>
             ) : (

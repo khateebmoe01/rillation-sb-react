@@ -343,12 +343,13 @@ export function WorkbookBuilder({ config, onChange, client }: WorkbookBuilderPro
                       >
                         <CompanySearchFilters
                           initialFilters={config.sourceConfig.filters}
-                          onSearch={(filters) =>
+                          onSearch={(filters) => {
+                            console.log('[WorkbookBuilder] onSearch received filters:', JSON.stringify(filters, null, 2))
                             onChange({
                               ...config,
                               sourceConfig: { ...config.sourceConfig, filters },
                             })
-                          }
+                          }}
                         />
                       </motion.div>
                     ) : (

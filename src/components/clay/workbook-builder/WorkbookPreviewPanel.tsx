@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion'
 import { Sparkles, Building2, Columns, CheckCircle2, AlertCircle, Loader2, ExternalLink } from 'lucide-react'
 import type { WorkbookConfig } from './WorkbookBuilder'
-import type { OrchestrationStatus, ExecutionPlan, OrchestrationResult } from '../../../hooks/useClayOrchestration'
+import type { WorkbookStatus, CreateWorkbookResult } from '../../../hooks/useClayWorkbook'
 
 const AI_MODELS: Record<string, { name: string; credits: number }> = {
   'clay-argon': { name: 'Clay Argon', credits: 1 },
@@ -15,10 +15,9 @@ interface WorkbookPreviewPanelProps {
   config: WorkbookConfig
   onNameChange: (name: string) => void
   onBegin: () => void
-  status: OrchestrationStatus
-  plan?: ExecutionPlan | null
+  status: WorkbookStatus
   error?: string | null
-  result?: OrchestrationResult | null
+  result?: CreateWorkbookResult | null
 }
 
 export function WorkbookPreviewPanel({
@@ -26,7 +25,6 @@ export function WorkbookPreviewPanel({
   onNameChange,
   onBegin,
   status,
-  plan,
   error,
   result,
 }: WorkbookPreviewPanelProps) {
@@ -35,16 +33,30 @@ export function WorkbookPreviewPanel({
     return total + (model?.credits || 1) * config.sourceConfig.maxRows
   }, 0)
 
-  const filterCount = config.sourceConfig.filters
-    ? Object.values(config.sourceConfig.filters).filter(
-        (v) => v && (Array.isArray(v) ? v.length > 0 : true)
-      ).length
-    : 0
+  // Count only meaningful filters (arrays with values), excluding limit
+  const filters = config.sourceConfig.filters || {}
+  const meaningfulFilterKeys = [
+    'industries', 'sizes', 'annual_revenues', 'country_names', 'locations',
+    'description_keywords', 'semantic_description', 'types', 'funding_amounts',
+    'industries_exclude', 'country_names_exclude', 'locations_exclude',
+    'description_keywords_exclude', 'company_identifier'
+  ]
+
+  const filterCount = meaningfulFilterKeys.reduce((count, key) => {
+    const value = (filters as Record<string, unknown>)[key]
+    if (Array.isArray(value) && value.length > 0) return count + 1
+    if (typeof value === 'string' && value.trim() !== '') return count + 1
+    return count
+  }, 0)
+
+  // For find-companies, require at least one meaningful filter
+  const hasFilters = config.leadSource !== 'find-companies' || filterCount > 0
 
   // CE columns are now optional
   const isValid =
     config.leadSource !== null &&
-    config.workbookName.trim() !== ''
+    config.workbookName.trim() !== '' &&
+    hasFilters
 
   return (
     <div className="w-72 flex-shrink-0 border-l border-gray-800 bg-[#0a0a0f] flex flex-col">
@@ -158,7 +170,7 @@ export function WorkbookPreviewPanel({
 
         {/* Status Display */}
         {status !== 'idle' && (
-          <StatusDisplay status={status} plan={plan} error={error} result={result} />
+          <StatusDisplay status={status} error={error} result={result} />
         )}
       </div>
 
@@ -166,24 +178,29 @@ export function WorkbookPreviewPanel({
       <div className="p-4 border-t border-gray-800">
         <button
           onClick={onBegin}
-          disabled={!isValid || status === 'generating' || status === 'executing'}
+          disabled={!isValid || status === 'creating' || status === 'finding' || status === 'importing'}
           className={`w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg font-medium transition-all ${
             isValid && status === 'idle'
               ? 'bg-white text-black hover:bg-gray-200'
-              : status === 'generating' || status === 'executing'
+              : status === 'creating' || status === 'finding' || status === 'importing'
               ? 'bg-blue-500 text-white'
               : 'bg-gray-800 text-gray-500 cursor-not-allowed'
           }`}
         >
-          {status === 'generating' ? (
+          {status === 'creating' ? (
             <>
               <Loader2 size={16} className="animate-spin" />
-              Generating Plan...
+              Creating...
             </>
-          ) : status === 'executing' ? (
+          ) : status === 'finding' ? (
             <>
               <Loader2 size={16} className="animate-spin" />
-              Executing...
+              Finding...
+            </>
+          ) : status === 'importing' ? (
+            <>
+              <Loader2 size={16} className="animate-spin" />
+              Importing...
             </>
           ) : (
             <>
@@ -194,14 +211,18 @@ export function WorkbookPreviewPanel({
         </button>
         {isValid && status === 'idle' && (
           <p className="text-xs text-gray-600 text-center mt-2">
-            Claude Opus 4.5 will optimize your execution
+            Creates workbook and imports companies to Clay
           </p>
         )}
         {!isValid && status === 'idle' && (
           <p className="text-xs text-red-400/60 text-center mt-2">
             {!config.leadSource
               ? 'Select a lead source'
-              : 'Enter a workbook name'}
+              : !config.workbookName.trim()
+              ? 'Enter a workbook name'
+              : !hasFilters
+              ? 'Select at least one filter (industry, country, etc.)'
+              : 'Complete configuration'}
           </p>
         )}
       </div>
@@ -234,103 +255,124 @@ function SummaryRow({
   )
 }
 
+// Step indicator component
+function StepIndicator({
+  step,
+  label,
+  status
+}: {
+  step: number
+  label: string
+  status: 'pending' | 'active' | 'complete' | 'error'
+}) {
+  return (
+    <div className="flex items-center gap-2">
+      <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-medium ${
+        status === 'complete' ? 'bg-green-500 text-white' :
+        status === 'active' ? 'bg-blue-500 text-white' :
+        status === 'error' ? 'bg-red-500 text-white' :
+        'bg-gray-700 text-gray-400'
+      }`}>
+        {status === 'complete' ? <CheckCircle2 size={12} /> :
+         status === 'active' ? <Loader2 size={12} className="animate-spin" /> :
+         status === 'error' ? <AlertCircle size={12} /> :
+         step}
+      </div>
+      <span className={`text-xs ${
+        status === 'complete' ? 'text-green-400' :
+        status === 'active' ? 'text-blue-400' :
+        status === 'error' ? 'text-red-400' :
+        'text-gray-500'
+      }`}>
+        {label}
+      </span>
+    </div>
+  )
+}
+
 // Status Display
 function StatusDisplay({
   status,
-  plan,
   error,
   result,
 }: {
-  status: OrchestrationStatus
-  plan?: ExecutionPlan | null
+  status: WorkbookStatus
   error?: string | null
-  result?: OrchestrationResult | null
+  result?: CreateWorkbookResult | null
 }) {
-  if (error) {
-    return (
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="bg-red-500/10 border border-red-500/30 rounded-lg p-3"
-      >
-        <div className="flex items-center gap-2 text-red-400 text-sm font-medium mb-1">
-          <AlertCircle size={14} />
-          Error
-        </div>
-        <p className="text-xs text-red-300/80">{error}</p>
-      </motion.div>
-    )
+  // Determine step statuses
+  const getStepStatus = (stepName: 'create_workbook' | 'find_companies' | 'import_companies') => {
+    if (status === 'idle') return 'pending'
+
+    const stepOrder = ['create_workbook', 'find_companies', 'import_companies']
+    const currentStepMap: Record<WorkbookStatus, number> = {
+      'idle': -1,
+      'creating': 0,
+      'finding': 1,
+      'importing': 2,
+      'complete': 3,
+      'error': stepOrder.indexOf(result?.step || 'create_workbook')
+    }
+
+    const stepIndex = stepOrder.indexOf(stepName)
+    const currentIndex = currentStepMap[status]
+
+    if (status === 'error' && result?.step === stepName) return 'error'
+    if (stepIndex < currentIndex) return 'complete'
+    if (stepIndex === currentIndex && status !== 'error') return 'active'
+    return 'pending'
   }
 
-  if (status === 'complete' && plan) {
-    const clayTableUrl = result?.createdTableId
-      ? `https://app.clay.com/workspaces/${result.createdWorkspaceId || ''}/tables/${result.createdTableId}`
-      : null
+  if (status === 'idle') return null
 
-    return (
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="bg-green-500/10 border border-green-500/30 rounded-lg p-3"
-      >
-        <div className="flex items-center gap-2 text-green-400 text-sm font-medium mb-2">
-          <CheckCircle2 size={14} />
-          {result?.success ? 'Workbook Created!' : 'Plan Generated'}
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="space-y-3"
+    >
+      {/* Steps Progress */}
+      <div className="bg-gray-800/50 rounded-lg p-3 space-y-2">
+        <StepIndicator step={1} label="Create workbook" status={getStepStatus('create_workbook')} />
+        <StepIndicator step={2} label="Find companies" status={getStepStatus('find_companies')} />
+        <StepIndicator step={3} label="Import companies" status={getStepStatus('import_companies')} />
+      </div>
+
+      {/* Error message */}
+      {error && (
+        <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3">
+          <p className="text-xs text-red-300/80">{error}</p>
         </div>
-        <div className="space-y-1 text-xs text-gray-400">
-          <div className="flex justify-between">
-            <span>Steps</span>
-            <span className="text-white">{plan.steps?.length || 0}</span>
+      )}
+
+      {/* Success result */}
+      {status === 'complete' && result?.success && (
+        <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-3">
+          <div className="space-y-1 text-xs text-gray-400">
+            <div className="flex justify-between">
+              <span>Companies Found</span>
+              <span className="text-white">{result.companiesFound?.toLocaleString() || 0}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Records Imported</span>
+              <span className="text-white">{result.recordsImported?.toLocaleString() || 0}</span>
+            </div>
           </div>
-          <div className="flex justify-between">
-            <span>Est. Credits</span>
-            <span className="text-white">{plan.estimatedTotalCredits?.toLocaleString() || 0}</span>
-          </div>
+          {result.tableUrl && (
+            <a
+              href={result.tableUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-3 flex items-center justify-center gap-2 w-full px-3 py-2 bg-white text-black text-xs font-medium rounded-lg hover:bg-gray-200 transition-colors"
+            >
+              <ExternalLink size={12} />
+              Open in Clay
+            </a>
+          )}
         </div>
-        {plan.summary && (
-          <p className="text-xs text-gray-500 mt-2">{plan.summary}</p>
-        )}
-        {/* Open in Clay button */}
-        {clayTableUrl && (
-          <motion.a
-            href={clayTableUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            initial={{ opacity: 0, y: 5 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="mt-3 flex items-center justify-center gap-2 w-full px-3 py-2 bg-white text-black text-xs font-medium rounded-lg hover:bg-gray-200 transition-colors"
-          >
-            <ExternalLink size={12} />
-            Open in Clay
-          </motion.a>
-        )}
-        {result?.executionLog && (
-          <p className="text-[10px] text-gray-600 mt-2 italic">{result.executionLog}</p>
-        )}
-      </motion.div>
-    )
-  }
-
-  if (status === 'generating') {
-    return (
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3"
-      >
-        <div className="flex items-center gap-2 text-blue-400 text-sm font-medium">
-          <Loader2 size={14} className="animate-spin" />
-          Generating execution plan...
-        </div>
-        <p className="text-xs text-gray-500 mt-1">
-          Claude is analyzing your configuration
-        </p>
-      </motion.div>
-    )
-  }
-
-  return null
+      )}
+    </motion.div>
+  )
 }
 
 export default WorkbookPreviewPanel

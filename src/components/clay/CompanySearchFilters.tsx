@@ -1,7 +1,6 @@
 import { useState, useMemo, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  Search,
   MapPin,
   Sparkles,
   Link2,
@@ -47,7 +46,6 @@ interface CompanySearchFiltersProps {
   onSearch: (filters: FilterType) => void
   onSave?: (name: string, filters: FilterType) => void
   initialFilters?: FilterType
-  isSearching?: boolean
   isSaving?: boolean
   className?: string
 }
@@ -56,7 +54,6 @@ export default function CompanySearchFilters({
   onSearch,
   onSave,
   initialFilters,
-  isSearching = false,
   isSaving = false,
   className = '',
 }: CompanySearchFiltersProps) {
@@ -94,15 +91,17 @@ export default function CompanySearchFilters({
   const totalActiveFilters = Object.values(activeFilterCounts).reduce((a, b) => a + b, 0)
 
   const updateFilter = <K extends keyof FilterType>(key: K, value: FilterType[K]) => {
-    setFilters(prev => ({ ...prev, [key]: value }))
+    const newFilters = { ...filters, [key]: value }
+    console.log(`[CompanySearchFilters] updateFilter: ${key} =`, value)
+    console.log('[CompanySearchFilters] Full filters now:', JSON.stringify(newFilters, null, 2))
+    setFilters(newFilters)
+    onSearch(newFilters)  // Sync to parent immediately
   }
 
   const handleReset = () => {
-    setFilters(createDefaultFilters())
-  }
-
-  const handleSearch = () => {
-    onSearch(filters)
+    const defaultFilters = createDefaultFilters()
+    setFilters(defaultFilters)
+    onSearch(defaultFilters)  // Sync reset to parent
   }
 
   const handleSave = () => {
@@ -427,34 +426,7 @@ export default function CompanySearchFilters({
         </CollapsibleSection>
       </div>
 
-      {/* Search Button */}
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.3 }}
-        className="pt-4"
-      >
-        <motion.button
-          type="button"
-          onClick={handleSearch}
-          disabled={isSearching}
-          className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-white text-black font-medium rounded-xl hover:bg-white/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          whileHover={{ scale: 1.01, boxShadow: '0 0 20px rgba(255, 255, 255, 0.3)' }}
-          whileTap={{ scale: 0.99 }}
-        >
-          {isSearching ? (
-            <>
-              <Loader2 size={18} className="animate-spin" />
-              Searching...
-            </>
-          ) : (
-            <>
-              <Search size={18} />
-              Find Companies
-            </>
-          )}
-        </motion.button>
-      </motion.div>
+      {/* Filters sync automatically - no search button needed */}
 
       {/* Save Search Modal */}
       <AnimatePresence>
