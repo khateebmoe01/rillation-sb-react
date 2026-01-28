@@ -61,33 +61,18 @@ Deno.serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
-    // Upsert the session (singleton pattern - always update the same row)
-    const { error: upsertError } = await supabase
+    // Delete all existing rows and insert new one (singleton pattern)
+    await supabase.from('clay_auth').delete().gte('created_at', '1970-01-01')
+
+    const { error: insertError } = await supabase
       .from('clay_auth')
-      .upsert(
-        {
-          session_cookie: sessionCookie,
-          expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 24 hours from now
-          updated_at: new Date().toISOString(),
-        },
-        {
-          onConflict: 'id',
-          ignoreDuplicates: false,
-        }
-      )
+      .insert({
+        session_cookie: sessionCookie,
+        expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+      })
 
-    // If no rows exist yet, insert the first one
-    if (upsertError) {
-      const { error: insertError } = await supabase
-        .from('clay_auth')
-        .insert({
-          session_cookie: sessionCookie,
-          expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-        })
-
-      if (insertError) {
-        throw new Error(`Failed to store session: ${insertError.message}`)
-      }
+    if (insertError) {
+      throw new Error(`Failed to store session: ${insertError.message}`)
     }
 
     console.log('Clay session stored successfully')
