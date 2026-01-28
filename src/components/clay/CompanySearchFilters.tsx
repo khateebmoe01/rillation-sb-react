@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Search,
@@ -46,6 +46,7 @@ const COMMON_COUNTRIES = [
 interface CompanySearchFiltersProps {
   onSearch: (filters: FilterType) => void
   onSave?: (name: string, filters: FilterType) => void
+  initialFilters?: FilterType
   isSearching?: boolean
   isSaving?: boolean
   className?: string
@@ -54,11 +55,22 @@ interface CompanySearchFiltersProps {
 export default function CompanySearchFilters({
   onSearch,
   onSave,
+  initialFilters,
   isSearching = false,
   isSaving = false,
   className = '',
 }: CompanySearchFiltersProps) {
-  const [filters, setFilters] = useState<FilterType>(createDefaultFilters())
+  const [filters, setFilters] = useState<FilterType>(
+    initialFilters ? { ...createDefaultFilters(), ...initialFilters } : createDefaultFilters()
+  )
+
+  // Sync filters when initialFilters changes (e.g., from AI generation)
+  useEffect(() => {
+    if (initialFilters) {
+      setFilters({ ...createDefaultFilters(), ...initialFilters })
+    }
+  }, [initialFilters])
+
   const [showSaveModal, setShowSaveModal] = useState(false)
   const [searchName, setSearchName] = useState('')
 

@@ -278,6 +278,30 @@ export interface EngagedLead {
   created_at?: string
 }
 
+export type FathomCallType = 'tam_map' | 'opportunity_review' | 'messaging_review' | 'general'
+export type FathomCallStatus = 'pending' | 'processed' | 'archived'
+
+export interface FathomCall {
+  id: string
+  fathom_call_id: string
+  client: string | null
+  title: string
+  call_date: string | null
+  duration_seconds: number | null
+  transcript: string | null
+  summary: string | null
+  participants: Array<{ name: string; email: string }>
+  action_items: string[]
+  call_type: FathomCallType
+  status: FathomCallStatus
+  auto_matched: boolean
+  match_confidence: number
+  fathom_recording_url: string | null
+  fathom_raw_data: Record<string, unknown> | null
+  created_at: string
+  updated_at: string
+}
+
 // Aggregated Data Types for Dashboard
 
 export interface QuickViewMetrics {
@@ -388,4 +412,81 @@ export interface ClayExecutionLog {
   started_at: string
   completed_at?: string
 }
+
+// Clay Find Companies Filter Types
+export interface ClayCompanySearchFilters {
+  industries: string[]
+  sizes: string[]
+  annual_revenues: string[]
+  country_names: string[]
+  locations: string[]
+  description_keywords: string[]
+  semantic_description: string
+  limit: number
+  industries_exclude: string[]
+  country_names_exclude: string[]
+  locations_exclude: string[]
+  description_keywords_exclude: string[]
+  funding_amounts: string[]
+  types: string[]
+  minimum_member_count: number | null
+  maximum_member_count: number | null
+  minimum_follower_count: number | null
+  // Additional Clay API fields
+  company_identifier: string[]
+  startFromCompanyType: string
+  exclude_company_identifiers_mixed: string[]
+  exclude_entities_configuration: string[]
+  exclude_entities_bitmap: string | null
+  previous_entities_bitmap: string | null
+  derived_industries: string[]
+  derived_subindustries: string[]
+  derived_subindustries_exclude: string[]
+  derived_revenue_streams: string[]
+  derived_business_types: string[]
+  tableId: string | null
+  domainFieldId: string | null
+  useRadialKnn: boolean
+  radialKnnMinScore: number | null
+  has_resolved_domain: boolean | null
+  resolved_domain_is_live: boolean | null
+  resolved_domain_redirects: boolean | null
+  name: string
+}
+
+export type GeneratedFilterStatus = 'pending_review' | 'approved' | 'submitted' | 'failed'
+
+export interface GeneratedFilter {
+  id: string
+  fathom_call_id: string | null
+  client: string
+  filters: ClayCompanySearchFilters
+  reasoning: string | null
+  suggested_limit: number
+  confidence: number | null
+  status: GeneratedFilterStatus
+  user_edits: Record<string, unknown> | null
+  clay_task_id: string | null
+  clay_table_id: string | null
+  clay_response: Record<string, unknown> | null
+  submitted_to_clay_at: string | null
+  error_message: string | null
+  created_at: string
+  updated_at: string
+}
+
+// Valid size values for Clay company search
+export const CLAY_SIZE_OPTIONS = [
+  'Self-employed',
+  '2-10 employees',
+  '11-50 employees',
+  '51-200 employees',
+  '201-500 employees',
+  '501-1,000 employees',
+  '1,001-5,000 employees',
+  '5,001-10,000 employees',
+  '10,001+ employees'
+] as const
+
+export type ClaySizeOption = typeof CLAY_SIZE_OPTIONS[number]
 
