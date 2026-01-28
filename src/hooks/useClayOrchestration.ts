@@ -41,7 +41,7 @@ interface OrchestrationRequest {
 
 interface ExecutionStep {
   order: number
-  type: 'create_workbook' | 'add_source' | 'add_column' | 'run_enrichment'
+  type: 'create_workbook' | 'create_table' | 'add_source' | 'add_column' | 'run_enrichment' | 'wizard_import'
   description: string
   apiEndpoint: string
   apiMethod: string

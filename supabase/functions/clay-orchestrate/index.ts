@@ -83,7 +83,7 @@ interface OrchestrationRequest {
 
 interface ExecutionStep {
   order: number;
-  type: 'create_workbook' | 'create_table' | 'add_source' | 'add_column' | 'run_enrichment';
+  type: 'create_workbook' | 'create_table' | 'add_source' | 'add_column' | 'run_enrichment' | 'wizard_import';
   description: string;
   apiEndpoint: string;
   apiMethod: string;
@@ -118,29 +118,121 @@ const SYSTEM_PROMPT = `You are a Clay.com automation orchestrator. Generate exec
 ## RULES
 - apiEndpoint: ONLY paths starting with "/" (no full URLs)
 - apiMethod: "POST", "PATCH", "GET", or "DELETE"
-- Placeholders: {{WORKSPACE_ID}}, {{TABLE_ID}}, {{VIEW_ID}}
+- Placeholders: {{WORKSPACE_ID}}, {{TABLE_ID}}, {{VIEW_ID}}, {{TASK_ID}}, {{WORKBOOK_ID}}
 
-## STEP 1: Create Table with Find Companies Source (auto-creates workbook)
-type: "create_table"
+## STEP 1: Run Find Companies Preview (generates company list)
+type: "run_enrichment"
 apiMethod: "POST"
-apiEndpoint: "/tables"
+apiEndpoint: "/actions/run-enrichment"
 payload: {
-  "name": "CE Table",
   "workspaceId": "{{WORKSPACE_ID}}",
-  "type": "company",
-  "source": {
-    "type": "find-lists-of-companies-with-mixrank-source-preview",
-    "inputs": {
-      "industries": ["Software Development"],
-      "sizes": ["51-200 employees"],
-      "country_names": ["United States"],
-      "limit": 100
-    }
+  "enrichmentType": "find-lists-of-companies-with-mixrank-source-preview",
+  "options": {
+    "sync": true,
+    "returnTaskId": true,
+    "returnActionMetadata": true
+  },
+  "inputs": {
+    "industries": ["Software Development"],
+    "sizes": ["51-200 employees"],
+    "country_names": ["United States"],
+    "limit": 100,
+    "types": [],
+    "country_names_exclude": [],
+    "funding_amounts": [],
+    "annual_revenues": [],
+    "industries_exclude": [],
+    "description_keywords": [],
+    "description_keywords_exclude": [],
+    "locations": [],
+    "locations_exclude": [],
+    "semantic_description": "",
+    "minimum_follower_count": null,
+    "minimum_member_count": null,
+    "maximum_member_count": null,
+    "company_identifier": [],
+    "startFromCompanyType": "company_identifier",
+    "exclude_company_identifiers_mixed": [],
+    "exclude_entities_configuration": [],
+    "exclude_entities_bitmap": null,
+    "previous_entities_bitmap": null,
+    "derived_industries": [],
+    "derived_subindustries": [],
+    "derived_subindustries_exclude": [],
+    "derived_revenue_streams": [],
+    "derived_business_types": [],
+    "tableId": null,
+    "domainFieldId": null,
+    "useRadialKnn": false,
+    "radialKnnMinScore": null,
+    "has_resolved_domain": null,
+    "resolved_domain_is_live": null,
+    "resolved_domain_redirects": null,
+    "name": ""
   }
 }
-NOTE: Include ALL user-specified filters in source.inputs (industries, sizes, annual_revenues, country_names, locations, description_keywords, etc.)
+NOTE: Include ALL user-specified filters in inputs (industries, sizes, annual_revenues, country_names, locations, description_keywords, etc.)
+RESPONSE: Returns {"taskId": "at_xxx", "companies": [...]} - extract taskId for step 2
 
-## STEP 2+: Add AI Columns
+## STEP 2: Import Companies via Wizard (creates workbook + table + imports data)
+type: "wizard_import"
+apiMethod: "POST"
+apiEndpoint: "/workspaces/{{WORKSPACE_ID}}/wizard/evaluate-step"
+payload: {
+  "workbookId": null,
+  "wizardId": "find-companies",
+  "wizardStepId": "companies-search",
+  "formInputs": {
+    "clientSettings": {"tableType": "company"},
+    "requiredDataPoint": null,
+    "basicFields": [
+      {"name": "Name", "dataType": "text", "formulaText": "{{source}}.name"},
+      {"name": "Description", "dataType": "text", "formulaText": "{{source}}.description"},
+      {"name": "Primary Industry", "dataType": "text", "formulaText": "{{source}}.industry"},
+      {"name": "Size", "dataType": "select", "formulaText": "{{source}}.size", "options": [
+        {"id": "58c754e8-096f-463b-93d1-afdb77afd9af", "text": "Self-employed", "color": "yellow"},
+        {"id": "d1fcc19a-55df-4426-9359-a20a03de6d0c", "text": "2-10 employees", "color": "blue"},
+        {"id": "a27501e9-4c37-4788-ab1d-8d3f9a15cb2a", "text": "11-50 employees", "color": "green"},
+        {"id": "ca291162-ef51-4d50-bb51-c16ae708f01f", "text": "51-200 employees", "color": "red"},
+        {"id": "a490e899-a064-49d8-be4e-27bcef5ec7f6", "text": "201-500 employees", "color": "violet"},
+        {"id": "c36491c6-2027-49da-b845-f48b18de1038", "text": "501-1,000 employees", "color": "grey"},
+        {"id": "dc112420-2241-47fc-a652-af3d39a758fa", "text": "1,001-5,000 employees", "color": "orange"},
+        {"id": "187301c3-cde3-44d4-a3cf-b960debf9181", "text": "5,001-10,000 employees", "color": "pink"},
+        {"id": "142997a6-9458-4823-9f14-e53e58fbc3e3", "text": "10,001+ employees", "color": "yellow"}
+      ]},
+      {"name": "Type", "dataType": "text", "formulaText": "{{source}}.type"},
+      {"name": "Location", "dataType": "text", "formulaText": "{{source}}.location"},
+      {"name": "Country", "dataType": "text", "formulaText": "{{source}}.country"},
+      {"name": "Domain", "dataType": "url", "formulaText": "{{source}}.domain"},
+      {"name": "LinkedIn URL", "dataType": "url", "formulaText": "{{source}}.linkedin_url", "isDedupeField": true}
+    ],
+    "previewActionTaskId": "{{TASK_ID}}",
+    "type": "companies",
+    "typeSettings": {
+      "name": "Find companies",
+      "iconType": "Buildings",
+      "actionKey": "find-lists-of-companies-with-mixrank-source",
+      "actionPackageId": "e251a70e-46d7-4f3a-b3ef-a211ad3d8bd2",
+      "previewTextPath": "name",
+      "defaultPreviewText": "Profile",
+      "recordsPath": "companies",
+      "idPath": "linkedin_company_id",
+      "scheduleConfig": {"runSettings": "once"},
+      "inputs": {},
+      "hasEvaluatedInputs": true,
+      "previewActionKey": "find-lists-of-companies-with-mixrank-source-preview"
+    }
+  },
+  "sessionId": "{{SESSION_ID}}",
+  "currentStepIndex": 0,
+  "outputs": [],
+  "firstUseCase": null,
+  "parentFolderId": null
+}
+NOTE: previewActionTaskId MUST be the taskId from step 1. sessionId should be a fresh UUID.
+RESPONSE: Returns {tableId, sourceId, numSourceRecords, tableTotalRecordsCount}
+
+## STEP 3+: Add AI Columns
 type: "add_column"
 apiMethod: "POST"
 apiEndpoint: "/tables/{{TABLE_ID}}/fields"
@@ -170,8 +262,9 @@ payload: {
   "estimatedTotalCredits": number,
   "estimatedRows": number,
   "steps": [
-    {"order": 1, "type": "create_table", "description": "Create table with Find Companies source", "apiMethod": "POST", "apiEndpoint": "/tables", "payload": {...}, "estimatedCredits": 0},
-    {"order": 2, "type": "add_column", "description": "Add AI column", "apiMethod": "POST", "apiEndpoint": "/tables/{{TABLE_ID}}/fields", "payload": {...}, "estimatedCredits": 100}
+    {"order": 1, "type": "run_enrichment", "description": "Run Find Companies preview to get matching companies", "apiMethod": "POST", "apiEndpoint": "/actions/run-enrichment", "payload": {...}, "estimatedCredits": 0},
+    {"order": 2, "type": "wizard_import", "description": "Create workbook and import companies via wizard", "apiMethod": "POST", "apiEndpoint": "/workspaces/{{WORKSPACE_ID}}/wizard/evaluate-step", "payload": {...}, "estimatedCredits": 0, "dependsOn": [1]},
+    {"order": 3, "type": "add_column", "description": "Add AI column", "apiMethod": "POST", "apiEndpoint": "/tables/{{TABLE_ID}}/fields", "payload": {...}, "estimatedCredits": 100, "dependsOn": [2]}
   ],
   "warnings": [],
   "recommendations": []
@@ -313,6 +406,15 @@ async function executeStep(
   }
 }
 
+// Generate a UUID v4
+function generateUUID(): string {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    const r = Math.random() * 16 | 0;
+    const v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+}
+
 async function executePlan(
   plan: ExecutionPlan,
   claySession: string,
@@ -320,6 +422,7 @@ async function executePlan(
 ): Promise<{ success: boolean; results: any[]; errors: string[] }> {
   const context: Record<string, string> = {
     WORKSPACE_ID: workspaceId,
+    SESSION_ID: generateUUID(), // Generate fresh session ID for wizard
   };
   const results: any[] = [];
   const errors: string[] = [];
@@ -333,7 +436,7 @@ async function executePlan(
     if (!success) {
       errors.push(`Step ${stepOrder} (${step.type || 'unknown'}): ${error}`);
       // For critical steps, abort
-      if (step.type === 'create_workbook' || step.type === 'create_table') {
+      if (step.type === 'create_workbook' || step.type === 'create_table' || step.type === 'run_enrichment' || step.type === 'wizard_import') {
         return { success: false, results, errors };
       }
       continue;
@@ -341,7 +444,26 @@ async function executePlan(
 
     results.push({ step: step.order, result });
 
-    // Extract IDs for subsequent steps
+    // Extract IDs for subsequent steps based on step type
+    if (step.type === 'run_enrichment' && result) {
+      // run-enrichment returns { taskId: "at_xxx", companies: [...], ... }
+      console.log('Enrichment response - extracting taskId');
+      context.TASK_ID = result.taskId || '';
+      console.log(`Extracted TASK_ID: ${context.TASK_ID}`);
+    }
+
+    if (step.type === 'wizard_import' && result) {
+      // wizard/evaluate-step returns { tableId, sourceId, numSourceRecords, tableTotalRecordsCount, workbookId? }
+      console.log('Wizard import response:', JSON.stringify(result, null, 2));
+      context.TABLE_ID = result.tableId || '';
+      context.SOURCE_ID = result.sourceId || '';
+      context.VIEW_ID = result.tableId || ''; // Table ID is often used as view ID
+      if (result.workbookId) {
+        context.WORKBOOK_ID = result.workbookId;
+      }
+      console.log(`Extracted TABLE_ID: ${context.TABLE_ID}, SOURCE_ID: ${context.SOURCE_ID}, WORKBOOK_ID: ${context.WORKBOOK_ID || 'auto'}`);
+    }
+
     if (step.type === 'create_table' && result) {
       console.log('Table response:', JSON.stringify(result, null, 2));
       // Table creation returns { table: { id, firstViewId, ... }, extraData: { newlyCreatedWorkbook: {...} } }
