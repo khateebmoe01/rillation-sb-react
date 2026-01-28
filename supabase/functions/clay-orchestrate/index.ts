@@ -218,7 +218,44 @@ payload: {
       "recordsPath": "companies",
       "idPath": "linkedin_company_id",
       "scheduleConfig": {"runSettings": "once"},
-      "inputs": {},
+      "inputs": {
+        "industries": ["Software Development"],
+        "sizes": ["51-200 employees"],
+        "country_names": ["United States"],
+        "limit": 100,
+        "types": [],
+        "country_names_exclude": [],
+        "funding_amounts": [],
+        "annual_revenues": [],
+        "industries_exclude": [],
+        "description_keywords": [],
+        "description_keywords_exclude": [],
+        "locations": [],
+        "locations_exclude": [],
+        "semantic_description": "",
+        "minimum_follower_count": null,
+        "minimum_member_count": null,
+        "maximum_member_count": null,
+        "company_identifier": [],
+        "startFromCompanyType": "company_identifier",
+        "exclude_company_identifiers_mixed": [],
+        "exclude_entities_configuration": [],
+        "exclude_entities_bitmap": null,
+        "previous_entities_bitmap": null,
+        "derived_industries": [],
+        "derived_subindustries": [],
+        "derived_subindustries_exclude": [],
+        "derived_revenue_streams": [],
+        "derived_business_types": [],
+        "tableId": null,
+        "domainFieldId": null,
+        "useRadialKnn": false,
+        "radialKnnMinScore": null,
+        "has_resolved_domain": null,
+        "resolved_domain_is_live": null,
+        "resolved_domain_redirects": null,
+        "name": ""
+      },
       "hasEvaluatedInputs": true,
       "previewActionKey": "find-lists-of-companies-with-mixrank-source-preview"
     }
@@ -229,6 +266,7 @@ payload: {
   "firstUseCase": null,
   "parentFolderId": null
 }
+CRITICAL: typeSettings.inputs MUST contain the SAME filter criteria used in step 1's inputs!
 NOTE: previewActionTaskId MUST be the taskId from step 1. sessionId should be a fresh UUID.
 RESPONSE: Returns {tableId, sourceId, numSourceRecords, tableTotalRecordsCount}
 
@@ -453,13 +491,16 @@ async function executePlan(
     }
 
     if (step.type === 'wizard_import' && result) {
-      // wizard/evaluate-step returns { tableId, sourceId, numSourceRecords, tableTotalRecordsCount, workbookId? }
+      // wizard/evaluate-step returns { output: { table: { tableId }, recordCount }, workbookId? }
       console.log('Wizard import response:', JSON.stringify(result, null, 2));
-      context.TABLE_ID = result.tableId || '';
-      context.SOURCE_ID = result.sourceId || '';
-      context.VIEW_ID = result.tableId || ''; // Table ID is often used as view ID
+      // Extract from nested structure (new response format)
+      context.TABLE_ID = result.output?.table?.tableId || result.tableId || '';
+      context.SOURCE_ID = result.output?.sourceId || result.sourceId || '';
+      context.VIEW_ID = context.TABLE_ID; // Table ID is often used as view ID
       if (result.workbookId) {
         context.WORKBOOK_ID = result.workbookId;
+      } else if (result.output?.workbookId) {
+        context.WORKBOOK_ID = result.output.workbookId;
       }
       console.log(`Extracted TABLE_ID: ${context.TABLE_ID}, SOURCE_ID: ${context.SOURCE_ID}, WORKBOOK_ID: ${context.WORKBOOK_ID || 'auto'}`);
     }
