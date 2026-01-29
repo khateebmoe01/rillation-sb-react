@@ -118,6 +118,7 @@ export default function InboxAnalytics() {
           endDate={dateRange.end}
           onStartDateChange={(date) => setDateRange({ ...dateRange, start: date })}
           onEndDateChange={(date) => setDateRange({ ...dateRange, end: date })}
+          onDateRangeChange={(start, end) => setDateRange({ start, end })}
           onPresetChange={(preset) => {
             setDatePreset(preset)
             setDateRange(getDateRange(preset))

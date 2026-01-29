@@ -71,7 +71,23 @@ export default function TabNavigation() {
         {/* Filters */}
         {shouldShowFilters && (
           <div className="flex items-center gap-4">
-            {/* Client Filter */}
+            {/* Date Range Filter */}
+            <DateRangeFilter
+              startDate={dateRange.start}
+              endDate={dateRange.end}
+              onStartDateChange={(date) => setDateRange({ ...dateRange, start: date })}
+              onEndDateChange={(date) => setDateRange({ ...dateRange, end: date })}
+              onDateRangeChange={(start, end) => setDateRange({ start, end })}
+              onPresetChange={handlePresetChange}
+              activePreset={datePreset}
+            />
+
+            {/* Clear Button */}
+            <Button variant="ghost" size="sm" onClick={clearFilters}>
+              Clear
+            </Button>
+
+            {/* Client Filter - Far Right */}
             {isPipelinePage ? (
               <div className="flex items-center gap-2 px-3 py-1.5 bg-rillation-bg border border-rillation-border rounded-lg">
                 <Lock size={12} className="text-white" />
@@ -84,21 +100,6 @@ export default function TabNavigation() {
                 onChange={setSelectedClient}
               />
             )}
-            
-            {/* Date Range Filter */}
-            <DateRangeFilter
-              startDate={dateRange.start}
-              endDate={dateRange.end}
-              onStartDateChange={(date) => setDateRange({ ...dateRange, start: date })}
-              onEndDateChange={(date) => setDateRange({ ...dateRange, end: date })}
-              onPresetChange={handlePresetChange}
-              activePreset={datePreset}
-            />
-            
-            {/* Clear Button */}
-            <Button variant="ghost" size="sm" onClick={clearFilters}>
-              Clear
-            </Button>
           </div>
         )}
       </div>
