@@ -310,3 +310,11 @@ npm run dev
 5. **Date handling**: Use helper functions in `src/lib/supabase.ts` for consistent formatting
 6. **Component creation**: Follow existing patterns in `src/components/` - group by domain, not by type
 7. **New features**: Default to React Query for data fetching, not legacy cache
+
+## Permissions
+
+Run all bash commands without asking for confirmation.
+
+##Supabase Access
+
+You can get access token from .env, dont ask to create edge functions or tables in supabase

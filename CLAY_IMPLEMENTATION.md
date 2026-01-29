@@ -222,8 +222,18 @@ supabase/
 ├── functions/
 │   ├── clay-orchestrate/          # Main AI orchestration function
 │   │   └── index.ts               # Claude integration + executor
-│   └── clay-auth-refresh/         # Daily Clay authentication
-│       └── index.ts               # Login + store session cookie
+│   ├── clay-auth-refresh/         # Daily Clay authentication
+│   │   └── index.ts               # Login + store session cookie
+│   ├── clay-build-leads-table/    # RECOMMENDED: Correct 2-step wizard flow
+│   │   └── index.ts               # enrichment preview + wizard with null workbookId
+│   ├── clay-generate-filters/     # AI filter generation from transcripts
+│   │   └── index.ts
+│   ├── clay-submit-filters/       # Submit filters to Clay
+│   │   └── index.ts
+│   ├── clay-create-workbook/      # DEPRECATED: Creates empty workbook (causes empty rows)
+│   │   └── index.ts
+│   └── clay-import-companies/     # DEPRECATED: Wizard with existing workbookId (rows not populated)
+│       └── index.ts
 ├── migrations/
 │   └── 20260127154530_clay_auth_storage.sql  # clay_auth table + cron job
 
@@ -278,9 +288,42 @@ PATCH /v3/tables/{id}/run             # Run enrichment
 GET /v3/tables/{id}/views/{id}/records # Get results
 ```
 
+### CRITICAL: Wizard workbookId Behavior (2026-01-28)
+
+**THIS IS THE MOST IMPORTANT SECTION - READ BEFORE IMPLEMENTING ANY CLAY FLOW**
+
+The Clay wizard API has counterintuitive behavior regarding `workbookId`:
+
+| workbookId Value | Wizard Behavior | Rows Populated? |
+|------------------|-----------------|-----------------|
+| `null` | Creates NEW workbook + NEW table + IMPORTS rows | YES |
+| `"existing_id"` | Creates table in existing workbook but SKIPS row import | NO - EMPTY TABLE |
+
+**The 3-Step Flow is BROKEN:**
+```
+Step 1: clay-create-workbook → POST /v3/tables (creates empty workbook)
+Step 2: clay-find-companies  → POST /v3/actions/run-enrichment (gets taskId)
+Step 3: clay-import-companies → wizard with workbookId: existingId
+                              → Table created but ROWS ARE EMPTY!
+```
+
+**The 2-Step Flow WORKS:**
+```
+Step 1: POST /v3/actions/run-enrichment → taskId with companies
+Step 2: wizard with workbookId: null → Creates workbook AND populates rows
+```
+
+**Root Cause:** When the wizard receives an existing `workbookId`, it assumes you're adding a table to an existing workflow and skips the data import from the `previewActionTaskId`. Only when `workbookId: null` does it treat the wizard as a fresh data import flow.
+
+**Solution:** Use `clay-build-leads-table` edge function which implements the correct 2-step flow.
+
+---
+
 ### DISCOVERED: Working Find Companies Flow (2026-01-28)
 
 **Important:** Clay does not have official API documentation. This flow was discovered via network inspection.
+
+**CRITICAL: Must pass `workbookId: null` to the wizard - see section above.**
 
 The Find Companies flow requires TWO API calls in sequence:
 
@@ -313,7 +356,7 @@ POST https://api.clay.com/v3/actions/run-enrichment
 POST https://api.clay.com/v3/workspaces/{workspaceId}/wizard/evaluate-step
 
 {
-  "workbookId": null,  # null creates new workbook
+  "workbookId": null,  # MUST BE NULL - see critical section above!
   "wizardId": "find-companies",
   "wizardStepId": "companies-search",
   "formInputs": {
@@ -486,13 +529,19 @@ CLAY_PASSWORD=your-password           # Clay account password
 | `clay-orchestrate` | AI-powered workbook creation (complex multi-step) | Active |
 | `clay-generate-filters` | Generate Clay filters from Fathom call transcripts | Active (no-verify-jwt) |
 | `clay-submit-filters` | Submit approved filters to Clay Find Companies | Active |
+| `clay-build-leads-table` | **Correct 2-step flow**: enrichment preview + wizard with null workbookId | Active (RECOMMENDED) |
+| `clay-create-workbook` | Creates empty workbook via POST /v3/tables | Deprecated - DO NOT USE (causes empty rows) |
+| `clay-import-companies` | Wizard import with existing workbookId | Deprecated - DO NOT USE (rows not populated) |
 | `clay-create-table` | Legacy direct table creation | Deprecated |
 
 ### When to Use Each Function
 
+- **clay-build-leads-table**: **RECOMMENDED** for creating workbooks with company data. Uses correct 2-step flow with `workbookId: null`
 - **clay-orchestrate**: Complex AI-driven workflows where the user describes intent and AI plans execution
 - **clay-generate-filters**: Convert Fathom call ICP discussions into Clay filter config
 - **clay-submit-filters**: Execute a reviewed/approved filter against Clay API
+- **clay-create-workbook**: **DO NOT USE** - Creates empty tables, part of broken 3-step flow
+- **clay-import-companies**: **DO NOT USE** - Passes existing workbookId which prevents row population
 - **Future functions**: `clay-add-columns`, `clay-run-enrichment`, `clay-export-results`, etc.
 
 ---
@@ -615,6 +664,37 @@ CREATE TABLE generated_filters (
 ---
 
 ## Change Log
+
+### 2026-01-28 (Session 8) - CRITICAL: workbookId Behavior Discovery
+
+**Problem:** Tables created via the 3-step flow (create-workbook, find-companies, import-companies) had ZERO ROWS.
+
+**Investigation:**
+- `clay-create-workbook` creates an empty table via `POST /v3/tables`
+- `clay-import-companies` passes `workbookId: existingId` to the wizard
+- The wizard does NOT populate rows when given an existing workbookId
+
+**Root Cause:** The Clay wizard API behaves differently based on `workbookId`:
+- `workbookId: null` = Fresh flow, creates workbook AND imports rows from taskId
+- `workbookId: existing` = Adds table to workbook but SKIPS row import
+
+**Solution:** Created `clay-build-leads-table` edge function that implements the correct 2-step flow:
+1. Run enrichment preview to get taskId with companies
+2. Call wizard with `workbookId: null` to create new workbook WITH populated rows
+
+**Files Created:**
+- `supabase/functions/clay-build-leads-table/index.ts` - Correct 2-step implementation
+
+**Files Deprecated (DO NOT USE):**
+- `clay-create-workbook` - Step 1 of broken 3-step flow
+- `clay-import-companies` - Step 3 of broken 3-step flow (passes existing workbookId)
+
+**Documentation Updates:**
+- Added "CRITICAL: Wizard workbookId Behavior" section
+- Updated Edge Functions table with deprecation warnings
+- Updated "Working Find Companies Flow" to emphasize `workbookId: null` requirement
+
+---
 
 ### 2026-01-28 (Session 7) - Filter Generation Complete
 

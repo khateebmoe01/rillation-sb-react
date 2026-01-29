@@ -167,7 +167,7 @@ export interface SavedCompanySearch {
 // ============================================
 
 /** Maximum companies to return per search (Rillation limit) */
-export const MAX_COMPANY_LIMIT = 100
+export const MAX_COMPANY_LIMIT = 50
 
 /** Maximum companies Clay allows per search */
 export const CLAY_MAX_LIMIT = 50000
@@ -202,7 +202,7 @@ export function createDefaultFilters(): CompanySearchFilters {
     locations_exclude: [],
     semantic_description: '',
     company_identifier: [],
-    limit: 100,
+    limit: 50,
     has_resolved_domain: null,
     resolved_domain_is_live: null,
   }
@@ -226,7 +226,7 @@ export function buildFindCompaniesRequest(
     inputs: {
       ...filters,
       // Ensure limit doesn't exceed our max
-      limit: Math.min(filters.limit || 100, MAX_COMPANY_LIMIT),
+      limit: Math.min(filters.limit || 50, MAX_COMPANY_LIMIT),
       // API-specific defaults
       domainFieldId: null,
       exclude_entities_configuration: [],

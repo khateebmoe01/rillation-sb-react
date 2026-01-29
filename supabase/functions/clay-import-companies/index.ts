@@ -97,7 +97,7 @@ serve(async (req) => {
     const sessionId = uuidv4();
     console.log(`[${client}] Using workbookId: ${workbookId}, tableId: ${tableId}`);
     const wizardPayload = {
-      workbookId: workbookId || null,  // Use existing workbook if provided
+      workbookId: null,  // ALWAYS null - existing workbookId causes empty tables
       wizardId: "find-companies",
       wizardStepId: "companies-search",
       formInputs: {
@@ -181,7 +181,11 @@ serve(async (req) => {
     });
 
     const resultText = await response.text();
-    console.log(`[${client}] Import response:`, resultText);
+
+    // ===== DETAILED LOGGING: Full wizard response structure =====
+    console.log(`[${client}] === FULL WIZARD RESPONSE ===`);
+    console.log(resultText);
+    console.log(`[${client}] === END WIZARD RESPONSE ===`);
 
     let result;
     try {
@@ -217,10 +221,26 @@ serve(async (req) => {
     const newTableId = result.output?.table?.tableId || result.tableId || tableId;
     const newWorkbookId = result.workbookId || result.output?.workbookId || workbookId;
 
-    console.log(`[${client}] Wizard complete. TableId: ${newTableId}, WorkbookId: ${newWorkbookId}`);
+    // ===== EXTRACT sourceId from multiple possible paths =====
+    const sourceId = result.output?.source?.id
+      || result.output?.sourceId
+      || result.sourceId
+      || result.output?.table?.sourceId
+      || result.output?.source?.sourceId
+      || null;
+
+    console.log(`[${client}] === EXTRACTED IDs ===`);
+    console.log(`[${client}] tableId: ${newTableId}`);
+    console.log(`[${client}] workbookId: ${newWorkbookId}`);
+    console.log(`[${client}] sourceId: ${sourceId}`);
+    console.log(`[${client}] === END EXTRACTED IDs ===`);
 
     // Step 2: Call bulk-fetch-records to actually populate the table
     console.log(`[${client}] Calling bulk-fetch-records to populate table...`);
+
+    // Try passing sourceId if we found one
+    const bulkFetchBody = sourceId ? { sourceId } : {};
+    console.log(`[${client}] Bulk fetch body:`, JSON.stringify(bulkFetchBody));
 
     const bulkFetchResponse = await fetch(`${CLAY_API_BASE}/tables/${newTableId}/bulk-fetch-records`, {
       method: "POST",
@@ -231,16 +251,92 @@ serve(async (req) => {
         "Origin": "https://app.clay.com",
         "Referer": "https://app.clay.com/"
       },
-      body: JSON.stringify({})
+      body: JSON.stringify(bulkFetchBody)
     });
 
     const bulkFetchText = await bulkFetchResponse.text();
     console.log(`[${client}] Bulk fetch response status: ${bulkFetchResponse.status}`);
-    console.log(`[${client}] Bulk fetch response: ${bulkFetchText.substring(0, 500)}`);
+    console.log(`[${client}] Bulk fetch response: ${bulkFetchText.substring(0, 1000)}`);
+
+    if (!bulkFetchResponse.ok) {
+      console.error(`[${client}] Bulk fetch failed, but table was created. Continuing...`);
+      // Don't fail entirely - the table exists, data may populate eventually
+    }
+
+    // ===== Step 3: Try Source-Specific Run Endpoints (if sourceId exists) =====
+    // This may trigger the actual data import from the source
+    if (sourceId) {
+      console.log(`[${client}] Trying source-specific run endpoints...`);
+
+      // Attempt 1: POST /v3/sources/{sourceId}/run
+      try {
+        console.log(`[${client}] Trying POST /v3/sources/${sourceId}/run`);
+        const sourceRunResponse = await fetch(`${CLAY_API_BASE}/sources/${sourceId}/run`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Cookie": sessionCookie,
+            "Accept": "application/json",
+            "Origin": "https://app.clay.com",
+            "Referer": "https://app.clay.com/"
+          },
+          body: JSON.stringify({})
+        });
+        const sourceRunText = await sourceRunResponse.text();
+        console.log(`[${client}] Source run response status: ${sourceRunResponse.status}`);
+        console.log(`[${client}] Source run response: ${sourceRunText.substring(0, 1000)}`);
+      } catch (e) {
+        console.log(`[${client}] Source run attempt 1 failed: ${e.message}`);
+      }
+
+      // Attempt 2: PATCH /v3/tables/{tableId}/sources/{sourceId}/run
+      try {
+        console.log(`[${client}] Trying PATCH /v3/tables/${newTableId}/sources/${sourceId}/run`);
+        const tableSourceRunResponse = await fetch(`${CLAY_API_BASE}/tables/${newTableId}/sources/${sourceId}/run`, {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            "Cookie": sessionCookie,
+            "Accept": "application/json",
+            "Origin": "https://app.clay.com",
+            "Referer": "https://app.clay.com/"
+          },
+          body: JSON.stringify({})
+        });
+        const tableSourceRunText = await tableSourceRunResponse.text();
+        console.log(`[${client}] Table source run response status: ${tableSourceRunResponse.status}`);
+        console.log(`[${client}] Table source run response: ${tableSourceRunText.substring(0, 1000)}`);
+      } catch (e) {
+        console.log(`[${client}] Source run attempt 2 failed: ${e.message}`);
+      }
+
+      // Attempt 3: POST /v3/tables/{tableId}/sources/{sourceId}/fetch
+      try {
+        console.log(`[${client}] Trying POST /v3/tables/${newTableId}/sources/${sourceId}/fetch`);
+        const sourceFetchResponse = await fetch(`${CLAY_API_BASE}/tables/${newTableId}/sources/${sourceId}/fetch`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Cookie": sessionCookie,
+            "Accept": "application/json",
+            "Origin": "https://app.clay.com",
+            "Referer": "https://app.clay.com/"
+          },
+          body: JSON.stringify({})
+        });
+        const sourceFetchText = await sourceFetchResponse.text();
+        console.log(`[${client}] Source fetch response status: ${sourceFetchResponse.status}`);
+        console.log(`[${client}] Source fetch response: ${sourceFetchText.substring(0, 1000)}`);
+      } catch (e) {
+        console.log(`[${client}] Source fetch attempt failed: ${e.message}`);
+      }
+    } else {
+      console.log(`[${client}] No sourceId found, skipping source-specific endpoints`);
+    }
 
     const recordsImported = result.output?.recordCount || result.tableTotalRecordsCount || result.numSourceRecords || 0;
 
-    console.log(`[${client}] Import complete. TableId: ${newTableId}, WorkbookId: ${newWorkbookId}, Records: ${recordsImported}`);
+    console.log(`[${client}] Import complete. TableId: ${newTableId}, WorkbookId: ${newWorkbookId}, Records: ${recordsImported}, SourceId: ${sourceId}`);
 
     const tableUrl = `https://app.clay.com/workspaces/${WORKSPACE_ID}/tables/${newTableId}`;
 
@@ -260,6 +356,7 @@ serve(async (req) => {
         success: true,
         tableId: newTableId,
         workbookId: newWorkbookId,
+        sourceId,
         recordsImported,
         tableUrl
       }),

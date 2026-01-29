@@ -328,8 +328,8 @@ export default function CompanySearchFilters({
           >
             <NumberInput
               label="Results Limit"
-              value={filters.limit || 100}
-              onChange={(val) => updateFilter('limit', val || 100)}
+              value={filters.limit || 50}
+              onChange={(val) => updateFilter('limit', val || 50)}
               placeholder="Max results"
               min={1}
               max={MAX_COMPANY_LIMIT}

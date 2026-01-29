@@ -372,12 +372,134 @@ serve(async (req) => {
     }
 
     const wizardResult = await wizardResponse.json();
+
+    // ===== DETAILED LOGGING: Full wizard response structure =====
+    console.log("=== FULL WIZARD RESPONSE ===");
+    console.log(JSON.stringify(wizardResult, null, 2));
+    console.log("=== END WIZARD RESPONSE ===");
+
     // Extract from nested response structure
     const tableId = wizardResult.output?.table?.tableId || wizardResult.tableId;
     const workbookId = wizardResult.workbookId || wizardResult.output?.workbookId;
     const recordsImported = wizardResult.output?.recordCount || wizardResult.tableTotalRecordsCount || wizardResult.numSourceRecords || 0;
 
-    console.log(`Wizard import complete. TableId: ${tableId}, Records: ${recordsImported}`);
+    // ===== EXTRACT sourceId from multiple possible paths =====
+    const sourceId = wizardResult.output?.source?.id
+      || wizardResult.output?.sourceId
+      || wizardResult.sourceId
+      || wizardResult.output?.table?.sourceId
+      || wizardResult.output?.source?.sourceId
+      || null;
+
+    console.log("=== EXTRACTED IDs ===");
+    console.log(`tableId: ${tableId}`);
+    console.log(`workbookId: ${workbookId}`);
+    console.log(`sourceId: ${sourceId}`);
+    console.log(`recordsImported: ${recordsImported}`);
+    console.log("=== END EXTRACTED IDs ===");
+
+    console.log(`Wizard import complete. TableId: ${tableId}, Records: ${recordsImported}, SourceId: ${sourceId}`);
+
+    // ===== STEP 3: Bulk Fetch Records (Trigger Data Population) =====
+    // The wizard import creates the table structure but doesn't populate it with data.
+    // The bulk-fetch-records call triggers Clay to actually insert the rows.
+    console.log("Step 3: Triggering bulk-fetch-records to populate table...");
+
+    // Try passing sourceId if we found one
+    const bulkFetchBody = sourceId ? { sourceId } : {};
+    console.log("Bulk fetch body:", JSON.stringify(bulkFetchBody));
+
+    const bulkFetchResponse = await fetch(`${CLAY_API_BASE}/tables/${tableId}/bulk-fetch-records`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Cookie": sessionCookie,
+        "Accept": "application/json",
+        "Origin": "https://app.clay.com",
+        "Referer": "https://app.clay.com/"
+      },
+      body: JSON.stringify(bulkFetchBody)
+    });
+
+    const bulkFetchText = await bulkFetchResponse.text();
+    console.log(`Bulk fetch response status: ${bulkFetchResponse.status}`);
+    console.log(`Bulk fetch response: ${bulkFetchText.substring(0, 1000)}`);
+
+    if (!bulkFetchResponse.ok) {
+      console.error("Bulk fetch failed, but table was created. Continuing...");
+      // Don't fail entirely - the table exists, data may populate eventually
+    }
+
+    // ===== STEP 4: Try Source-Specific Run Endpoint (if sourceId exists) =====
+    // This may trigger the actual data import from the source
+    if (sourceId) {
+      console.log("Step 4: Trying source-specific run endpoints...");
+
+      // Attempt 1: POST /v3/sources/{sourceId}/run
+      try {
+        console.log(`Trying POST /v3/sources/${sourceId}/run`);
+        const sourceRunResponse = await fetch(`${CLAY_API_BASE}/sources/${sourceId}/run`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Cookie": sessionCookie,
+            "Accept": "application/json",
+            "Origin": "https://app.clay.com",
+            "Referer": "https://app.clay.com/"
+          },
+          body: JSON.stringify({})
+        });
+        const sourceRunText = await sourceRunResponse.text();
+        console.log(`Source run response status: ${sourceRunResponse.status}`);
+        console.log(`Source run response: ${sourceRunText.substring(0, 1000)}`);
+      } catch (e) {
+        console.log(`Source run attempt 1 failed: ${e.message}`);
+      }
+
+      // Attempt 2: PATCH /v3/tables/{tableId}/sources/{sourceId}/run
+      try {
+        console.log(`Trying PATCH /v3/tables/${tableId}/sources/${sourceId}/run`);
+        const tableSourceRunResponse = await fetch(`${CLAY_API_BASE}/tables/${tableId}/sources/${sourceId}/run`, {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            "Cookie": sessionCookie,
+            "Accept": "application/json",
+            "Origin": "https://app.clay.com",
+            "Referer": "https://app.clay.com/"
+          },
+          body: JSON.stringify({})
+        });
+        const tableSourceRunText = await tableSourceRunResponse.text();
+        console.log(`Table source run response status: ${tableSourceRunResponse.status}`);
+        console.log(`Table source run response: ${tableSourceRunText.substring(0, 1000)}`);
+      } catch (e) {
+        console.log(`Source run attempt 2 failed: ${e.message}`);
+      }
+
+      // Attempt 3: POST /v3/tables/{tableId}/sources/{sourceId}/fetch
+      try {
+        console.log(`Trying POST /v3/tables/${tableId}/sources/${sourceId}/fetch`);
+        const sourceFetchResponse = await fetch(`${CLAY_API_BASE}/tables/${tableId}/sources/${sourceId}/fetch`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Cookie": sessionCookie,
+            "Accept": "application/json",
+            "Origin": "https://app.clay.com",
+            "Referer": "https://app.clay.com/"
+          },
+          body: JSON.stringify({})
+        });
+        const sourceFetchText = await sourceFetchResponse.text();
+        console.log(`Source fetch response status: ${sourceFetchResponse.status}`);
+        console.log(`Source fetch response: ${sourceFetchText.substring(0, 1000)}`);
+      } catch (e) {
+        console.log(`Source fetch attempt failed: ${e.message}`);
+      }
+    } else {
+      console.log("Step 4: No sourceId found, skipping source-specific endpoints");
+    }
 
     // Update filter record with success
     await supabase
@@ -395,6 +517,7 @@ serve(async (req) => {
         success: true,
         table_id: tableId,
         workbook_id: workbookId,
+        source_id: sourceId,
         task_id: taskId,
         records_imported: recordsImported,
         companies_found: companyCount,
