@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useCallback, useEffect, ReactNode } from 'react'
-import { supabase, isSupabaseConfigured } from '../src/lib/supabase'
-import { useAuth } from '../src/contexts/AuthContext'
-import type { Contact, Deal, Task, Note, CRMStats, CRMFilters } from '../types'
+import { supabase, isSupabaseConfigured } from '../../lib/supabase'
+import { useFilters } from '../../contexts/FilterContext'
+import type { Contact, Deal, Task, Note, CRMStats, CRMFilters } from '../types/index'
 
 // Create an untyped supabase client for tables that aren't in the generated types
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -72,7 +72,7 @@ const CRMContext = createContext<CRMContextType | null>(null)
 // PROVIDER
 // ============================================
 export function CRMProvider({ children }: { children: ReactNode }) {
-  const { client: selectedClient } = useAuth()
+  const { strategyClient: selectedClient } = useFilters()
   
   // Data state
   const [contacts, setContacts] = useState<Contact[]>([])

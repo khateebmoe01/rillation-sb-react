@@ -1,7 +1,6 @@
 import { NavLink, useLocation } from 'react-router-dom'
-import { BarChart3, LogOut, LayoutDashboard, Users, DollarSign, CheckSquare, TrendingUp, Compass, Mail, Globe, ShoppingCart, Activity, Sparkles, Rocket } from 'lucide-react'
+import { BarChart3, LayoutDashboard, Users, DollarSign, CheckSquare, TrendingUp, Compass, Mail, Globe, ShoppingCart, Activity, Sparkles, Rocket } from 'lucide-react'
 import { motion } from 'framer-motion'
-import { useAuth } from '../../contexts/AuthContext'
 import { useAI } from '../../contexts/AIContext'
 
 // Section-based navigation matching the design
@@ -47,13 +46,8 @@ const navSections = [
 
 export default function Sidebar() {
   const location = useLocation()
-  const { signOut, user } = useAuth()
   const { togglePanel, isPanelOpen } = useAI()
-  
-  const handleSignOut = async () => {
-    await signOut()
-  }
-  
+
   const isItemActive = (path: string, id: string) => {
     // Exact match first
     if (location.pathname === path) return true
@@ -144,18 +138,6 @@ export default function Sidebar() {
         ))}
       </div>
       
-      {/* Sign Out Button */}
-      {user && (
-        <div className="mt-auto px-4 pt-4 border-t border-zinc-800/50">
-          <button
-            onClick={handleSignOut}
-            className="w-full flex items-center gap-2.5 py-2 px-2.5 rounded-lg transition-all duration-150 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50"
-          >
-            <LogOut size={16} className="flex-shrink-0" />
-            <span className="text-[13px] font-medium">Sign Out</span>
-          </button>
-        </div>
-      )}
     </aside>
   )
 }

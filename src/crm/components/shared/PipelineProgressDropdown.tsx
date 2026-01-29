@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useId } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ChevronDown, Calendar } from 'lucide-react'
-import { useDropdown } from '../../src/contexts/DropdownContext'
+import { useDropdown } from '../../../contexts/DropdownContext'
 import { theme } from '../../config/theme'
 
 export interface PipelineProgress {

@@ -16,7 +16,7 @@ const ClientStrategyView = lazy(() => import('./pages/ClientStrategyView'))
 const GTMImplementation = lazy(() => import('./pages/GTMImplementation'))
 const DebugView = lazy(() => import('./pages/DebugView'))
 const CustomVariablesDiscovery = lazy(() => import('./pages/CustomVariablesDiscovery'))
-const AtomicCRM = lazy(() => import('../index'))
+const AtomicCRM = lazy(() => import('./crm/index'))
 
 // Loading fallback for lazy components
 function PageLoader() {
@@ -66,7 +66,7 @@ function App() {
               <AnimatePresence mode="wait">
                 <Suspense fallback={<PageLoader />}>
                   <Routes location={location} key={location.pathname}>
-                    <Route path="/" element={<Navigate to="/performance" replace />} />
+                    <Route path="/" element={<Navigate to="/crm" replace />} />
                     {/* Eager loaded pages (most common) */}
                     <Route path="/performance" element={<PageTransition><PerformanceOverview /></PageTransition>} />
                     <Route path="/performance/:clientName" element={<PageTransition><ClientDetailView /></PageTransition>} />
