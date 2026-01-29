@@ -41,15 +41,6 @@ const containerVariants = {
   },
 }
 
-const itemVariants = {
-  hidden: { opacity: 0, y: 12 },
-  show: {
-    opacity: 1,
-    y: 0,
-    transition: { type: 'spring', stiffness: 400, damping: 30 }
-  },
-}
-
 // Skeleton component for loading states
 function Skeleton({ className = '' }: { className?: string }) {
   return (
@@ -262,18 +253,17 @@ export default function FathomFilterInput({
               </div>
             </div>
 
-            <div className="p-3 max-h-[220px] overflow-y-auto">
+            <div className="p-3 max-h-[400px] overflow-y-auto">
               {isLoadingCalls ? (
                 <motion.div
                   className="space-y-2"
-                  variants={containerVariants}
-                  initial="hidden"
-                  animate="show"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
                 >
                   {[1, 2, 3].map(i => (
-                    <motion.div key={i} variants={itemVariants}>
+                    <div key={i}>
                       <Skeleton className="h-14" />
-                    </motion.div>
+                    </div>
                   ))}
                 </motion.div>
               ) : fathomCalls.length === 0 ? (
@@ -301,14 +291,13 @@ export default function FathomFilterInput({
                 <motion.div
                   className="space-y-1.5"
                   variants={containerVariants}
-                  initial="hidden"
+                  initial={false}
                   animate="show"
                 >
                   {fathomCalls.map(call => (
                     <motion.button
                       key={call.id}
                       type="button"
-                      variants={itemVariants}
                       onClick={() => setSelectedCallId(call.id)}
                       className={`w-full flex items-center justify-between p-2.5 rounded-lg text-left transition-all duration-200 ${
                         selectedCallId === call.id

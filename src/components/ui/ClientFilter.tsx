@@ -1,6 +1,6 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ChevronDown, Check, X, Building2 } from 'lucide-react'
+import { ChevronDown, Check, X, Building2, Search } from 'lucide-react'
 
 interface ClientFilterProps {
   clients: string[]
@@ -17,7 +17,16 @@ export default function ClientFilter({
   requireSelection = false,
 }: ClientFilterProps) {
   const [isOpen, setIsOpen] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
   const containerRef = useRef<HTMLDivElement>(null)
+  const searchInputRef = useRef<HTMLInputElement>(null)
+
+  // Filter clients based on search query
+  const filteredClients = useMemo(() => {
+    if (!searchQuery.trim()) return clients
+    const query = searchQuery.toLowerCase()
+    return clients.filter(client => client.toLowerCase().includes(query))
+  }, [clients, searchQuery])
 
   // Close on click outside
   useEffect(() => {
@@ -39,6 +48,16 @@ export default function ClientFilter({
     return () => document.removeEventListener('keydown', handleEscape)
   }, [])
 
+  // Clear search when dropdown closes, focus search input when opens
+  useEffect(() => {
+    if (!isOpen) {
+      setSearchQuery('')
+    } else {
+      // Focus search input when dropdown opens
+      setTimeout(() => searchInputRef.current?.focus(), 50)
+    }
+  }, [isOpen])
+
   const displayValue = selectedClient || (requireSelection ? 'Select a client...' : 'All Clients')
 
   return (
@@ -47,16 +66,16 @@ export default function ClientFilter({
       <motion.button
         onClick={() => setIsOpen(!isOpen)}
         className={`
-          flex items-center gap-2 px-4 py-2 min-w-[180px]
-          bg-slate-800/80 backdrop-blur-sm border rounded-lg
-          text-sm text-white font-medium
-          transition-colors
-          ${isOpen ? 'border-white/40' : 'border-slate-600/50 hover:border-slate-500/50'}
+          flex items-center gap-3 px-6 py-3 min-w-[260px]
+          bg-emerald-800 backdrop-blur-sm border rounded-xl
+          text-base text-white font-medium
+          transition-colors hover:bg-emerald-700
+          ${isOpen ? 'border-emerald-400/50' : 'border-emerald-600/50'}
         `}
         whileHover={{ scale: 1.01 }}
         whileTap={{ scale: 0.99 }}
       >
-        <Building2 size={14} className="text-white shrink-0" />
+        <Building2 size={18} className="text-white shrink-0" />
         <span className="flex-1 text-left truncate">{displayValue}</span>
         {selectedClient && !requireSelection && (
           <motion.button
@@ -68,14 +87,14 @@ export default function ClientFilter({
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}
           >
-            <X size={14} className="text-white/90" />
+            <X size={16} className="text-white/90" />
           </motion.button>
         )}
         <motion.div
           animate={{ rotate: isOpen ? 180 : 0 }}
           transition={{ duration: 0.2 }}
         >
-          <ChevronDown size={16} className="text-white/90" />
+          <ChevronDown size={18} className="text-white/90" />
         </motion.div>
       </motion.button>
 
@@ -89,18 +108,26 @@ export default function ClientFilter({
             transition={{ duration: 0.15, ease: 'easeOut' }}
             className="absolute top-full right-0 mt-2 w-full min-w-[220px] z-50"
           >
-            <div className="bg-slate-900/95 backdrop-blur-xl border border-slate-600/50 rounded-xl shadow-2xl overflow-hidden">
-              {/* Header */}
-              <div className="px-4 py-3 border-b border-slate-700/50">
-                <span className="text-xs font-medium text-white uppercase tracking-wider">
-                  Select Client
-                </span>
+            <div className="bg-emerald-800 backdrop-blur-xl border border-emerald-600/50 rounded-xl shadow-2xl overflow-hidden">
+              {/* Search Input */}
+              <div className="p-3 border-b border-emerald-600/50">
+                <div className="relative">
+                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/60" />
+                  <input
+                    ref={searchInputRef}
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search clients..."
+                    className="w-full pl-9 pr-3 py-2 bg-emerald-900/50 border border-emerald-600/50 rounded-lg text-sm text-white placeholder:text-white/50 focus:outline-none focus:border-emerald-400/50 transition-colors"
+                  />
+                </div>
               </div>
 
               {/* Options */}
               <div className="max-h-[300px] overflow-y-auto">
-                {/* All Clients Option - Only show if requireSelection is false */}
-                {!requireSelection && (
+                {/* All Clients Option - Only show if requireSelection is false and no search query */}
+                {!requireSelection && !searchQuery && (
                   <>
                     <motion.button
                       onClick={() => {
@@ -110,31 +137,31 @@ export default function ClientFilter({
                       className={`
                         w-full flex items-center gap-3 px-4 py-3 text-left
                         transition-colors
-                        ${!selectedClient 
-                          ? 'bg-white/10 text-white' 
-                          : 'text-white/80 hover:bg-white/5 hover:text-white'
+                        ${!selectedClient
+                          ? 'bg-emerald-600/50 text-white'
+                          : 'text-white/80 hover:bg-emerald-700/30 hover:text-white'
                         }
                       `}
                       whileHover={{ x: 2 }}
                     >
                       <div className={`
                         w-5 h-5 rounded-full border-2 flex items-center justify-center
-                        ${!selectedClient ? 'border-emerald-400 bg-emerald-400/20' : 'border-slate-500'}
+                        ${!selectedClient ? 'border-white bg-white/20' : 'border-white/40'}
                       `}>
-                        {!selectedClient && <Check size={12} className="text-emerald-400" />}
+                        {!selectedClient && <Check size={12} className="text-white" />}
                       </div>
                       <span className="font-medium">All Clients</span>
                     </motion.button>
 
                     {/* Divider */}
-                    {clients.length > 0 && (
-                      <div className="h-px bg-slate-700/50 mx-4" />
+                    {filteredClients.length > 0 && (
+                      <div className="h-px bg-emerald-600/50 mx-4" />
                     )}
                   </>
                 )}
 
                 {/* Client Options */}
-                {clients.map((client, index) => (
+                {filteredClients.map((client, index) => (
                   <motion.button
                     key={client}
                     onClick={() => {
@@ -144,9 +171,9 @@ export default function ClientFilter({
                     className={`
                       w-full flex items-center gap-3 px-4 py-3 text-left
                       transition-colors
-                      ${selectedClient === client 
-                        ? 'bg-white/10 text-white' 
-                        : 'text-white/80 hover:bg-white/5 hover:text-white'
+                      ${selectedClient === client
+                        ? 'bg-emerald-600/50 text-white'
+                        : 'text-white/80 hover:bg-emerald-700/30 hover:text-white'
                       }
                     `}
                     initial={{ opacity: 0, x: -10 }}
@@ -156,18 +183,18 @@ export default function ClientFilter({
                   >
                     <div className={`
                       w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0
-                      ${selectedClient === client ? 'border-emerald-400 bg-emerald-400/20' : 'border-slate-500'}
+                      ${selectedClient === client ? 'border-white bg-white/20' : 'border-white/40'}
                     `}>
-                      {selectedClient === client && <Check size={12} className="text-emerald-400" />}
+                      {selectedClient === client && <Check size={12} className="text-white" />}
                     </div>
                     <span className="font-medium truncate">{client}</span>
                   </motion.button>
                 ))}
 
                 {/* Empty State */}
-                {clients.length === 0 && (
-                  <div className="px-4 py-8 text-center text-white/80 text-sm">
-                    No clients available
+                {filteredClients.length === 0 && (
+                  <div className="px-4 py-8 text-center text-white/70 text-sm">
+                    {searchQuery ? 'No clients match your search' : 'No clients available'}
                   </div>
                 )}
               </div>

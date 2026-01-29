@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, ReactNode } from 'react'
+import { createContext, useContext, useState, useRef, useCallback, ReactNode } from 'react'
 import { getDateRange } from '../lib/supabase'
 
 interface FilterContextType {
@@ -22,20 +22,32 @@ interface FilterContextType {
 
 const FilterContext = createContext<FilterContextType | undefined>(undefined)
 
+const DEBOUNCE_DELAY = 300 // ms
+
 export function FilterProvider({ children }: { children: ReactNode }) {
   const [selectedClient, setSelectedClient] = useState('')
-  const [strategyClient, setStrategyClient] = useState('')
+  const [strategyClient, setStrategyClient] = useState('Rillation Revenue')
   const [datePreset, setDatePreset] = useState('thisMonth')
-  const [dateRange, setDateRange] = useState(() => getDateRange('thisMonth'))
+  const [dateRange, setDateRangeInternal] = useState(() => getDateRange('thisMonth'))
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Debounced date range setter to prevent excessive re-renders/API calls
+  const setDateRange = useCallback((range: { start: Date; end: Date }) => {
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current)
+    }
+    debounceTimerRef.current = setTimeout(() => {
+      setDateRangeInternal(range)
+    }, DEBOUNCE_DELAY)
+  }, [])
 
   const clearFilters = () => {
-    setSelectedClient('')
-    setDatePreset('allTime')
-    const allTimeRange = {
-      start: new Date(2000, 0, 1),
-      end: new Date()
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current)
     }
-    setDateRange(allTimeRange)
+    setSelectedClient('')
+    setDatePreset('thisMonth')
+    setDateRangeInternal(getDateRange('thisMonth'))
   }
 
   return (
