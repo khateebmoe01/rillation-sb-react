@@ -73,7 +73,7 @@ export function usePipelineData({ startDate, endDate, month, year }: UsePipeline
           .eq('client', 'Rillation Revenue'),
         supabase
           .from('meetings_booked')
-          .select('id')
+          .select('created_time')
           .gte('created_time', startStr)
           .lt('created_time', endStrNextDay)
           .eq('client', 'Rillation Revenue'),
