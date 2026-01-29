@@ -171,19 +171,19 @@ export default function InterestedRepliesDrillDown({
             <span className="px-2.5 py-1 bg-green-500/20 text-green-400 text-sm font-medium rounded-full">
               {replies.length}
             </span>
-            <span className="text-xs text-slate-500">(based on internal data)</span>
+            <span className="text-xs text-rillation-text/60">(based on internal data)</span>
           </div>
           <button
             onClick={onClose}
             className="p-2 rounded-lg hover:bg-slate-800 transition-colors"
           >
-            <X size={18} className="text-slate-400" />
+            <X size={18} className="text-rillation-text/70" />
           </button>
         </div>
 
         {/* Table Header */}
         <div className="px-6 py-3 bg-slate-800/50 border-b border-slate-700/30">
-          <div className="grid grid-cols-12 gap-4 text-xs font-medium text-slate-400 uppercase tracking-wide">
+          <div className="grid grid-cols-12 gap-4 text-xs font-medium text-rillation-text/70 uppercase tracking-wide">
             <button
               onClick={() => handleSort('date_received')}
               className="col-span-1 flex items-center gap-1 hover:text-white transition-colors text-left"
@@ -219,7 +219,7 @@ export default function InterestedRepliesDrillDown({
           ) : error ? (
             <div className="px-6 py-12 text-center text-red-400">{error}</div>
           ) : replies.length === 0 ? (
-            <div className="px-6 py-12 text-center text-slate-500">No interested replies found</div>
+            <div className="px-6 py-12 text-center text-rillation-text/60">No interested replies found</div>
           ) : (
             <div className="divide-y divide-slate-800/50">
               {sortedReplies.map((reply, index) => (
@@ -240,8 +240,8 @@ export default function InterestedRepliesDrillDown({
                   {/* Contact */}
                   <div className="col-span-2 min-w-0">
                     <div className="flex items-center gap-1.5">
-                      <Mail size={12} className="text-slate-500 flex-shrink-0" />
-                      <span className="text-sm text-slate-200 truncate" title={reply.from_email}>
+                      <Mail size={12} className="text-rillation-text/60 flex-shrink-0" />
+                      <span className="text-sm text-rillation-text truncate" title={reply.from_email}>
                         {reply.from_email}
                       </span>
                     </div>
@@ -249,7 +249,7 @@ export default function InterestedRepliesDrillDown({
 
                   {/* Subject */}
                   <div className="col-span-3 min-w-0">
-                    <span className="text-sm text-slate-300 truncate block" title={reply.subject}>
+                    <span className="text-sm text-rillation-text truncate block" title={reply.subject}>
                       {reply.subject}
                     </span>
                   </div>
@@ -258,7 +258,7 @@ export default function InterestedRepliesDrillDown({
                   <div className="col-span-2 min-w-0">
                     <div className="flex items-center gap-1.5">
                       <Megaphone size={10} className="text-pink-400 flex-shrink-0" />
-                      <span className="text-xs text-slate-300 truncate" title={reply.campaign_name}>
+                      <span className="text-xs text-rillation-text truncate" title={reply.campaign_name}>
                         {reply.campaign_name}
                       </span>
                     </div>
@@ -267,7 +267,7 @@ export default function InterestedRepliesDrillDown({
                   {/* Reply Preview */}
                   <div className="col-span-4 min-w-0">
                     <span
-                      className="text-xs text-slate-400 line-clamp-2"
+                      className="text-xs text-rillation-text/70 line-clamp-2"
                       title={reply.text_body}
                     >
                       {truncateText(reply.text_body, 150)}
@@ -282,7 +282,7 @@ export default function InterestedRepliesDrillDown({
         {/* Footer summary */}
         {replies.length > 0 && (
           <div className="px-6 py-3 border-t border-slate-700/50 bg-slate-800/40">
-            <div className="flex items-center justify-between text-xs text-slate-400">
+            <div className="flex items-center justify-between text-xs text-rillation-text/70">
               <div className="flex items-center gap-6">
                 <span>
                   <span className="text-white font-medium">{replies.length}</span> interested contacts
@@ -291,7 +291,7 @@ export default function InterestedRepliesDrillDown({
                   <span className="text-white font-medium">{new Set(replies.map(r => r.campaign_name)).size}</span> campaigns
                 </span>
               </div>
-              <span className="text-slate-500">
+              <span className="text-rillation-text/60">
                 Scroll to see all
               </span>
             </div>

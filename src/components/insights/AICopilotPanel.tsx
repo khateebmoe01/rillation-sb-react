@@ -370,7 +370,7 @@ export default function AICopilotPanel() {
             animate={{ x: 0, opacity: 1 }}
             exit={{ x: -400, opacity: 0 }}
             transition={{ type: 'spring', stiffness: 400, damping: 35 }}
-            className={`fixed left-0 top-0 bottom-0 bg-black/95 backdrop-blur-xl border-r border-white/10 z-40 flex flex-col ${
+            className={`fixed left-0 top-0 bottom-0 bg-[#060f1a]/98 backdrop-blur-xl border-r border-white/10 z-40 flex flex-col ${
               panelMode === 'popup' ? 'shadow-2xl' : ''
             }`}
             style={{ width: panelWidth }}

@@ -161,7 +161,7 @@ export default function DomainInventoryManager() {
 
   const getStatusBadge = (status: DomainStatus) => {
     const styles: Record<DomainStatus, string> = {
-      available: 'bg-gray-500/20 text-gray-400',
+      available: 'bg-gray-500/20 text-rillation-text/70',
       purchased: 'bg-rillation-purple/20 text-rillation-purple',
       configured: 'bg-rillation-cyan/20 text-rillation-cyan',
       in_use: 'bg-rillation-green/20 text-rillation-green',

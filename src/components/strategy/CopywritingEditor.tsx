@@ -369,7 +369,7 @@ function EmailCard({
           className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-all ${
             copied 
               ? 'bg-emerald-100 text-emerald-700' 
-              : 'bg-slate-200 text-slate-600 hover:bg-slate-300'
+              : 'bg-slate-200 text-rillation-text/50 hover:bg-slate-300'
           }`}
         >
           {copied ? (
@@ -389,7 +389,7 @@ function EmailCard({
       {/* Email Content */}
       <div className="px-5 pb-4 space-y-3">
         {email.subject && (
-          <div className="text-sm text-slate-600">
+          <div className="text-sm text-rillation-text/50">
             <span className="font-medium">Subject:</span> {renderHighlightedText(email.subject)}
           </div>
         )}
@@ -397,7 +397,7 @@ function EmailCard({
           {renderHighlightedText(email.body)}
         </div>
         {email.notes && (
-          <div className="text-xs text-slate-500 italic border-t border-slate-200 pt-2 mt-2">
+          <div className="text-xs text-rillation-text/60 italic border-t border-slate-200 pt-2 mt-2">
             Note: {email.notes}
           </div>
         )}
@@ -412,12 +412,12 @@ function EmailCard({
           >
             <div className="flex items-center gap-2">
               <Code size={14} className="text-violet-600" />
-              <span className="text-xs font-medium text-slate-600">Clay Prompts</span>
-              <span className="text-xs text-slate-400">({emailVariables.length} variables)</span>
+              <span className="text-xs font-medium text-rillation-text/50">Clay Prompts</span>
+              <span className="text-xs text-rillation-text/70">({emailVariables.length} variables)</span>
             </div>
             <ChevronDown 
               size={14} 
-              className={`text-slate-400 transition-transform ${showPrompts ? 'rotate-180' : ''}`} 
+              className={`text-rillation-text/70 transition-transform ${showPrompts ? 'rotate-180' : ''}`} 
             />
           </button>
 
@@ -447,7 +447,7 @@ function EmailCard({
                                 onClick={() => {
                                   navigator.clipboard.writeText(prompt.prompt)
                                 }}
-                                className="p-1 text-slate-400 hover:text-slate-600"
+                                className="p-1 text-rillation-text/70 hover:text-rillation-text/50"
                                 title="Copy prompt"
                               >
                                 <Copy size={12} />
@@ -463,7 +463,7 @@ function EmailCard({
                                   setPromptDraft(prompt?.prompt || '')
                                 }
                               }}
-                              className="p-1 text-slate-400 hover:text-violet-600"
+                              className="p-1 text-rillation-text/70 hover:text-violet-600"
                               title={isEditing ? 'Cancel' : 'Edit prompt'}
                             >
                               {isEditing ? <X size={12} /> : <Zap size={12} />}
@@ -478,7 +478,7 @@ function EmailCard({
                                 Example: {prompt.example_output}
                               </div>
                             )}
-                            <pre className="text-xs text-slate-500 whitespace-pre-wrap font-mono bg-slate-50 rounded p-2 max-h-24 overflow-y-auto">
+                            <pre className="text-xs text-rillation-text/60 whitespace-pre-wrap font-mono bg-slate-50 rounded p-2 max-h-24 overflow-y-auto">
                               {prompt.prompt}
                             </pre>
                           </div>
@@ -499,7 +499,7 @@ function EmailCard({
                                   setEditingPrompt(null)
                                   setPromptDraft('')
                                 }}
-                                className="px-2 py-1 text-xs text-slate-500 hover:text-slate-700"
+                                className="px-2 py-1 text-xs text-rillation-text/60 hover:text-slate-700"
                               >
                                 Cancel
                               </button>

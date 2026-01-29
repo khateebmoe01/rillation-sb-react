@@ -160,7 +160,7 @@ export function BeginWorkbookWizard({
           <h2 className="text-xl font-semibold text-white">Begin Workbook</h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-white transition-colors"
+            className="text-rillation-text/70 hover:text-white transition-colors"
           >
             ✕
           </button>
@@ -178,7 +178,7 @@ export function BeginWorkbookWizard({
                         ? 'bg-green-500 text-white'
                         : currentStep === step.id
                         ? 'bg-blue-500 text-white'
-                        : 'bg-gray-700 text-gray-400'
+                        : 'bg-gray-700 text-rillation-text/70'
                     }`}
                   >
                     {currentStep > step.id ? <Check size={16} /> : step.id}
@@ -186,12 +186,12 @@ export function BeginWorkbookWizard({
                   <div className="hidden sm:block">
                     <div
                       className={`text-sm font-medium ${
-                        currentStep >= step.id ? 'text-white' : 'text-gray-500'
+                        currentStep >= step.id ? 'text-white' : 'text-rillation-text/60'
                       }`}
                     >
                       {step.title}
                     </div>
-                    <div className="text-xs text-gray-500">{step.description}</div>
+                    <div className="text-xs text-rillation-text/60">{step.description}</div>
                   </div>
                 </div>
                 {index < STEPS.length - 1 && (
@@ -261,7 +261,7 @@ export function BeginWorkbookWizard({
                         Configure Company Search
                       </h3>
                       <div className="flex items-center gap-2">
-                        <label className="text-sm text-gray-400">Max rows:</label>
+                        <label className="text-sm text-rillation-text/70">Max rows:</label>
                         <input
                           type="number"
                           min={1}
@@ -295,8 +295,8 @@ export function BeginWorkbookWizard({
                   <div>
                     <h3 className="text-lg font-medium text-white mb-4">Upload CSV</h3>
                     <div className="border-2 border-dashed border-gray-700 rounded-lg p-12 text-center">
-                      <FileSpreadsheet size={48} className="mx-auto text-gray-500 mb-4" />
-                      <p className="text-gray-400 mb-2">
+                      <FileSpreadsheet size={48} className="mx-auto text-rillation-text/60 mb-4" />
+                      <p className="text-rillation-text/70 mb-2">
                         Drag and drop your CSV file here
                       </p>
                       <button className="text-blue-400 hover:text-blue-300">
@@ -311,7 +311,7 @@ export function BeginWorkbookWizard({
                     <h3 className="text-lg font-medium text-white mb-4">
                       Connect Integration
                     </h3>
-                    <p className="text-gray-400">
+                    <p className="text-rillation-text/70">
                       Integration connections coming soon...
                     </p>
                   </div>
@@ -332,7 +332,7 @@ export function BeginWorkbookWizard({
                     <h3 className="text-lg font-medium text-white">
                       Qualification Columns
                     </h3>
-                    <p className="text-sm text-gray-400 mt-1">
+                    <p className="text-sm text-rillation-text/70 mt-1">
                       Add AI-powered columns to qualify and analyze leads
                     </p>
                   </div>
@@ -347,8 +347,8 @@ export function BeginWorkbookWizard({
 
                 {state.qualificationColumns.length === 0 ? (
                   <div className="border-2 border-dashed border-gray-700 rounded-lg p-12 text-center">
-                    <Sparkles size={48} className="mx-auto text-gray-500 mb-4" />
-                    <p className="text-gray-400 mb-4">
+                    <Sparkles size={48} className="mx-auto text-rillation-text/60 mb-4" />
+                    <p className="text-rillation-text/70 mb-4">
                       No qualification columns yet. Add AI columns to analyze and
                       qualify leads.
                     </p>
@@ -395,7 +395,7 @@ export function BeginWorkbookWizard({
 
                 {/* Workbook Name */}
                 <div className="mb-6">
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                  <label className="block text-sm font-medium text-rillation-text mb-2">
                     Workbook Name
                   </label>
                   <input
@@ -405,7 +405,7 @@ export function BeginWorkbookWizard({
                     placeholder="e.g., Q1 2026 SaaS Outreach"
                     className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500"
                   />
-                  <p className="text-xs text-gray-500 mt-1">
+                  <p className="text-xs text-rillation-text/60 mt-1">
                     This will create a new workbook with a CE (Company Enrichment) table
                   </p>
                 </div>
@@ -413,31 +413,31 @@ export function BeginWorkbookWizard({
                 {/* Summary */}
                 <div className="bg-gray-800/50 rounded-lg p-4 space-y-4">
                   <div>
-                    <div className="text-sm font-medium text-gray-400">Lead Source</div>
+                    <div className="text-sm font-medium text-rillation-text/70">Lead Source</div>
                     <div className="text-white capitalize">
                       {state.leadSource?.replace('-', ' ')}
                     </div>
                   </div>
 
                   <div>
-                    <div className="text-sm font-medium text-gray-400">Max Rows</div>
+                    <div className="text-sm font-medium text-rillation-text/70">Max Rows</div>
                     <div className="text-white">{state.sourceConfig.maxRows}</div>
                   </div>
 
                   <div>
-                    <div className="text-sm font-medium text-gray-400">
+                    <div className="text-sm font-medium text-rillation-text/70">
                       CE Table Columns ({state.qualificationColumns.length})
                     </div>
                     <div className="mt-2 space-y-2">
                       {state.qualificationColumns.map((col) => (
                         <div
                           key={col.id}
-                          className="flex items-center gap-2 text-sm text-gray-300"
+                          className="flex items-center gap-2 text-sm text-rillation-text"
                         >
                           <Sparkles size={14} className="text-blue-400" />
                           <span>{col.name || 'Unnamed column'}</span>
                           {col.condition !== 'always' && (
-                            <span className="text-xs text-gray-500">
+                            <span className="text-xs text-rillation-text/60">
                               (conditional)
                             </span>
                           )}
@@ -455,11 +455,11 @@ export function BeginWorkbookWizard({
                       <div className="text-sm font-medium text-blue-300">
                         AI Orchestration (Opus 4.5)
                       </div>
-                      <p className="text-sm text-gray-400 mt-1">
+                      <p className="text-sm text-rillation-text/70 mt-1">
                         When you begin this workbook, Claude will analyze your configuration
                         and generate the optimal execution plan:
                       </p>
-                      <ul className="text-sm text-gray-400 mt-2 space-y-1 list-disc list-inside">
+                      <ul className="text-sm text-rillation-text/70 mt-2 space-y-1 list-disc list-inside">
                         <li>Create the workbook with CE table and data source</li>
                         <li>Design optimal column dependencies and execution order</li>
                         <li>Author AI prompts with proper JSON schemas</li>
@@ -477,7 +477,7 @@ export function BeginWorkbookWizard({
         <div className="px-6 py-4 border-t border-gray-700/50 flex items-center justify-between">
           <button
             onClick={currentStep === 1 ? onClose : handleBack}
-            className="flex items-center gap-2 px-4 py-2 text-gray-400 hover:text-white transition-colors"
+            className="flex items-center gap-2 px-4 py-2 text-rillation-text/70 hover:text-white transition-colors"
           >
             <ArrowLeft size={16} />
             {currentStep === 1 ? 'Cancel' : 'Back'}
@@ -489,7 +489,7 @@ export function BeginWorkbookWizard({
             className={`flex items-center gap-2 px-6 py-2 rounded-lg font-medium transition-colors ${
               canProceed()
                 ? 'bg-blue-500 hover:bg-blue-600 text-white'
-                : 'bg-gray-700 text-gray-500 cursor-not-allowed'
+                : 'bg-gray-700 text-rillation-text/60 cursor-not-allowed'
             }`}
           >
             {currentStep === 4 ? (
@@ -534,14 +534,14 @@ function LeadSourceCard({
       }`}
     >
       <div
-        className={`mb-4 ${selected ? 'text-blue-400' : 'text-gray-400'}`}
+        className={`mb-4 ${selected ? 'text-blue-400' : 'text-rillation-text/70'}`}
       >
         {icon}
       </div>
-      <div className={`font-medium ${selected ? 'text-white' : 'text-gray-300'}`}>
+      <div className={`font-medium ${selected ? 'text-white' : 'text-rillation-text'}`}>
         {title}
       </div>
-      <div className="text-sm text-gray-500 mt-1">{description}</div>
+      <div className="text-sm text-rillation-text/60 mt-1">{description}</div>
     </button>
   )
 }
@@ -573,7 +573,7 @@ function QualificationColumnCard({
             <div className="text-white font-medium">
               {column.name || 'New Qualification Column'}
             </div>
-            <div className="text-xs text-gray-500">
+            <div className="text-xs text-rillation-text/60">
               {AI_MODELS.find((m) => m.id === column.model)?.name} •{' '}
               {AI_MODELS.find((m) => m.id === column.model)?.credits} credits
             </div>
@@ -585,14 +585,14 @@ function QualificationColumnCard({
               e.stopPropagation()
               onRemove()
             }}
-            className="p-1 text-gray-500 hover:text-red-400 transition-colors"
+            className="p-1 text-rillation-text/60 hover:text-red-400 transition-colors"
           >
             <Trash2 size={16} />
           </button>
           {expanded ? (
-            <ChevronUp size={20} className="text-gray-400" />
+            <ChevronUp size={20} className="text-rillation-text/70" />
           ) : (
-            <ChevronDown size={20} className="text-gray-400" />
+            <ChevronDown size={20} className="text-rillation-text/70" />
           )}
         </div>
       </div>
@@ -609,7 +609,7 @@ function QualificationColumnCard({
             <div className="p-4 pt-0 space-y-4 border-t border-gray-700/50">
               {/* Column Name */}
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1">
+                <label className="block text-sm font-medium text-rillation-text mb-1">
                   Column Name
                 </label>
                 <input
@@ -623,7 +623,7 @@ function QualificationColumnCard({
 
               {/* Prompt */}
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1">
+                <label className="block text-sm font-medium text-rillation-text mb-1">
                   AI Prompt
                 </label>
                 <textarea
@@ -633,14 +633,14 @@ function QualificationColumnCard({
                   rows={4}
                   className="w-full bg-gray-900 border border-gray-700 rounded px-3 py-2 text-white placeholder-gray-500 text-sm resize-none"
                 />
-                <p className="text-xs text-gray-500 mt-1">
+                <p className="text-xs text-rillation-text/60 mt-1">
                   Use {'{{Column Name}}'} to reference other columns
                 </p>
               </div>
 
               {/* Model Selection */}
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1">
+                <label className="block text-sm font-medium text-rillation-text mb-1">
                   AI Model
                 </label>
                 <select
@@ -658,7 +658,7 @@ function QualificationColumnCard({
 
               {/* Condition */}
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1">
+                <label className="block text-sm font-medium text-rillation-text mb-1">
                   Run Condition
                 </label>
                 <select
@@ -683,14 +683,14 @@ function QualificationColumnCard({
 
               {/* Output Fields */}
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
+                <label className="block text-sm font-medium text-rillation-text mb-2">
                   Output Fields
                 </label>
                 <div className="flex flex-wrap gap-2">
                   {['qualified', 'score', 'reasoning'].map((field) => (
                     <label
                       key={field}
-                      className="flex items-center gap-2 text-sm text-gray-300"
+                      className="flex items-center gap-2 text-sm text-rillation-text"
                     >
                       <input
                         type="checkbox"

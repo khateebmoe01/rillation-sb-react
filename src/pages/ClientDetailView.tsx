@@ -18,6 +18,7 @@ import { supabase } from '../lib/supabase'
 import FirmographicInsightsPanel from '../components/insights/FirmographicInsightsPanel'
 import CampaignFilter from '../components/ui/CampaignFilter'
 import MeetingsDrillDown from '../components/ui/MeetingsDrillDown'
+import InterestedRepliesDrillDown from '../components/ui/InterestedRepliesDrillDown'
 
 type ChartMetric = 'sent' | 'prospects' | 'replied' | 'positiveReplies' | 'meetings' | null
 
@@ -85,6 +86,7 @@ export default function ClientDetailView() {
   const [selectedChartMetric, setSelectedChartMetric] = useState<ChartMetric>(null)
   const [showConfigureTargets, setShowConfigureTargets] = useState(false)
   const [showMeetingsDrillDown, setShowMeetingsDrillDown] = useState(false)
+  const [showInterestedDrillDown, setShowInterestedDrillDown] = useState(false)
   const [showIterationLog, setShowIterationLog] = useState(false)
   
   // Fetch iteration logs for AI context
@@ -343,8 +345,11 @@ export default function ClientDetailView() {
               value={metrics.positiveReplies}
               percentage={positiveRate}
               colorClass="text-green-400"
-              isActive={selectedChartMetric === 'positiveReplies'}
-              onClick={() => handleChartMetricClick('positiveReplies')}
+              isActive={selectedChartMetric === 'positiveReplies' || showInterestedDrillDown}
+              onClick={() => {
+                handleChartMetricClick('positiveReplies')
+                setShowInterestedDrillDown(prev => !prev)
+              }}
             />
             <MetricCard
               title="Bounces"
@@ -369,6 +374,16 @@ export default function ClientDetailView() {
           <MeetingsDrillDown
             isOpen={showMeetingsDrillDown}
             onClose={() => setShowMeetingsDrillDown(false)}
+            startDate={dateRange.start}
+            endDate={dateRange.end}
+            client={decodedClientName}
+            campaignIds={tableCampaignSelection.length > 0 ? tableCampaignSelection : undefined}
+          />
+
+          {/* Interested Replies Drill-Down Panel */}
+          <InterestedRepliesDrillDown
+            isOpen={showInterestedDrillDown}
+            onClose={() => setShowInterestedDrillDown(false)}
             startDate={dateRange.start}
             endDate={dateRange.end}
             client={decodedClientName}

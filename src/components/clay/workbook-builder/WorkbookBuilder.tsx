@@ -150,7 +150,7 @@ export function WorkbookBuilder({ config, onChange, client }: WorkbookBuilderPro
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
       {/* Horizontal Tab Navigation */}
-      <div className="flex items-center gap-1 p-3 border-b border-gray-800 bg-[#0d0d14]">
+      <div className="flex items-center gap-1 p-3 border-b border-rillation-border bg-rillation-card">
         {TABS.map((tab) => {
           const isActive = activeTab === tab.id
           const isComplete = isTabComplete(tab.id)
@@ -162,7 +162,7 @@ export function WorkbookBuilder({ config, onChange, client }: WorkbookBuilderPro
               className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
                 isActive
                   ? 'bg-white text-black'
-                  : 'text-gray-400 hover:text-white hover:bg-gray-800'
+                  : 'text-rillation-text/70 hover:text-white hover:bg-rillation-card'
               }`}
             >
               {isComplete && !isActive && (
@@ -170,7 +170,7 @@ export function WorkbookBuilder({ config, onChange, client }: WorkbookBuilderPro
               )}
               {tab.label}
               {isOptional && !isActive && (
-                <span className="px-1.5 py-0.5 text-[10px] bg-gray-700 text-gray-400 rounded">
+                <span className="px-1.5 py-0.5 text-[10px] bg-rillation-card-hover text-rillation-text/70 rounded">
                   Optional
                 </span>
               )}
@@ -418,11 +418,11 @@ export function WorkbookBuilder({ config, onChange, client }: WorkbookBuilderPro
                 <div>
                   <div className="flex items-center gap-2">
                     <h3 className="text-lg font-medium text-white">AI Enrichment</h3>
-                    <span className="px-2 py-0.5 text-[10px] bg-gray-700 text-gray-400 rounded-full">
+                    <span className="px-2 py-0.5 text-[10px] bg-rillation-card-hover text-rillation-text/70 rounded-full">
                       Optional
                     </span>
                   </div>
-                  <p className="text-sm text-gray-500">Add AI columns to qualify and enrich your leads</p>
+                  <p className="text-sm text-rillation-text/60">Add AI columns to qualify and enrich your leads</p>
                 </div>
                 <button
                   onClick={addColumn}
@@ -435,11 +435,11 @@ export function WorkbookBuilder({ config, onChange, client }: WorkbookBuilderPro
 
               {config.qualificationColumns.length === 0 ? (
                 <div className="border-2 border-dashed border-gray-700 rounded-lg p-8 text-center">
-                  <Sparkles size={32} className="mx-auto text-gray-600 mb-3" />
-                  <p className="text-gray-500 mb-2 text-sm">
+                  <Sparkles size={32} className="mx-auto text-rillation-text/50 mb-3" />
+                  <p className="text-rillation-text/60 mb-2 text-sm">
                     No enrichment columns yet.
                   </p>
-                  <p className="text-gray-600 mb-4 text-xs">
+                  <p className="text-rillation-text/50 mb-4 text-xs">
                     You can add AI columns to qualify leads, or continue without them.
                   </p>
                   <div className="flex items-center justify-center gap-3">
@@ -450,12 +450,12 @@ export function WorkbookBuilder({ config, onChange, client }: WorkbookBuilderPro
                       <Plus size={14} />
                       Add AI Column
                     </button>
-                    <span className="text-gray-600 text-xs">or</span>
+                    <span className="text-rillation-text/50 text-xs">or</span>
                     <button
                       onClick={() => {
                         // Just a visual indicator - the preview panel handles actual validation
                       }}
-                      className="text-gray-500 hover:text-gray-400 text-xs underline underline-offset-2"
+                      className="text-rillation-text/60 hover:text-rillation-text/70 text-xs underline underline-offset-2"
                     >
                       Continue without enrichment
                     </button>
@@ -507,16 +507,16 @@ function LeadSourceCard({
       className={`p-4 rounded-lg border-2 text-left transition-all ${
         selected
           ? 'border-white bg-white/10'
-          : 'border-gray-700 bg-gray-800/30 hover:border-gray-600'
+          : 'border-gray-700 bg-rillation-card/30 hover:border-gray-600'
       }`}
     >
-      <div className={`mb-2 ${selected ? 'text-white' : 'text-gray-400'}`}>
+      <div className={`mb-2 ${selected ? 'text-white' : 'text-rillation-text/70'}`}>
         {icon}
       </div>
-      <div className={`font-medium text-sm ${selected ? 'text-white' : 'text-gray-300'}`}>
+      <div className={`font-medium text-sm ${selected ? 'text-white' : 'text-rillation-text'}`}>
         {title}
       </div>
-      <div className="text-xs text-gray-500 mt-0.5">{description}</div>
+      <div className="text-xs text-rillation-text/60 mt-0.5">{description}</div>
     </motion.button>
   )
 }
@@ -547,7 +547,7 @@ function ModelSelectDropdown({
 
   return (
     <div className="relative">
-      <label className="block text-xs font-medium text-gray-400 mb-1">
+      <label className="block text-xs font-medium text-rillation-text/70 mb-1">
         AI Model
       </label>
       <motion.button
@@ -558,7 +558,7 @@ function ModelSelectDropdown({
         <div className="flex items-center gap-2">
           <span className="text-sm text-white">{selectedModel?.name || 'Select model'}</span>
           {selectedModel && (
-            <span className="text-xs text-gray-500">
+            <span className="text-xs text-rillation-text/60">
               {selectedModel.credits} credit{selectedModel.credits !== 1 ? 's' : ''}/row
             </span>
           )}
@@ -572,7 +572,7 @@ function ModelSelectDropdown({
           animate={{ rotate: isOpen ? 180 : 0 }}
           transition={{ duration: 0.2 }}
         >
-          <ChevronDown size={14} className="text-gray-500" />
+          <ChevronDown size={14} className="text-rillation-text/60" />
         </motion.div>
       </motion.button>
 
@@ -601,7 +601,7 @@ function ModelSelectDropdown({
               >
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className={`text-sm ${value === model.id ? 'text-white' : 'text-gray-300'}`}>
+                    <span className={`text-sm ${value === model.id ? 'text-white' : 'text-rillation-text'}`}>
                       {model.name}
                     </span>
                     {model.recommended && (
@@ -610,10 +610,10 @@ function ModelSelectDropdown({
                       </span>
                     )}
                   </div>
-                  <p className="text-xs text-gray-500 mt-0.5">{model.description}</p>
+                  <p className="text-xs text-rillation-text/60 mt-0.5">{model.description}</p>
                 </div>
                 <div className="flex items-center gap-2 shrink-0 ml-3">
-                  <span className="text-xs text-gray-500">
+                  <span className="text-xs text-rillation-text/60">
                     {model.credits} credit{model.credits !== 1 ? 's' : ''}
                   </span>
                   {value === model.id && (
@@ -646,19 +646,19 @@ function ColumnCard({
   const model = AI_MODELS.find((m) => m.id === column.model)
 
   return (
-    <div className="bg-gray-800/50 rounded-lg border border-gray-700">
+    <div className="bg-rillation-card/50 rounded-lg border border-gray-700">
       {/* Header */}
       <div
         className="flex items-center gap-3 p-3 cursor-pointer"
         onClick={onToggle}
       >
-        <GripVertical size={16} className="text-gray-600" />
+        <GripVertical size={16} className="text-rillation-text/50" />
         <Sparkles size={16} className="text-blue-400" />
         <div className="flex-1 min-w-0">
           <div className="text-sm font-medium text-white truncate">
             {column.name || 'New Column'}
           </div>
-          <div className="text-xs text-gray-500">
+          <div className="text-xs text-rillation-text/60">
             {model?.name} ({model?.credits} credits)
           </div>
         </div>
@@ -667,14 +667,14 @@ function ColumnCard({
             e.stopPropagation()
             onRemove()
           }}
-          className="p-1 text-gray-500 hover:text-red-400"
+          className="p-1 text-rillation-text/60 hover:text-red-400"
         >
           <Trash2 size={14} />
         </button>
         {expanded ? (
-          <ChevronUp size={16} className="text-gray-400" />
+          <ChevronUp size={16} className="text-rillation-text/70" />
         ) : (
-          <ChevronDown size={16} className="text-gray-400" />
+          <ChevronDown size={16} className="text-rillation-text/70" />
         )}
       </div>
 
@@ -690,7 +690,7 @@ function ColumnCard({
             <div className="p-3 pt-0 space-y-3 border-t border-gray-700/50">
               {/* Name */}
               <div>
-                <label className="block text-xs font-medium text-gray-400 mb-1">
+                <label className="block text-xs font-medium text-rillation-text/70 mb-1">
                   Column Name
                 </label>
                 <input
@@ -704,7 +704,7 @@ function ColumnCard({
 
               {/* Prompt */}
               <div>
-                <label className="block text-xs font-medium text-gray-400 mb-1">
+                <label className="block text-xs font-medium text-rillation-text/70 mb-1">
                   AI Prompt
                 </label>
                 <textarea
@@ -724,7 +724,7 @@ function ColumnCard({
 
               {/* Condition - Segmented Control */}
               <div>
-                <label className="block text-xs font-medium text-gray-400 mb-1">
+                <label className="block text-xs font-medium text-rillation-text/70 mb-1">
                   Run Condition
                 </label>
                 <div className="flex gap-1">
@@ -739,7 +739,7 @@ function ColumnCard({
                       className={`flex-1 px-2 py-1 rounded text-xs font-medium transition-all ${
                         column.condition === cond.id
                           ? 'bg-white text-black'
-                          : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                          : 'bg-rillation-card-hover text-rillation-text hover:bg-gray-600'
                       }`}
                     >
                       {cond.label}
@@ -750,12 +750,12 @@ function ColumnCard({
 
               {/* Output Fields */}
               <div>
-                <label className="block text-xs font-medium text-gray-400 mb-1">
+                <label className="block text-xs font-medium text-rillation-text/70 mb-1">
                   Output Fields
                 </label>
                 <div className="flex gap-2">
                   {['qualified', 'score', 'reasoning'].map((field) => (
-                    <label key={field} className="flex items-center gap-1.5 text-xs text-gray-300">
+                    <label key={field} className="flex items-center gap-1.5 text-xs text-rillation-text">
                       <input
                         type="checkbox"
                         checked={column.outputFields[field as keyof typeof column.outputFields]}

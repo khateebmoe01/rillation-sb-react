@@ -287,7 +287,7 @@ function WorkbooksView({
       case 'error':
         return <Circle size={14} className="text-red-400" />
       default:
-        return <Circle size={14} className="text-zinc-500" />
+        return <Circle size={14} className="text-rillation-text/60" />
     }
   }
 

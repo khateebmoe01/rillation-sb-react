@@ -83,7 +83,7 @@ export default function ExpandableDataPanel({
       <div className="flex items-center justify-between p-4 border-b border-slate-700/50">
         <div className="flex items-center gap-3">
           <h3 className="text-lg font-semibold text-white">{title}</h3>
-          <span className="text-sm text-slate-300">
+          <span className="text-sm text-rillation-text">
             Showing {startItem} - {endItem} of {totalCount}
           </span>
         </div>
@@ -105,7 +105,7 @@ export default function ExpandableDataPanel({
               {columns.map((col) => (
                 <th
                   key={col.key}
-                  className="px-4 py-3 text-left text-xs font-medium text-slate-300 uppercase tracking-wider"
+                  className="px-4 py-3 text-left text-xs font-medium text-rillation-text uppercase tracking-wider"
                 >
                   {col.label}
                 </th>
@@ -136,7 +136,7 @@ export default function ExpandableDataPanel({
           <button
             onClick={() => onPageChange(currentPage - 1)}
             disabled={currentPage === 1}
-            className="flex items-center gap-1 px-3 py-1.5 text-sm text-slate-300 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center gap-1 px-3 py-1.5 text-sm text-rillation-text hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <ChevronLeft size={16} />
             Previous
@@ -162,7 +162,7 @@ export default function ExpandableDataPanel({
                   className={`w-8 h-8 rounded-lg text-sm font-medium transition-colors ${
                     currentPage === pageNum
                       ? 'bg-white text-slate-900'
-                      : 'text-slate-300 hover:bg-slate-700/50'
+                      : 'text-rillation-text hover:bg-slate-700/50'
                   }`}
                 >
                   {pageNum}
@@ -174,7 +174,7 @@ export default function ExpandableDataPanel({
           <button
             onClick={() => onPageChange(currentPage + 1)}
             disabled={currentPage === totalPages}
-            className="flex items-center gap-1 px-3 py-1.5 text-sm text-slate-300 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center gap-1 px-3 py-1.5 text-sm text-rillation-text hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Next
             <ChevronRight size={16} />

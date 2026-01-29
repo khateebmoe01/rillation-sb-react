@@ -59,10 +59,10 @@ export function WorkbookPreviewPanel({
     hasFilters
 
   return (
-    <div className="w-72 flex-shrink-0 border-l border-gray-800 bg-[#0a0a0f] flex flex-col">
+    <div className="w-72 flex-shrink-0 border-l border-rillation-border bg-rillation-bg flex flex-col">
       {/* Header */}
-      <div className="p-4 border-b border-gray-800">
-        <h3 className="text-sm font-medium text-gray-400 uppercase tracking-wider">
+      <div className="p-4 border-b border-rillation-border">
+        <h3 className="text-sm font-medium text-rillation-text/70 uppercase tracking-wider">
           Preview
         </h3>
       </div>
@@ -71,7 +71,7 @@ export function WorkbookPreviewPanel({
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {/* Workbook Name */}
         <div>
-          <label className="block text-xs font-medium text-gray-500 mb-1">
+          <label className="block text-xs font-medium text-rillation-text/60 mb-1">
             Workbook Name
           </label>
           <input
@@ -85,7 +85,7 @@ export function WorkbookPreviewPanel({
 
         {/* Configuration Summary */}
         <div className="bg-gray-800/30 rounded-lg p-3 space-y-3">
-          <div className="text-xs font-medium text-gray-400 uppercase tracking-wider">
+          <div className="text-xs font-medium text-rillation-text/70 uppercase tracking-wider">
             Configuration
           </div>
 
@@ -127,8 +127,8 @@ export function WorkbookPreviewPanel({
           {config.qualificationColumns.length > 0 && (
             <div className="pl-6 space-y-1">
               {config.qualificationColumns.map((col, i) => (
-                <div key={col.id} className="text-xs text-gray-500 flex items-center gap-1.5">
-                  <span className="text-gray-600">{i + 1}.</span>
+                <div key={col.id} className="text-xs text-rillation-text/60 flex items-center gap-1.5">
+                  <span className="text-rillation-text/50">{i + 1}.</span>
                   <span className="truncate">
                     {col.name || 'Unnamed'}
                   </span>
@@ -140,16 +140,16 @@ export function WorkbookPreviewPanel({
 
         {/* Cost Estimate */}
         <div className="bg-gray-800/30 rounded-lg p-3">
-          <div className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">
+          <div className="text-xs font-medium text-rillation-text/70 uppercase tracking-wider mb-2">
             Estimated Cost
           </div>
           <div className="flex items-baseline gap-2">
             <span className="text-2xl font-semibold text-white">
               {estimatedCredits.toLocaleString()}
             </span>
-            <span className="text-sm text-gray-500">credits</span>
+            <span className="text-sm text-rillation-text/60">credits</span>
           </div>
-          <div className="mt-2 text-xs text-gray-500">
+          <div className="mt-2 text-xs text-rillation-text/60">
             Based on {config.sourceConfig.maxRows} rows × {config.qualificationColumns.length} columns
           </div>
           {config.qualificationColumns.length > 0 && (
@@ -158,7 +158,7 @@ export function WorkbookPreviewPanel({
                 const model = AI_MODELS[col.model]
                 const colCredits = (model?.credits || 1) * config.sourceConfig.maxRows
                 return (
-                  <div key={col.id} className="flex justify-between text-xs text-gray-600">
+                  <div key={col.id} className="flex justify-between text-xs text-rillation-text/50">
                     <span className="truncate">{col.name || 'Unnamed'}</span>
                     <span>{colCredits}</span>
                   </div>
@@ -175,7 +175,7 @@ export function WorkbookPreviewPanel({
       </div>
 
       {/* Begin Button */}
-      <div className="p-4 border-t border-gray-800">
+      <div className="p-4 border-t border-rillation-border">
         <button
           onClick={onBegin}
           disabled={!isValid || status === 'creating' || status === 'finding' || status === 'importing'}
@@ -184,7 +184,7 @@ export function WorkbookPreviewPanel({
               ? 'bg-white text-black hover:bg-gray-200'
               : status === 'creating' || status === 'finding' || status === 'importing'
               ? 'bg-blue-500 text-white'
-              : 'bg-gray-800 text-gray-500 cursor-not-allowed'
+              : 'bg-gray-800 text-rillation-text/60 cursor-not-allowed'
           }`}
         >
           {status === 'creating' ? (
@@ -210,7 +210,7 @@ export function WorkbookPreviewPanel({
           )}
         </button>
         {isValid && status === 'idle' && (
-          <p className="text-xs text-gray-600 text-center mt-2">
+          <p className="text-xs text-rillation-text/50 text-center mt-2">
             Creates workbook and imports companies to Clay
           </p>
         )}
@@ -244,10 +244,10 @@ function SummaryRow({
 }) {
   return (
     <div className="flex items-start gap-2">
-      <div className={valid ? 'text-green-400' : 'text-gray-600'}>{icon}</div>
+      <div className={valid ? 'text-green-400' : 'text-rillation-text/50'}>{icon}</div>
       <div className="flex-1 min-w-0">
-        <div className="text-xs text-gray-500">{label}</div>
-        <div className={`text-sm ${valid ? 'text-white' : 'text-gray-600'}`}>
+        <div className="text-xs text-rillation-text/60">{label}</div>
+        <div className={`text-sm ${valid ? 'text-white' : 'text-rillation-text/50'}`}>
           {value}
         </div>
       </div>
@@ -271,7 +271,7 @@ function StepIndicator({
         status === 'complete' ? 'bg-green-500 text-white' :
         status === 'active' ? 'bg-blue-500 text-white' :
         status === 'error' ? 'bg-red-500 text-white' :
-        'bg-gray-700 text-gray-400'
+        'bg-gray-700 text-rillation-text/70'
       }`}>
         {status === 'complete' ? <CheckCircle2 size={12} /> :
          status === 'active' ? <Loader2 size={12} className="animate-spin" /> :
@@ -282,7 +282,7 @@ function StepIndicator({
         status === 'complete' ? 'text-green-400' :
         status === 'active' ? 'text-blue-400' :
         status === 'error' ? 'text-red-400' :
-        'text-gray-500'
+        'text-rillation-text/60'
       }`}>
         {label}
       </span>
@@ -348,7 +348,7 @@ function StatusDisplay({
       {/* Success result */}
       {status === 'complete' && result?.success && (
         <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-3">
-          <div className="space-y-1 text-xs text-gray-400">
+          <div className="space-y-1 text-xs text-rillation-text/70">
             <div className="flex justify-between">
               <span>Companies Found</span>
               <span className="text-white">{result.companiesFound?.toLocaleString() || 0}</span>

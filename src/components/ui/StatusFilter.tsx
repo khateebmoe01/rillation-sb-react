@@ -12,10 +12,10 @@ interface StatusOption {
 }
 
 const STATUS_OPTIONS: StatusOption[] = [
-  { value: 'all', label: 'All Statuses', color: 'text-slate-300', dotColor: 'bg-slate-400' },
+  { value: 'all', label: 'All Statuses', color: 'text-rillation-text', dotColor: 'bg-slate-400' },
   { value: 'active', label: 'Active', color: 'text-emerald-400', dotColor: 'bg-emerald-400' },
   { value: 'paused', label: 'Paused', color: 'text-amber-400', dotColor: 'bg-amber-400' },
-  { value: 'completed', label: 'Completed', color: 'text-slate-500', dotColor: 'bg-slate-500' },
+  { value: 'completed', label: 'Completed', color: 'text-rillation-text/60', dotColor: 'bg-slate-500' },
 ]
 
 interface StatusFilterProps {
@@ -73,7 +73,7 @@ export default function StatusFilter({
         <span className={`flex-1 text-left truncate ${currentOption.color}`}>
           {currentOption.label}
         </span>
-        <span className="text-slate-500 text-xs">
+        <span className="text-rillation-text/60 text-xs">
           ({statusCounts[selectedStatus]})
         </span>
         <motion.div
@@ -132,7 +132,7 @@ export default function StatusFilter({
                     </div>
                     <span className={`w-2 h-2 rounded-full ${option.dotColor}`} />
                     <span className={`font-medium flex-1 ${option.color}`}>{option.label}</span>
-                    <span className="text-slate-500 text-xs">
+                    <span className="text-rillation-text/60 text-xs">
                       {statusCounts[option.value]}
                     </span>
                   </motion.button>

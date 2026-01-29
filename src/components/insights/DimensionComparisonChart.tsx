@@ -179,7 +179,7 @@ export default function DimensionComparisonChart({
                 className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
                   metric === m
                     ? 'bg-violet-600/30 text-violet-300 border border-violet-500/30'
-                    : 'bg-slate-800/50 text-slate-400 hover:bg-slate-700/50'
+                    : 'bg-slate-800/50 text-rillation-text/70 hover:bg-slate-700/50'
                 }`}
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
@@ -196,7 +196,7 @@ export default function DimensionComparisonChart({
               className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
                 isLocked
                   ? 'bg-violet-600/30 text-violet-300'
-                  : 'bg-slate-800/50 text-slate-400 hover:bg-slate-700/50'
+                  : 'bg-slate-800/50 text-rillation-text/70 hover:bg-slate-700/50'
               }`}
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
@@ -264,15 +264,15 @@ export default function DimensionComparisonChart({
       <div className="flex items-center justify-center gap-6 mt-3 text-xs">
         <div className="flex items-center gap-1.5">
           <div className="w-3 h-3 rounded-full bg-emerald-500" />
-          <span className="text-slate-400">High ({'>'}5%)</span>
+          <span className="text-rillation-text/70">High ({'>'}5%)</span>
         </div>
         <div className="flex items-center gap-1.5">
           <div className="w-3 h-3 rounded-full bg-amber-500" />
-          <span className="text-slate-400">Medium (2-5%)</span>
+          <span className="text-rillation-text/70">Medium (2-5%)</span>
         </div>
         <div className="flex items-center gap-1.5">
           <div className="w-3 h-3 rounded-full bg-red-500" />
-          <span className="text-slate-400">Low ({'<'}2%)</span>
+          <span className="text-rillation-text/70">Low ({'<'}2%)</span>
         </div>
       </div>
     </motion.div>

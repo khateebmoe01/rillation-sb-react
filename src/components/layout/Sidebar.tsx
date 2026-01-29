@@ -73,7 +73,7 @@ export default function Sidebar() {
   }
   
   return (
-    <aside className="bg-[#0a0a0c] border-r border-zinc-800/50 flex flex-col py-5 overflow-hidden flex-shrink-0 w-[180px]">
+    <aside className="bg-[#060f1a] border-r border-rillation-border flex flex-col py-5 overflow-hidden flex-shrink-0 w-[180px]">
       {/* AI Button at Top */}
       <div className="px-4 mb-4">
         <motion.button
@@ -83,7 +83,7 @@ export default function Sidebar() {
             border
             ${isPanelOpen 
               ? 'bg-emerald-600/20 border-emerald-500/30 text-emerald-400' 
-              : 'bg-zinc-800/50 border-zinc-700/50 text-zinc-300 hover:bg-zinc-700/50 hover:text-white hover:border-zinc-600/50'
+              : 'bg-zinc-800/50 border-zinc-700/50 text-rillation-text hover:bg-zinc-700/50 hover:text-white hover:border-zinc-600/50'
             }
           `}
           whileHover={{ scale: 1.02 }}
@@ -104,7 +104,7 @@ export default function Sidebar() {
           <div key={section.id}>
             {/* Section Header with Line */}
             <div className="flex items-center gap-3 mb-3">
-              <span className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider whitespace-nowrap">
+              <span className="text-[11px] font-semibold text-rillation-text/70 uppercase tracking-wider whitespace-nowrap">
                 {section.label}
               </span>
               <div className="flex-1 h-px bg-zinc-700/50" />
@@ -124,7 +124,7 @@ export default function Sidebar() {
                       flex items-center gap-2.5 py-2 px-2.5 rounded-lg transition-all duration-150
                       ${isActive
                         ? 'bg-emerald-600/20 text-emerald-400'
-                        : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50'
+                        : 'text-rillation-text/70 hover:text-zinc-200 hover:bg-zinc-800/50'
                       }
                     `}
                   >

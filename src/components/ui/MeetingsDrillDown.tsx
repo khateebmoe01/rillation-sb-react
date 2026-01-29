@@ -164,13 +164,13 @@ export default function MeetingsDrillDown({
             onClick={onClose}
             className="p-2 rounded-lg hover:bg-slate-800 transition-colors"
           >
-            <X size={18} className="text-slate-400" />
+            <X size={18} className="text-rillation-text/70" />
           </button>
         </div>
 
         {/* Table Header */}
         <div className="px-6 py-3 bg-slate-800/50 border-b border-slate-700/30">
-          <div className="grid grid-cols-12 gap-4 text-xs font-medium text-slate-400 uppercase tracking-wide">
+          <div className="grid grid-cols-12 gap-4 text-xs font-medium text-rillation-text/70 uppercase tracking-wide">
             <button 
               onClick={() => handleSort('created_time')}
               className="col-span-1 flex items-center gap-1 hover:text-white transition-colors text-left"
@@ -215,7 +215,7 @@ export default function MeetingsDrillDown({
           ) : error ? (
             <div className="px-6 py-12 text-center text-red-400">{error}</div>
           ) : meetings.length === 0 ? (
-            <div className="px-6 py-12 text-center text-slate-500">No meetings found</div>
+            <div className="px-6 py-12 text-center text-rillation-text/60">No meetings found</div>
           ) : (
             <div className="divide-y divide-slate-800/50">
               {sortedMeetings.map((meeting, index) => (
@@ -238,7 +238,7 @@ export default function MeetingsDrillDown({
                     <div className="text-sm font-medium text-white truncate" title={meeting.full_name}>
                       {meeting.full_name}
                     </div>
-                    <div className="text-xs text-slate-400 truncate" title={meeting.title}>
+                    <div className="text-xs text-rillation-text/70 truncate" title={meeting.title}>
                       {meeting.title}
                     </div>
                   </div>
@@ -246,8 +246,8 @@ export default function MeetingsDrillDown({
                   {/* Company */}
                   <div className="col-span-2 min-w-0">
                     <div className="flex items-center gap-1.5">
-                      <Building2 size={12} className="text-slate-500 flex-shrink-0" />
-                      <span className="text-sm text-slate-200 truncate" title={meeting.company}>
+                      <Building2 size={12} className="text-rillation-text/60 flex-shrink-0" />
+                      <span className="text-sm text-rillation-text truncate" title={meeting.company}>
                         {meeting.company}
                       </span>
                     </div>
@@ -260,7 +260,7 @@ export default function MeetingsDrillDown({
                         {meeting.industry}
                       </span>
                     ) : (
-                      <span className="text-xs text-slate-500">-</span>
+                      <span className="text-xs text-rillation-text/60">-</span>
                     )}
                   </div>
 
@@ -269,12 +269,12 @@ export default function MeetingsDrillDown({
                     {meeting.annual_revenue ? (
                       <div className="flex items-center gap-1">
                         <DollarSign size={10} className="text-emerald-400 flex-shrink-0" />
-                        <span className="text-xs text-slate-300 truncate" title={meeting.annual_revenue}>
+                        <span className="text-xs text-rillation-text truncate" title={meeting.annual_revenue}>
                           {meeting.annual_revenue}
                         </span>
                       </div>
                     ) : (
-                      <span className="text-xs text-slate-500">-</span>
+                      <span className="text-xs text-rillation-text/60">-</span>
                     )}
                   </div>
 
@@ -283,12 +283,12 @@ export default function MeetingsDrillDown({
                     {meeting.company_size ? (
                       <div className="flex items-center gap-1">
                         <Users size={10} className="text-violet-400 flex-shrink-0" />
-                        <span className="text-xs text-slate-300 truncate" title={meeting.company_size}>
+                        <span className="text-xs text-rillation-text truncate" title={meeting.company_size}>
                           {meeting.company_size}
                         </span>
                       </div>
                     ) : (
-                      <span className="text-xs text-slate-500">-</span>
+                      <span className="text-xs text-rillation-text/60">-</span>
                     )}
                   </div>
 
@@ -297,12 +297,12 @@ export default function MeetingsDrillDown({
                     {getLocation(meeting) !== '-' ? (
                       <div className="flex items-center gap-1">
                         <MapPin size={10} className="text-orange-400 flex-shrink-0" />
-                        <span className="text-xs text-slate-300 truncate" title={getLocation(meeting)}>
+                        <span className="text-xs text-rillation-text truncate" title={getLocation(meeting)}>
                           {meeting.company_hq_state || '-'}
                         </span>
                       </div>
                     ) : (
-                      <span className="text-xs text-slate-500">-</span>
+                      <span className="text-xs text-rillation-text/60">-</span>
                     )}
                   </div>
 
@@ -310,7 +310,7 @@ export default function MeetingsDrillDown({
                   <div className="col-span-2 min-w-0">
                     <div className="flex items-center gap-1.5">
                       <Megaphone size={10} className="text-pink-400 flex-shrink-0" />
-                      <span className="text-xs text-slate-300 truncate" title={meeting.campaign_name}>
+                      <span className="text-xs text-rillation-text truncate" title={meeting.campaign_name}>
                         {meeting.campaign_name}
                       </span>
                     </div>
@@ -324,7 +324,7 @@ export default function MeetingsDrillDown({
         {/* Footer summary */}
         {meetings.length > 0 && (
           <div className="px-6 py-3 border-t border-slate-700/50 bg-slate-800/40">
-            <div className="flex items-center justify-between text-xs text-slate-400">
+            <div className="flex items-center justify-between text-xs text-rillation-text/70">
               <div className="flex items-center gap-6">
                 <span>
                   <span className="text-white font-medium">{meetings.length}</span> meetings
@@ -336,7 +336,7 @@ export default function MeetingsDrillDown({
                   <span className="text-white font-medium">{new Set(meetings.filter(m => m.industry).map(m => m.industry)).size}</span> industries
                 </span>
               </div>
-              <span className="text-slate-500">
+              <span className="text-rillation-text/60">
                 Scroll to see all
               </span>
             </div>

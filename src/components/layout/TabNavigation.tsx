@@ -1,7 +1,6 @@
 import { NavLink, useLocation } from 'react-router-dom'
 import DateRangeFilter from '../ui/DateRangeFilter'
 import ClientFilter from '../ui/ClientFilter'
-import Button from '../ui/Button'
 import { Lock } from 'lucide-react'
 import { useFilters } from '../../contexts/FilterContext'
 import { useClients } from '../../hooks/useClients'
@@ -27,7 +26,6 @@ export default function TabNavigation() {
     setDatePreset,
     dateRange,
     setDateRange,
-    clearFilters,
   } = useFilters()
   
   const handlePresetChange = (preset: string) => {
@@ -40,19 +38,19 @@ export default function TabNavigation() {
   }
   
   return (
-    <nav className="px-6 border-b border-rillation-border">
+    <nav className="px-6 border-b border-rillation-border bg-rillation-bg">
       <div className="flex items-center justify-between gap-4 py-2">
         {/* Tabs */}
-        <div className="flex gap-1">
+        <div className="flex gap-1.5">
           {tabs.map((tab) => {
             const isActive = location.pathname === tab.path
-            
+
             return (
               <NavLink
                 key={tab.path}
                 to={tab.path}
                 className={`
-                  relative px-4 py-3 text-sm font-medium transition-all duration-200
+                  relative px-5 py-3.5 text-base font-medium transition-all duration-200
                   ${isActive
                     ? 'text-white'
                     : 'text-white/80 hover:text-white'
@@ -81,11 +79,6 @@ export default function TabNavigation() {
               onPresetChange={handlePresetChange}
               activePreset={datePreset}
             />
-
-            {/* Clear Button */}
-            <Button variant="ghost" size="sm" onClick={clearFilters}>
-              Clear
-            </Button>
 
             {/* Client Filter - Far Right */}
             {isPipelinePage ? (

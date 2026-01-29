@@ -66,9 +66,9 @@ export default function ClientFilter({
       <motion.button
         onClick={() => setIsOpen(!isOpen)}
         className={`
-          flex items-center gap-3 px-6 py-3 min-w-[260px]
+          flex items-center gap-3 px-5 py-2.5 min-w-[200px]
           bg-emerald-800 backdrop-blur-sm border rounded-xl
-          text-base text-white font-medium
+          text-sm text-white font-medium
           transition-colors hover:bg-emerald-700
           ${isOpen ? 'border-emerald-400/50' : 'border-emerald-600/50'}
         `}

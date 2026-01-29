@@ -124,7 +124,7 @@ export default function CompactSalesMetrics({ summary, dailyMetrics }: CompactSa
       if (active && payload && payload.length) {
         return (
           <div className="bg-slate-800 border border-slate-600 rounded-lg p-2 shadow-xl">
-            <p className="text-xs text-slate-400">{label}</p>
+            <p className="text-xs text-rillation-text/70">{label}</p>
             <p className="text-sm font-bold" style={{ color: config.color }}>
               {config.formatter(payload[0].value)}
             </p>
@@ -150,7 +150,7 @@ export default function CompactSalesMetrics({ summary, dailyMetrics }: CompactSa
             </h4>
             <motion.button
               onClick={() => handleCloseChart(type)}
-              className="p-1 rounded-lg hover:bg-slate-700/50 text-slate-400 hover:text-white transition-colors"
+              className="p-1 rounded-lg hover:bg-slate-700/50 text-rillation-text/70 hover:text-white transition-colors"
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
             >

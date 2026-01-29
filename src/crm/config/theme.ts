@@ -2,21 +2,21 @@
 // A distinctive, modern dark theme with Rillation Green accents
 
 export const theme = {
-  // Background layers
+  // Background layers - dark navy blue theme
   bg: {
-    page: '#09090b',        // zinc-950 - deepest
-    card: '#0f0f12',        // card surfaces
-    elevated: '#16161a',    // modals, dropdowns
-    hover: '#1c1c21',       // hover states
-    active: '#232329',      // active/selected
-    muted: '#27272a',       // muted backgrounds
+    page: '#060f1a',        // Dark navy - deepest
+    card: '#0a1628',        // Navy card surfaces
+    elevated: '#0d1d30',    // Navy modals, dropdowns
+    hover: '#122438',       // Navy hover states
+    active: '#183050',      // Navy active/selected
+    muted: '#122438',       // Navy muted backgrounds
   },
-  
-  // Borders
+
+  // Borders - navy theme
   border: {
-    subtle: '#1f1f23',
-    default: '#27272a',     // zinc-800
-    strong: '#3f3f46',      // zinc-700
+    subtle: '#0d1d30',
+    default: '#122438',     // Navy default border
+    strong: '#183050',      // Navy strong border
     focus: '#117754',       // rillation-green
   },
   

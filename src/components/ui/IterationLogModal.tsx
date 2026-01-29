@@ -102,7 +102,7 @@ export default function IterationLogModal({ isOpen, onClose, client }: Iteration
       'A/B Test Started': 'bg-pink-500/20 text-pink-300 border-pink-500/30',
       'Performance Review': 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30',
       'Client Feedback': 'bg-orange-500/20 text-orange-300 border-orange-500/30',
-      'Other': 'bg-slate-500/20 text-slate-300 border-slate-500/30',
+      'Other': 'bg-slate-500/20 text-rillation-text border-slate-500/30',
     }
     return colors[type] || colors['Other']
   }
@@ -333,7 +333,7 @@ export default function IterationLogModal({ isOpen, onClose, client }: Iteration
                             {log.action_type}
                           </span>
                           {log.campaign_name && (
-                            <span className="px-2 py-1 rounded-md text-xs font-medium border bg-slate-700/50 text-slate-300 border-slate-600/50">
+                            <span className="px-2 py-1 rounded-md text-xs font-medium border bg-slate-700/50 text-rillation-text border-slate-600/50">
                               {log.campaign_name}
                             </span>
                           )}

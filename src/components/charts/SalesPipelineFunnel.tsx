@@ -119,7 +119,7 @@ export default function SalesPipelineFunnel({
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-semibold text-white">Sales Pipeline (Effectiveness)</h3>
         <div className="flex items-center gap-2">
-          <span className="text-xs text-slate-400">Overall Conversion:</span>
+          <span className="text-xs text-rillation-text/70">Overall Conversion:</span>
           <span className={`text-sm font-bold ${overallConversion > 20 ? 'text-emerald-400' : overallConversion > 10 ? 'text-amber-400' : 'text-red-400'}`}>
             {formatPercentage(overallConversion)}
           </span>
@@ -217,7 +217,7 @@ export default function SalesPipelineFunnel({
       <div className="mt-6 grid grid-cols-5 gap-2 text-center">
         {stages.slice(1).map((stage, idx) => (
           <div key={stage.name} className="bg-slate-800/50 rounded-lg py-2 px-1">
-            <div className="text-xs text-slate-400 truncate">{stages[idx].name.split(' ')[0]} →</div>
+            <div className="text-xs text-rillation-text/70 truncate">{stages[idx].name.split(' ')[0]} →</div>
             <div className={`text-sm font-bold ${
               stage.percentage && stage.percentage >= 70 ? 'text-emerald-400' : 
               stage.percentage && stage.percentage >= 40 ? 'text-amber-400' : 'text-red-400'
@@ -229,7 +229,7 @@ export default function SalesPipelineFunnel({
       </div>
 
       {/* Legend */}
-      <div className="mt-4 flex items-center justify-center gap-4 text-xs text-slate-500">
+      <div className="mt-4 flex items-center justify-center gap-4 text-xs text-rillation-text/60">
         <span>Percentages show conversion from previous stage</span>
       </div>
     </motion.div>

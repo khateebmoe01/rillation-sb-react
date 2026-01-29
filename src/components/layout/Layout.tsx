@@ -22,7 +22,7 @@ export default function Layout({ children }: LayoutProps) {
   const isStandalonePage = isInfrastructurePage || isStrategyPage || isCRMPage
   
   return (
-    <div className="min-h-screen flex overflow-hidden">
+    <div className="min-h-screen flex overflow-hidden bg-rillation-bg">
       {/* Top border separator */}
       <div className="fixed top-0 left-0 right-0 h-1 bg-rillation-border z-50" />
       
@@ -40,7 +40,7 @@ export default function Layout({ children }: LayoutProps) {
       <Sidebar />
       
       {/* Main Content */}
-      <div className="flex-1 flex flex-col min-h-screen min-w-0">
+      <div className="flex-1 flex flex-col min-h-screen min-w-0 bg-rillation-bg">
         {/* Header */}
         <Header />
         
@@ -48,7 +48,7 @@ export default function Layout({ children }: LayoutProps) {
         {!isStandalonePage && <TabNavigation />}
         
         {/* Page Content */}
-        <main className="flex-1 overflow-auto p-6">
+        <main className="flex-1 overflow-auto p-6 bg-rillation-bg">
           {children}
         </main>
       </div>

@@ -71,9 +71,9 @@ export function SavedConfigsSidebar({
   }
 
   return (
-    <div className="w-56 flex-shrink-0 border-r border-gray-800 bg-[#0a0a0f] flex flex-col">
+    <div className="w-56 flex-shrink-0 border-r border-rillation-border bg-rillation-bg flex flex-col">
       {/* Header */}
-      <div className="p-3 border-b border-gray-800">
+      <div className="p-3 border-b border-rillation-border">
         <h3 className="text-sm font-medium text-white">Configurations</h3>
       </div>
 
@@ -81,8 +81,8 @@ export function SavedConfigsSidebar({
       <div className="flex-1 overflow-y-auto">
         {/* Recent Section */}
         {recentConfigs.length > 0 && (
-          <div className="p-3 border-b border-gray-800/50">
-            <div className="flex items-center gap-1.5 text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">
+          <div className="p-3 border-b border-rillation-border/50">
+            <div className="flex items-center gap-1.5 text-xs font-medium text-rillation-text/60 uppercase tracking-wider mb-2">
               <Clock size={12} />
               Recent
             </div>
@@ -103,12 +103,12 @@ export function SavedConfigsSidebar({
 
         {/* Saved Section */}
         <div className="p-3">
-          <div className="flex items-center gap-1.5 text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">
+          <div className="flex items-center gap-1.5 text-xs font-medium text-rillation-text/60 uppercase tracking-wider mb-2">
             <Bookmark size={12} />
             Saved
           </div>
           {configs.length === 0 ? (
-            <p className="text-xs text-gray-600 py-2">No saved configurations</p>
+            <p className="text-xs text-rillation-text/50 py-2">No saved configurations</p>
           ) : (
             <div className="space-y-1">
               {configs.map((config) => (
@@ -127,7 +127,7 @@ export function SavedConfigsSidebar({
       </div>
 
       {/* Save Button / Input */}
-      <div className="p-3 border-t border-gray-800">
+      <div className="p-3 border-t border-rillation-border">
         <AnimatePresence mode="wait">
           {isSaving ? (
             <motion.div
@@ -146,19 +146,19 @@ export function SavedConfigsSidebar({
                   if (e.key === 'Enter') handleSave()
                   if (e.key === 'Escape') setIsSaving(false)
                 }}
-                className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-sm text-white placeholder-gray-500"
+                className="w-full bg-rillation-card border border-rillation-border rounded px-2 py-1.5 text-sm text-white placeholder-gray-500"
               />
               <div className="flex gap-2">
                 <button
                   onClick={handleSave}
                   disabled={!saveName.trim()}
-                  className="flex-1 px-2 py-1 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-700 disabled:text-gray-500 text-white text-xs rounded transition-colors"
+                  className="flex-1 px-2 py-1 bg-blue-500 hover:bg-blue-600 disabled:bg-rillation-card-hover disabled:text-rillation-text/60 text-white text-xs rounded transition-colors"
                 >
                   Save
                 </button>
                 <button
                   onClick={() => setIsSaving(false)}
-                  className="px-2 py-1 bg-gray-700 hover:bg-gray-600 text-white text-xs rounded"
+                  className="px-2 py-1 bg-rillation-card-hover hover:bg-gray-600 text-white text-xs rounded"
                 >
                   <X size={14} />
                 </button>
@@ -170,7 +170,7 @@ export function SavedConfigsSidebar({
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 10 }}
               onClick={() => setIsSaving(true)}
-              className="w-full flex items-center justify-center gap-1.5 px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs rounded transition-colors"
+              className="w-full flex items-center justify-center gap-1.5 px-3 py-1.5 bg-rillation-card hover:bg-rillation-card-hover text-rillation-text text-xs rounded transition-colors"
             >
               <Save size={12} />
               Save Current Config
@@ -206,7 +206,7 @@ function ConfigCard({
     >
       <button
         onClick={onLoad}
-        className="w-full p-2 rounded bg-gray-800/50 hover:bg-gray-800 text-left transition-colors"
+        className="w-full p-2 rounded bg-rillation-card/50 hover:bg-rillation-card text-left transition-colors"
       >
         <div className="flex items-start justify-between gap-2">
           <div className="flex-1 min-w-0">
@@ -230,7 +230,7 @@ function ConfigCard({
                   e.stopPropagation()
                   onDelete()
                 }}
-                className="p-1 text-gray-500 hover:text-red-400"
+                className="p-1 text-rillation-text/60 hover:text-red-400"
               >
                 <Trash2 size={12} />
               </motion.button>

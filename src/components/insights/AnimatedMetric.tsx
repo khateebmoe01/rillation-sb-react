@@ -20,7 +20,7 @@ export default function AnimatedMetric({
   value,
   label,
   icon,
-  colorClass = 'text-slate-400',
+  colorClass = 'text-rillation-text/70',
   suffix = '',
   prefix = '',
   decimals = 0,

@@ -32,12 +32,12 @@ function StatusBadge({ status }: { status: CampaignStatusType }) {
     completed: { 
       icon: CheckCircle2, 
       label: 'Completed', 
-      className: 'bg-slate-500/20 text-slate-400 border-slate-500/30' 
+      className: 'bg-slate-500/20 text-rillation-text/70 border-slate-500/30' 
     },
     unknown: { 
       icon: HelpCircle, 
       label: 'Unknown', 
-      className: 'bg-slate-500/20 text-slate-400 border-slate-500/30' 
+      className: 'bg-slate-500/20 text-rillation-text/70 border-slate-500/30' 
     },
   }
   
@@ -68,15 +68,15 @@ function SequenceRow({ sequence, index }: { sequence: SequenceStat; index?: numb
         <span className="text-violet-400 font-medium">Step {sequence.step_number}:</span>
         <span className="text-white">{sequence.step_name}</span>
       </div>
-      <div className="text-center text-slate-500">—</div> {/* Status - N/A for steps */}
-      <div className="text-center text-slate-500">—</div> {/* Created - N/A for steps */}
+      <div className="text-center text-rillation-text/60">—</div> {/* Status - N/A for steps */}
+      <div className="text-center text-rillation-text/60">—</div> {/* Created - N/A for steps */}
       <div className="text-center text-white">{formatNumber(sequence.sent)}</div>
-      <div className="text-center text-slate-300">{formatNumber(sequence.prospects)}</div>
-      <div className="text-center text-slate-300">{formatNumber(sequence.total_replies)}</div>
-      <div className="text-center text-slate-300">{formatNumber(sequence.real_replies)}</div>
+      <div className="text-center text-rillation-text">{formatNumber(sequence.prospects)}</div>
+      <div className="text-center text-rillation-text">{formatNumber(sequence.total_replies)}</div>
+      <div className="text-center text-rillation-text">{formatNumber(sequence.real_replies)}</div>
       <div className="text-center text-emerald-400">{formatNumber(sequence.positive_replies)}</div>
-      <div className="text-center text-slate-300">{formatNumber(sequence.bounces)}</div>
-      <div className="text-center text-slate-500">—</div> {/* Meetings - Campaign level only */}
+      <div className="text-center text-rillation-text">{formatNumber(sequence.bounces)}</div>
+      <div className="text-center text-rillation-text/60">—</div> {/* Meetings - Campaign level only */}
     </motion.div>
   )
 }
@@ -141,7 +141,7 @@ function CampaignRow({
             transition={{ duration: 0.2 }}
             className="flex-shrink-0"
           >
-            <ChevronRight size={16} className="text-slate-400" />
+            <ChevronRight size={16} className="text-rillation-text/70" />
           </motion.div>
           <span className="text-white font-medium overflow-hidden text-ellipsis whitespace-nowrap" title={campaign.campaign_name}>
             {campaign.campaign_name}
@@ -150,17 +150,17 @@ function CampaignRow({
         <div className="text-center flex items-center justify-center">
           <StatusBadge status={campaign.status} />
         </div>
-        <div className="text-center text-slate-400 text-xs flex items-center justify-center">
+        <div className="text-center text-rillation-text/70 text-xs flex items-center justify-center">
           {campaign.createdAt 
             ? new Date(campaign.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
             : '—'}
         </div>
         <div className="text-center text-white flex items-center justify-center">{formatNumber(campaign.totalSent)}</div>
-        <div className="text-center text-slate-300 flex items-center justify-center">{formatNumber(campaign.uniqueProspects)}</div>
-        <div className="text-center text-slate-300 flex items-center justify-center">{formatNumber(campaign.totalReplies)}</div>
-        <div className="text-center text-slate-300 flex items-center justify-center">{formatNumber(campaign.realReplies)}</div>
+        <div className="text-center text-rillation-text flex items-center justify-center">{formatNumber(campaign.uniqueProspects)}</div>
+        <div className="text-center text-rillation-text flex items-center justify-center">{formatNumber(campaign.totalReplies)}</div>
+        <div className="text-center text-rillation-text flex items-center justify-center">{formatNumber(campaign.realReplies)}</div>
         <div className="text-center text-emerald-400 flex items-center justify-center">{formatNumber(campaign.positiveReplies)}</div>
-        <div className="text-center text-slate-300 flex items-center justify-center">{formatNumber(campaign.bounces)}</div>
+        <div className="text-center text-rillation-text flex items-center justify-center">{formatNumber(campaign.bounces)}</div>
         <div className="text-center text-fuchsia-400 font-semibold flex items-center justify-center">{formatNumber(campaign.meetingsBooked)}</div>
       </motion.div>
 
@@ -371,13 +371,13 @@ export default function CampaignBreakdownTable({ client, onCampaignsSelected }: 
                   className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
                     statusFilter === status
                       ? 'bg-slate-700 text-white'
-                      : 'bg-slate-800/50 text-slate-400 hover:bg-slate-700/50'
+                      : 'bg-slate-800/50 text-rillation-text/70 hover:bg-slate-700/50'
                   }`}
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                 >
                   {status === 'all' ? 'All' : status.charAt(0).toUpperCase() + status.slice(1)}
-                  <span className="ml-1.5 text-slate-500">({statusCounts[status]})</span>
+                  <span className="ml-1.5 text-rillation-text/60">({statusCounts[status]})</span>
                 </motion.button>
               ))}
             </div>
@@ -397,8 +397,8 @@ export default function CampaignBreakdownTable({ client, onCampaignsSelected }: 
                   onClick={() => setSortField(field)}
                   className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
                     sortField === field
-                      ? 'bg-slate-600/50 text-slate-200 border border-slate-500/30'
-                      : 'bg-slate-800/50 text-slate-400 hover:bg-slate-700/50'
+                      ? 'bg-slate-600/50 text-rillation-text border border-slate-500/30'
+                      : 'bg-slate-800/50 text-rillation-text/70 hover:bg-slate-700/50'
                   }`}
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
@@ -477,7 +477,7 @@ export default function CampaignBreakdownTable({ client, onCampaignsSelected }: 
                 disabled={page === 1}
                 className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
                   page === 1
-                    ? 'bg-slate-800/30 text-slate-600 cursor-not-allowed'
+                    ? 'bg-slate-800/30 text-rillation-text/50 cursor-not-allowed'
                     : 'bg-slate-700/50 text-white hover:bg-slate-700'
                 }`}
                 whileHover={page !== 1 ? { scale: 1.02 } : {}}
@@ -493,7 +493,7 @@ export default function CampaignBreakdownTable({ client, onCampaignsSelected }: 
                 disabled={page === totalPages}
                 className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
                   page === totalPages
-                    ? 'bg-slate-800/30 text-slate-600 cursor-not-allowed'
+                    ? 'bg-slate-800/30 text-rillation-text/50 cursor-not-allowed'
                     : 'bg-slate-700/50 text-white hover:bg-slate-700'
                 }`}
                 whileHover={page !== totalPages ? { scale: 1.02 } : {}}

@@ -76,7 +76,7 @@ export default function PipelineMetricsSection({
     if (active && payload && payload.length) {
       return (
         <div className="bg-slate-800 border border-slate-700 rounded-lg p-3 shadow-xl">
-          <p className="text-xs text-slate-300 mb-2">{label}</p>
+          <p className="text-xs text-rillation-text mb-2">{label}</p>
           {payload.map((entry: any, index: number) => (
             <p key={index} className="text-sm font-medium" style={{ color: entry.color }}>
               {entry.name}: {entry.value?.toLocaleString()}

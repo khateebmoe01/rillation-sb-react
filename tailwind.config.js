@@ -10,12 +10,12 @@ export default {
         'xs': '480px',
       },
       colors: {
-        // Black and white theme with purposeful color usage
+        // Dark navy blue theme with purposeful color usage
         'rillation': {
-          'bg': '#000000',
-          'card': '#141414',
-          'card-hover': '#1a1a1a',
-          'border': '#222222',
+          'bg': '#060f1a',
+          'card': '#0a1628',
+          'card-hover': '#0d1d30',
+          'border': '#122438',
           'purple': '#a855f7', // Keep for backward compatibility, but avoid using
           'purple-dark': '#7c3aed',
           'magenta': '#d946ef', // Keep for backward compatibility, but avoid using

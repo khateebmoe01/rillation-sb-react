@@ -138,7 +138,7 @@ export default function MiniScorecard({ clientName, metrics, chartData, targets,
     if (active && payload && payload.length) {
       return (
         <div className="bg-[#1a1f2e] border border-[#2a3142] rounded-lg p-2 shadow-xl">
-          <p className="text-xs text-slate-300 mb-1">{label}</p>
+          <p className="text-xs text-rillation-text mb-1">{label}</p>
           {payload.map((entry: any, index: number) => (
             <p key={index} className="text-xs" style={{ color: entry.color }}>
               {entry.name}: {entry.value.toLocaleString()}
@@ -223,7 +223,7 @@ export default function MiniScorecard({ clientName, metrics, chartData, targets,
             <span className={`text-lg font-bold ${targets ? getTargetColor(metrics.realReplies, targets.repliesTarget) : 'text-rillation-text'}`}>
               {formatNumber(metrics.realReplies)}
             </span>
-            <span className="text-xs text-slate-300">{formatPercentage(realReplyRate)}</span>
+            <span className="text-xs text-rillation-text">{formatPercentage(realReplyRate)}</span>
           </div>
         </div>
         <div 
@@ -235,7 +235,7 @@ export default function MiniScorecard({ clientName, metrics, chartData, targets,
             <span className="text-lg font-bold text-rillation-text">
               {formatNumber(metrics.positiveReplies)}
             </span>
-            <span className="text-xs text-slate-300">{formatPercentage(positiveRate)}</span>
+            <span className="text-xs text-rillation-text">{formatPercentage(positiveRate)}</span>
           </div>
         </div>
         <div className="text-center">
@@ -244,7 +244,7 @@ export default function MiniScorecard({ clientName, metrics, chartData, targets,
             <span className="text-lg font-bold text-rillation-text">
               {formatNumber(metrics.bounces)}
             </span>
-            <span className="text-xs text-slate-300">{formatPercentage(bounceRate)}</span>
+            <span className="text-xs text-rillation-text">{formatPercentage(bounceRate)}</span>
           </div>
         </div>
         <div 
@@ -256,7 +256,7 @@ export default function MiniScorecard({ clientName, metrics, chartData, targets,
             <span className={`text-lg font-bold ${targets ? getTargetColor(metrics.meetingsBooked, targets.meetingsTarget) : 'text-rillation-text'}`}>
               {formatNumber(metrics.meetingsBooked)}
             </span>
-            <span className="text-xs text-slate-300">{formatPercentage(meetingRate)}</span>
+            <span className="text-xs text-rillation-text">{formatPercentage(meetingRate)}</span>
           </div>
         </div>
       </div>

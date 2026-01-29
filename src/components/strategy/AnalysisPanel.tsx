@@ -95,7 +95,7 @@ function ItemList({ items, onChange, itemType }: ItemListProps) {
                     <span className={`text-xs px-2 py-0.5 rounded ${
                       item.priority === 'high' ? 'bg-red-500/20 text-red-400' :
                       item.priority === 'medium' ? 'bg-yellow-500/20 text-yellow-400' :
-                      'bg-gray-500/20 text-gray-400'
+                      'bg-gray-500/20 text-rillation-text/70'
                     }`}>
                       {item.priority}
                     </span>

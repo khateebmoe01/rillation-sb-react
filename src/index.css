@@ -11,11 +11,17 @@
 
 html {
   scroll-behavior: smooth;
+  background: #060f1a;
+}
+
+#root {
+  min-height: 100vh;
+  background: #060f1a;
 }
 
 body {
   font-family: 'Sora', system-ui, sans-serif;
-  background: #000000;
+  background: #060f1a;
   min-height: 100vh;
   color: #faf9f6; /* Pearly white for easy visibility */
   -webkit-font-smoothing: antialiased;
@@ -29,16 +35,16 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background: #141414;
+  background: #0a1628;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #222222;
+  background: #122438;
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #333333;
+  background: #183050;
 }
 
 /* Gradient text utility - pearly white */
@@ -80,7 +86,7 @@ body {
 
 /* Funnel gradient - removed purple gradient */
 .funnel-bar {
-  background: #222222;
+  background: #122438;
 }
 
 /* Pulse animation for live data - removed purple glow */
@@ -129,9 +135,9 @@ body {
 
 /* Chart container */
 .chart-container {
-  background: #141414;
+  background: #0a1628;
   border-radius: 12px;
-  border: 1px solid #222222;
+  border: 1px solid #122438;
 }
 
 /* ============================================
@@ -409,6 +415,235 @@ body {
 
 .rdp-rillation .rdp-range-start.rdp-range-end::before,
 .rdp-rillation .rdp-range-start.rdp-range-end::after {
+  display: none;
+}
+
+/* ============================================
+   React Day Picker v9 - Light Theme
+   ============================================ */
+
+.rdp-light {
+  --rdp-accent-color: rgb(37 99 235); /* blue-600 */
+  --rdp-accent-background-color: rgb(239 246 255); /* blue-50 */
+  --rdp-day-width: 36px;
+  --rdp-day-height: 36px;
+}
+
+.rdp-light .rdp-root {
+  font-family: 'Sora', system-ui, sans-serif;
+}
+
+.rdp-light .rdp-months {
+  display: flex;
+  gap: 2rem;
+}
+
+.rdp-light .rdp-month {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.rdp-light .rdp-month-caption {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  padding: 0.25rem 0;
+  height: 2.5rem;
+}
+
+.rdp-light .rdp-caption-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #111827;
+}
+
+.rdp-light .rdp-nav {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  transform: translateY(-50%);
+  display: flex;
+  justify-content: space-between;
+  pointer-events: none;
+}
+
+.rdp-light .rdp-button-previous,
+.rdp-light .rdp-button-next {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 0.375rem;
+  color: #6b7280;
+  cursor: pointer;
+  pointer-events: auto;
+  transition: all 0.15s ease;
+}
+
+.rdp-light .rdp-button-previous:hover,
+.rdp-light .rdp-button-next:hover {
+  color: #111827;
+  background: #f3f4f6;
+}
+
+.rdp-light .rdp-chevron {
+  width: 1rem;
+  height: 1rem;
+}
+
+.rdp-light .rdp-month-grid {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.rdp-light .rdp-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, var(--rdp-day-width));
+  margin-bottom: 0.5rem;
+}
+
+.rdp-light .rdp-weekday {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--rdp-day-width);
+  height: var(--rdp-day-height);
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #9ca3af;
+  text-transform: uppercase;
+}
+
+.rdp-light .rdp-weeks {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.rdp-light .rdp-week {
+  display: grid;
+  grid-template-columns: repeat(7, var(--rdp-day-width));
+}
+
+.rdp-light .rdp-day {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--rdp-day-width);
+  height: var(--rdp-day-height);
+  padding: 0;
+}
+
+.rdp-light .rdp-day-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: calc(var(--rdp-day-width) - 4px);
+  height: calc(var(--rdp-day-height) - 4px);
+  font-size: 0.875rem;
+  font-weight: 400;
+  color: #374151;
+  background: transparent;
+  border: none;
+  border-radius: 0.375rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.rdp-light .rdp-day-button:hover {
+  background: #f3f4f6;
+}
+
+.rdp-light .rdp-today .rdp-day-button {
+  background: #f3f4f6;
+  font-weight: 600;
+  color: #111827;
+}
+
+.rdp-light .rdp-outside .rdp-day-button {
+  color: #d1d5db;
+}
+
+.rdp-light .rdp-disabled .rdp-day-button {
+  color: #e5e7eb;
+  cursor: not-allowed;
+}
+
+.rdp-light .rdp-disabled .rdp-day-button:hover {
+  background: transparent;
+}
+
+.rdp-light .rdp-hidden {
+  visibility: hidden;
+}
+
+.rdp-light .rdp-selected .rdp-day-button {
+  background: var(--rdp-accent-color);
+  color: #ffffff;
+  font-weight: 500;
+}
+
+.rdp-light .rdp-selected .rdp-day-button:hover {
+  background: rgb(29 78 216); /* blue-700 */
+}
+
+.rdp-light .rdp-range-start .rdp-day-button,
+.rdp-light .rdp-range-end .rdp-day-button {
+  background: var(--rdp-accent-color);
+  color: #ffffff;
+  font-weight: 500;
+  border-radius: 0.375rem;
+}
+
+.rdp-light .rdp-range-middle {
+  background: var(--rdp-accent-background-color);
+}
+
+.rdp-light .rdp-range-middle .rdp-day-button {
+  color: #1e40af;
+  border-radius: 0;
+}
+
+.rdp-light .rdp-range-middle .rdp-day-button:hover {
+  background: rgb(219 234 254); /* blue-100 */
+}
+
+.rdp-light .rdp-range-start:not(.rdp-range-end)::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  right: 0;
+  bottom: 2px;
+  width: 50%;
+  background: var(--rdp-accent-background-color);
+  z-index: -1;
+}
+
+.rdp-light .rdp-range-end:not(.rdp-range-start)::before {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 0;
+  bottom: 2px;
+  width: 50%;
+  background: var(--rdp-accent-background-color);
+  z-index: -1;
+}
+
+.rdp-light .rdp-range-start.rdp-range-end .rdp-day-button {
+  border-radius: 0.375rem;
+}
+
+.rdp-light .rdp-range-start.rdp-range-end::before,
+.rdp-light .rdp-range-start.rdp-range-end::after {
   display: none;
 }
 
