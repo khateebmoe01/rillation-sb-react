@@ -15,14 +15,10 @@ html {
 }
 
 #root {
-  min-height: 100vh;
+  min-height: 111.111vh;
   background: #060f1a;
   /* 10% zoom-out effect that fills entire screen */
-  width: 111.111%;
-  height: 111.111vh;
-  transform: scale(0.9);
-  transform-origin: top left;
-  overflow: hidden;
+  zoom: 0.9;
 }
 
 body {
