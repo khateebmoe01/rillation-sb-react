@@ -1,6 +1,6 @@
 import { useState, createContext, useContext, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { 
+import {
   Package,
   List,
   Flame,
@@ -18,11 +18,18 @@ import DomainInventoryManager from '../components/infrastructure/DomainInventory
 import OrderWorkflow from '../components/infrastructure/OrderWorkflow'
 import InboxOrders from '../components/infrastructure/InboxOrders'
 import HealthMonitor from '../components/infrastructure/HealthMonitor'
+import type { GeneratedDomainResult } from '../lib/csv-generators'
 
 type MainTab = 'inboxes' | 'domains' | 'orders' | 'health'
 type InboxSubTab = 'sets' | 'inventory' | 'analytics'
 type DomainSubTab = 'generator' | 'inventory'
 type OrderSubTab = 'create' | 'history'
+
+// Extended domain result with duplicate info
+export interface ExtendedDomainResult extends GeneratedDomainResult {
+  isDuplicate?: boolean
+  source?: string
+}
 
 // Context for sharing filter state across all infrastructure components
 interface InfraFilterContextType {
@@ -30,6 +37,11 @@ interface InfraFilterContextType {
   setSelectedClient: (client: string) => void
   searchQuery: string
   setSearchQuery: (query: string) => void
+  // Generator state (persists across tab switches)
+  generatedDomains: ExtendedDomainResult[]
+  setGeneratedDomains: (domains: ExtendedDomainResult[]) => void
+  selectedDomains: Set<string>
+  setSelectedDomains: (domains: Set<string>) => void
 }
 
 const InfraFilterContext = createContext<InfraFilterContextType>({
@@ -37,6 +49,10 @@ const InfraFilterContext = createContext<InfraFilterContextType>({
   setSelectedClient: () => {},
   searchQuery: '',
   setSearchQuery: () => {},
+  generatedDomains: [],
+  setGeneratedDomains: () => {},
+  selectedDomains: new Set(),
+  setSelectedDomains: () => {},
 })
 
 export const useInfraFilter = () => useContext(InfraFilterContext)
@@ -54,7 +70,11 @@ export default function Infrastructure({ defaultTab = 'inboxes' }: Infrastructur
   // Shared filter state
   const [selectedClient, setSelectedClient] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
-  
+
+  // Generator state (persists across tab switches)
+  const [generatedDomains, setGeneratedDomains] = useState<ExtendedDomainResult[]>([])
+  const [selectedDomains, setSelectedDomains] = useState<Set<string>>(new Set())
+
   const { clients } = useClients()
 
   // Update mainTab when defaultTab prop changes (route change)
@@ -91,7 +111,16 @@ export default function Infrastructure({ defaultTab = 'inboxes' }: Infrastructur
   const subTabConfig = getCurrentSubTabs()
 
   return (
-    <InfraFilterContext.Provider value={{ selectedClient, setSelectedClient, searchQuery, setSearchQuery }}>
+    <InfraFilterContext.Provider value={{
+      selectedClient,
+      setSelectedClient,
+      searchQuery,
+      setSearchQuery,
+      generatedDomains,
+      setGeneratedDomains,
+      selectedDomains,
+      setSelectedDomains,
+    }}>
       <div className="space-y-6">
         {/* Top Bar with Sub-tabs and Filters - Only show when there are sub-tabs */}
         {subTabConfig && (

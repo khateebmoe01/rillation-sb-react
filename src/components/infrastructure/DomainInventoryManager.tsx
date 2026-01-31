@@ -1,14 +1,16 @@
 import { useState, useMemo } from 'react'
-import { 
-  Globe, 
-  AlertTriangle, 
-  ChevronDown, 
+import {
+  Globe,
+  AlertTriangle,
+  ChevronDown,
   ChevronRight,
   Package,
   Clock,
   Trash2,
   Copy,
   Check,
+  Plus,
+  X,
 } from 'lucide-react'
 import { useDomainInventory } from '../../hooks/useDomainInventory'
 import { useClients } from '../../hooks/useClients'
@@ -45,7 +47,14 @@ export default function DomainInventoryManager() {
   const [showNeedsAction, setShowNeedsAction] = useState(false)
   const [copied, setCopied] = useState(false)
 
-  const { domains, loading, markAsPurchased, assignToProvider, bulkUpdateDomains, deleteDomains } = useDomainInventory({
+  // Manual add modal state
+  const [showAddModal, setShowAddModal] = useState(false)
+  const [addDomainText, setAddDomainText] = useState('')
+  const [addDomainClient, setAddDomainClient] = useState('')
+  const [addLoading, setAddLoading] = useState(false)
+  const [addError, setAddError] = useState('')
+
+  const { domains, loading, markAsPurchased, assignToProvider, bulkUpdateDomains, deleteDomains, addDomains } = useDomainInventory({
     client: selectedClient || undefined,
     status: selectedStatus as DomainStatus || undefined,
     inbox_provider: selectedProvider as InboxProvider || undefined,
@@ -156,6 +165,50 @@ export default function DomainInventoryManager() {
       setTimeout(() => setCopied(false), 2000)
     } catch (err) {
       console.error('Failed to copy:', err)
+    }
+  }
+
+  // Handle manual domain addition
+  const handleAddManualDomains = async () => {
+    if (!addDomainClient) {
+      setAddError('Please select a client')
+      return
+    }
+
+    const lines = addDomainText
+      .split('\n')
+      .map(line => line.trim().toLowerCase())
+      .filter(line => line.length > 0)
+
+    if (lines.length === 0) {
+      setAddError('Please enter at least one domain')
+      return
+    }
+
+    // Basic domain validation
+    const domainRegex = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*\.[a-z]{2,}$/
+    const invalidDomains = lines.filter(line => !domainRegex.test(line))
+    if (invalidDomains.length > 0) {
+      setAddError(`Invalid domain format: ${invalidDomains.slice(0, 3).join(', ')}${invalidDomains.length > 3 ? '...' : ''}`)
+      return
+    }
+
+    setAddLoading(true)
+    setAddError('')
+
+    try {
+      await addDomains(lines, addDomainClient, {
+        name: `Manual Add ${new Date().toLocaleDateString()}`,
+      })
+
+      // Close modal and reset
+      setShowAddModal(false)
+      setAddDomainText('')
+      setAddDomainClient('')
+    } catch (err) {
+      setAddError(err instanceof Error ? err.message : 'Failed to add domains')
+    } finally {
+      setAddLoading(false)
     }
   }
 
@@ -297,11 +350,15 @@ export default function DomainInventoryManager() {
 
       {/* Domain Groups */}
       <div className="bg-rillation-card rounded-xl border border-rillation-border overflow-hidden">
-        <div className="p-4 border-b border-rillation-border">
+        <div className="p-4 border-b border-rillation-border flex items-center justify-between">
           <h3 className="text-lg font-semibold text-white flex items-center gap-2">
             <Globe size={20} className="text-rillation-cyan" />
             Domain Inventory
           </h3>
+          <Button variant="secondary" size="sm" onClick={() => setShowAddModal(true)}>
+            <Plus size={14} />
+            Add Domains
+          </Button>
         </div>
 
         {loading ? (
@@ -380,6 +437,85 @@ export default function DomainInventoryManager() {
           </div>
         )}
       </div>
+
+      {/* Add Domain Modal */}
+      {showAddModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-rillation-card rounded-xl p-6 w-[500px] border border-rillation-border">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-white">Add Domains Manually</h3>
+              <button
+                onClick={() => {
+                  setShowAddModal(false)
+                  setAddDomainText('')
+                  setAddDomainClient('')
+                  setAddError('')
+                }}
+                className="p-1 text-rillation-text-muted hover:text-white"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-rillation-text-muted mb-2">
+                  Client *
+                </label>
+                <ClientFilter
+                  clients={clients}
+                  selectedClient={addDomainClient}
+                  onChange={setAddDomainClient}
+                  requireSelection={true}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-rillation-text-muted mb-2">
+                  Domain Names (one per line)
+                </label>
+                <textarea
+                  value={addDomainText}
+                  onChange={(e) => setAddDomainText(e.target.value)}
+                  placeholder="example.com&#10;mydomain.co&#10;another-domain.info"
+                  rows={8}
+                  className="w-full px-3 py-2 bg-rillation-bg border border-rillation-border rounded-lg text-white text-sm font-mono focus:outline-none focus:border-rillation-purple resize-none"
+                />
+                <p className="text-xs text-rillation-text-muted mt-1">
+                  Enter domain names without http:// or www.
+                </p>
+              </div>
+
+              {addError && (
+                <div className="p-3 bg-rillation-red/20 border border-rillation-red/50 rounded-lg text-rillation-red text-sm">
+                  {addError}
+                </div>
+              )}
+
+              <div className="flex justify-end gap-2 pt-2">
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    setShowAddModal(false)
+                    setAddDomainText('')
+                    setAddDomainClient('')
+                    setAddError('')
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant="primary"
+                  onClick={handleAddManualDomains}
+                  disabled={addLoading || !addDomainText.trim() || !addDomainClient}
+                >
+                  {addLoading ? 'Adding...' : 'Add Domains'}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

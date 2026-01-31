@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo } from 'react'
+import { useState, useRef, useEffect, useMemo, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ChevronDown, Check, X, Building2, Search } from 'lucide-react'
 
@@ -18,8 +18,10 @@ export default function ClientFilter({
 }: ClientFilterProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
+  const [highlightedIndex, setHighlightedIndex] = useState(-1)
   const containerRef = useRef<HTMLDivElement>(null)
   const searchInputRef = useRef<HTMLInputElement>(null)
+  const optionsRef = useRef<HTMLDivElement>(null)
 
   // Filter clients based on search query
   const filteredClients = useMemo(() => {
@@ -52,11 +54,69 @@ export default function ClientFilter({
   useEffect(() => {
     if (!isOpen) {
       setSearchQuery('')
+      setHighlightedIndex(-1)
     } else {
       // Focus search input when dropdown opens
       setTimeout(() => searchInputRef.current?.focus(), 50)
     }
   }, [isOpen])
+
+  // Reset highlighted index when search query changes
+  useEffect(() => {
+    setHighlightedIndex(-1)
+  }, [searchQuery])
+
+  // Build list of selectable options (includes "All Clients" if applicable)
+  const selectableOptions = useMemo(() => {
+    const options: { value: string; label: string }[] = []
+    if (!requireSelection && !searchQuery) {
+      options.push({ value: '', label: 'All Clients' })
+    }
+    filteredClients.forEach(client => {
+      options.push({ value: client, label: client })
+    })
+    return options
+  }, [filteredClients, requireSelection, searchQuery])
+
+  // Handle keyboard navigation
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (!isOpen) return
+
+    switch (e.key) {
+      case 'ArrowDown':
+        e.preventDefault()
+        setHighlightedIndex(prev => {
+          const next = prev + 1
+          return next >= selectableOptions.length ? 0 : next
+        })
+        break
+      case 'ArrowUp':
+        e.preventDefault()
+        setHighlightedIndex(prev => {
+          const next = prev - 1
+          return next < 0 ? selectableOptions.length - 1 : next
+        })
+        break
+      case 'Enter':
+        e.preventDefault()
+        if (highlightedIndex >= 0 && highlightedIndex < selectableOptions.length) {
+          const option = selectableOptions[highlightedIndex]
+          onChange(option.value)
+          setIsOpen(false)
+        }
+        break
+    }
+  }, [isOpen, highlightedIndex, selectableOptions, onChange])
+
+  // Scroll highlighted item into view
+  useEffect(() => {
+    if (highlightedIndex >= 0 && optionsRef.current) {
+      const highlightedElement = optionsRef.current.querySelector(`[data-index="${highlightedIndex}"]`)
+      if (highlightedElement) {
+        highlightedElement.scrollIntoView({ block: 'nearest' })
+      }
+    }
+  }, [highlightedIndex])
 
   const displayValue = selectedClient || (requireSelection ? 'Select a client...' : 'All Clients')
 
@@ -66,8 +126,8 @@ export default function ClientFilter({
       <motion.button
         onClick={() => setIsOpen(!isOpen)}
         className={`
-          flex items-center gap-3 px-5 py-2.5 min-w-[200px]
-          bg-emerald-800 backdrop-blur-sm border rounded-xl
+          flex items-center gap-3 px-3 py-2 w-full
+          bg-emerald-800 backdrop-blur-sm border rounded-lg
           text-sm text-white font-medium
           transition-colors hover:bg-emerald-700
           ${isOpen ? 'border-emerald-400/50' : 'border-emerald-600/50'}
@@ -118,6 +178,7 @@ export default function ClientFilter({
                     type="text"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
+                    onKeyDown={handleKeyDown}
                     placeholder="Search clients..."
                     className="w-full pl-9 pr-3 py-2 bg-emerald-900/50 border border-emerald-600/50 rounded-lg text-sm text-white placeholder:text-white/50 focus:outline-none focus:border-emerald-400/50 transition-colors"
                   />
@@ -125,11 +186,12 @@ export default function ClientFilter({
               </div>
 
               {/* Options */}
-              <div className="max-h-[300px] overflow-y-auto">
+              <div ref={optionsRef} className="max-h-[300px] overflow-y-auto">
                 {/* All Clients Option - Only show if requireSelection is false and no search query */}
                 {!requireSelection && !searchQuery && (
                   <>
                     <motion.button
+                      data-index={0}
                       onClick={() => {
                         onChange('')
                         setIsOpen(false)
@@ -139,7 +201,9 @@ export default function ClientFilter({
                         transition-colors
                         ${!selectedClient
                           ? 'bg-emerald-600/50 text-white'
-                          : 'text-white/80 hover:bg-emerald-700/30 hover:text-white'
+                          : highlightedIndex === 0
+                            ? 'bg-emerald-700/50 text-white'
+                            : 'text-white/80 hover:bg-emerald-700/30 hover:text-white'
                         }
                       `}
                       whileHover={{ x: 2 }}
@@ -161,35 +225,44 @@ export default function ClientFilter({
                 )}
 
                 {/* Client Options */}
-                {filteredClients.map((client, index) => (
-                  <motion.button
-                    key={client}
-                    onClick={() => {
-                      onChange(client)
-                      setIsOpen(false)
-                    }}
-                    className={`
-                      w-full flex items-center gap-3 px-4 py-3 text-left
-                      transition-colors
-                      ${selectedClient === client
-                        ? 'bg-emerald-600/50 text-white'
-                        : 'text-white/80 hover:bg-emerald-700/30 hover:text-white'
-                      }
-                    `}
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: index * 0.015 }}
-                    whileHover={{ x: 2 }}
-                  >
-                    <div className={`
-                      w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0
-                      ${selectedClient === client ? 'border-white bg-white/20' : 'border-white/40'}
-                    `}>
-                      {selectedClient === client && <Check size={12} className="text-white" />}
-                    </div>
-                    <span className="font-medium truncate">{client}</span>
-                  </motion.button>
-                ))}
+                {filteredClients.map((client, index) => {
+                  // Calculate the actual index in selectableOptions
+                  const optionIndex = (!requireSelection && !searchQuery) ? index + 1 : index
+                  const isHighlighted = highlightedIndex === optionIndex
+
+                  return (
+                    <motion.button
+                      key={client}
+                      data-index={optionIndex}
+                      onClick={() => {
+                        onChange(client)
+                        setIsOpen(false)
+                      }}
+                      className={`
+                        w-full flex items-center gap-3 px-4 py-3 text-left
+                        transition-colors
+                        ${selectedClient === client
+                          ? 'bg-emerald-600/50 text-white'
+                          : isHighlighted
+                            ? 'bg-emerald-700/50 text-white'
+                            : 'text-white/80 hover:bg-emerald-700/30 hover:text-white'
+                        }
+                      `}
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: index * 0.015 }}
+                      whileHover={{ x: 2 }}
+                    >
+                      <div className={`
+                        w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0
+                        ${selectedClient === client ? 'border-white bg-white/20' : 'border-white/40'}
+                      `}>
+                        {selectedClient === client && <Check size={12} className="text-white" />}
+                      </div>
+                      <span className="font-medium truncate">{client}</span>
+                    </motion.button>
+                  )
+                })}
 
                 {/* Empty State */}
                 {filteredClients.length === 0 && (

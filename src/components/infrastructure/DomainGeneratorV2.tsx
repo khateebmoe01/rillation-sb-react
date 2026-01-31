@@ -1,39 +1,119 @@
-import { useState, useMemo } from 'react'
-import { 
-  Sparkles, 
-  Plus, 
-  X, 
-  Check, 
-  AlertTriangle, 
+import { useState, useMemo, useRef } from 'react'
+import {
+  Sparkles,
+  Plus,
+  X,
+  Check,
+  AlertTriangle,
   Save,
   FolderOpen,
-  CheckSquare
+  CheckSquare,
+  Copy,
 } from 'lucide-react'
 import { useDomainTemplates } from '../../hooks/useDomainTemplates'
 import { useDomainInventory } from '../../hooks/useDomainInventory'
 import { useClients } from '../../hooks/useClients'
 import { generateDomainCombinations, type GeneratedDomainResult } from '../../lib/csv-generators'
+import { useInfraFilter } from '../../pages/Infrastructure'
 import Button from '../ui/Button'
 import ClientFilter from '../ui/ClientFilter'
+import CheckboxDropdown, { type CheckboxDropdownRef } from '../ui/CheckboxDropdown'
+
+// Default available options for dropdowns
+const DEFAULT_PREFIX_OPTIONS = [
+  'try', 'use', 'join', 'grow', 'choose', 'find', 'go', 'do', 'get',
+  'max', 'pick', 'start', 'run', 'new', 'my', 'pro', 'top', 'true',
+  'next', 'best', 'one',
+]
+
+const DEFAULT_SUFFIX_OPTIONS = ['go', 'max', 'pro', 'top', 'hq', 'hub', 'app', 'now', 'plus']
+
+const DEFAULT_TLD_OPTIONS = ['.co', '.info', '.com', '.net', '.io', '.org', '.biz']
 
 export default function DomainGeneratorV2() {
   const { clients } = useClients()
   const { templates, createTemplate, markTemplateUsed, getDefaults } = useDomainTemplates()
   const { addDomains, checkDuplicates } = useDomainInventory()
 
+  // Use context for state that should persist across tab switches
+  const {
+    generatedDomains,
+    setGeneratedDomains,
+    selectedDomains,
+    setSelectedDomains,
+  } = useInfraFilter()
+
   const [selectedClient, setSelectedClient] = useState('')
   const [baseNames, setBaseNames] = useState<string[]>([''])
+  const baseNameRefs = useRef<(HTMLInputElement | null)[]>([])
+
+  // Refs for dropdown navigation
+  const tldDropdownRef = useRef<CheckboxDropdownRef>(null)
+  const prefixDropdownRef = useRef<CheckboxDropdownRef>(null)
+  const suffixDropdownRef = useRef<CheckboxDropdownRef>(null)
+
+  // Available options (can be extended by user)
+  const [prefixOptions, setPrefixOptions] = useState<string[]>(DEFAULT_PREFIX_OPTIONS)
+  const [suffixOptions, setSuffixOptions] = useState<string[]>(DEFAULT_SUFFIX_OPTIONS)
+  const [tldOptions, setTldOptions] = useState<string[]>(DEFAULT_TLD_OPTIONS)
+
+  // Selected options
   const [prefixes, setPrefixes] = useState<string[]>(getDefaults().prefixes)
   const [suffixes, setSuffixes] = useState<string[]>(getDefaults().suffixes)
   const [tlds, setTlds] = useState<string[]>(['.co', '.info'])
-  const [newPrefix, setNewPrefix] = useState('')
-  const [newSuffix, setNewSuffix] = useState('')
 
-  const [generatedDomains, setGeneratedDomains] = useState<(GeneratedDomainResult & { isDuplicate?: boolean; source?: string })[]>([])
-  const [selectedDomains, setSelectedDomains] = useState<Set<string>>(new Set())
   const [loading, setLoading] = useState(false)
   const [showSaveModal, setShowSaveModal] = useState(false)
   const [templateName, setTemplateName] = useState('')
+  const [copied, setCopied] = useState(false)
+
+  // Toggle functions for dropdowns
+  const togglePrefix = (prefix: string) => {
+    if (prefixes.includes(prefix)) {
+      setPrefixes(prefixes.filter(p => p !== prefix))
+    } else {
+      setPrefixes([...prefixes, prefix])
+    }
+  }
+
+  const toggleSuffix = (suffix: string) => {
+    if (suffixes.includes(suffix)) {
+      setSuffixes(suffixes.filter(s => s !== suffix))
+    } else {
+      setSuffixes([...suffixes, suffix])
+    }
+  }
+
+  const toggleTld = (tld: string) => {
+    if (tlds.includes(tld)) {
+      setTlds(tlds.filter(t => t !== tld))
+    } else {
+      setTlds([...tlds, tld])
+    }
+  }
+
+  // Add new option functions
+  const addPrefixOption = (prefix: string) => {
+    if (!prefixOptions.includes(prefix)) {
+      setPrefixOptions([...prefixOptions, prefix])
+      setPrefixes([...prefixes, prefix]) // Auto-select new additions
+    }
+  }
+
+  const addSuffixOption = (suffix: string) => {
+    if (!suffixOptions.includes(suffix)) {
+      setSuffixOptions([...suffixOptions, suffix])
+      setSuffixes([...suffixes, suffix]) // Auto-select new additions
+    }
+  }
+
+  const addTldOption = (tld: string) => {
+    const formattedTld = tld.startsWith('.') ? tld : `.${tld}`
+    if (!tldOptions.includes(formattedTld)) {
+      setTldOptions([...tldOptions, formattedTld])
+      setTlds([...tlds, formattedTld]) // Auto-select new additions
+    }
+  }
 
   const handleGenerate = async () => {
     setLoading(true)
@@ -129,6 +209,21 @@ export default function DomainGeneratorV2() {
     setSelectedDomains(new Set(nonDuplicates))
   }
 
+  const copySelectedToClipboard = async () => {
+    const domainNames = generatedDomains
+      .filter(d => selectedDomains.has(d.domain))
+      .map(d => d.domain)
+      .join('\n')
+
+    try {
+      await navigator.clipboard.writeText(domainNames)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch (err) {
+      console.error('Failed to copy:', err)
+    }
+  }
+
   const stats = useMemo(() => {
     const duplicates = generatedDomains.filter(d => d.isDuplicate).length
     const available = generatedDomains.length - duplicates
@@ -185,194 +280,132 @@ export default function DomainGeneratorV2() {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-6">
-          {/* Left Column */}
-          <div className="space-y-4">
-            {/* Client */}
-            <div>
-              <label className="block text-sm font-medium text-rillation-text-muted mb-2">
-                Client *
-              </label>
-              <ClientFilter
-                clients={clients}
-                selectedClient={selectedClient}
-                onChange={setSelectedClient}
-                requireSelection={true}
-              />
-            </div>
+        {/* Single Row Layout */}
+        <div className="grid grid-cols-5 gap-4">
+          {/* Client */}
+          <div>
+            <label className="block text-sm font-medium text-rillation-text-muted mb-2">
+              Client *
+            </label>
+            <ClientFilter
+              clients={clients}
+              selectedClient={selectedClient}
+              onChange={setSelectedClient}
+              requireSelection={true}
+            />
+          </div>
 
-            {/* Base Names */}
-            <div>
-              <label className="block text-sm font-medium text-rillation-text-muted mb-2">
-                Base Names (company name variants)
-              </label>
-              <div className="space-y-2">
-                {baseNames.map((name, idx) => (
-                  <div key={idx} className="flex items-center gap-2">
-                    <input
-                      type="text"
-                      value={name}
-                      onChange={(e) => {
+          {/* Base Names */}
+          <div>
+            <label className="block text-sm font-medium text-rillation-text-muted mb-2">
+              Base Names
+            </label>
+            <div className="space-y-1">
+              {baseNames.map((name, idx) => (
+                <div key={idx} className="flex items-center gap-1">
+                  <input
+                    ref={(el) => { baseNameRefs.current[idx] = el }}
+                    type="text"
+                    value={name}
+                    onChange={(e) => {
+                      const newNames = [...baseNames]
+                      newNames[idx] = e.target.value.toLowerCase().replace(/[^a-z0-9]/g, '')
+                      setBaseNames(newNames)
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault()
                         const newNames = [...baseNames]
-                        newNames[idx] = e.target.value.toLowerCase().replace(/[^a-z0-9]/g, '')
+                        newNames.splice(idx + 1, 0, '')
                         setBaseNames(newNames)
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault()
-                          // Add a new empty input after current one
-                          const newNames = [...baseNames]
-                          newNames.splice(idx + 1, 0, '')
-                          setBaseNames(newNames)
-                          // Focus the new input after render
-                          setTimeout(() => {
-                            const inputs = document.querySelectorAll<HTMLInputElement>('input[placeholder="e.g., bkatxtransport"]')
-                            inputs[idx + 1]?.focus()
-                          }, 10)
-                        }
-                      }}
-                      placeholder="e.g., bkatxtransport"
-                      className="flex-1 px-3 py-2 bg-rillation-bg border border-rillation-border rounded-lg text-white text-sm focus:outline-none focus:border-rillation-purple"
-                    />
-                    {baseNames.length > 1 && (
-                      <button
-                        onClick={() => setBaseNames(baseNames.filter((_, i) => i !== idx))}
-                        className="p-2 text-rillation-text-muted hover:text-rillation-red"
-                      >
-                        <X size={16} />
-                      </button>
-                    )}
-                  </div>
-                ))}
-                <button
-                  onClick={() => setBaseNames([...baseNames, ''])}
-                  className="text-sm text-rillation-purple hover:text-rillation-magenta flex items-center gap-1"
-                >
-                  <Plus size={14} /> Add variant
-                </button>
-              </div>
-            </div>
-
-            {/* TLDs */}
-            <div>
-              <label className="block text-sm font-medium text-rillation-text-muted mb-2">
-                TLDs
-              </label>
-              <div className="flex flex-wrap gap-2">
-                {['.co', '.info', '.com', '.net', '.io'].map(tld => (
-                  <label key={tld} className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={tlds.includes(tld)}
-                      onChange={(e) => {
-                        if (e.target.checked) {
-                          setTlds([...tlds, tld])
-                        } else {
-                          setTlds(tlds.filter(t => t !== tld))
-                        }
-                      }}
-                      className="rounded border-rillation-border"
-                    />
-                    <span className="text-sm text-rillation-text">{tld}</span>
-                  </label>
-                ))}
-              </div>
+                        setTimeout(() => {
+                          baseNameRefs.current[idx + 1]?.focus()
+                        }, 10)
+                      } else if (e.key === 'Backspace' && name === '' && baseNames.length > 1) {
+                        e.preventDefault()
+                        const newNames = baseNames.filter((_, i) => i !== idx)
+                        setBaseNames(newNames)
+                        setTimeout(() => {
+                          const focusIdx = Math.max(0, idx - 1)
+                          baseNameRefs.current[focusIdx]?.focus()
+                        }, 10)
+                      }
+                    }}
+                    placeholder="company name"
+                    className="flex-1 px-3 py-2 bg-rillation-bg border border-rillation-border rounded-lg text-white text-sm focus:outline-none focus:border-rillation-purple"
+                  />
+                  {baseNames.length > 1 && (
+                    <button
+                      onClick={() => setBaseNames(baseNames.filter((_, i) => i !== idx))}
+                      className="p-1 text-rillation-text-muted hover:text-rillation-red"
+                    >
+                      <X size={14} />
+                    </button>
+                  )}
+                </div>
+              ))}
+              <button
+                onClick={() => setBaseNames([...baseNames, ''])}
+                className="text-xs text-rillation-purple hover:text-rillation-magenta flex items-center gap-1"
+              >
+                <Plus size={12} /> Add
+              </button>
             </div>
           </div>
 
-          {/* Right Column */}
-          <div className="space-y-4">
-            {/* Prefixes */}
-            <div>
-              <label className="block text-sm font-medium text-rillation-text-muted mb-2">
-                Prefixes
-              </label>
-              <div className="flex flex-wrap gap-1 mb-2">
-                {prefixes.map(prefix => (
-                  <span
-                    key={prefix}
-                    className="px-2 py-1 bg-rillation-purple/20 text-rillation-purple text-xs rounded-full flex items-center gap-1"
-                  >
-                    {prefix}
-                    <button onClick={() => setPrefixes(prefixes.filter(p => p !== prefix))}>
-                      <X size={12} />
-                    </button>
-                  </span>
-                ))}
-              </div>
-              <div className="flex items-center gap-2">
-                <input
-                  type="text"
-                  value={newPrefix}
-                  onChange={(e) => setNewPrefix(e.target.value.toLowerCase().replace(/[^a-z]/g, ''))}
-                  placeholder="Add prefix"
-                  className="flex-1 px-3 py-1.5 bg-rillation-bg border border-rillation-border rounded-lg text-white text-sm"
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && newPrefix && !prefixes.includes(newPrefix)) {
-                      setPrefixes([...prefixes, newPrefix])
-                      setNewPrefix('')
-                    }
-                  }}
-                />
-                <button
-                  onClick={() => {
-                    if (newPrefix && !prefixes.includes(newPrefix)) {
-                      setPrefixes([...prefixes, newPrefix])
-                      setNewPrefix('')
-                    }
-                  }}
-                  className="p-1.5 bg-rillation-purple/20 text-rillation-purple rounded"
-                >
-                  <Plus size={16} />
-                </button>
-              </div>
-            </div>
+          {/* TLDs */}
+          <div>
+            <label className="block text-sm font-medium text-rillation-text-muted mb-2">
+              TLDs
+            </label>
+            <CheckboxDropdown
+              ref={tldDropdownRef}
+              options={tldOptions}
+              selectedOptions={tlds}
+              onToggle={toggleTld}
+              onAdd={addTldOption}
+              placeholder="Select TLDs..."
+              addPlaceholder="Add TLD (e.g., .xyz)"
+              color="blue"
+              onNavigateRight={() => prefixDropdownRef.current?.open()}
+            />
+          </div>
 
-            {/* Suffixes */}
-            <div>
-              <label className="block text-sm font-medium text-rillation-text-muted mb-2">
-                Suffixes
-              </label>
-              <div className="flex flex-wrap gap-1 mb-2">
-                {suffixes.map(suffix => (
-                  <span
-                    key={suffix}
-                    className="px-2 py-1 bg-rillation-cyan/20 text-rillation-cyan text-xs rounded-full flex items-center gap-1"
-                  >
-                    {suffix}
-                    <button onClick={() => setSuffixes(suffixes.filter(s => s !== suffix))}>
-                      <X size={12} />
-                    </button>
-                  </span>
-                ))}
-              </div>
-              <div className="flex items-center gap-2">
-                <input
-                  type="text"
-                  value={newSuffix}
-                  onChange={(e) => setNewSuffix(e.target.value.toLowerCase().replace(/[^a-z]/g, ''))}
-                  placeholder="Add suffix"
-                  className="flex-1 px-3 py-1.5 bg-rillation-bg border border-rillation-border rounded-lg text-white text-sm"
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && newSuffix && !suffixes.includes(newSuffix)) {
-                      setSuffixes([...suffixes, newSuffix])
-                      setNewSuffix('')
-                    }
-                  }}
-                />
-                <button
-                  onClick={() => {
-                    if (newSuffix && !suffixes.includes(newSuffix)) {
-                      setSuffixes([...suffixes, newSuffix])
-                      setNewSuffix('')
-                    }
-                  }}
-                  className="p-1.5 bg-rillation-cyan/20 text-rillation-cyan rounded"
-                >
-                  <Plus size={16} />
-                </button>
-              </div>
-            </div>
+          {/* Prefixes */}
+          <div>
+            <label className="block text-sm font-medium text-rillation-text-muted mb-2">
+              Prefixes
+            </label>
+            <CheckboxDropdown
+              ref={prefixDropdownRef}
+              options={prefixOptions}
+              selectedOptions={prefixes}
+              onToggle={togglePrefix}
+              onAdd={addPrefixOption}
+              placeholder="Select prefixes..."
+              addPlaceholder="Add new prefix..."
+              color="purple"
+              onNavigateLeft={() => tldDropdownRef.current?.open()}
+              onNavigateRight={() => suffixDropdownRef.current?.open()}
+            />
+          </div>
+
+          {/* Suffixes */}
+          <div>
+            <label className="block text-sm font-medium text-rillation-text-muted mb-2">
+              Suffixes
+            </label>
+            <CheckboxDropdown
+              ref={suffixDropdownRef}
+              options={suffixOptions}
+              selectedOptions={suffixes}
+              onToggle={toggleSuffix}
+              onAdd={addSuffixOption}
+              placeholder="Select suffixes..."
+              addPlaceholder="Add new suffix..."
+              color="cyan"
+              onNavigateLeft={() => prefixDropdownRef.current?.open()}
+            />
           </div>
         </div>
 
@@ -407,9 +440,18 @@ export default function DomainGeneratorV2() {
                 <CheckSquare size={14} />
                 Select All Available
               </Button>
-              <Button 
-                variant="primary" 
-                size="sm" 
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={copySelectedToClipboard}
+                disabled={selectedDomains.size === 0}
+              >
+                {copied ? <Check size={14} /> : <Copy size={14} />}
+                {copied ? 'Copied!' : 'Copy Selected'}
+              </Button>
+              <Button
+                variant="primary"
+                size="sm"
                 onClick={handleAddToInventory}
                 disabled={selectedDomains.size === 0 || !selectedClient}
               >
