@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from 'react-router-dom'
-import { BarChart3, LayoutDashboard, Users, DollarSign, CheckSquare, TrendingUp, Compass, Mail, Globe, ShoppingCart, Activity, Sparkles, Rocket } from 'lucide-react'
+import { BarChart3, Users, DollarSign, CheckSquare, TrendingUp, Compass, Mail, Globe, ShoppingCart, Activity, Sparkles, Rocket } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useAI } from '../../contexts/AIContext'
 
