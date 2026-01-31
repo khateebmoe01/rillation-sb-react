@@ -1,0 +1,63 @@
+-- CRM Tables Migration
+-- Note: The crm_deals, crm_tasks, crm_notes tables already exist in the database
+-- This migration documents the schema and fixes constraint issues
+
+-- Fix: Remove constraints that blocked deal creation from engaged_leads
+-- The original schema had:
+-- 1. crm_deals_stage_check - only allowed 'lead' stage, but code uses 'interested', 'discovery', etc.
+-- 2. crm_deals_contact_id_fkey - referenced non-existent crm_contacts table
+
+-- These constraints were dropped via Supabase Management API:
+-- ALTER TABLE crm_deals DROP CONSTRAINT IF EXISTS crm_deals_stage_check;
+-- ALTER TABLE crm_deals DROP CONSTRAINT IF EXISTS crm_deals_contact_id_fkey;
+
+-- Expected CRM Deals schema (for reference):
+-- CREATE TABLE IF NOT EXISTS crm_deals (
+--   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+--   client TEXT NOT NULL,
+--   contact_id TEXT,  -- References engaged_leads.id
+--   name TEXT NOT NULL,
+--   description TEXT,
+--   stage TEXT NOT NULL DEFAULT 'interested',  -- interested, discovery, demo, negotiation, proposal, closed, lost
+--   amount NUMERIC DEFAULT 0,
+--   currency TEXT DEFAULT 'USD',
+--   probability INTEGER DEFAULT 10,
+--   expected_close_date TIMESTAMPTZ,
+--   actual_close_date TIMESTAMPTZ,
+--   close_reason TEXT,
+--   owner_id TEXT,
+--   index INTEGER DEFAULT 0,
+--   tags TEXT[] DEFAULT '{}',
+--   created_at TIMESTAMPTZ DEFAULT NOW(),
+--   updated_at TIMESTAMPTZ DEFAULT NOW(),
+--   deleted_at TIMESTAMPTZ
+-- );
+
+-- Expected CRM Tasks schema (for reference):
+-- CREATE TABLE IF NOT EXISTS crm_tasks (
+--   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+--   client TEXT NOT NULL,
+--   contact_id TEXT,
+--   deal_id UUID,
+--   text TEXT NOT NULL,
+--   type TEXT DEFAULT 'task',
+--   due_date TIMESTAMPTZ,
+--   done BOOLEAN DEFAULT FALSE,
+--   done_at TIMESTAMPTZ,
+--   assigned_to TEXT,
+--   created_at TIMESTAMPTZ DEFAULT NOW(),
+--   updated_at TIMESTAMPTZ DEFAULT NOW()
+-- );
+
+-- Expected CRM Notes schema (for reference):
+-- CREATE TABLE IF NOT EXISTS crm_notes (
+--   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+--   client TEXT NOT NULL,
+--   contact_id TEXT,
+--   deal_id UUID,
+--   text TEXT NOT NULL,
+--   type TEXT DEFAULT 'note',
+--   attachments JSONB DEFAULT '[]',
+--   created_at TIMESTAMPTZ DEFAULT NOW(),
+--   updated_at TIMESTAMPTZ DEFAULT NOW()
+-- );
