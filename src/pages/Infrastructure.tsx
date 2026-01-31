@@ -10,7 +10,6 @@ import {
 } from 'lucide-react'
 import { useClients } from '../hooks/useClients'
 import ClientFilter from '../components/ui/ClientFilter'
-import InfrastructureOverview from '../components/infrastructure/InfrastructureOverview'
 import InboxSetsView from '../components/infrastructure/InboxSetsView'
 import InboxInventory from '../components/infrastructure/InboxInventory'
 import InboxAnalytics from '../components/infrastructure/InboxAnalytics'
@@ -20,7 +19,7 @@ import OrderWorkflow from '../components/infrastructure/OrderWorkflow'
 import InboxOrders from '../components/infrastructure/InboxOrders'
 import HealthMonitor from '../components/infrastructure/HealthMonitor'
 
-type MainTab = 'overview' | 'inboxes' | 'domains' | 'orders' | 'health'
+type MainTab = 'inboxes' | 'domains' | 'orders' | 'health'
 type InboxSubTab = 'sets' | 'inventory' | 'analytics'
 type DomainSubTab = 'generator' | 'inventory'
 type OrderSubTab = 'create' | 'history'
@@ -46,7 +45,7 @@ interface InfrastructureProps {
   defaultTab?: MainTab
 }
 
-export default function Infrastructure({ defaultTab = 'overview' }: InfrastructureProps) {
+export default function Infrastructure({ defaultTab = 'inboxes' }: InfrastructureProps) {
   const [mainTab, setMainTab] = useState<MainTab>(defaultTab)
   const [inboxSubTab, setInboxSubTab] = useState<InboxSubTab>('sets')
   const [domainSubTab, setDomainSubTab] = useState<DomainSubTab>('generator')
@@ -56,15 +55,11 @@ export default function Infrastructure({ defaultTab = 'overview' }: Infrastructu
   const [selectedClient, setSelectedClient] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   
-  // For drill-down view in overview
-  const [drillDownClient, setDrillDownClient] = useState<string | null>(null)
-  
   const { clients } = useClients()
 
   // Update mainTab when defaultTab prop changes (route change)
   useEffect(() => {
     setMainTab(defaultTab)
-    setDrillDownClient(null)
   }, [defaultTab])
 
   const inboxSubTabs = [
@@ -158,19 +153,12 @@ export default function Infrastructure({ defaultTab = 'overview' }: Infrastructu
         {/* Content */}
         <AnimatePresence mode="wait">
           <motion.div
-            key={`${mainTab}-${inboxSubTab}-${domainSubTab}-${orderSubTab}-${drillDownClient || 'all'}`}
+            key={`${mainTab}-${inboxSubTab}-${domainSubTab}-${orderSubTab}`}
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.2 }}
           >
-            {mainTab === 'overview' && (
-              <InfrastructureOverview 
-                drillDownClient={drillDownClient}
-                onClientClick={setDrillDownClient}
-              />
-            )}
-            
             {mainTab === 'inboxes' && inboxSubTab === 'sets' && <InboxSetsView />}
             {mainTab === 'inboxes' && inboxSubTab === 'inventory' && <InboxInventory />}
             {mainTab === 'inboxes' && inboxSubTab === 'analytics' && <InboxAnalytics />}

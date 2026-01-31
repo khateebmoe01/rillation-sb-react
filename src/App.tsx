@@ -74,8 +74,7 @@ function App() {
                     <Route path="/pipeline" element={<PageTransition><PipelineView /></PageTransition>} />
                     <Route path="/strategy" element={<PageTransition><ClientStrategyView /></PageTransition>} />
                     <Route path="/strategy/implementation" element={<PageTransition><GTMImplementation /></PageTransition>} />
-                    <Route path="/infrastructure" element={<PageTransition><Infrastructure /></PageTransition>} />
-                    <Route path="/infrastructure/overview" element={<PageTransition><Infrastructure defaultTab="overview" /></PageTransition>} />
+                    <Route path="/infrastructure" element={<PageTransition><Infrastructure defaultTab="inboxes" /></PageTransition>} />
                     <Route path="/infrastructure/inboxes" element={<PageTransition><Infrastructure defaultTab="inboxes" /></PageTransition>} />
                     <Route path="/infrastructure/domains" element={<PageTransition><Infrastructure defaultTab="domains" /></PageTransition>} />
                     <Route path="/infrastructure/orders" element={<PageTransition><Infrastructure defaultTab="orders" /></PageTransition>} />

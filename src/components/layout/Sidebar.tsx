@@ -9,7 +9,6 @@ const navSections = [
     id: 'crm',
     label: 'CRM',
     items: [
-      { id: 'dashboard', icon: LayoutDashboard, label: 'Dashboard', path: '/crm' },
       { id: 'contacts', icon: Users, label: 'Contacts', path: '/crm/contacts' },
       { id: 'deals', icon: DollarSign, label: 'Deals', path: '/crm/deals' },
       { id: 'tasks', icon: CheckSquare, label: 'Tasks', path: '/crm/tasks' },
@@ -35,7 +34,6 @@ const navSections = [
     id: 'infrastructure',
     label: 'Infrastructure',
     items: [
-      { id: 'overview', icon: LayoutDashboard, label: 'Overview', path: '/infrastructure' },
       { id: 'inboxes', icon: Mail, label: 'Inboxes', path: '/infrastructure/inboxes' },
       { id: 'domains', icon: Globe, label: 'Domains', path: '/infrastructure/domains' },
       { id: 'orders', icon: ShoppingCart, label: 'Orders', path: '/infrastructure/orders' },
