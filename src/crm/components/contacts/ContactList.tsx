@@ -287,6 +287,7 @@ export function ContactList() {
   const [filterGroups, setFilterGroups] = useState<FilterGroup[]>([])
   const [showFilterMenu, setShowFilterMenu] = useState(false)
   const filterPopoverRef = useRef<HTMLDivElement>(null)
+  const tableContainerRef = useRef<HTMLDivElement>(null)
 
   // Column visibility state
   const [showColumnsMenu, setShowColumnsMenu] = useState(false)
@@ -466,6 +467,15 @@ export function ContactList() {
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize, setPageSize] = useState(50)
 
+  // Check if column widths are saved in localStorage
+  const hasSavedColumnWidths = useCallback(() => {
+    try {
+      return localStorage.getItem('crm-contacts-column-widths') !== null
+    } catch {
+      return false
+    }
+  }, [])
+
   // Load saved column widths from localStorage
   const loadColumnWidths = useCallback(() => {
     try {
@@ -483,6 +493,46 @@ export function ContactList() {
   }, [COLUMN_DEFS])
 
   const [columnWidths, setColumnWidths] = useState<Record<string, number>>(loadColumnWidths)
+  const [hasInitializedFitToScreen, setHasInitializedFitToScreen] = useState(hasSavedColumnWidths)
+
+  // Fit columns to screen on first load (when no saved widths exist)
+  useEffect(() => {
+    if (hasInitializedFitToScreen) return
+    if (!tableContainerRef.current) return
+
+    const containerWidth = tableContainerRef.current.offsetWidth
+    if (containerWidth <= 0) return
+
+    // Get visible columns for calculation
+    const visibleCols = columnOrder
+      .map(key => COLUMN_DEFS.find(col => col.key === key))
+      .filter((col): col is typeof COLUMN_DEFS[0] => col !== undefined && columnVisibility[col.key] !== false)
+
+    if (visibleCols.length === 0) return
+
+    // Calculate total default width of visible columns
+    const totalDefaultWidth = visibleCols.reduce((sum, col) => sum + col.defaultWidth, 0)
+
+    // Account for gaps (40px between columns) and padding (32px total)
+    const gapsWidth = (visibleCols.length - 1) * 40
+    const paddingWidth = 32
+    const availableWidth = containerWidth - gapsWidth - paddingWidth
+
+    // Only scale up if columns would fit (don't compress below defaults)
+    if (availableWidth > totalDefaultWidth) {
+      const scale = availableWidth / totalDefaultWidth
+      const scaledWidths = COLUMN_DEFS.reduce((acc, col) => {
+        const isVisible = visibleCols.some(v => v.key === col.key)
+        // Scale visible columns, keep default for hidden ones
+        acc[col.key] = isVisible ? Math.round(col.defaultWidth * scale) : col.defaultWidth
+        return acc
+      }, {} as Record<string, number>)
+
+      setColumnWidths(scaledWidths)
+    }
+
+    setHasInitializedFitToScreen(true)
+  }, [hasInitializedFitToScreen, columnOrder, columnVisibility, COLUMN_DEFS])
 
   // Save column widths to localStorage when they change
   useEffect(() => {
@@ -1635,16 +1685,18 @@ export function ContactList() {
           flexDirection: 'column',
           zoom: 0.94,
         }}>
-          <div style={{
-            overflowX: 'auto',
-            overflowY: 'auto',
-            width: '100%',
-            flex: 1,
-            scrollbarWidth: 'thin',
-            scrollbarColor: `${theme.border.default} transparent`,
-            backgroundColor: theme.bg.row,
-            scrollBehavior: 'smooth',
-          }}>
+          <div
+            ref={tableContainerRef}
+            style={{
+              overflowX: 'auto',
+              overflowY: 'auto',
+              width: '100%',
+              flex: 1,
+              scrollbarWidth: 'thin',
+              scrollbarColor: `${theme.border.default} transparent`,
+              backgroundColor: theme.bg.row,
+              scrollBehavior: 'smooth',
+            }}>
             {/* Table Header */}
             <div
               style={{
