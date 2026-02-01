@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { DollarSign, Plus, Building2, Calendar, MoreHorizontal, Trash2, Edit2, ArrowUpDown, Filter } from 'lucide-react'
+import { DollarSign, Plus, MoreHorizontal, Trash2, Edit2, ArrowUpDown, Filter } from 'lucide-react'
 import { theme } from '../../config/theme'
 import { useCRM } from '../../context/CRMContext'
 import { SearchInput, LoadingSkeleton } from '../shared'
@@ -333,14 +333,25 @@ export function DealsKanban() {
   const closedStages = ['closed', 'lost'] as DealStage[]
   
   return (
-    <div 
+    <div
       ref={containerRef}
-      style={{ height: '100%', display: 'flex', flexDirection: 'column', outline: 'none' }}
+      style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        display: 'flex',
+        flexDirection: 'column',
+        outline: 'none',
+        overflow: 'hidden',
+      }}
       tabIndex={0}
     >
       {/* Header */}
       <div
         style={{
+          flexShrink: 0,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
@@ -378,6 +389,7 @@ export function DealsKanban() {
       {/* Search & Filter/Sort Bar */}
       <div
         style={{
+          flexShrink: 0,
           padding: '12px 20px',
           backgroundColor: theme.bg.card,
           borderBottom: `1px solid ${theme.border.subtle}`,
@@ -651,20 +663,39 @@ export function DealsKanban() {
       <div
         style={{
           flex: 1,
-          overflowX: 'auto',
-          overflowY: 'hidden',
+          display: 'flex',
+          gap: 16,
           padding: 20,
+          overflow: 'hidden',
+          minHeight: 0,
         }}
       >
+        {activeStages.map(stage => (
+          <KanbanColumn
+            key={stage}
+            stage={stage}
+            deals={dealsByStage[stage]}
+            total={stageTotals[stage]}
+            onOpenDeal={handleOpenDeal}
+            onCreateDeal={() => handleCreateDeal(stage)}
+            onDragEnd={handleDragEnd}
+            onDeleteDeal={deleteDeal}
+            selectedDealId={selectedDeal?.id}
+          />
+        ))}
+
+        {/* Closed Deals Section */}
         <div
           style={{
             display: 'flex',
-            gap: 16,
-            height: '100%',
-            width: '100%',
+            flexDirection: 'column',
+            gap: 8,
+            flex: 1,
+            minWidth: 320,
+            minHeight: 0,
           }}
         >
-          {activeStages.map(stage => (
+          {closedStages.map(stage => (
             <KanbanColumn
               key={stage}
               stage={stage}
@@ -675,34 +706,9 @@ export function DealsKanban() {
               onDragEnd={handleDragEnd}
               onDeleteDeal={deleteDeal}
               selectedDealId={selectedDeal?.id}
+              compact
             />
           ))}
-          
-          {/* Closed Deals Section */}
-          <div
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 8,
-              flex: 1,
-              minWidth: 320,
-            }}
-          >
-            {closedStages.map(stage => (
-              <KanbanColumn
-                key={stage}
-                stage={stage}
-                deals={dealsByStage[stage]}
-                total={stageTotals[stage]}
-                onOpenDeal={handleOpenDeal}
-                onCreateDeal={() => handleCreateDeal(stage)}
-                onDragEnd={handleDragEnd}
-                onDeleteDeal={deleteDeal}
-                selectedDealId={selectedDeal?.id}
-                compact
-              />
-            ))}
-          </div>
         </div>
       </div>
       
@@ -788,18 +794,22 @@ function KanbanColumn({
         minWidth: compact ? '100%' : 320,
         maxWidth: compact ? '100%' : 'none',
         maxHeight: compact ? 200 : '100%',
+        height: compact ? 'auto' : '100%',
+        minHeight: 0,
+        overflow: 'hidden',
         backgroundColor: isDragOver ? theme.accent.primaryBg : theme.bg.card,
         borderRadius: theme.radius.xl,
         border: `1px solid ${isDragOver ? theme.accent.primary : theme.border.subtle}`,
-        boxShadow: isDragOver 
+        boxShadow: isDragOver
           ? `0 0 0 1px ${theme.accent.primary}, 0 0 25px rgba(17, 119, 84, 0.25), 0 1px 3px rgba(0, 0, 0, 0.5)`
           : `0 0 0 1px rgba(255, 255, 255, 0.05), 0 1px 3px rgba(0, 0, 0, 0.5)`,
         transition: `all ${theme.transition.fast}`,
       }}
     >
-      {/* Column Header */}
+      {/* Column Header - Fixed */}
       <div
         style={{
+          flexShrink: 0,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
@@ -869,10 +879,11 @@ function KanbanColumn({
         )}
       </div>
       
-      {/* Column Total */}
+      {/* Column Total - Fixed */}
       {total > 0 && (
         <div
           style={{
+            flexShrink: 0,
             padding: compact ? '6px 12px' : '8px 16px',
             borderBottom: `1px solid ${theme.border.subtle}`,
           }}
@@ -888,12 +899,13 @@ function KanbanColumn({
           </span>
         </div>
       )}
-      
-      {/* Cards */}
+
+      {/* Cards - Scrollable */}
       <div
         style={{
           flex: 1,
           overflowY: 'auto',
+          minHeight: 0,
           padding: compact ? 8 : 12,
           display: 'flex',
           flexDirection: 'column',
@@ -954,21 +966,21 @@ function DealCard({ deal, onClick, onDelete, compact = false, isSelected = false
   const [isDragging, setIsDragging] = useState(false)
   const [isHovered, setIsHovered] = useState(false)
   const [hasDragged, setHasDragged] = useState(false)
-  
+
   const handleDragStart = (e: React.DragEvent) => {
     e.dataTransfer.setData('dealId', deal.id)
     e.dataTransfer.effectAllowed = 'move'
     setIsDragging(true)
     setHasDragged(false)
   }
-  
+
   const handleDragEnd = () => {
     setIsDragging(false)
     setHasDragged(true)
     // Reset hasDragged after a short delay to allow click to be prevented
     setTimeout(() => setHasDragged(false), 100)
   }
-  
+
   const handleClick = (e: React.MouseEvent) => {
     // Don't trigger onClick if we just finished dragging
     if (hasDragged) {
@@ -978,7 +990,18 @@ function DealCard({ deal, onClick, onDelete, compact = false, isSelected = false
     }
     onClick()
   }
-  
+
+  const formatCreatedTime = (dateStr: string) => {
+    const date = new Date(dateStr)
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+    })
+  }
+
   return (
     <motion.div
       draggable={false}
@@ -988,7 +1011,7 @@ function DealCard({ deal, onClick, onDelete, compact = false, isSelected = false
           : isHovered
             ? '1px solid rgba(255, 255, 255, 0.12)'
             : '1px solid rgba(255, 255, 255, 0.08)',
-        backgroundColor: isHovered ? '#112840' : theme.bg.elevated,
+        backgroundColor: isHovered ? '#1a3a52' : '#122a3d',
         boxShadow: isSelected
           ? '0 0 0 1px rgba(255, 255, 255, 0.7), 0 4px 20px rgba(0, 0, 0, 0.4)'
           : isHovered
@@ -998,10 +1021,9 @@ function DealCard({ deal, onClick, onDelete, compact = false, isSelected = false
       }}
       transition={{ duration: 0.2 }}
       style={{
-        padding: compact ? 10 : 14,
+        padding: compact ? 10 : 12,
         backgroundColor: theme.bg.elevated,
         borderRadius: theme.radius.lg,
-        borderLeft: `3px solid ${DEAL_STAGE_INFO[deal.stage]?.color || theme.border.default}`,
         cursor: 'grab',
         opacity: isDragging ? 0.5 : 1,
         position: 'relative',
@@ -1016,173 +1038,148 @@ function DealCard({ deal, onClick, onDelete, compact = false, isSelected = false
         onClick={handleClick}
         style={{ width: '100%', height: '100%' }}
       >
-      {/* Deal Name & Amount */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
-        <p
+        {compact ? (
+          // Compact layout for closed/lost stages
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+            <span style={{ fontSize: 13, color: theme.text.primary, fontWeight: 500 }}>
+              {deal.contact?.full_name || deal.name || '-'}
+            </span>
+            {deal.amount > 0 && (
+              <span style={{ fontSize: 13, fontWeight: 600, color: '#34d399' }}>
+                ${formatCurrency(deal.amount)}
+              </span>
+            )}
+          </div>
+        ) : (
+          // Full layout with all fields
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {/* Top row: Name and Deal Value */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+              <div style={{ fontSize: 17, color: '#fff', fontWeight: 600, flex: 1 }}>
+                {deal.contact?.full_name || '-'}
+              </div>
+              <div style={{ fontSize: 15, color: '#34d399', fontWeight: 700, whiteSpace: 'nowrap' }}>
+                {deal.amount ? `$${formatCurrency(deal.amount)}` : ''}
+              </div>
+            </div>
+
+            {/* Company */}
+            <div style={{ fontSize: 14, color: '#fff', fontStyle: 'italic' }}>
+              {deal.contact?.company || '-'}
+            </div>
+
+            {/* Industry */}
+            {deal.contact?.industry && (
+              <div style={{ fontSize: 12, color: '#cbd5e1' }}>
+                {deal.contact.industry}
+              </div>
+            )}
+
+            {/* Created Time */}
+            <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>
+              {deal.created_at ? formatCreatedTime(deal.created_at) : ''}
+            </div>
+          </div>
+        )}
+
+        {/* Menu button */}
+        <div
           style={{
-            fontSize: compact ? theme.fontSize.sm : theme.fontSize.base,
-            fontWeight: theme.fontWeight.medium,
-            color: theme.text.primary,
-            margin: 0,
-            flex: 1,
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
+            position: 'absolute',
+            top: 8,
+            right: 8,
+          }}
+          onClick={(e) => {
+            e.stopPropagation()
+            setShowMenu(!showMenu)
           }}
         >
-          {deal.name}
-        </p>
-        
-        {deal.amount > 0 && (
-          <span
+          <button
             style={{
-              fontSize: compact ? theme.fontSize.sm : theme.fontSize.base,
-              fontWeight: 700,
-              color: '#34d399',
-              textShadow: '0 0 8px rgba(34, 211, 154, 0.25)',
-              whiteSpace: 'nowrap',
+              width: 24,
+              height: 24,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: 'transparent',
+              border: 'none',
+              borderRadius: theme.radius.sm,
+              color: theme.text.muted,
+              cursor: 'pointer',
+              opacity: isHovered ? 0.7 : 0,
+              transition: `opacity ${theme.transition.fast}`,
             }}
+            onMouseEnter={(e) => (e.currentTarget.style.opacity = '1')}
+            onMouseLeave={(e) => (e.currentTarget.style.opacity = isHovered ? '0.7' : '0')}
           >
-            ${formatCurrency(deal.amount)}
-          </span>
-        )}
-      </div>
-      
-      {/* Company & Contact */}
-      {!compact && (
-        <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
-          {deal.contact?.company && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <Building2 size={14} style={{ color: '#64748b' }} />
-              <span
+            <MoreHorizontal size={14} />
+          </button>
+
+          {showMenu && (
+            <div
+              style={{
+                position: 'absolute',
+                top: '100%',
+                right: 0,
+                marginTop: 4,
+                backgroundColor: theme.bg.elevated,
+                border: `1px solid ${theme.border.default}`,
+                borderRadius: theme.radius.lg,
+                boxShadow: theme.shadow.dropdown,
+                zIndex: theme.z.dropdown,
+                overflow: 'hidden',
+                minWidth: 120,
+              }}
+            >
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onClick()
+                  setShowMenu(false)
+                }}
                 style={{
-                  fontSize: theme.fontSize.base,
-                  fontWeight: theme.fontWeight.medium,
-                  color: '#94a3b8',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap',
+                  width: '100%',
+                  padding: '8px 12px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  backgroundColor: 'transparent',
+                  border: 'none',
+                  color: theme.text.primary,
+                  fontSize: theme.fontSize.sm,
+                  cursor: 'pointer',
+                  textAlign: 'left',
                 }}
               >
-                {deal.contact.company}
-              </span>
-            </div>
-          )}
-
-
-          {deal.expected_close_date && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <Calendar size={12} style={{ color: '#475569' }} />
-              <span
+                <Edit2 size={14} />
+                Edit
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onDelete()
+                  setShowMenu(false)
+                }}
                 style={{
-                  fontSize: theme.fontSize.xs,
-                  color: '#64748b',
+                  width: '100%',
+                  padding: '8px 12px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  backgroundColor: 'transparent',
+                  border: 'none',
+                  color: theme.status.error,
+                  fontSize: theme.fontSize.sm,
+                  cursor: 'pointer',
+                  textAlign: 'left',
                 }}
               >
-                {new Date(deal.expected_close_date).toLocaleDateString()}
-              </span>
+                <Trash2 size={14} />
+                Delete
+              </button>
             </div>
           )}
         </div>
-      )}
-      
-      {/* Menu button */}
-      <div
-        style={{
-          position: 'absolute',
-          top: 8,
-          right: 8,
-        }}
-        onClick={(e) => {
-          e.stopPropagation()
-          setShowMenu(!showMenu)
-        }}
-      >
-        <button
-          style={{
-            width: 24,
-            height: 24,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            backgroundColor: 'transparent',
-            border: 'none',
-            borderRadius: theme.radius.sm,
-            color: theme.text.muted,
-            cursor: 'pointer',
-            opacity: 0,
-            transition: `opacity ${theme.transition.fast}`,
-          }}
-          onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
-        >
-          <MoreHorizontal size={14} />
-        </button>
-        
-        {showMenu && (
-          <div
-            style={{
-              position: 'absolute',
-              top: '100%',
-              right: 0,
-              marginTop: 4,
-              backgroundColor: theme.bg.elevated,
-              border: `1px solid ${theme.border.default}`,
-              borderRadius: theme.radius.lg,
-              boxShadow: theme.shadow.dropdown,
-              zIndex: theme.z.dropdown,
-              overflow: 'hidden',
-              minWidth: 120,
-            }}
-          >
-            <button
-              onClick={(e) => {
-                e.stopPropagation()
-                onClick()
-                setShowMenu(false)
-              }}
-              style={{
-                width: '100%',
-                padding: '8px 12px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-                backgroundColor: 'transparent',
-                border: 'none',
-                color: theme.text.primary,
-                fontSize: theme.fontSize.sm,
-                cursor: 'pointer',
-                textAlign: 'left',
-              }}
-            >
-              <Edit2 size={14} />
-              Edit
-            </button>
-            <button
-              onClick={(e) => {
-                e.stopPropagation()
-                onDelete()
-                setShowMenu(false)
-              }}
-              style={{
-                width: '100%',
-                padding: '8px 12px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-                backgroundColor: 'transparent',
-                border: 'none',
-                color: theme.status.error,
-                fontSize: theme.fontSize.sm,
-                cursor: 'pointer',
-                textAlign: 'left',
-              }}
-            >
-              <Trash2 size={14} />
-              Delete
-            </button>
-          </div>
-        )}
-      </div>
       </div>
     </motion.div>
   )

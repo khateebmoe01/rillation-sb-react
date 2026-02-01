@@ -18,14 +18,14 @@ export function CRMLayout({ children }: CRMLayoutProps) {
       <main
         style={{
           flex: 1,
-          overflow: 'auto',
+          overflow: 'hidden',
           backgroundColor: theme.bg.page,
           minHeight: 0,
+          height: '100%',
+          position: 'relative',
         }}
       >
-        <div style={{ minHeight: '100%' }}>
-          {children}
-        </div>
+        {children}
       </main>
     </div>
   )
