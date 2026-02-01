@@ -513,8 +513,8 @@ export function ContactList() {
     // Calculate total default width of visible columns
     const totalDefaultWidth = visibleCols.reduce((sum, col) => sum + col.defaultWidth, 0)
 
-    // Account for gaps (40px between columns) and padding (32px total)
-    const gapsWidth = (visibleCols.length - 1) * 40
+    // Account for gaps (120px between columns) and padding (32px total)
+    const gapsWidth = (visibleCols.length - 1) * 120
     const paddingWidth = 32
     const availableWidth = containerWidth - gapsWidth - paddingWidth
 
@@ -579,7 +579,7 @@ export function ContactList() {
   const minTableWidth = useMemo(() => {
     // Calculate actual table width based on current column widths + gaps + padding
     const columnsWidth = visibleColumnDefs.reduce((sum, col) => sum + (columnWidths[col.key] || col.defaultWidth), 0)
-    const gapsWidth = (visibleColumnDefs.length - 1) * 40 // gap: 0 40px between columns
+    const gapsWidth = (visibleColumnDefs.length - 1) * 120 // gap: 0 120px between columns
     const paddingWidth = 32 // padding: 10px 16px = 32px horizontal
     return columnsWidth + gapsWidth + paddingWidth
   }, [visibleColumnDefs, columnWidths])
@@ -1702,7 +1702,7 @@ export function ContactList() {
               style={{
                 display: 'grid',
                 gridTemplateColumns: gridColumns,
-                gap: '0 40px',
+                gap: '0 120px',
                 alignItems: 'center',
                 padding: '10px 16px',
                 borderBottom: '1px solid #1a3a4d',
@@ -2121,7 +2121,7 @@ function ContactRow({ contact, isSelected, gridColumns, minWidth, onClick, onUpd
       style={{
         display: 'grid',
         gridTemplateColumns: gridColumns,
-        gap: '0 40px',
+        gap: '0 120px',
         alignItems: 'center',
         padding: '10px 16px',
         borderBottom: '1px solid #1a3a4d',
