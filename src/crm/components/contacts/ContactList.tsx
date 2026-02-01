@@ -529,7 +529,7 @@ export function ContactList() {
   const minTableWidth = useMemo(() => {
     // Calculate actual table width based on current column widths + gaps + padding
     const columnsWidth = visibleColumnDefs.reduce((sum, col) => sum + (columnWidths[col.key] || col.defaultWidth), 0)
-    const gapsWidth = (visibleColumnDefs.length - 1) * 20 // gap: 0 20px between columns
+    const gapsWidth = (visibleColumnDefs.length - 1) * 40 // gap: 0 40px between columns
     const paddingWidth = 32 // padding: 10px 16px = 32px horizontal
     return columnsWidth + gapsWidth + paddingWidth
   }, [visibleColumnDefs, columnWidths])
@@ -1650,7 +1650,7 @@ export function ContactList() {
               style={{
                 display: 'grid',
                 gridTemplateColumns: gridColumns,
-                gap: '0 20px',
+                gap: '0 40px',
                 alignItems: 'center',
                 padding: '10px 16px',
                 borderBottom: '1px solid #1a3a4d',
@@ -2069,7 +2069,7 @@ function ContactRow({ contact, isSelected, gridColumns, minWidth, onClick, onUpd
       style={{
         display: 'grid',
         gridTemplateColumns: gridColumns,
-        gap: '0 20px',
+        gap: '0 40px',
         alignItems: 'center',
         padding: '10px 16px',
         borderBottom: '1px solid #1a3a4d',
