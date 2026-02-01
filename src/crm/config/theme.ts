@@ -10,6 +10,8 @@ export const theme = {
     hover: '#122438',       // Navy hover states
     active: '#183050',      // Navy active/selected
     muted: '#122438',       // Navy muted backgrounds
+    row: '#122a3d',         // Table row background
+    rowHover: '#1a3a52',    // Table row hover/selected
   },
 
   // Borders - navy theme

@@ -1,7 +1,10 @@
 import { useState, useMemo, useRef, useEffect, useId, useCallback } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Users, Plus, Mail, Phone, Building2, Linkedin, ChevronDown, Check, Filter, X, Trash2, GripVertical, User, Briefcase, Tag, Clock, Factory, MapPin, DollarSign, Calendar, AtSign, Hash, TrendingUp } from 'lucide-react'
+import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core'
+import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
+import { Users, Plus, Mail, Phone, Building2, Linkedin, ChevronDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Check, Filter, X, Trash2, GripVertical, User, Briefcase, Tag, Clock, Factory, MapPin, DollarSign, Calendar, AtSign, Hash, TrendingUp, Columns } from 'lucide-react'
 import { theme } from '../../config/theme'
 import { useCRM } from '../../context/CRMContext'
 import { useDropdown } from '../../../contexts/DropdownContext'
@@ -133,6 +136,128 @@ function formatRelativeTime(dateStr: string | null | undefined): string {
   }
 }
 
+// Sortable column item component for drag-and-drop reordering
+interface SortableColumnItemProps {
+  id: string
+  label: string
+  isVisible: boolean
+  isProtected: boolean
+  onToggle: () => void
+  theme: typeof import('../../config/theme').theme
+}
+
+function SortableColumnItem({ id, label, isVisible, isProtected, onToggle, theme }: SortableColumnItemProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id })
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  }
+
+  // Handle checkbox click without triggering drag
+  const handleCheckboxClick = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (!isProtected) {
+      onToggle()
+    }
+  }
+
+  return (
+    <div
+      ref={setNodeRef}
+      {...attributes}
+      {...listeners}
+      style={{
+        ...style,
+        display: 'flex',
+        alignItems: 'center',
+        width: '100%',
+        padding: '6px 8px',
+        borderRadius: theme.radius.md,
+        border: 'none',
+        background: isDragging ? theme.bg.hover : 'transparent',
+        gap: 8,
+        marginBottom: 2,
+        cursor: 'grab',
+        userSelect: 'none',
+      }}
+    >
+      {/* Drag handle icon */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: theme.text.muted,
+          padding: 2,
+          borderRadius: 4,
+          flexShrink: 0,
+        }}
+      >
+        <GripVertical size={14} />
+      </div>
+
+      {/* Checkbox - clickable without dragging */}
+      <div
+        onClick={handleCheckboxClick}
+        style={{
+          width: 16,
+          height: 16,
+          borderRadius: 3,
+          border: isVisible ? 'none' : `2px solid ${theme.border.default}`,
+          backgroundColor: isVisible ? theme.accent.primary : 'transparent',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          flexShrink: 0,
+          cursor: isProtected ? 'not-allowed' : 'pointer',
+          opacity: isProtected ? 0.6 : 1,
+        }}
+      >
+        {isVisible && <Check size={10} color="#fff" strokeWidth={3} />}
+      </div>
+
+      {/* Label */}
+      <span
+        style={{
+          flex: 1,
+          textAlign: 'left',
+          fontSize: 13,
+          color: isVisible ? theme.text.primary : theme.text.muted,
+          fontWeight: isVisible ? 500 : 400,
+          opacity: isProtected ? 0.6 : 1,
+        }}
+      >
+        {label}
+      </span>
+
+      {/* Protected indicator */}
+      {isProtected && (
+        <span
+          style={{
+            fontSize: 10,
+            color: theme.text.muted,
+            flexShrink: 0,
+            padding: '1px 4px',
+            backgroundColor: theme.bg.hover,
+            borderRadius: 3,
+          }}
+        >
+          Required
+        </span>
+      )}
+    </div>
+  )
+}
+
 export function ContactList() {
   const { contacts, loading, updateContact } = useCRM()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -162,20 +287,184 @@ export function ContactList() {
   const [filterGroups, setFilterGroups] = useState<FilterGroup[]>([])
   const [showFilterMenu, setShowFilterMenu] = useState(false)
   const filterPopoverRef = useRef<HTMLDivElement>(null)
-  
+
+  // Column visibility state
+  const [showColumnsMenu, setShowColumnsMenu] = useState(false)
+  const columnsPopoverRef = useRef<HTMLDivElement>(null)
+
+  // Protected columns that cannot be hidden
+  const PROTECTED_COLUMNS = ['name', 'company']
+
+  // All available column definitions with categories (like AG Grid)
+  // Define this FIRST so other hooks can reference it
+  const ALL_COLUMN_DEFS = useMemo(() => [
+    // Core columns (always shown in table by default)
+    { key: 'name', label: 'Name', defaultWidth: 165, minWidth: 90, category: 'Core', defaultVisible: true },
+    { key: 'company', label: 'Company', defaultWidth: 145, minWidth: 90, category: 'Core', defaultVisible: true },
+    { key: 'stage', label: 'Stage', defaultWidth: 130, minWidth: 90, category: 'Core', defaultVisible: true },
+    { key: 'pipeline', label: 'Pipeline', defaultWidth: 130, minWidth: 90, category: 'Core', defaultVisible: true },
+    { key: 'title', label: 'Title', defaultWidth: 165, minWidth: 70, category: 'Core', defaultVisible: true },
+    { key: 'lastActivity', label: 'Last Activity', defaultWidth: 110, minWidth: 70, category: 'Core', defaultVisible: true },
+    { key: 'actions', label: 'Actions', defaultWidth: 90, minWidth: 70, category: 'Core', defaultVisible: true },
+
+    // Personal Info
+    { key: 'email', label: 'Email', defaultWidth: 200, minWidth: 120, category: 'Personal', defaultVisible: false },
+    { key: 'phone', label: 'Phone', defaultWidth: 130, minWidth: 90, category: 'Personal', defaultVisible: false },
+    { key: 'seniority', label: 'Seniority', defaultWidth: 120, minWidth: 80, category: 'Personal', defaultVisible: false },
+    { key: 'linkedin', label: 'LinkedIn', defaultWidth: 100, minWidth: 80, category: 'Personal', defaultVisible: false },
+
+    // Company Info
+    { key: 'domain', label: 'Domain', defaultWidth: 150, minWidth: 100, category: 'Company', defaultVisible: false },
+    { key: 'companySize', label: 'Company Size', defaultWidth: 120, minWidth: 90, category: 'Company', defaultVisible: false },
+    { key: 'industry', label: 'Industry', defaultWidth: 140, minWidth: 100, category: 'Company', defaultVisible: false },
+    { key: 'revenue', label: 'Annual Revenue', defaultWidth: 130, minWidth: 100, category: 'Company', defaultVisible: false },
+    { key: 'hqCity', label: 'HQ City', defaultWidth: 120, minWidth: 80, category: 'Company', defaultVisible: false },
+    { key: 'hqState', label: 'HQ State', defaultWidth: 100, minWidth: 70, category: 'Company', defaultVisible: false },
+    { key: 'hqCountry', label: 'HQ Country', defaultWidth: 110, minWidth: 80, category: 'Company', defaultVisible: false },
+    { key: 'yearFounded', label: 'Year Founded', defaultWidth: 110, minWidth: 80, category: 'Company', defaultVisible: false },
+    { key: 'businessModel', label: 'Business Model', defaultWidth: 130, minWidth: 100, category: 'Company', defaultVisible: false },
+    { key: 'fundingStage', label: 'Funding Stage', defaultWidth: 120, minWidth: 90, category: 'Company', defaultVisible: false },
+    { key: 'isHiring', label: 'Is Hiring', defaultWidth: 90, minWidth: 70, category: 'Company', defaultVisible: false },
+
+    // Campaign & Source
+    { key: 'campaignName', label: 'Campaign', defaultWidth: 150, minWidth: 100, category: 'Campaign', defaultVisible: false },
+    { key: 'leadSource', label: 'Lead Source', defaultWidth: 120, minWidth: 90, category: 'Campaign', defaultVisible: false },
+
+    // Sales & Pipeline
+    { key: 'epv', label: 'EPV', defaultWidth: 100, minWidth: 70, category: 'Sales', defaultVisible: false },
+    { key: 'assignee', label: 'Assignee', defaultWidth: 120, minWidth: 90, category: 'Sales', defaultVisible: false },
+    { key: 'nextTouchpoint', label: 'Next Touchpoint', defaultWidth: 130, minWidth: 100, category: 'Sales', defaultVisible: false },
+
+    // Dates
+    { key: 'createdAt', label: 'Created Date', defaultWidth: 120, minWidth: 90, category: 'Dates', defaultVisible: false },
+    { key: 'meetingDate', label: 'Meeting Date', defaultWidth: 120, minWidth: 90, category: 'Dates', defaultVisible: false },
+  ], [])
+
+  // For the table, we use COLUMN_DEFS which is the same as ALL_COLUMN_DEFS
+  const COLUMN_DEFS = ALL_COLUMN_DEFS
+
+
+  // Load column visibility from localStorage
+  const loadColumnVisibility = useCallback(() => {
+    try {
+      const saved = localStorage.getItem('crm-contacts-column-visibility')
+      if (saved) {
+        const parsed = JSON.parse(saved) as Record<string, boolean>
+        // Merge with defaults for any new columns
+        const merged: Record<string, boolean> = {}
+        ALL_COLUMN_DEFS.forEach(col => {
+          merged[col.key] = parsed[col.key] !== undefined ? parsed[col.key] : col.defaultVisible
+        })
+        return merged
+      }
+    } catch (e) {
+      console.warn('Failed to load column visibility:', e)
+    }
+    // Default: use defaultVisible from column definitions
+    const defaults: Record<string, boolean> = {}
+    ALL_COLUMN_DEFS.forEach(col => {
+      defaults[col.key] = col.defaultVisible
+    })
+    return defaults
+  }, [ALL_COLUMN_DEFS])
+
+  const [columnVisibility, setColumnVisibility] = useState<Record<string, boolean>>(loadColumnVisibility)
+
+  // Save column visibility to localStorage when it changes
+  useEffect(() => {
+    try {
+      localStorage.setItem('crm-contacts-column-visibility', JSON.stringify(columnVisibility))
+    } catch (e) {
+      console.warn('Failed to save column visibility:', e)
+    }
+  }, [columnVisibility])
+
+  // Column order state - determines display order in both dropdown and grid
+  const loadColumnOrder = useCallback(() => {
+    try {
+      const saved = localStorage.getItem('crm-contacts-column-order')
+      if (saved) {
+        const parsed = JSON.parse(saved) as string[]
+        // Ensure all columns are included, adding any new ones at the end
+        const existingKeys = new Set(parsed)
+        const allKeys = ALL_COLUMN_DEFS.map(c => c.key)
+        const missingKeys = allKeys.filter(k => !existingKeys.has(k))
+        return [...parsed.filter(k => allKeys.includes(k)), ...missingKeys]
+      }
+    } catch (e) {
+      console.warn('Failed to load column order:', e)
+    }
+    return ALL_COLUMN_DEFS.map(c => c.key)
+  }, [ALL_COLUMN_DEFS])
+
+  const [columnOrder, setColumnOrder] = useState<string[]>(loadColumnOrder)
+
+  // Save column order to localStorage when it changes
+  useEffect(() => {
+    try {
+      localStorage.setItem('crm-contacts-column-order', JSON.stringify(columnOrder))
+    } catch (e) {
+      console.warn('Failed to save column order:', e)
+    }
+  }, [columnOrder])
+
+  // DnD sensors for column reordering
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 5,
+      },
+    })
+  )
+
+  // Handle drag end for column reordering
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event
+    if (over && active.id !== over.id) {
+      setColumnOrder(items => {
+        const oldIndex = items.indexOf(active.id as string)
+        const newIndex = items.indexOf(over.id as string)
+        return arrayMove(items, oldIndex, newIndex)
+      })
+    }
+  }
+
+  // Toggle column visibility
+  const toggleColumnVisibility = (columnKey: string) => {
+    if (PROTECTED_COLUMNS.includes(columnKey)) return
+    setColumnVisibility(prev => ({
+      ...prev,
+      [columnKey]: !prev[columnKey]
+    }))
+  }
+
+  // Show all columns
+  const showAllColumns = () => {
+    const allVisible: Record<string, boolean> = {}
+    ALL_COLUMN_DEFS.forEach(col => {
+      allVisible[col.key] = true
+    })
+    setColumnVisibility(allVisible)
+  }
+
+  // Hide all hideable columns (keep only protected)
+  const hideAllColumns = () => {
+    const allHidden: Record<string, boolean> = {}
+    ALL_COLUMN_DEFS.forEach(col => {
+      allHidden[col.key] = PROTECTED_COLUMNS.includes(col.key)
+    })
+    setColumnVisibility(allHidden)
+  }
+
+  // Count hidden columns
+  const hiddenColumnCount = Object.entries(columnVisibility).filter(([key, visible]) => !visible && !PROTECTED_COLUMNS.includes(key)).length
+
   // Sort state - Airtable-style multi-sort
   const [sorts, setSorts] = useState<SortRule[]>([])
 
-  // Column definitions for resizable columns
-  const COLUMN_DEFS = useMemo(() => [
-    { key: 'name', label: 'Name', defaultWidth: 165, minWidth: 90 },
-    { key: 'company', label: 'Company', defaultWidth: 145, minWidth: 90 },
-    { key: 'stage', label: 'Stage', defaultWidth: 130, minWidth: 90 },
-    { key: 'pipeline', label: 'Pipeline', defaultWidth: 130, minWidth: 90 },
-    { key: 'title', label: 'Title', defaultWidth: 165, minWidth: 70 },
-    { key: 'lastActivity', label: 'Last Activity', defaultWidth: 110, minWidth: 70 },
-    { key: 'actions', label: 'Actions', defaultWidth: 90, minWidth: 70 },
-  ], [])
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize, setPageSize] = useState(50)
 
   // Load saved column widths from localStorage
   const loadColumnWidths = useCallback(() => {
@@ -225,20 +514,42 @@ export function ContactList() {
     }
   }, [COLUMN_DEFS])
 
-  // Generate grid columns string from widths
+  // Get visible columns only, respecting column order
+  const visibleColumnDefs = useMemo(() => {
+    return columnOrder
+      .map(key => COLUMN_DEFS.find(col => col.key === key))
+      .filter((col): col is typeof COLUMN_DEFS[0] => col !== undefined && columnVisibility[col.key] !== false)
+  }, [COLUMN_DEFS, columnVisibility, columnOrder])
+
+  // Generate grid columns string from widths (only visible columns)
   const gridColumns = useMemo(() => {
-    return COLUMN_DEFS.map(col => `${columnWidths[col.key] || col.defaultWidth}px`).join(' ')
-  }, [COLUMN_DEFS, columnWidths])
+    return visibleColumnDefs.map(col => `${columnWidths[col.key] || col.defaultWidth}px`).join(' ')
+  }, [visibleColumnDefs, columnWidths])
 
   const minTableWidth = useMemo(() => {
-    return COLUMN_DEFS.reduce((sum, col) => sum + (col.minWidth || 50), 0)
-  }, [COLUMN_DEFS])
+    // Calculate actual table width based on current column widths + gaps + padding
+    const columnsWidth = visibleColumnDefs.reduce((sum, col) => sum + (columnWidths[col.key] || col.defaultWidth), 0)
+    const gapsWidth = (visibleColumnDefs.length - 1) * 20 // gap: 0 20px between columns
+    const paddingWidth = 32 // padding: 10px 16px = 32px horizontal
+    return columnsWidth + gapsWidth + paddingWidth
+  }, [visibleColumnDefs, columnWidths])
 
   // Close filter popover when clicking outside
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (filterPopoverRef.current && !filterPopoverRef.current.contains(event.target as Node)) {
         setShowFilterMenu(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  // Close columns popover when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (columnsPopoverRef.current && !columnsPopoverRef.current.contains(event.target as Node)) {
+        setShowColumnsMenu(false)
       }
     }
     document.addEventListener('mousedown', handleClickOutside)
@@ -553,7 +864,21 @@ export function ContactList() {
     
     return result
   }, [contacts, debouncedQuery, filters, filterGroups, sorts])
-  
+
+  // Pagination calculations
+  const totalPages = Math.ceil(filteredContacts.length / pageSize)
+  const startIndex = (currentPage - 1) * pageSize
+  const endIndex = Math.min(startIndex + pageSize, filteredContacts.length)
+
+  const paginatedContacts = useMemo(() => {
+    return filteredContacts.slice(startIndex, endIndex)
+  }, [filteredContacts, startIndex, endIndex])
+
+  // Reset to page 1 when filters/search change
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [debouncedQuery, filters, filterGroups, sorts])
+
   // Single-click to open or switch contact in side panel
   const handleOpenContact = (contact: Contact) => {
     setSelectedContact(contact)
@@ -561,12 +886,6 @@ export function ContactList() {
     setIsModalOpen(true)
   }
   
-  const handleCreateContact = () => {
-    setSelectedContact(null)
-    setIsCreating(true)
-    setIsModalOpen(true)
-  }
-
   const handleCloseModal = () => {
     setIsModalOpen(false)
     setSelectedContact(null)
@@ -589,17 +908,17 @@ export function ContactList() {
       
       e.preventDefault()
       
-      const currentIndex = filteredContacts.findIndex(c => c.id === currentContact.id)
+      const currentIndex = paginatedContacts.findIndex(c => c.id === currentContact.id)
       if (currentIndex === -1) return
-      
+
       let newIndex: number
       if (e.key === 'ArrowUp') {
-        newIndex = currentIndex > 0 ? currentIndex - 1 : filteredContacts.length - 1
+        newIndex = currentIndex > 0 ? currentIndex - 1 : paginatedContacts.length - 1
       } else {
-        newIndex = currentIndex < filteredContacts.length - 1 ? currentIndex + 1 : 0
+        newIndex = currentIndex < paginatedContacts.length - 1 ? currentIndex + 1 : 0
       }
-      
-      const newContact = filteredContacts[newIndex]
+
+      const newContact = paginatedContacts[newIndex]
       if (newContact) {
         setSelectedContact(newContact)
         
@@ -613,7 +932,7 @@ export function ContactList() {
     
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [isModalOpen, isCreating, selectedContact, filteredContacts])
+  }, [isModalOpen, isCreating, selectedContact, paginatedContacts])
   
   if (loading.contacts) {
     return <LoadingSkeleton rows={8} />
@@ -693,7 +1012,195 @@ export function ContactList() {
               onUpdateSorts={setSorts}
             />
           </div>
-          
+
+          {/* Columns Popover Button */}
+          <div style={{ position: 'relative' }} ref={columnsPopoverRef}>
+            <button
+              onClick={() => setShowColumnsMenu(!showColumnsMenu)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '8px 16px',
+                fontSize: theme.fontSize.sm,
+                fontWeight: theme.fontWeight.medium,
+                color: theme.text.secondary,
+                backgroundColor: 'transparent',
+                border: `1px solid ${theme.border.default}`,
+                borderRadius: theme.radius.md,
+                cursor: 'pointer',
+                transition: `all ${theme.transition.fast}`,
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = theme.bg.hover}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+            >
+              <Columns size={14} />
+              <span>Columns</span>
+              {hiddenColumnCount > 0 && (
+                <span style={{
+                  backgroundColor: theme.bg.hover,
+                  color: theme.text.muted,
+                  borderRadius: theme.radius.full,
+                  padding: '1px 6px',
+                  fontSize: theme.fontSize.xs,
+                  fontWeight: theme.fontWeight.semibold,
+                }}>
+                  {hiddenColumnCount}
+                </span>
+              )}
+              <ChevronDown size={14} style={{ opacity: 0.6 }} />
+            </button>
+
+            {/* Columns Popover - Dark themed with drag-and-drop */}
+            <AnimatePresence>
+              {showColumnsMenu && (
+                <motion.div
+                  initial={{ opacity: 0, y: -8, scale: 0.96 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -8, scale: 0.96 }}
+                  transition={{ duration: 0.15 }}
+                  style={{
+                    position: 'absolute',
+                    top: '100%',
+                    right: 0,
+                    marginTop: 8,
+                    minWidth: 240,
+                    backgroundColor: theme.bg.elevated,
+                    border: `1px solid ${theme.border.default}`,
+                    borderRadius: 12,
+                    boxShadow: theme.shadow.dropdown,
+                    zIndex: 9999,
+                    overflow: 'hidden',
+                    display: 'flex',
+                    flexDirection: 'column',
+                  }}
+                >
+                  {/* Header */}
+                  <div style={{
+                    padding: '12px 16px',
+                    borderBottom: `1px solid ${theme.border.subtle}`,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                  }}>
+                    <span style={{
+                      fontSize: 14,
+                      fontWeight: 600,
+                      color: theme.text.primary,
+                    }}>
+                      Columns
+                    </span>
+                    <button
+                      onClick={() => setShowColumnsMenu(false)}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        width: 24,
+                        height: 24,
+                        border: 'none',
+                        backgroundColor: 'transparent',
+                        cursor: 'pointer',
+                        borderRadius: 4,
+                        color: theme.text.muted,
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = theme.bg.hover}
+                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+
+                  {/* Column List - Scrollable flat list with drag-and-drop */}
+                  <div style={{
+                    maxHeight: 400,
+                    overflowY: 'auto',
+                    scrollbarWidth: 'thin',
+                    scrollbarColor: `${theme.border.default} transparent`,
+                    padding: '8px',
+                  }}>
+                    <DndContext
+                      sensors={sensors}
+                      collisionDetection={closestCenter}
+                      onDragEnd={handleDragEnd}
+                    >
+                      <SortableContext
+                        items={columnOrder}
+                        strategy={verticalListSortingStrategy}
+                      >
+                        {columnOrder.map((colKey) => {
+                          const col = ALL_COLUMN_DEFS.find(c => c.key === colKey)
+                          if (!col) return null
+                          const isProtected = PROTECTED_COLUMNS.includes(col.key)
+                          const isVisible = columnVisibility[col.key] !== false
+
+                          return (
+                            <SortableColumnItem
+                              key={col.key}
+                              id={col.key}
+                              label={col.label}
+                              isVisible={isVisible}
+                              isProtected={isProtected}
+                              onToggle={() => toggleColumnVisibility(col.key)}
+                              theme={theme}
+                            />
+                          )
+                        })}
+                      </SortableContext>
+                    </DndContext>
+                  </div>
+
+                  {/* Footer with Show all / Hide all buttons */}
+                  <div style={{
+                    padding: '12px 16px',
+                    borderTop: `1px solid ${theme.border.subtle}`,
+                    display: 'flex',
+                    gap: 8,
+                  }}>
+                    <button
+                      onClick={showAllColumns}
+                      style={{
+                        flex: 1,
+                        fontSize: 12,
+                        fontWeight: 500,
+                        color: theme.accent.primary,
+                        backgroundColor: theme.accent.primaryBg,
+                        border: 'none',
+                        cursor: 'pointer',
+                        padding: '8px 12px',
+                        borderRadius: 6,
+                        transition: `all ${theme.transition.fast}`,
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.opacity = '0.8'}
+                      onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
+                    >
+                      Show all
+                    </button>
+                    <button
+                      onClick={hideAllColumns}
+                      style={{
+                        flex: 1,
+                        fontSize: 12,
+                        fontWeight: 500,
+                        color: theme.text.secondary,
+                        backgroundColor: theme.bg.hover,
+                        border: 'none',
+                        cursor: 'pointer',
+                        padding: '8px 12px',
+                        borderRadius: 6,
+                        transition: `all ${theme.transition.fast}`,
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.opacity = '0.8'}
+                      onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
+                    >
+                      Hide all
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
           {/* Filter Popover Button */}
           <div style={{ position: 'relative' }} ref={filterPopoverRef}>
             <button
@@ -1103,31 +1610,7 @@ export function ContactList() {
               )}
             </AnimatePresence>
           </div>
-          
-          {/* Add Lead Button */}
-          <button
-            onClick={handleCreateContact}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6,
-              padding: '8px 16px',
-              fontSize: theme.fontSize.sm,
-              fontWeight: theme.fontWeight.medium,
-              color: '#fff',
-              backgroundColor: theme.accent.primary,
-              border: `1px solid ${theme.accent.primary}`,
-              borderRadius: theme.radius.md,
-              cursor: 'pointer',
-              transition: `all ${theme.transition.fast}`,
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = theme.accent.primaryHover}
-            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = theme.accent.primary}
-          >
-            <Plus size={14} />
-            <span>Add Lead</span>
-          </button>
-          
+
         </div>
       </div>
       
@@ -1141,11 +1624,7 @@ export function ContactList() {
               ? 'Try adjusting your search terms'
               : 'Start by adding your first lead to the CRM'
           }
-          action={
-            !debouncedQuery
-              ? { label: 'Add Lead', onClick: handleCreateContact, icon: <Plus size={16} /> }
-              : undefined
-          }
+          action={undefined}
         />
       ) : (
         <Card padding="none" style={{
@@ -1163,6 +1642,8 @@ export function ContactList() {
             flex: 1,
             scrollbarWidth: 'thin',
             scrollbarColor: `${theme.border.default} transparent`,
+            backgroundColor: theme.bg.row,
+            scrollBehavior: 'smooth',
           }}>
             {/* Table Header */}
             <div
@@ -1172,22 +1653,22 @@ export function ContactList() {
                 gap: '0 20px',
                 alignItems: 'center',
                 padding: '10px 16px',
-                borderBottom: `1px solid ${theme.border.subtle}`,
-                backgroundColor: theme.bg.muted,
+                borderBottom: '1px solid #1a3a4d',
+                backgroundColor: theme.bg.card,
                 minWidth: minTableWidth,
                 position: 'sticky',
                 top: 0,
                 zIndex: 10,
               }}
             >
-              {COLUMN_DEFS.map((col, index) => (
+              {visibleColumnDefs.map((col, index) => (
                 <ResizableTableHeader
                   key={col.key}
                   columnKey={col.key}
                   currentWidth={columnWidths[col.key] || col.defaultWidth}
                   onResize={handleColumnResize}
                   onResetWidth={handleResetColumnWidth}
-                  isLast={index === COLUMN_DEFS.length - 1}
+                  isLast={index === visibleColumnDefs.length - 1}
                 >
                   {col.label}
                 </ResizableTableHeader>
@@ -1195,7 +1676,7 @@ export function ContactList() {
             </div>
             
             {/* Table Rows - no animation for instant search */}
-            {filteredContacts.map((contact) => (
+            {paginatedContacts.map((contact) => (
               <ContactRow
                 key={contact.id}
                 contact={contact}
@@ -1205,8 +1686,203 @@ export function ContactList() {
                 onClick={() => handleOpenContact(contact)}
                 onUpdateStage={(stage) => updateContact(contact.id, { stage })}
                 onUpdatePipelineStep={(step, value) => updateContact(contact.id, { [step]: value })}
+                columnVisibility={columnVisibility}
               />
             ))}
+          </div>
+
+          {/* Pagination Footer */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '12px 16px',
+              borderTop: `1px solid ${theme.border.subtle}`,
+              backgroundColor: theme.bg.muted,
+              fontSize: theme.fontSize.sm,
+              color: theme.text.secondary,
+            }}
+          >
+            {/* Left side - results range */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <span style={{ color: theme.text.muted }}>[</span>
+              <span style={{ fontWeight: theme.fontWeight.semibold, color: theme.text.primary }}>{filteredContacts.length > 0 ? startIndex + 1 : 0}</span>
+              <span style={{ color: theme.text.muted }}>]</span>
+              <span style={{ color: theme.text.muted }}>to</span>
+              <span style={{ color: theme.text.muted }}>[</span>
+              <span style={{ fontWeight: theme.fontWeight.semibold, color: theme.text.primary }}>{endIndex}</span>
+              <span style={{ color: theme.text.muted }}>]</span>
+              <span style={{ color: theme.text.muted }}>of</span>
+              <span style={{ color: theme.text.muted }}>[</span>
+              <span style={{ fontWeight: theme.fontWeight.semibold, color: theme.text.primary }}>{filteredContacts.length.toLocaleString()}</span>
+              <span style={{ color: theme.text.muted }}>]</span>
+            </div>
+
+            {/* Center - page navigation */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              {/* First page */}
+              <button
+                onClick={() => setCurrentPage(1)}
+                disabled={currentPage === 1}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: 28,
+                  height: 28,
+                  background: 'transparent',
+                  border: 'none',
+                  borderRadius: theme.radius.sm,
+                  color: currentPage === 1 ? theme.text.muted : theme.text.secondary,
+                  cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
+                  opacity: currentPage === 1 ? 0.5 : 1,
+                  transition: `all ${theme.transition.fast}`,
+                }}
+                onMouseEnter={(e) => {
+                  if (currentPage !== 1) e.currentTarget.style.backgroundColor = theme.bg.hover
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'transparent'
+                }}
+              >
+                <ChevronsLeft size={16} />
+              </button>
+
+              {/* Previous page */}
+              <button
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: 28,
+                  height: 28,
+                  background: 'transparent',
+                  border: 'none',
+                  borderRadius: theme.radius.sm,
+                  color: currentPage === 1 ? theme.text.muted : theme.text.secondary,
+                  cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
+                  opacity: currentPage === 1 ? 0.5 : 1,
+                  transition: `all ${theme.transition.fast}`,
+                }}
+                onMouseEnter={(e) => {
+                  if (currentPage !== 1) e.currentTarget.style.backgroundColor = theme.bg.hover
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'transparent'
+                }}
+              >
+                <ChevronLeft size={16} />
+              </button>
+
+              {/* Page indicator */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                <span style={{ color: theme.text.muted }}>Page</span>
+                <span style={{ color: theme.text.muted }}>[</span>
+                <span style={{ fontWeight: theme.fontWeight.semibold, color: theme.text.primary }}>{currentPage}</span>
+                <span style={{ color: theme.text.muted }}>]</span>
+                <span style={{ color: theme.text.muted }}>of</span>
+                <span style={{ color: theme.text.muted }}>[</span>
+                <span style={{ fontWeight: theme.fontWeight.semibold, color: theme.text.primary }}>{totalPages.toLocaleString()}</span>
+                <span style={{ color: theme.text.muted }}>]</span>
+              </div>
+
+              {/* Next page */}
+              <button
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages || totalPages === 0}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: 28,
+                  height: 28,
+                  background: 'transparent',
+                  border: 'none',
+                  borderRadius: theme.radius.sm,
+                  color: currentPage === totalPages || totalPages === 0 ? theme.text.muted : theme.text.secondary,
+                  cursor: currentPage === totalPages || totalPages === 0 ? 'not-allowed' : 'pointer',
+                  opacity: currentPage === totalPages || totalPages === 0 ? 0.5 : 1,
+                  transition: `all ${theme.transition.fast}`,
+                }}
+                onMouseEnter={(e) => {
+                  if (currentPage !== totalPages && totalPages !== 0) e.currentTarget.style.backgroundColor = theme.bg.hover
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'transparent'
+                }}
+              >
+                <ChevronRight size={16} />
+              </button>
+
+              {/* Last page */}
+              <button
+                onClick={() => setCurrentPage(totalPages)}
+                disabled={currentPage === totalPages || totalPages === 0}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: 28,
+                  height: 28,
+                  background: 'transparent',
+                  border: 'none',
+                  borderRadius: theme.radius.sm,
+                  color: currentPage === totalPages || totalPages === 0 ? theme.text.muted : theme.text.secondary,
+                  cursor: currentPage === totalPages || totalPages === 0 ? 'not-allowed' : 'pointer',
+                  opacity: currentPage === totalPages || totalPages === 0 ? 0.5 : 1,
+                  transition: `all ${theme.transition.fast}`,
+                }}
+                onMouseEnter={(e) => {
+                  if (currentPage !== totalPages && totalPages !== 0) e.currentTarget.style.backgroundColor = theme.bg.hover
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'transparent'
+                }}
+              >
+                <ChevronsRight size={16} />
+              </button>
+            </div>
+
+            {/* Right side - page size selector */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              {[10, 20, 50, 100].map((size) => (
+                <button
+                  key={size}
+                  onClick={() => {
+                    setPageSize(size)
+                    setCurrentPage(1)
+                  }}
+                  style={{
+                    padding: '4px 10px',
+                    fontSize: theme.fontSize.sm,
+                    fontWeight: pageSize === size ? theme.fontWeight.semibold : theme.fontWeight.normal,
+                    color: pageSize === size ? theme.accent.primary : theme.text.secondary,
+                    backgroundColor: pageSize === size ? `${theme.accent.primary}15` : 'transparent',
+                    border: pageSize === size ? `1px solid ${theme.accent.primary}40` : `1px solid transparent`,
+                    borderRadius: theme.radius.sm,
+                    cursor: 'pointer',
+                    transition: `all ${theme.transition.fast}`,
+                  }}
+                  onMouseEnter={(e) => {
+                    if (pageSize !== size) {
+                      e.currentTarget.style.backgroundColor = theme.bg.hover
+                      e.currentTarget.style.borderColor = theme.border.default
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (pageSize !== size) {
+                      e.currentTarget.style.backgroundColor = 'transparent'
+                      e.currentTarget.style.borderColor = 'transparent'
+                    }
+                  }}
+                >
+                  {size}
+                </button>
+              ))}
+            </div>
           </div>
         </Card>
       )}
@@ -1292,7 +1968,7 @@ function ResizableTableHeader({ children, columnKey, onResize, onResetWidth, cur
         style={{
           display: 'flex',
           alignItems: 'center',
-          fontSize: theme.fontSize.xs,
+          fontSize: '13px', // 10% bigger than xs (12px)
           fontWeight: theme.fontWeight.semibold,
           color: theme.text.muted,
           textTransform: 'uppercase',
@@ -1354,6 +2030,7 @@ interface ContactRowProps {
   onClick: () => void
   onUpdateStage: (stage: string) => void
   onUpdatePipelineStep: (step: string, value: boolean) => void
+  columnVisibility: Record<string, boolean>
 }
 
 // Pipeline steps in order from earliest to deepest
@@ -1378,13 +2055,13 @@ const STAGE_COLORS: Record<string, string> = {
   disqualified: '#6b7280',
 }
 
-function ContactRow({ contact, isSelected, gridColumns, minWidth, onClick, onUpdateStage, onUpdatePipelineStep }: ContactRowProps) {
-  const displayName = contact.full_name || 
-    [contact.first_name, contact.last_name].filter(Boolean).join(' ') || 
+function ContactRow({ contact, isSelected, gridColumns, minWidth, onClick, onUpdateStage, onUpdatePipelineStep, columnVisibility }: ContactRowProps) {
+  const displayName = contact.full_name ||
+    [contact.first_name, contact.last_name].filter(Boolean).join(' ') ||
     'Unknown'
-  
+
   const stageColor = STAGE_COLORS[contact.stage || ''] || theme.border.default
-  
+
   return (
     <div
       data-contact-id={contact.id}
@@ -1395,8 +2072,8 @@ function ContactRow({ contact, isSelected, gridColumns, minWidth, onClick, onUpd
         gap: '0 20px',
         alignItems: 'center',
         padding: '10px 16px',
-        borderBottom: `1px solid ${theme.border.subtle}`,
-        backgroundColor: isSelected ? theme.bg.hover : 'transparent',
+        borderBottom: '1px solid #1a3a4d',
+        backgroundColor: isSelected ? theme.bg.rowHover : theme.bg.row,
         cursor: 'pointer',
         minWidth: minWidth,
         boxShadow: isSelected ? `inset 3px 0 0 0 ${theme.accent.primary}` : 'none',
@@ -1404,146 +2081,349 @@ function ContactRow({ contact, isSelected, gridColumns, minWidth, onClick, onUpd
       }}
       onMouseEnter={(e) => {
         if (!isSelected) {
-          e.currentTarget.style.backgroundColor = theme.bg.hover
+          e.currentTarget.style.backgroundColor = theme.bg.rowHover
         }
       }}
       onMouseLeave={(e) => {
-        e.currentTarget.style.backgroundColor = isSelected ? theme.bg.hover : 'transparent'
+        e.currentTarget.style.backgroundColor = isSelected ? theme.bg.rowHover : theme.bg.row
       }}
     >
       {/* Name with stage-colored left border */}
-      <div style={{ display: 'flex', alignItems: 'center', minWidth: 0 }}>
-        {/* Stage color vertical line */}
-        <div
-          style={{
-            width: 3,
-            height: 20,
-            backgroundColor: stageColor,
-            borderRadius: 2,
-            marginRight: 10,
-            flexShrink: 0,
-          }}
-        />
-        <p
-          style={{
-            fontSize: '14px', // Same size as company text (13px + 10%)
-            fontWeight: theme.fontWeight.medium,
-            color: theme.text.primary,
-            margin: 0,
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-          }}
-        >
-          {displayName}
-        </p>
-      </div>
-      
+      {columnVisibility.name !== false && (
+        <div style={{ display: 'flex', alignItems: 'center', minWidth: 0 }}>
+          {/* Stage color vertical line */}
+          <div
+            style={{
+              width: 3,
+              height: 20,
+              backgroundColor: stageColor,
+              borderRadius: 2,
+              marginRight: 10,
+              flexShrink: 0,
+            }}
+          />
+          <p
+            style={{
+              fontSize: '14px', // Same size as company text (13px + 10%)
+              fontWeight: theme.fontWeight.medium,
+              color: theme.text.primary,
+              margin: 0,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {displayName}
+          </p>
+        </div>
+      )}
+
       {/* Company */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
-        {contact.company ? (
-          <>
-            <Building2 size={14} style={{ color: theme.text.muted, flexShrink: 0 }} />
-            <div style={{ minWidth: 0, flex: 1 }}>
-              <span
-                style={{
-                  fontSize: '14px', // 10% bigger than xs (12px)
-                  color: theme.text.secondary,
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap',
-                  display: 'block',
-                }}
-              >
-                {contact.company}
-              </span>
-            </div>
-          </>
-        ) : (
-          <span style={{ fontSize: '14px', color: theme.text.muted }}>—</span>
-        )}
-      </div>
-      
+      {columnVisibility.company !== false && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+          {contact.company ? (
+            <>
+              <Building2 size={14} style={{ color: theme.text.muted, flexShrink: 0 }} />
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <span
+                  style={{
+                    fontSize: '14px', // 10% bigger than xs (12px)
+                    color: theme.text.secondary,
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                    display: 'block',
+                  }}
+                >
+                  {contact.company}
+                </span>
+              </div>
+            </>
+          ) : (
+            <span style={{ fontSize: '14px', color: theme.text.muted }}>—</span>
+          )}
+        </div>
+      )}
+
       {/* Stage */}
-      <div 
-        style={{ display: 'flex', alignItems: 'center' }} 
-        onClick={(e) => e.stopPropagation()}
-        onMouseDown={(e) => e.stopPropagation()}
-      >
-        <StageDropdown
-          value={contact.stage}
-          onChange={(stage) => {
-            onUpdateStage(stage)
-          }}
-        />
-      </div>
-      
+      {columnVisibility.stage !== false && (
+        <div
+          style={{ display: 'flex', alignItems: 'center' }}
+          onClick={(e) => e.stopPropagation()}
+          onMouseDown={(e) => e.stopPropagation()}
+        >
+          <StageDropdown
+            value={contact.stage}
+            onChange={(stage) => {
+              onUpdateStage(stage)
+            }}
+          />
+        </div>
+      )}
+
       {/* Pipeline Progress Dropdown */}
-      <div 
-        onClick={(e) => e.stopPropagation()}
-        onMouseDown={(e) => e.stopPropagation()}
-      >
-        <PipelineProgressDropdown
-          contact={contact}
-          onUpdateStep={onUpdatePipelineStep}
-        />
-      </div>
-      
+      {columnVisibility.pipeline !== false && (
+        <div
+          onClick={(e) => e.stopPropagation()}
+          onMouseDown={(e) => e.stopPropagation()}
+        >
+          <PipelineProgressDropdown
+            contact={contact}
+            onUpdateStep={onUpdatePipelineStep}
+          />
+        </div>
+      )}
+
       {/* Title */}
-      <div style={{ display: 'flex', alignItems: 'center', minWidth: 0 }}>
-        <span
-          style={{
-            fontSize: theme.fontSize.xs,
-            color: contact.job_title ? theme.text.secondary : theme.text.muted,
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-          }}
-        >
-          {contact.job_title || '—'}
-        </span>
-      </div>
-      
+      {columnVisibility.title !== false && (
+        <div style={{ display: 'flex', alignItems: 'center', minWidth: 0 }}>
+          <span
+            style={{
+              fontSize: theme.fontSize.xs,
+              color: contact.job_title ? theme.text.secondary : theme.text.muted,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {contact.job_title || '—'}
+          </span>
+        </div>
+      )}
+
       {/* Last Activity */}
-      <div style={{ display: 'flex', alignItems: 'center', minWidth: 0 }}>
-        <span
-          style={{
-            fontSize: theme.fontSize.xs,
-            color: theme.text.muted,
-          }}
-          title={contact.updated_at ? new Date(contact.updated_at).toLocaleString() : undefined}
-        >
-          {formatRelativeTime(contact.updated_at)}
-        </span>
-      </div>
-      
+      {columnVisibility.lastActivity !== false && (
+        <div style={{ display: 'flex', alignItems: 'center', minWidth: 0 }}>
+          <span
+            style={{
+              fontSize: theme.fontSize.xs,
+              color: theme.text.muted,
+            }}
+            title={contact.updated_at ? new Date(contact.updated_at).toLocaleString() : undefined}
+          >
+            {formatRelativeTime(contact.updated_at)}
+          </span>
+        </div>
+      )}
+
       {/* Actions */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: 4 }}>
-        {contact.email && (
-          <ActionButton
-            href={`mailto:${contact.email}`}
-            icon={<Mail size={14} />}
-            label="Email"
-          />
-        )}
-        {contact.lead_phone && (
-          <ActionButton
-            href={`tel:${contact.lead_phone}`}
-            icon={<Phone size={14} />}
-            label="Call"
-          />
-        )}
-        {contact.linkedin_url && (
-          <ActionButton
-            href={contact.linkedin_url}
-            icon={<Linkedin size={14} />}
-            label="LinkedIn"
-            external
-          />
-        )}
-      </div>
+      {columnVisibility.actions !== false && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: 4 }}>
+          {contact.email && (
+            <ActionButton
+              href={`mailto:${contact.email}`}
+              icon={<Mail size={14} />}
+              label="Email"
+            />
+          )}
+          {contact.lead_phone && (
+            <ActionButton
+              href={`tel:${contact.lead_phone}`}
+              icon={<Phone size={14} />}
+              label="Call"
+            />
+          )}
+          {contact.linkedin_url && (
+            <ActionButton
+              href={contact.linkedin_url}
+              icon={<Linkedin size={14} />}
+              label="LinkedIn"
+              external
+            />
+          )}
+        </div>
+      )}
+
+      {/* === Personal Info Columns === */}
+      {columnVisibility.email !== false && (
+        <CellText value={contact.email} />
+      )}
+      {columnVisibility.phone !== false && (
+        <CellText value={contact.lead_phone} />
+      )}
+      {columnVisibility.seniority !== false && (
+        <CellText value={contact.seniority_level} />
+      )}
+      {columnVisibility.linkedin !== false && (
+        <CellLink url={contact.linkedin_url} label="LinkedIn" />
+      )}
+
+      {/* === Company Info Columns === */}
+      {columnVisibility.domain !== false && (
+        <CellText value={contact.company_domain} />
+      )}
+      {columnVisibility.companySize !== false && (
+        <CellText value={contact.company_size} />
+      )}
+      {columnVisibility.industry !== false && (
+        <CellText value={contact.industry} />
+      )}
+      {columnVisibility.revenue !== false && (
+        <CellText value={contact.annual_revenue} />
+      )}
+      {columnVisibility.hqCity !== false && (
+        <CellText value={contact.company_hq_city} />
+      )}
+      {columnVisibility.hqState !== false && (
+        <CellText value={contact.company_hq_state} />
+      )}
+      {columnVisibility.hqCountry !== false && (
+        <CellText value={contact.company_hq_country} />
+      )}
+      {columnVisibility.yearFounded !== false && (
+        <CellText value={contact.year_founded?.toString()} />
+      )}
+      {columnVisibility.businessModel !== false && (
+        <CellText value={contact.business_model} />
+      )}
+      {columnVisibility.fundingStage !== false && (
+        <CellText value={contact.funding_stage} />
+      )}
+      {columnVisibility.isHiring !== false && (
+        <CellBoolean value={contact.is_hiring} />
+      )}
+
+      {/* === Campaign Columns === */}
+      {columnVisibility.campaignName !== false && (
+        <CellText value={contact.campaign_name} />
+      )}
+      {columnVisibility.leadSource !== false && (
+        <CellText value={contact.lead_source} />
+      )}
+
+      {/* === Sales Columns === */}
+      {columnVisibility.epv !== false && (
+        <CellCurrency value={contact.epv} />
+      )}
+      {columnVisibility.assignee !== false && (
+        <CellText value={contact.assignee} />
+      )}
+      {columnVisibility.nextTouchpoint !== false && (
+        <CellDate value={contact.next_touchpoint} />
+      )}
+
+      {/* === Date Columns === */}
+      {columnVisibility.createdAt !== false && (
+        <CellDate value={contact.created_at} />
+      )}
+      {columnVisibility.meetingDate !== false && (
+        <CellDate value={contact.meeting_date} />
+      )}
     </div>
   )
+}
+
+// === Cell Renderer Components ===
+function CellText({ value }: { value: string | null | undefined }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', minWidth: 0 }}>
+      <span
+        style={{
+          fontSize: theme.fontSize.xs,
+          color: value ? theme.text.secondary : theme.text.muted,
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
+        }}
+      >
+        {value || '—'}
+      </span>
+    </div>
+  )
+}
+
+function CellLink({ url, label }: { url: string | null | undefined; label: string }) {
+  if (!url) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', minWidth: 0 }}>
+        <span style={{ fontSize: theme.fontSize.xs, color: theme.text.muted }}>—</span>
+      </div>
+    )
+  }
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', minWidth: 0 }}>
+      <a
+        href={url}
+        target="_blank"
+        rel="noopener noreferrer"
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          fontSize: theme.fontSize.xs,
+          color: theme.accent.primary,
+          textDecoration: 'none',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
+        }}
+      >
+        {label}
+      </a>
+    </div>
+  )
+}
+
+function CellBoolean({ value }: { value: boolean | null | undefined }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', minWidth: 0 }}>
+      <span
+        style={{
+          fontSize: theme.fontSize.xs,
+          color: value ? '#22c55e' : theme.text.muted,
+          fontWeight: value ? 500 : 400,
+        }}
+      >
+        {value === true ? 'Yes' : value === false ? 'No' : '—'}
+      </span>
+    </div>
+  )
+}
+
+function CellCurrency({ value }: { value: number | null | undefined }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', minWidth: 0 }}>
+      <span
+        style={{
+          fontSize: theme.fontSize.xs,
+          color: value ? theme.text.secondary : theme.text.muted,
+          fontFamily: 'monospace',
+        }}
+      >
+        {value != null ? `$${value.toLocaleString()}` : '—'}
+      </span>
+    </div>
+  )
+}
+
+function CellDate({ value }: { value: string | null | undefined }) {
+  if (!value) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', minWidth: 0 }}>
+        <span style={{ fontSize: theme.fontSize.xs, color: theme.text.muted }}>—</span>
+      </div>
+    )
+  }
+  try {
+    const date = new Date(value)
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', minWidth: 0 }}>
+        <span
+          style={{
+            fontSize: theme.fontSize.xs,
+            color: theme.text.secondary,
+          }}
+          title={date.toLocaleString()}
+        >
+          {date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+        </span>
+      </div>
+    )
+  } catch {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', minWidth: 0 }}>
+        <span style={{ fontSize: theme.fontSize.xs, color: theme.text.muted }}>—</span>
+      </div>
+    )
+  }
 }
 
 // Pipeline Progress Dropdown - shows deepest stage reached with dropdown for all stages
