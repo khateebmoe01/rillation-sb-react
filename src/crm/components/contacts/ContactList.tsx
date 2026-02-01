@@ -220,6 +220,9 @@ function SortableColumnItem({ id, label, isVisible, isProtected, onToggle, theme
           flexShrink: 0,
           cursor: isProtected ? 'not-allowed' : 'pointer',
           opacity: isProtected ? 0.6 : 1,
+          padding: 4,
+          margin: -4,
+          boxSizing: 'content-box',
         }}
       >
         {isVisible && <Check size={10} color="#fff" strokeWidth={3} />}
