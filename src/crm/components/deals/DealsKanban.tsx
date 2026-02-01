@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { DollarSign, Plus, Building2, Calendar, MoreHorizontal, Trash2, Edit2, ArrowUpDown, Filter } from 'lucide-react'
 import { theme } from '../../config/theme'
 import { useCRM } from '../../context/CRMContext'
-import { SearchInput, Avatar, LoadingSkeleton } from '../shared'
+import { SearchInput, LoadingSkeleton } from '../shared'
 import { DealModal } from './DealModal'
 import { DEAL_STAGES, DEAL_STAGE_INFO, type Deal, type DealStage } from '../../types'
 
@@ -335,7 +335,7 @@ export function DealsKanban() {
   return (
     <div 
       ref={containerRef}
-      style={{ height: '100%', display: 'flex', flexDirection: 'column' }}
+      style={{ height: '100%', display: 'flex', flexDirection: 'column', outline: 'none' }}
       tabIndex={0}
     >
       {/* Header */}
@@ -645,29 +645,6 @@ export function DealsKanban() {
           </AnimatePresence>
         </div>
         
-        {/* Add Deal Button */}
-        <button
-          onClick={() => handleCreateDeal()}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 6,
-            padding: '8px 16px',
-            fontSize: theme.fontSize.sm,
-            fontWeight: theme.fontWeight.medium,
-            color: '#fff',
-            backgroundColor: theme.accent.primary,
-            border: `1px solid ${theme.accent.primary}`,
-            borderRadius: theme.radius.md,
-            cursor: 'pointer',
-            transition: `all ${theme.transition.fast}`,
-          }}
-          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = theme.accent.primaryHover}
-          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = theme.accent.primary}
-        >
-          <Plus size={14} />
-          <span>Add Deal</span>
-        </button>
       </div>
       
       {/* Kanban Board */}
@@ -841,8 +818,8 @@ function KanbanColumn({
           />
           <span
             style={{
-              fontSize: compact ? theme.fontSize.sm : theme.fontSize.base,
-              fontWeight: theme.fontWeight.semibold,
+              fontSize: compact ? theme.fontSize.sm : '15px',
+              fontWeight: 700,
               color: theme.text.primary,
             }}
           >
@@ -853,7 +830,7 @@ function KanbanColumn({
               fontSize: theme.fontSize.xs,
               fontWeight: theme.fontWeight.medium,
               color: theme.text.muted,
-              backgroundColor: theme.bg.muted,
+              backgroundColor: 'rgba(255, 255, 255, 0.08)',
               padding: '2px 6px',
               borderRadius: theme.radius.full,
             }}
@@ -1006,23 +983,25 @@ function DealCard({ deal, onClick, onDelete, compact = false, isSelected = false
     <motion.div
       draggable={false}
       animate={{
-        border: isSelected 
-          ? '1px solid rgba(255, 255, 255, 0.8)' 
-          : isHovered 
-            ? '1px solid rgba(255, 255, 255, 0.15)' 
-            : `1px solid ${theme.border.subtle}`,
-        boxShadow: isSelected
-          ? `0 0 0 1px rgba(255, 255, 255, 0.8), 0 0 30px rgba(255, 255, 255, 0.3), 0 0 60px rgba(255, 255, 255, 0.15), 0 1px 3px rgba(0, 0, 0, 0.5)`
+        border: isSelected
+          ? '1px solid rgba(255, 255, 255, 0.7)'
           : isHovered
-            ? `0 0 0 1px rgba(255, 255, 255, 0.15), 0 0 20px rgba(17, 119, 84, 0.15), 0 1px 3px rgba(0, 0, 0, 0.5)`
-            : `0 0 0 1px rgba(255, 255, 255, 0.05), 0 1px 3px rgba(0, 0, 0, 0.5)`,
-        transform: isHovered ? 'translateY(-2px)' : 'translateY(0)',
+            ? '1px solid rgba(255, 255, 255, 0.12)'
+            : '1px solid rgba(255, 255, 255, 0.08)',
+        backgroundColor: isHovered ? '#112840' : theme.bg.elevated,
+        boxShadow: isSelected
+          ? '0 0 0 1px rgba(255, 255, 255, 0.7), 0 4px 20px rgba(0, 0, 0, 0.4)'
+          : isHovered
+            ? '0 4px 12px rgba(0, 0, 0, 0.3)'
+            : '0 1px 3px rgba(0, 0, 0, 0.3)',
+        transform: isHovered ? 'translateY(-1px)' : 'translateY(0)',
       }}
       transition={{ duration: 0.2 }}
       style={{
         padding: compact ? 10 : 14,
         backgroundColor: theme.bg.elevated,
         borderRadius: theme.radius.lg,
+        borderLeft: `3px solid ${DEAL_STAGE_INFO[deal.stage]?.color || theme.border.default}`,
         cursor: 'grab',
         opacity: isDragging ? 0.5 : 1,
         position: 'relative',
@@ -1057,9 +1036,10 @@ function DealCard({ deal, onClick, onDelete, compact = false, isSelected = false
         {deal.amount > 0 && (
           <span
             style={{
-              fontSize: compact ? theme.fontSize.xs : theme.fontSize.sm,
-              fontWeight: theme.fontWeight.semibold,
-              color: theme.status.success,
+              fontSize: compact ? theme.fontSize.sm : theme.fontSize.base,
+              fontWeight: 700,
+              color: '#34d399',
+              textShadow: '0 0 8px rgba(34, 211, 154, 0.25)',
               whiteSpace: 'nowrap',
             }}
           >
@@ -1070,14 +1050,15 @@ function DealCard({ deal, onClick, onDelete, compact = false, isSelected = false
       
       {/* Company & Contact */}
       {!compact && (
-        <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 4 }}>
+        <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
           {deal.contact?.company && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <Building2 size={12} style={{ color: theme.text.muted }} />
+              <Building2 size={14} style={{ color: '#64748b' }} />
               <span
                 style={{
-                  fontSize: theme.fontSize.sm,
-                  color: theme.text.secondary,
+                  fontSize: theme.fontSize.base,
+                  fontWeight: theme.fontWeight.medium,
+                  color: '#94a3b8',
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',
                   whiteSpace: 'nowrap',
@@ -1087,34 +1068,15 @@ function DealCard({ deal, onClick, onDelete, compact = false, isSelected = false
               </span>
             </div>
           )}
-          
-          {deal.contact && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <Avatar
-                name={deal.contact.full_name || deal.contact.email || 'Unknown'}
-                size="sm"
-              />
-              <span
-                style={{
-                  fontSize: theme.fontSize.sm,
-                  color: theme.text.muted,
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                {deal.contact.full_name}
-              </span>
-            </div>
-          )}
-          
+
+
           {deal.expected_close_date && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <Calendar size={12} style={{ color: theme.text.muted }} />
+              <Calendar size={12} style={{ color: '#475569' }} />
               <span
                 style={{
                   fontSize: theme.fontSize.xs,
-                  color: theme.text.muted,
+                  color: '#64748b',
                 }}
               >
                 {new Date(deal.expected_close_date).toLocaleDateString()}

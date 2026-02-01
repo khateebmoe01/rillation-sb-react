@@ -649,3 +649,63 @@ body {
   display: none;
 }
 
+/* ============================================
+   AG Grid Dark Theme - Rillation
+   ============================================ */
+
+.ag-theme-alpine-dark {
+  --ag-background-color: #060f1a;
+  --ag-header-background-color: #0a1628;
+  --ag-odd-row-background-color: #060f1a;
+  --ag-row-hover-color: #0d1d30;
+  --ag-selected-row-background-color: rgba(17, 119, 84, 0.15);
+  --ag-range-selection-background-color: rgba(17, 119, 84, 0.2);
+  --ag-border-color: #122438;
+  --ag-secondary-border-color: #1e293b;
+  --ag-header-foreground-color: #a1a1aa;
+  --ag-foreground-color: #fafafa;
+  --ag-font-family: 'Sora', system-ui, sans-serif;
+  --ag-font-size: 13px;
+  --ag-row-height: 44px;
+  --ag-header-height: 40px;
+  --ag-cell-horizontal-padding: 12px;
+}
+
+.ag-theme-alpine-dark .ag-header-cell {
+  font-weight: 600;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.ag-theme-alpine-dark .ag-row {
+  border-bottom: 1px solid #122438;
+}
+
+.ag-theme-alpine-dark .ag-row-selected {
+  box-shadow: inset 3px 0 0 0 #117754;
+}
+
+.ag-theme-alpine-dark .ag-cell {
+  display: flex;
+  align-items: center;
+}
+
+.ag-theme-alpine-dark .ag-paging-panel {
+  background-color: #0a1628;
+  border-top: 1px solid #122438;
+  color: #a1a1aa;
+}
+
+.ag-theme-alpine-dark .ag-paging-button {
+  color: #fafafa;
+}
+
+.ag-theme-alpine-dark .ag-checkbox-input-wrapper {
+  background-color: transparent;
+}
+
+.ag-theme-alpine-dark .ag-checkbox-input-wrapper.ag-checked {
+  background-color: #117754;
+  border-color: #117754;
+}

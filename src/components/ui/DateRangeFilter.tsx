@@ -42,7 +42,7 @@ export default function DateRangeFilter({
   const [displayMonth, setDisplayMonth] = useState(startDate)
   const containerRef = useRef<HTMLDivElement>(null)
 
-  const showCalendar = isHoveringCustom || isHoveringCalendar
+  const showCalendar = isHoveringCustom || isHoveringCalendar || (isCustom && isOpen)
 
   const handlePrevMonth = () => setDisplayMonth(prev => subMonths(prev, 1))
   const handleNextMonth = () => setDisplayMonth(prev => addMonths(prev, 1))
@@ -61,6 +61,14 @@ export default function DateRangeFilter({
       setIsCustom(false)
     }
   }, [activePreset])
+
+  // Initialize calendar when opening dropdown in custom mode
+  useEffect(() => {
+    if (isOpen && isCustom) {
+      setRange({ from: startDate, to: endDate })
+      setDisplayMonth(startDate)
+    }
+  }, [isOpen])
 
   // Close on click outside
   useEffect(() => {
@@ -286,30 +294,6 @@ export default function DateRangeFilter({
             {/* Preset Options Menu */}
             <div className="bg-rillation-card border border-rillation-border rounded-xl shadow-2xl overflow-hidden min-w-[200px]">
               <div className="py-1">
-                {presets.map((preset) => {
-                  const isActive = activePreset === preset.id && !isCustom
-                  return (
-                    <button
-                      key={preset.id}
-                      onClick={() => handlePresetSelect(preset.id)}
-                      className={`
-                        w-full flex items-center justify-between px-4 py-2.5 text-sm
-                        transition-colors duration-150
-                        ${isActive
-                          ? 'bg-white/10 text-white'
-                          : 'text-white/80 hover:bg-white/5 hover:text-white'
-                        }
-                      `}
-                    >
-                      <span>{preset.label}</span>
-                      {isActive && <Check size={14} className="text-emerald-400" />}
-                    </button>
-                  )
-                })}
-
-                {/* Divider */}
-                <div className="h-px bg-rillation-border my-1" />
-
                 {/* Custom Option - hover triggers calendar */}
                 <div
                   onMouseEnter={() => setIsHoveringCustom(true)}
@@ -338,10 +322,40 @@ export default function DateRangeFilter({
 
                 {/* Show current custom range if active */}
                 {isCustom && (
-                  <div className="px-4 py-2 text-xs text-white/50 border-t border-rillation-border mt-1">
+                  <div className="px-4 py-2 text-xs text-emerald-400">
                     {formatDisplayDate(startDate)} - {formatDisplayDate(endDate)}
                   </div>
                 )}
+
+                {/* Divider */}
+                <div className="h-px bg-rillation-border my-1" />
+
+                {presets.map((preset) => {
+                  const isActive = activePreset === preset.id && !isCustom
+                  return (
+                    <div key={preset.id}>
+                      <button
+                        onClick={() => handlePresetSelect(preset.id)}
+                        className={`
+                          w-full flex items-center justify-between px-4 py-2.5 text-sm
+                          transition-colors duration-150
+                          ${isActive
+                            ? 'bg-white/10 text-white'
+                            : 'text-white/80 hover:bg-white/5 hover:text-white'
+                          }
+                        `}
+                      >
+                        <span>{preset.label}</span>
+                        {isActive && <Check size={14} className="text-emerald-400" />}
+                      </button>
+                      {isActive && (
+                        <div className="px-4 py-1.5 text-xs text-emerald-400 bg-white/5">
+                          {formatDisplayDate(startDate)} - {formatDisplayDate(endDate)}
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
               </div>
             </div>
           </motion.div>
